@@ -1,0 +1,40 @@
+# Ward's local gateway: the UI and the API on one origin, routed the way the
+# VPS routes them (vps-deploy/infrastructure/Caddyfile). Local only.
+#
+# One origin is not a convenience here. The refresh cookie is scoped to
+# /ward-api/refresh, and /refresh and /logout refuse any request whose Origin
+# is not WARD_PUBLIC_ORIGIN, so the page and the API have to answer on the same
+# scheme://host:port.
+
+{
+	auto_https off
+	admin off
+}
+
+:80 {
+	encode gzip zstd
+
+	# The whole API. handle_path strips /ward-api, so Ward serves its own
+	# root-level routes (/login, /refresh, /console/*, /.well-known/jwks.json).
+	handle_path /ward-api/* {
+		reverse_proxy ward-api:8791
+	}
+
+	# The UI: a static SPA, so deep links fall back to index.html.
+	redir /ward /ward/ 308
+	handle_path /ward/* {
+		root * /srv/ward
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+
+	# A sign-in with no usable ?next= lands on "/", and nothing else lives on
+	# this origin. Send it to the account page, not /ward/: Ward's entry route
+	# always shows the sign-in form, which after a successful sign-in reads as
+	# "my password did not work".
+	redir / /ward/account 302
+
+	handle {
+		respond "Not found. Ward's pages are under /ward/ and its API under /ward-api/." 404
+	}
+}

@@ -1,0 +1,63 @@
+# Ward on this machine: the API plus a small Caddy gateway that serves the UI at
+# /ward and the API at /ward-api on one origin, http://localhost:8792.
+#
+#   cd infrastructure/local && docker compose up -d --build
+#
+# Local only. The VPS runs ../docker-compose.yml behind the host's Caddy.
+# README.md next to this file covers the first start and seeding.
+
+name: ward-local
+
+services:
+  ward-api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/Dockerfile
+      target: prod
+    image: ward-api:local
+    # Create the signing key on the first start. Ward loads it at boot and never
+    # generates one itself; the VPS deploy runs the same keygen once.
+    command:
+      - /bin/sh
+      - -c
+      - '[ -f "$$WARD_SIGNING_KEY_PATH" ] || node api/dist/tokens/keygen.js "$$WARD_SIGNING_KEY_PATH"; exec node api/dist/index.js'
+    env_file:
+      # The break-glass console login, WARD_ADMIN_USERNAME and
+      # WARD_ADMIN_PASSWORD. Kept outside the repo on purpose.
+      - ${WARD_LOCAL_ENV_FILE:-${HOME}/.config/ward/local.env}
+    environment:
+      # The origin the browser uses, and the `iss` of every token: an app's
+      # WARD_PUBLIC_ORIGIN has to be exactly this string.
+      WARD_PUBLIC_ORIGIN: http://localhost:8792
+      WARD_MAIL_TRANSPORT: file
+      WARD_MAIL_FROM: ward@localhost
+      # HOST, PORT, WARD_DB_PATH, WARD_SIGNING_KEY_PATH and WARD_MAIL_FILE_DIR
+      # come from the image.
+    volumes:
+      - ward_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- \"http://127.0.0.1:$${PORT}/health\""]
+      interval: 30s
+      timeout: 3s
+      start_period: 20s
+      start_interval: 1s
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/local/web.Dockerfile
+    image: ward-web:local
+    depends_on:
+      ward-api:
+        condition: service_healthy
+    ports:
+      # Loopback only. A dev identity service with a known password has no
+      # business being reachable from the network.
+      - "127.0.0.1:8792:80"
+    restart: unless-stopped
+
+volumes:
+  # ward.db, the signing key and the mail spool (/data/mail). `down -v` deletes
+  # it: every session and app key goes with it, so run seed.mjs again after.
+  ward_data:

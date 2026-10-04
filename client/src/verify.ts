@@ -1,11 +1,11 @@
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createRemoteJWKSet, customFetch, errors, jwtVerify, type JWTVerifyGetKey } from "jose";
 import {
   ACCESS_TOKEN_ALG,
   ACCESS_TOKEN_AUDIENCE,
   ACCESS_TOKEN_CLOCK_TOLERANCE_SECONDS,
   type AccessTokenClaims,
 } from "./claims.js";
-import { WardAuthenticationError } from "./errors.js";
+import { WardAuthenticationError, WardUnavailableError } from "./errors.js";
 
 /**
  * Local, offline verification of a Ward access token.
@@ -84,13 +84,44 @@ export function jwksUrl(publicOrigin: string, apiBasePath: string): URL {
  */
 export function createRemoteJwksKeyStore(
   jwksEndpoint: URL,
-  options?: { timeoutMs?: number; cacheMaxAgeMs?: number; cooldownDurationMs?: number },
+  options?: {
+    timeoutMs?: number;
+    cacheMaxAgeMs?: number;
+    cooldownDurationMs?: number;
+    /** The fetch the key set uses. Defaults to the global `fetch`; tests inject failures through it. */
+    fetch?: typeof fetch;
+  },
 ): WardKeyStore {
   return createRemoteJWKSet(jwksEndpoint, {
     timeoutDuration: options?.timeoutMs ?? 5_000,
     cacheMaxAge: options?.cacheMaxAgeMs ?? 10 * 60_000,
     cooldownDuration: options?.cooldownDurationMs ?? 30_000,
+    ...(options?.fetch ? { [customFetch]: options.fetch } : {}),
   });
+}
+
+/**
+ * **A key set Ward cannot serve means Ward is unavailable, never "signed
+ * out"** (contract rule 5, `corpus/wiki/integrating.md`).
+ *
+ * Only two resolver errors describe the *token*: no key in the set matches its
+ * `kid`, or several do. Everything else (a timeout, a non-200 or non-JSON key
+ * set, an invalid set, a fetch that threw) describes Ward, and becomes
+ * `WardUnavailableError`. Without this, the catch in `verifyAccessToken` turned
+ * a Ward outage into "access token is not valid", and an app told a signed-in
+ * person they were signed out (found by atrium brief 61 and prm brief 21).
+ */
+function classifyKeyFetch(keyStore: WardKeyStore): JWTVerifyGetKey {
+  return async (header, token) => {
+    try {
+      return await keyStore(header, token);
+    } catch (cause) {
+      if (cause instanceof errors.JWKSNoMatchingKey || cause instanceof errors.JWKSMultipleMatchingKeys) {
+        throw cause;
+      }
+      throw new WardUnavailableError("jwks unavailable", { cause });
+    }
+  };
 }
 
 /** Options for `verifyAccessToken`. `issuer` is required — an unpinned `iss` verifies nothing useful. */
@@ -125,7 +156,7 @@ export async function verifyAccessToken(
 ): Promise<AccessTokenClaims> {
   let payload: Record<string, unknown>;
   try {
-    const result = await jwtVerify(token, keyStore, {
+    const result = await jwtVerify(token, classifyKeyFetch(keyStore), {
       // Pinned, not derived from the token. See the header comment.
       algorithms: [ACCESS_TOKEN_ALG],
       issuer: options.issuer,
@@ -137,6 +168,7 @@ export async function verifyAccessToken(
     });
     payload = result.payload as Record<string, unknown>;
   } catch (cause) {
+    if (cause instanceof WardUnavailableError) throw cause;
     throw new WardAuthenticationError("access token is not valid", { cause });
   }
 

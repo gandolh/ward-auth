@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createRemoteJwksKeyStore, jwksUrl, verifyAccessToken } from "./verify.js";
-import { WardAuthenticationError } from "./errors.js";
+import { WardAuthenticationError, WardUnavailableError } from "./errors.js";
 import { startFakeWard, type FakeWard } from "./testing/fakeWard.js";
 
 /**
@@ -148,5 +148,53 @@ describe("verifyAccessToken", () => {
 
     const claims = await verifyAccessToken(rotatedToken, keyStore, { issuer: ward.origin });
     expect(claims.sub).toBe("sub_bob");
+  });
+});
+
+/**
+ * Ward contract rule 5: an unreachable Ward is never "not signed in". `jose`
+ * refetches the key set when its cache is empty or older than ten minutes, so
+ * right after a consumer boots, or ten minutes into a Ward outage, every
+ * verification hits the network. A failed fetch used to come back as
+ * "access token is not valid" (atrium brief 61, prm brief 21).
+ */
+describe("verifyAccessToken when the key set cannot be fetched", () => {
+  it("is Ward unavailable when the fetch throws", async () => {
+    const token = await ward.mintToken({ subject: "sub_alice", sessionId: "family_1" });
+    const keyStore = createRemoteJwksKeyStore(ward.jwksEndpoint, {
+      fetch: async () => {
+        throw new TypeError("fetch failed");
+      },
+    });
+
+    await expect(verifyAccessToken(token, keyStore, { issuer: ward.origin })).rejects.toBeInstanceOf(
+      WardUnavailableError,
+    );
+  });
+
+  it("is Ward unavailable when the key set answers 500", async () => {
+    const token = await ward.mintToken({ subject: "sub_alice", sessionId: "family_1" });
+    const keyStore = createRemoteJwksKeyStore(ward.jwksEndpoint, {
+      fetch: async () => new Response("down", { status: 500 }),
+    });
+
+    await expect(verifyAccessToken(token, keyStore, { issuer: ward.origin })).rejects.toBeInstanceOf(
+      WardUnavailableError,
+    );
+  });
+
+  it("is still an authentication error when the set loads but no key matches", async () => {
+    const otherWard = await startFakeWard();
+    try {
+      const foreignToken = await otherWard.mintToken({ issuer: ward.origin });
+      const keyStore = createRemoteJwksKeyStore(ward.jwksEndpoint);
+      const error = await verifyAccessToken(foreignToken, keyStore, { issuer: ward.origin }).catch(
+        (e: unknown) => e,
+      );
+      expect(error).toBeInstanceOf(WardAuthenticationError);
+      expect(error).not.toBeInstanceOf(WardUnavailableError);
+    } finally {
+      await otherWard.close();
+    }
   });
 });

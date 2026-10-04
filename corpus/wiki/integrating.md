@@ -56,7 +56,12 @@ the cache must only ever hold an answer received for that exact value.
 body that does not match the contract — every one of these **rejects the
 request**. Never fall back to a stale cache entry, and never let any of them
 resolve as "not signed in", which a caller could mistake for an ordinary
-signed-out response.
+signed-out response. **This covers the key-set fetch too, not only
+introspection.** Verifying a token fetches the JWKS whenever the cache is empty
+or older than ten minutes: at boot, and ten minutes into an outage. A failed
+fetch is Ward unavailable. Only "no key matches this token's `kid`" (or
+"several do") is the token's fault. `@ward/client`'s `verifyAccessToken`
+classifies it this way since 2026-10-04; atrium and prm did it first.
 
 Point 5 has one refinement worth implementing: treat a `401` as its own error
 type whose message names `WARD_APP_KEY`. It still fails closed, but a

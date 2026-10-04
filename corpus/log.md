@@ -277,3 +277,7 @@ The refresh cookie is scoped to `Path=/ward-api/refresh`, so a browser never sen
 ## [2026-10-04] decide | The cutover ran; briefs 16 and 11 closed
 
 Asked directly, the owner confirmed the destructive cutover has run on production and the estate signs in through Ward. It ran through each app's own cutover migration (prm's `0001_ward_cutover`, atrium's D53 cutover and its brief 60), not through scripts here; `scripts/cutover/` was never written. Brief 16 moves to done on that basis. Brief 11 is superseded: vps-deploy's `stacks/ward.ts` is the deploy, and every app, newspapper included, now calls `useWard`.
+
+## [2026-10-04] fix | The reference client: a key-set outage is Ward unavailable
+
+`@ward/client`'s `verifyAccessToken` turned every `jwtVerify` failure into an authentication error, so a JWKS fetch that failed (Ward down, slow or restarting, or a consumer booting while it is) told a signed-in person they were signed out. That breaks contract rule 5. It now classifies resolver errors: no matching key (or several) is the token's fault, and anything else is `WardUnavailableError`. `createRemoteJwksKeyStore` takes an injectable `fetch`, which the client passes through. integrating.md's rule 5 names the key-fetch path. This was the change atrium brief 61 and prm brief 21 owed upstream.

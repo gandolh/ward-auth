@@ -120,6 +120,8 @@ export function createWardClient(options: WardClientOptions): WardClient {
   const keyStore: WardKeyStore = createRemoteJwksKeyStore(jwksEndpoint, {
     timeoutMs: options.jwksTimeoutMs,
     cacheMaxAgeMs: options.jwksCacheMaxAgeMs,
+    // The same seam as introspection, so the key-fetch failure path is testable.
+    fetch: options.fetch,
   });
 
   const introspectFn = createIntrospector({

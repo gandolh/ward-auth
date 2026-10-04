@@ -244,7 +244,11 @@ export function refresh(): Promise<RefreshResult> {
 }
 
 /**
- * `POST /ward-api/logout`. Always `204`.
+ * `POST /ward-api/refresh/logout`. Always `204`.
+ *
+ * Under `/refresh` because the refresh cookie is scoped to
+ * `Path=/ward-api/refresh`: at `/ward-api/logout` the browser never sent it,
+ * and signing out ended nothing.
  *
  * Kills the presented token's family only, so signing out here leaves the same
  * person's other devices signed in. That is why "sign out my other devices" is
@@ -254,8 +258,10 @@ export function refresh(): Promise<RefreshResult> {
  * `Sec-Fetch-Site` or `Origin` says cross-site, and a form navigation from
  * another origin is precisely the shape it is refusing.
  */
+export const LOGOUT_PATH = "/refresh/logout";
+
 export async function logout(): Promise<void> {
-  await postJson<undefined>("/logout");
+  await postJson<undefined>(LOGOUT_PATH);
 }
 
 export interface SessionResult {

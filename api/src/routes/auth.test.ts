@@ -721,6 +721,46 @@ describe("POST /logout", () => {
     expect(after.statusCode).toBe(401);
   });
 
+  /**
+   * The cookies a browser actually attaches to a request for `publicPath`:
+   * only those whose `Path` path-matches it (RFC 6265 §5.1.4). The test above
+   * sends both cookies everywhere, which is how "Sign out does nothing" hid:
+   * no browser ever sent the refresh cookie to `/ward-api/logout`.
+   */
+  function browserCookies(headers: Record<string, unknown>, publicPath: string): string {
+    const pathMatches = (cookiePath: string) =>
+      publicPath === cookiePath ||
+      (publicPath.startsWith(cookiePath) &&
+        (cookiePath.endsWith("/") || publicPath.charAt(cookiePath.length) === "/"));
+    return [...setCookies(headers).entries()]
+      .filter(([, c]) => pathMatches(c.path ?? "/"))
+      .map(([name, c]) => `${name}=${c.value}`)
+      .join("; ");
+  }
+
+  it("a browser never sends the refresh cookie to /ward-api/logout", async () => {
+    const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.114");
+    expect(browserCookies(loggedIn.headers, "/ward-api/logout")).not.toContain("ward_refresh=");
+    expect(browserCookies(loggedIn.headers, "/ward-api/refresh/logout")).toContain("ward_refresh=");
+  });
+
+  it("ends the session from the cookies a browser sends to /ward-api/refresh/logout", async () => {
+    const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.115");
+    const token = setCookies(loggedIn.headers).get("ward_refresh")!.value;
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/refresh/logout",
+      headers: { cookie: browserCookies(loggedIn.headers, "/ward-api/refresh/logout") },
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(setCookies(response.headers).get("ward_refresh")!.maxAge).toBe("0");
+    expect(setCookies(response.headers).get("ward_session")!.maxAge).toBe("0");
+    const row = mod.refreshTokens.findRefreshToken(db, mod.refreshTokens.hashRefreshToken(token));
+    expect(row?.revoked_reason).toBe("logout");
+  });
+
   it("answers 204 whether or not the presented token was real", async () => {
     // Logout must never be an oracle for testing a stolen token — same status
     // and the same two clearing cookies for a token that was real, one that was

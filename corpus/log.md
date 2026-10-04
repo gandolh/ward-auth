@@ -269,3 +269,7 @@ whose docs 404 at runtime. Verified by deliberately inverting the pin.
 Ward's own gates stayed green throughout: 895 tests, typecheck and lint clean,
 with `docs` added as a fourth workspace whose script is `docs` rather than
 `build` so `npm run build --workspaces` is unaffected.
+
+## [2026-10-04] fix | Sign out ends the session
+
+The refresh cookie is scoped to `Path=/ward-api/refresh`, so a browser never sent it to `/ward-api/logout`: logout saw no credential, answered 204 and cleared nothing, and the person stayed signed in everywhere. The same handler is now also served at `/refresh/logout`, which the cookie path covers (a path matches everything under it), and the account page posts there; `/logout` stays for callers that send the token in the body. The old test sent both cookies to `/logout`, which no browser does; new tests send only the cookies whose path matches. Checked on the rebuilt local container: after Sign out, `/ward-api/account` answers 401.

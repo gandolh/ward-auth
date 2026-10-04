@@ -457,8 +457,17 @@ export async function authRoutes(
    * near-instant in practice — the client then holds nothing at all, and the
    * 30-second introspection window only ever applies to a token that was
    * already stolen.
+   *
+   * ## Served at `/refresh/logout` too, and that is the one browsers use
+   *
+   * The refresh cookie is scoped to `Path=/ward-api/refresh`, so a browser never
+   * sends it to `/ward-api/logout`. That route then saw nothing, answered `204`
+   * and cleared nothing: Sign out did nothing at all, and the session lived on.
+   * A cookie path also matches every path *under* it, so the same handler at
+   * `/refresh/logout` receives the cookie without widening its scope. `/logout`
+   * stays for a caller that posts the token in the body.
    */
-  app.post("/logout", async (request, reply) => {
+  const logout = async (request: FastifyRequest, reply: FastifyReply) => {
     if (!sameOrigin(request, WARD_PUBLIC_ORIGIN)) {
       return crossSite(reply);
     }
@@ -493,7 +502,9 @@ export async function authRoutes(
 
     clearSessionCookies(reply, secure);
     return reply.code(204).send();
-  });
+  };
+  app.post("/logout", logout);
+  app.post("/refresh/logout", logout);
 }
 
 /**

@@ -59,3 +59,12 @@ This brief only moves data.
 - After cutover the owner account signs in once and reaches every app.
 - No app contains a user row that Ward does not know about.
 - The rollback path is written down and has been read by a human.
+
+## Outcome (2026-10-04)
+
+**Ran on production, per the owner** (asked directly on 2026-10-04). It did not
+run through scripts in this repo: `scripts/cutover/` was never written. Each
+app's own Ward cutover deleted its accounts and their per-app data as it
+deployed: prm's migration `0001_ward_cutover` and atrium's D53 cutover, with
+atrium's brief 60 pruning the rows that orphaned. Accounts were recreated in
+Ward. Nothing is left to run here.

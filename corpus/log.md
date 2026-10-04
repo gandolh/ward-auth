@@ -273,3 +273,7 @@ with `docs` added as a fourth workspace whose script is `docs` rather than
 ## [2026-10-04] fix | Sign out ends the session
 
 The refresh cookie is scoped to `Path=/ward-api/refresh`, so a browser never sent it to `/ward-api/logout`: logout saw no credential, answered 204 and cleared nothing, and the person stayed signed in everywhere. The same handler is now also served at `/refresh/logout`, which the cookie path covers (a path matches everything under it), and the account page posts there; `/logout` stays for callers that send the token in the body. The old test sent both cookies to `/logout`, which no browser does; new tests send only the cookies whose path matches. Checked on the rebuilt local container: after Sign out, `/ward-api/account` answers 401.
+
+## [2026-10-04] decide | The cutover ran; briefs 16 and 11 closed
+
+Asked directly, the owner confirmed the destructive cutover has run on production and the estate signs in through Ward. It ran through each app's own cutover migration (prm's `0001_ward_cutover`, atrium's D53 cutover and its brief 60), not through scripts here; `scripts/cutover/` was never written. Brief 16 moves to done on that basis. Brief 11 is superseded: vps-deploy's `stacks/ward.ts` is the deploy, and every app, newspapper included, now calls `useWard`.

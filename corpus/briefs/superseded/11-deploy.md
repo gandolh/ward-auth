@@ -49,3 +49,11 @@ Any other project's block in the Caddyfile. Anything in the Ward repo itself.
   verified by deploying one, which is the actual failure mode this file has.
 - The API is unreachable on the VPS's public interface directly; only via Caddy.
 - A redeploy leaves the signing key untouched and existing sessions alive.
+
+## Superseded (2026-10-04)
+
+vps-deploy became a construct tree after this brief was written, so its
+`projects/ward/deploy.ts` shape never existed. Ward is `stacks/ward.ts`,
+constructed first in `app.ts`. Every app, newspapper included
+(`stacks/newspapper.ts`), now calls `useWard(ward.identityFor(app))`. The
+owner confirmed on 2026-10-04 that the estate runs on Ward in production.

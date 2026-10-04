@@ -43,11 +43,11 @@ and no destructive migration has been executed. Those are waves 7 and 9.
 | UI | **Central `/ward/login` + console + minimal self-service** |
 | Name | **Ward** (repo still `wzd_auth`; rename pending) |
 | Briefs written | **16** |
-| Briefs done | **14** — 00–10 in [briefs/done/](../briefs/done/), plus 13 · 14 · 15 executed 2026-09-06 along with two unbriefed apps. **2 left**: 11 (deploy) and 16 (the prune) |
+| Briefs done | **All.** 00–10, 13 · 14 · 15 and 16 in [briefs/done/](../briefs/done/); 11 superseded by vps-deploy's `stacks/ward.ts` (2026-10-04) |
 | App keys | **Built 2026-09-06**, unbriefed — schema, guard, console routes and panel. Consumed by all five apps; not yet deployed |
 | Service code | **Complete.** API, `@ward/client`, and the UI at `/ward` — login, register, verify, self-service, and the console |
 | Tests | **895** across three workspaces — 9 drive the real `buildApp()` end to end, now through the keyed `/introspect` |
-| Deploy entry in `vps-deploy` | **Written, never run.** Ward plus four wired consumers; **newspapper has no stack** — see [the note below](#brief-11-is-already-written-in-vps-deploy) |
+| Deploy entry in `vps-deploy` | **Deployed** (owner, 2026-10-04). Ward plus all five consumers, newspapper included |
 | Repo directory rename | **Deferred by the owner** — still `wzd_auth` on disk; `package.json` says `ward` |
 
 ## What is actually known
@@ -122,8 +122,8 @@ started until the one before it is verified.
 |---|---|---|
 | ~~1–6~~ | ~~00–10~~ | ~~The service: schema, keys, login, introspection, grants, registration, client, UI, console~~ **DONE 2026-09-02 → 09-04** |
 | ~~8~~ | ~~13 · 14 · 15 + 2 unbriefed~~ | ~~All five apps cut over~~ **DONE 2026-09-06** — ran ahead of wave 7 |
-| 7 | 11 | Deploy — newspapper's stack, and Caddy routes |
-| 9 | 16 | **The cutover** — back up, recreate, then prune |
+| ~~7~~ | ~~11~~ | ~~Deploy~~ **superseded** by `stacks/ward.ts`; deployed |
+| ~~9~~ | ~~16~~ | ~~The cutover~~ **ran on production** (owner, 2026-10-04), through each app's own cutover migration |
 
 Wave 8 ran before wave 7, inverting the plan. That is safe in the direction it
 went — the app changes are all local and reversible, and none of them can be

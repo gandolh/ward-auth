@@ -1,6 +1,6 @@
 ---
 summary: The locked calls about administration and privilege — the environment-only break-glass superuser that can reach nothing but the console, the ordinary owner account that actually runs the apps, and the deliberate absence of any way to delegate console access.
-updated: 2026-09-01
+updated: 2026-10-07
 ---
 
 # Decisions — administration and privilege
@@ -71,7 +71,8 @@ used the rest of the time.
 **Its grants are explicit, one per app — there is no wildcard.** A `*:admin`
 grant would mean a newly-added app is reachable the moment it exists, which
 contradicts the fails-safe property the per-app registration flag was chosen
-for. Six explicit grants are also six auditable rows.
+for. Six explicit grants are also six auditable rows. **Confirmed by the owner
+on 2026-10-07**, closing the open question that recorded it as an assumption.
 
 ## Console access cannot be delegated
 _2026-09-01, grilled Q26_ — There is exactly one console credential and

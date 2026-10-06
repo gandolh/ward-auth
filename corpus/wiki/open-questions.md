@@ -1,6 +1,6 @@
 ---
 summary: Nothing is open. The design was settled across six rounds of grilling on 2026-09-01 — kept as a page so the next open question has somewhere to land.
-updated: 2026-09-01
+updated: 2026-10-07
 ---
 
 # Open Questions
@@ -17,14 +17,6 @@ decisions pages.
 [decisions-admin.md](./decisions-admin.md).
 
 An empty page here is the goal state, not a gap.
-
-## One assumption worth correcting if it is wrong
-
-The owner account's grants were recorded as **explicit, one per app, with no
-wildcard** — read from "it should have all the permissions" plus the fails-safe
-property the per-app registration flag was chosen for. If a genuine `*:admin`
-wildcard was meant, that is the line to change, in
-[decisions-admin.md](./decisions-admin.md).
 
 ## Not open — deferred to briefs
 

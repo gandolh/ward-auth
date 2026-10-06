@@ -281,3 +281,7 @@ Asked directly, the owner confirmed the destructive cutover has run on productio
 ## [2026-10-04] fix | The reference client: a key-set outage is Ward unavailable
 
 `@ward/client`'s `verifyAccessToken` turned every `jwtVerify` failure into an authentication error, so a JWKS fetch that failed (Ward down, slow or restarting, or a consumer booting while it is) told a signed-in person they were signed out. That breaks contract rule 5. It now classifies resolver errors: no matching key (or several) is the token's fault, and anything else is `WardUnavailableError`. `createRemoteJwksKeyStore` takes an injectable `fetch`, which the client passes through. integrating.md's rule 5 names the key-fetch path. This was the change atrium brief 61 and prm brief 21 owed upstream.
+
+## [2026-10-07] decide | The owner's explicit grants are confirmed; brief 17 written
+
+The one assumption on open-questions.md, that the owner account's grants are explicit per app with no `*:admin` wildcard, is confirmed and removed from the page. Brief 17 is new: `POST /notify` lets an app mail its own granted, verified users without seeing an address, for public-resource-map's notification email (its brief 32). Separately, imbatranimOS brief 157 drops Ward from that app and removes its `imbatranim-os` row from the app-key script and the estate launcher.

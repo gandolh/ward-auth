@@ -1,7 +1,8 @@
 import type { OutgoingMail } from "./transport.js";
 
 /**
- * The messages Ward sends. Today there is exactly one.
+ * The messages Ward sends: the verification mail, and the frame around a
+ * notification an app asks Ward to deliver (`POST /notify`).
  *
  * ## Plain text, no HTML part
  *
@@ -122,6 +123,67 @@ export function verificationMail(params: VerificationMailParams): OutgoingMail {
       `you without your password.`,
       ``,
       `— sent by Ward, the sign-in service for gandolh.ro`,
+      ``,
+    ].join("\n"),
+  };
+}
+
+/**
+ * The limits `POST /notify` enforces on what an app hands Ward. Here rather
+ * than in the route because they describe the message: the subject is one
+ * header line, and the text is one plain-text body.
+ *
+ * 200 characters of subject is past anything a mail client shows; the frame
+ * adds the app's name in front. 20,000 characters of text is a long digest,
+ * roughly 250 lines, and well under the size where mail clients start
+ * clipping a message.
+ */
+export const NOTIFY_MAIL_SUBJECT_MAX = 200;
+export const NOTIFY_TEXT_MAX = 20_000;
+
+export interface AppNotificationParams {
+  /** The verified address. Read by Ward, never seen by the app. */
+  to: string;
+  /** `apps.name` of the calling app. */
+  appName: string;
+  /** The app's subject line, one line of plain text. */
+  mailSubject: string;
+  /** The app's body, plain text. */
+  text: string;
+}
+
+/**
+ * The fixed frame around an app's notification.
+ *
+ * The app supplies a subject line and a body and nothing else. Ward sets the
+ * From name, the subject prefix and the footer, so a person can always tell
+ * which app wrote to them and why, whatever the app put in its text. The From
+ * address stays Ward's own: the app never sets From, Reply-To or any header.
+ *
+ * The footer sits after a `-- ` line, the plain-text signature separator, so
+ * mail clients that recognise it can dim or fold it. It says three things:
+ * which app sent the message, why this person gets it, and that the app never
+ * saw the address. The last one is true by construction and is the reason
+ * this endpoint exists instead of an address lookup.
+ *
+ * Line endings are normalised to `\n` and trailing whitespace is dropped, so
+ * the footer is always separated from the body by exactly one blank line.
+ */
+export function appNotificationMail(params: AppNotificationParams): OutgoingMail {
+  const app = params.appName;
+  const body = params.text.replace(/\r\n?/g, "\n").trimEnd();
+
+  return {
+    to: params.to,
+    fromName: `${app} via Ward`,
+    subject: `[${app}] ${params.mailSubject}`,
+    text: [
+      body,
+      ``,
+      `-- `,
+      `${app} sent you this message through Ward, the sign-in service for gandolh.ro.`,
+      `You get it because your account has access to ${app} and this email address is confirmed on it.`,
+      `${app} does not see your email address. Ward delivered the message for it.`,
       ``,
     ].join("\n"),
   };

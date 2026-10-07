@@ -37,6 +37,14 @@ export {
 
 export { readAccessCookie } from "./cookie.js";
 
+export {
+  createNotifier,
+  DEFAULT_NOTIFY_TIMEOUT_MS,
+  type NotificationInput,
+  type NotificationResult,
+  type NotifierOptions,
+} from "./notify.js";
+
 export type { AccessTokenClaims } from "./claims.js";
 export {
   ACCESS_TOKEN_ALG,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  appNotificationMail,
   verificationLink,
   verificationMail,
   WARD_API_PREFIX,
@@ -88,5 +89,33 @@ describe("verificationMail", () => {
       expiresInHours: 1,
     });
     expect(one.text).toContain("after 1 hour.");
+  });
+});
+
+describe("appNotificationMail", () => {
+  const mail = appNotificationMail({
+    to: "alice@example.com",
+    appName: "Public Resource Map",
+    mailSubject: "Two new events",
+    text: "Line one\r\nLine two\r\n\r\n",
+  });
+
+  it("names the app in the From name and the subject prefix", () => {
+    expect(mail.to).toBe("alice@example.com");
+    expect(mail.fromName).toBe("Public Resource Map via Ward");
+    expect(mail.subject).toBe("[Public Resource Map] Two new events");
+  });
+
+  it("puts the app's text first, then a footer after a signature line", () => {
+    expect(mail.text.startsWith("Line one\nLine two\n\n-- \n")).toBe(true);
+    expect(mail.text).not.toContain("\r");
+  });
+
+  it("says which app sent it, why the person gets it, and that the app never saw the address", () => {
+    const footer = mail.text.slice(mail.text.indexOf("-- \n"));
+    expect(footer).toContain("Public Resource Map sent you this message through Ward");
+    expect(footer).toContain("your account has access to Public Resource Map");
+    expect(footer).toContain("this email address is confirmed on it");
+    expect(footer).toContain("Public Resource Map does not see your email address.");
   });
 });

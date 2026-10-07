@@ -45,6 +45,14 @@ export interface OutgoingMail {
   to: string;
   subject: string;
   text: string;
+  /**
+   * A display name to put on the From line in place of the one in
+   * `WARD_MAIL_FROM`. The address never changes: mail always leaves from
+   * Ward's own mailbox. App notifications use this to name the app that sent
+   * them (`templates.ts#appNotificationMail`). Omitted, the From line is
+   * `WARD_MAIL_FROM` exactly as configured.
+   */
+  fromName?: string;
 }
 
 /**
@@ -89,8 +97,11 @@ export async function sendMail(
    * third of three, because header injection is cheap to prevent and expensive
    * to discover.
    */
-  const envelope = {
-    from: headerSafe(target.from),
+  const envelope: Envelope = {
+    from:
+      message.fromName === undefined
+        ? headerSafe(target.from)
+        : { name: headerSafe(message.fromName), address: mailboxAddress(target.from) },
     to: headerSafe(message.to),
     subject: headerSafe(message.subject),
     text: message.text,
@@ -102,7 +113,18 @@ export async function sendMail(
   return sendOverSmtp(target, envelope);
 }
 
-type Envelope = OutgoingMail & { from: string };
+/**
+ * What reaches nodemailer. A display-name override travels as nodemailer's
+ * `{ name, address }` form rather than a hand-built `Name <address>` string,
+ * because nodemailer then quotes and encodes the name itself: an app called
+ * `Smith, Jones` would otherwise read as two addresses.
+ */
+interface Envelope {
+  from: string | { name: string; address: string };
+  to: string;
+  subject: string;
+  text: string;
+}
 
 /**
  * Build the message with nodemailer's stream transport and write the bytes.
@@ -180,6 +202,16 @@ async function sendOverSmtp(
 function outboxFilename(): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   return `${stamp}-${randomBytes(4).toString("hex")}.eml`;
+}
+
+/**
+ * The bare address out of `WARD_MAIL_FROM`, which is either `ward@host` or
+ * `Ward <ward@host>`. The last `<...>` wins, so a display name that itself
+ * contains angle brackets cannot move the address.
+ */
+export function mailboxAddress(from: string): string {
+  const bracketed = /<([^<>]+)>\s*$/.exec(from);
+  return headerSafe(bracketed === null ? from : bracketed[1]!);
 }
 
 /**

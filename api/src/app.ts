@@ -4,6 +4,7 @@ import { jwksRoutes } from "./routes/jwks.js";
 import { authRoutes } from "./routes/auth.js";
 import { consoleRoutes } from "./routes/console.js";
 import { introspectRoutes } from "./routes/introspect.js";
+import { notifyRoutes } from "./routes/notify.js";
 import { sessionRoutes } from "./routes/session.js";
 import { adminAppsRoutes } from "./routes/admin/apps.js";
 import { adminAppKeysRoutes } from "./routes/admin/app-keys.js";
@@ -101,6 +102,12 @@ export async function buildApp(): Promise<FastifyInstance> {
    * why exempting cookie-bearing requests instead would have protected nothing.
    */
   await app.register(sessionRoutes);
+
+  /**
+   * `POST /notify`: an app asks Ward to mail one of its own users. The other
+   * app-key surface, so it sits beside `/introspect`. See `routes/notify.ts`.
+   */
+  await app.register(notifyRoutes);
 
   // The six admin plugins each attach `requireConsoleSession` as a
   // plugin-scope preHandler, so registering them here does not open anything —

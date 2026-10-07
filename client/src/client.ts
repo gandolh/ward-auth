@@ -1,6 +1,7 @@
 import type { AccessTokenClaims } from "./claims.js";
 import { WardAuthenticationError, WardForbiddenError } from "./errors.js";
 import { createIntrospector } from "./introspect.js";
+import { createNotifier, type NotificationInput, type NotificationResult } from "./notify.js";
 import { readAccessCookie } from "./cookie.js";
 import {
   jwksUrl,
@@ -59,6 +60,8 @@ export interface WardClientOptions {
   jwksEndpoint?: URL;
   /** Override the introspect URL directly. Same rationale as `jwksEndpoint`. */
   introspectEndpoint?: URL;
+  /** Override the notify URL directly. Same rationale as `jwksEndpoint`. */
+  notifyEndpoint?: URL;
   /** Injectable fetch, e.g. for a test harness or a custom HTTP client. Defaults to the global `fetch`. */
   fetch?: typeof fetch;
   /** JWKS fetch timeout, ms. Default 5000. */
@@ -69,6 +72,8 @@ export interface WardClientOptions {
   introspectionCacheTtlMs?: number;
   /** Introspection request timeout, ms. Default 5000. */
   introspectTimeoutMs?: number;
+  /** `sendNotification` request timeout, ms. Default 15000. */
+  notifyTimeoutMs?: number;
 }
 
 export interface WardClient {
@@ -107,6 +112,17 @@ export interface WardClient {
    * (fail closed — this is a rejection, not a pass-through).
    */
   authenticate(cookieHeader: string | string[] | undefined): Promise<ActiveSession>;
+
+  /**
+   * Ask Ward to mail one of this app's users (`POST /notify`). Ward sends only
+   * to an active account with a verified address that holds a grant for this
+   * app, and the address never reaches the app. Resolves `{ sent: true }` or
+   * `{ sent: false }`; a refusal never says why and is final for that message.
+   * Throws `WardConfigurationError` on a rejected key and
+   * `WardUnavailableError` when Ward cannot be reached or cannot send, so the
+   * caller can retry. See `notify.ts`.
+   */
+  sendNotification(input: NotificationInput): Promise<NotificationResult>;
 }
 
 /** Build a `@ward/client` instance wired to one Ward deployment. */
@@ -124,12 +140,23 @@ export function createWardClient(options: WardClientOptions): WardClient {
     fetch: options.fetch,
   });
 
+  const notifyEndpoint =
+    options.notifyEndpoint ??
+    new URL(`${options.apiBasePath.replace(/\/+$/, "")}/notify`, options.publicOrigin);
+
   const introspectFn = createIntrospector({
     introspectUrl: introspectEndpoint,
     appKey: options.appKey,
     fetch: options.fetch,
     cacheTtlMs: options.introspectionCacheTtlMs,
     timeoutMs: options.introspectTimeoutMs,
+  });
+
+  const sendNotification = createNotifier({
+    notifyUrl: notifyEndpoint,
+    appKey: options.appKey,
+    fetch: options.fetch,
+    timeoutMs: options.notifyTimeoutMs,
   });
 
   async function verify(token: string): Promise<AccessTokenClaims> {
@@ -169,7 +196,14 @@ export function createWardClient(options: WardClientOptions): WardClient {
     return session;
   }
 
-  return { verify, introspect: introspectFn, resolveSession, readAccessCookie, authenticate };
+  return {
+    verify,
+    introspect: introspectFn,
+    resolveSession,
+    readAccessCookie,
+    authenticate,
+    sendNotification,
+  };
 }
 
 /**

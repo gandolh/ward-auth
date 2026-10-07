@@ -199,6 +199,33 @@ must not _also_ mean revocation silently stops working. A route wired through
 `wardAuthenticate`/`wardRequireGrant` rejects the request (`503`) in this
 case rather than letting it through.
 
+## Mailing a user: `sendNotification`
+
+An app keys people on the subject and holds no addresses. To mail one of its
+own users, it asks Ward:
+
+```ts
+const { sent } = await ward.sendNotification({
+  subject, // the recipient's Ward subject
+  mailSubject: "Two new events at Filarmonica", // one line, at most 200 characters
+  text: "…", // plain text, at most 20,000 characters
+});
+```
+
+Ward sends only to an active account with a verified address that holds a
+grant for this app. It sets the From name and subject prefix to the app's
+display name and adds a footer saying which app sent the mail and why. The
+address never reaches the app.
+
+- `{ sent: true }`: Ward handed the message to its mail transport.
+- `{ sent: false }`: refused. Ward does not say why (no account, disabled, no
+  verified address, no grant, a malformed request, or this app's limit of
+  2,000 calls per rolling 24 hours). Treat it as final for that message.
+- `WardConfigurationError`: the key was rejected. Fix `WARD_APP_KEY`.
+- `WardUnavailableError`: Ward could not be reached, timed out (15 s by
+  default, `notifyTimeoutMs`), or could not send. Retry later. A timeout may
+  mean the mail went anyway, so a retry can send it twice.
+
 ## `requireGrant`
 
 ```ts

@@ -56,9 +56,11 @@ is deliberately **not** keyed on `request.ip` — see
 | Method | Path | What it does |
 |---|---|---|
 | `POST` | `/introspect` | Is this session live, and what may it do? Requires `x-ward-app-key`. |
+| `POST` | `/notify` | Mail one of the calling app's users. Ward holds the address; the app never sees it. Requires `x-ward-app-key`. |
 
-The one endpoint apps call. Fully described in
-[Introspection and revocation](/introspection/).
+Introspection is the endpoint every app calls on every request. It is fully
+described in [Introspection and revocation](/introspection/). The notify
+contract is in [integrating](/wiki/integrating/).
 
 ## Console — the superuser cookie
 

@@ -133,6 +133,7 @@ describe("the routes buildApp wires in", () => {
       { method: "POST" as const, url: "/refresh" },
       { method: "POST" as const, url: "/logout" },
       { method: "POST" as const, url: "/introspect" },
+      { method: "POST" as const, url: "/notify" },
       { method: "POST" as const, url: "/console/login" },
       { method: "GET" as const, url: "/console/apps" },
       { method: "GET" as const, url: "/console/grants" },

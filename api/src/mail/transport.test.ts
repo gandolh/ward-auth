@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { MailTransport } from "../config.js";
-import { sendMail } from "./transport.js";
+import { mailboxAddress, sendMail } from "./transport.js";
 
 /**
  * The `file` transport, end to end, with **no environment set at all**.
@@ -131,5 +131,44 @@ describe("file transport", () => {
     // stays inside the `To:` value rather than becoming a line.
     expect(body).not.toMatch(/^Bcc:/m);
     expect(body).toMatch(/^Subject: line oneline two$/m);
+  });
+});
+
+/**
+ * App notifications replace the From display name and keep the address. Added
+ * for `POST /notify`; verification mail sets no `fromName` and is unchanged.
+ */
+describe("a From display name override", () => {
+  it("keeps Ward's address and quotes a name that needs it", async () => {
+    const target = join(dir, "outbox-from-name");
+    await sendMail(
+      { to: "alice@example.com", subject: "s", text: "t", fromName: 'Smith, "Jones" via Ward' },
+      fileTransport(target),
+    );
+
+    const { body } = await onlyMessage(target);
+    expect(body).toContain('From: "Smith, \\"Jones\\" via Ward" <ward@gandolh.ro>');
+  });
+
+  it("strips control characters out of the name", async () => {
+    const target = join(dir, "outbox-from-name-control");
+    await sendMail(
+      {
+        to: "alice@example.com",
+        subject: "s",
+        text: "t",
+        fromName: "Atrium\r\nBcc: x@example.net",
+      },
+      fileTransport(target),
+    );
+
+    const { body } = await onlyMessage(target);
+    expect(body).not.toMatch(/^Bcc:/m);
+  });
+
+  it("reads the address out of either form of WARD_MAIL_FROM", () => {
+    expect(mailboxAddress("Ward <ward@gandolh.ro>")).toBe("ward@gandolh.ro");
+    expect(mailboxAddress("ward@gandolh.ro")).toBe("ward@gandolh.ro");
+    expect(mailboxAddress('"Ward <x>" <ward@gandolh.ro>')).toBe("ward@gandolh.ro");
   });
 });

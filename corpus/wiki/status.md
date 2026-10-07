@@ -1,5 +1,5 @@
 ---
-summary: Dated snapshot: Ward is deployed and the estate signs in through it; the cutover ran on 2026-10-04. Brief 17 (2026-10-07) added POST /notify, so an app can mail its own users without seeing an address; prm's brief 32 is the first caller. Nothing is open.
+summary: Dated snapshot: Ward is deployed and the estate signs in through it (four apps; imbatranimOS left on 2026-10-07); the cutover ran on 2026-10-04. Brief 17 (2026-10-07) added POST /notify, so an app can mail its own users without seeing an address; prm's brief 32 is the first caller. Nothing is open.
 updated: 2026-10-07
 ---
 
@@ -33,6 +33,12 @@ newspapper, imbatranimOS and sports-app each hand-write a Ward client against
 [integrating.md](./integrating.md), hold their own app key, guard on a grant,
 and have deleted their own credentials outright. Every suite is green in every
 repo.
+
+**imbatranimOS left on 2026-10-07** (its brief 157): the desktop signs its
+owner in itself, so four apps use Ward. `register-app-keys`, the `?next=`
+list and the local seed no longer name `imbatranim-os`. The deployed database
+still holds its app row and grants until the owner deletes the app in the
+console.
 
 **The deploy and the cutover ran** (owner, 2026-10-04). The estate signs in
 through Ward.

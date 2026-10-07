@@ -52,7 +52,7 @@ export default defineConfig({
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/gandolh/wzd_auth',
+          href: 'https://github.com/gandolh/ward-auth',
         },
       ],
       sidebar: [

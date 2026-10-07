@@ -88,7 +88,7 @@ function rewriteLinks(body) {
     // Point anything else (briefs/, todos/, source files) at the repo on GitHub.
     if (/\.md$/.test(pathPart) || pathPart.startsWith('../')) {
       const clean = pathPart.replace(/^(\.\.\/)+/, '')
-      return `](https://github.com/gandolh/wzd_auth/blob/main/corpus/${clean}${anchor ? '#' + anchor : ''})`
+      return `](https://github.com/gandolh/ward-auth/blob/main/corpus/${clean}${anchor ? '#' + anchor : ''})`
     }
     return whole
   })

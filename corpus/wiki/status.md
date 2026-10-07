@@ -1,13 +1,19 @@
 ---
-summary: Dated snapshot — Ward is feature-complete, app keys landed, and all five apps are cut over and green in their own repos. What remains is the deploy (newspapper has no stack, and the shared Caddyfile has no Ward entry) and the destructive prune; nothing has ever run against a real browser or a deployed Ward.
-updated: 2026-09-06
+summary: Dated snapshot: Ward is deployed and the estate signs in through it; the cutover ran on 2026-10-04. Brief 17 (2026-10-07) added POST /notify, so an app can mail its own users without seeing an address; prm's brief 32 is the first caller. Nothing is open.
+updated: 2026-10-07
 ---
 
 # Status
 
-_2026-09-06._
+_2026-10-07._
 
 ## Where things stand
+
+**Brief 17 landed 2026-10-07.** `POST /notify` lets an app mail its own
+granted, verified users without seeing an address, capped at 2,000 calls per
+app per rolling day. prm's brief 32 builds its email sweep on it. See
+[decisions-app-keys.md](./decisions-app-keys.md) and
+[integrating.md](./integrating.md).
 
 **Waves 1–6 landed 2026-09-04. Ward is feature-complete as a service.** API,
 `@ward/client`, and the UI: one central login page with the `?next=` handover,
@@ -28,9 +34,8 @@ newspapper, imbatranimOS and sports-app each hand-write a Ward client against
 and have deleted their own credentials outright. Every suite is green in every
 repo.
 
-**What remains is the deploy and the prune.** Nothing has ever run against a
-real browser or a deployed Ward — the shared Caddyfile still has no Ward entry —
-and no destructive migration has been executed. Those are waves 7 and 9.
+**The deploy and the cutover ran** (owner, 2026-10-04). The estate signs in
+through Ward.
 
 | Thread | State |
 |---|---|
@@ -42,11 +47,11 @@ and no destructive migration has been executed. Those are waves 7 and 9.
 | Cutover | **Full prune** — every account and all its app data, then recreate |
 | UI | **Central `/ward/login` + console + minimal self-service** |
 | Name | **Ward** (repo still `wzd_auth`; rename pending) |
-| Briefs written | **16** |
-| Briefs done | **All.** 00–10, 13 · 14 · 15 and 16 in [briefs/done/](../briefs/done/); 11 superseded by vps-deploy's `stacks/ward.ts` (2026-10-04) |
+| Briefs written | **17** |
+| Briefs done | **All.** 00–10, 13 · 14 · 15 · 16 and 17 in [briefs/done/](../briefs/done/); 11 superseded by vps-deploy's `stacks/ward.ts` (2026-10-04) |
 | App keys | **Built 2026-09-06**, unbriefed — schema, guard, console routes and panel. Consumed by all five apps; not yet deployed |
-| Service code | **Complete.** API, `@ward/client`, and the UI at `/ward` — login, register, verify, self-service, and the console |
-| Tests | **895** across three workspaces — 9 drive the real `buildApp()` end to end, now through the keyed `/introspect` |
+| Service code | **Complete.** API, `@ward/client`, and the UI at `/ward` — login, register, verify, self-service, and the console. `POST /notify` added 2026-10-07 |
+| Tests | **946** across three workspaces — 9 drive the real `buildApp()` end to end, now through the keyed `/introspect` |
 | Deploy entry in `vps-deploy` | **Deployed** (owner, 2026-10-04). Ward plus all five consumers, newspapper included |
 | Repo directory rename | **Deferred by the owner** — still `wzd_auth` on disk; `package.json` says `ward` |
 
@@ -78,28 +83,14 @@ and deploy credentials than the ~200 lines it saves.
 The cost is real and accepted with eyes open: **security code, written five
 times**. [integrating.md](./integrating.md) is the mitigation — the contract all
 five are written against — and `client/` stays as the tested reference
-implementation (43 tests, shipped to nothing) so "what should this do" has one
+implementation (58 tests, shipped to nothing) so "what should this do" has one
 answer. A change to any of the five behaviours goes there first, then to
 `client/`, then to all five apps.
 
 ## The next move
 
-**Wave 7 — the deploy.** `vps-deploy` now wires four of the five apps to Ward
-(`ward.identityFor(app)`, which creates the deploy edge as a side effect of
-reading the identity) and each holds a `WARD_APP_KEY` secret in its own
-`secrets/<app>.env`. **newspapper has no stack there at all** and needs one,
-plus a block in the shared Caddyfile that five live apps route through — a
-mistake there is an outage for apps with nothing to do with Ward, so it wants a
-person watching.
-
-Then wave 9, which destroys every account in the estate.
-
-**The honest gap, unchanged:** nothing has ever been deployed or run against a
-real browser on the real origin. Every verification is `app.inject`, a local
-socket, or a dev server whose proxy *imitates* Caddy. The cookie paths
-(`/ward-api/refresh`, `/ward-api/console`) are the part most likely to be wrong
-in a way no local test can show, because `handle_path` strips a prefix that
-nothing local strips.
+prm's brief 32 builds its notification email sweep against `POST /notify`, as
+documented in [integrating.md](./integrating.md). Nothing else is queued here.
 
 ## Brief 11 is already written in vps-deploy
 
@@ -111,7 +102,7 @@ against what waves 1–6 built (the table is in [log.md](../log.md) under
 `useWard(ward.identityFor(app))` — so the deploy edge exists because the
 identity was read, which is what the construct tree was refactored for.
 
-**Written is not deployed**, and **newspapper still has no stack at all**.
+It has since deployed, newspapper included (2026-10-04).
 
 ## The waves
 

@@ -48,3 +48,36 @@ app call, as `routes/introspect.ts` does), and the grants model.
   user gets one `.eml` in `file` mode whose From and footer name the app.
 - The rate limit refuses past its threshold, and the audit log records each call.
 - Ward's test suite and typecheck pass.
+
+## Outcome (2026-10-07)
+
+Shipped as specified in `0f8bd20`, with one addition.
+
+- `POST /notify` is `api/src/routes/notify.ts`, registered in `app.ts`. The app
+  key is checked in `onRequest`, before the body is parsed. The body is strict:
+  `subject` 1 to 64 characters, `mailSubject` one line up to 200, `text` up to
+  20,000. Any other key is a refusal.
+- Ward sends only to an active account with a verified address that holds a
+  grant for the key's app. Every refusal is the same `200 {"sent":false}`.
+- The addition: a transport failure is `503 {"error":"mail_unavailable"}`, not
+  a refusal, so `@ward/client` raises `WardUnavailableError` and the app retries.
+- The frame is `mail/templates.ts#appNotificationMail`: From `<App> via Ward`
+  at Ward's address, subject `[<App>] …`, and a footer after a `-- ` line.
+  `mail/transport.ts` gained an optional From display name. Verification mail
+  does not use it and is unchanged.
+- Rate limit: **2,000 calls per app in any rolling 24 hours**, in process. prm
+  makes one call per notification row, from a sweep after each accepted batch
+  and the 09:00 reminder sweep. A heavy day at a few hundred users is under
+  1,000 calls. Both sweeps are daily, so a day window covers the peak and stops
+  a loop that an hourly cap would let send 24 times as much. prm's reminder
+  rows are per person per event, not per person; the sizing counts rows.
+- Every keyed call writes an audit row, actor `system`, label `app:<slug>`,
+  action `notify.sent`, `notify.refused` (with the reason) or `notify.failed`.
+- `@ward/client` has `sendNotification({ subject, mailSubject, text })`
+  returning `{ sent: boolean }`, with a 15 second default timeout.
+- Also updated: the client README and the HTTP table in `docs/`.
+
+Verified: 946 tests pass (46 new), typecheck and lint are clean. The local
+container was rebuilt. `POST /ward-api/notify` answered `401` with no key, and
+`{"sent":false}` with prm's local key and an unknown subject, writing a
+`notify.refused` row labelled `app:prm`.

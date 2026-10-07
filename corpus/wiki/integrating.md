@@ -1,6 +1,6 @@
 ---
-summary: The contract every consuming app implements by hand — the five things a Ward integration must get right (algorithm pinning, the base path, the app key, the 30-second cache, failing closed), the exact environment variables, and the shape of the local ward module each app writes for itself.
-updated: 2026-09-06
+summary: The contract every consuming app implements by hand — the five things a Ward integration must get right (algorithm pinning, the base path, the app key, the 30-second cache, failing closed), the exact environment variables, the shape of the local ward module each app writes for itself, and POST /notify, which mails an app's own user without the app seeing the address.
+updated: 2026-10-07
 ---
 
 # Integrating an app with Ward
@@ -16,7 +16,7 @@ The cost is real and is accepted with eyes open: this is **security code,
 duplicated five times**. This page is the mitigation. It is the contract all
 five implementations are written against, and
 [`client/`](../../client/) in this repo stays as the **tested reference
-implementation** — 43 tests, not shipped to anything, kept so that "what should
+implementation** — 58 tests, not shipped to anything, kept so that "what should
 this do" has one answer and a new app has something to copy from rather than
 reinvent.
 
@@ -75,6 +75,7 @@ waiting.
 |---|---|
 | `GET /ward-api/.well-known/jwks.json` | Ward's public keys. Cache ~10 minutes. No key needed. |
 | `POST /ward-api/introspect` | `{ accessToken }` + `x-ward-app-key`. **Always `200`** except `401` for a bad key. |
+| `POST /ward-api/notify` | Mail one of your users. See [Mailing a user](#mailing-a-user-post-notify) below. |
 | `GET /ward-api/session` | Cookie-authenticated. **Ward's own UI only** — an app has no use for it. |
 | `/ward/login?next=…` | Where an app sends somebody who is not signed in. |
 
@@ -151,3 +152,53 @@ more.
 Each app keeps its own tables and keys them on the **subject** — a stable,
 opaque identifier that is never recycled. Not the username, which a person can
 change, and not an email, which is Ward's business and not yours.
+
+## Mailing a user: `POST /notify`
+
+An app holds no addresses, so Ward sends the mail for it
+([decisions-app-keys.md](./decisions-app-keys.md)). Built 2026-10-07.
+
+```
+POST /ward-api/notify
+x-ward-app-key: wak_…
+content-type: application/json
+
+{ "subject": "<Ward subject>", "mailSubject": "<one line>", "text": "<plain text>" }
+```
+
+- `subject`: the recipient's subject, 1 to 64 characters.
+- `mailSubject`: one line, trimmed, 1 to 200 characters, no control characters.
+- `text`: plain text, at most 20,000 characters, not blank. Tab, LF and CR
+  are the only control characters allowed; CRLF becomes LF.
+- **No other key.** `from`, `replyTo`, `headers` or anything else is refused.
+
+| Answer | Meaning | What the app does |
+|---|---|---|
+| `200 {"sent":true}` | Ward handed the mail to its transport. | Mark it sent. |
+| `200 {"sent":false}` | Refused. One answer for: no such account, disabled, no verified address, no grant for your app, a malformed body, your rate limit. | Mark it done. Final; never retry. |
+| `401 {"error":"invalid_app_key"}` | The key, checked before the body is read. | Fix `WARD_APP_KEY`. |
+| `503 {"error":"mail_unavailable"}` | Ward could not send. | Retry on the next run. |
+| anything else, or no answer | Ward is down or unreachable. | Retry on the next run. |
+
+Ward sends only to an active account with a verified address that holds **a
+grant for the key's app**: your own users, nobody else. The person sees From
+`<App name> via Ward` at Ward's address, Subject `[<App name>] <mailSubject>`,
+your text, then an English footer naming your app and why they get it.
+
+**Rate limit: 2,000 calls per app in any rolling 24 hours**, counted in
+Ward's process (a restart clears it). Every keyed call counts, refused or
+sent; a call the limit refuses does not. Past it the answer is
+`{"sent":false}`. Why: prm's two daily sweeps make one call per notification
+row, under 1,000 on a heavy day at a few hundred users, and a day window stops
+a loop that an hourly cap would let send 24 times as much.
+
+Every keyed call writes an audit row (`notify.sent`, `notify.refused` with the
+reason, or `notify.failed`; label `app:<slug>`; target the subject), never the
+content. That is where an operator finds why a mail was refused.
+
+The reference is `client/src/notify.ts`: `ward.sendNotification({ subject,
+mailSubject, text })` resolves `{ sent: boolean }`, throws
+`WardConfigurationError` (a `WardUnavailableError` subclass) on a `401`, and
+`WardUnavailableError` for the last two rows, a timeout (15 s default)
+included. Call it from a background sweep, never in a request. A timeout is
+ambiguous: Ward may have sent anyway, so a retry can deliver twice.

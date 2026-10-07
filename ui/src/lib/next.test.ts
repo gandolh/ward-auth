@@ -48,9 +48,9 @@ const ACCEPTED: ReadonlyArray<{ input: string; path: string; root: string; why: 
     why: "an ampersand is not a delimiter once the value is decoded",
   },
   {
-    input: "/imbatranim-os/settings",
-    path: "/imbatranim-os/settings",
-    root: "imbatranim-os",
+    input: "/sports-app/settings",
+    path: "/sports-app/settings",
+    root: "sports-app",
     why: "a hyphenated root is one segment",
   },
   {

@@ -54,10 +54,9 @@ way it does behind Caddy, and Ward sends you back into the app afterwards.
 | newspapper | http://localhost:4321/newspapper/ | `newspapper/.env` |
 | prm | http://localhost:5173/prm/ | `public-resource-map/.env` |
 | sports-app | http://localhost:5173/sports-app/ | `sports-app/.env` |
-| imbatranimOS | http://localhost:5173/imbatranim-os/ | `imbatranimOS/.env`, `imbatranimOS/apps/backend/.env` |
 
 Each app's own `.env.example` has the other dev values that layout needs (the
-base path and API URL); imbatranimOS keeps them in `apps/core/.env.development`.
+base path and API URL).
 
 Sessions last 15 minutes and no app renews one yet. When an app starts treating
 you as signed out, open `/ward/account` on its dev server, or

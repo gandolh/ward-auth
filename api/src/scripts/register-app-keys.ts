@@ -55,7 +55,6 @@ const NAME_FOR_SLUG: Record<string, string> = {
   atrium: "Atrium",
   prm: "Public Resource Map",
   "sports-app": "sports-app",
-  "imbatranim-os": "ImbatranimOS",
   newspapper: "Newspapper",
 };
 

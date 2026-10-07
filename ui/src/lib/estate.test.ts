@@ -11,7 +11,7 @@ describe("estate", () => {
   it("names every root it allows, so no destination renders as a slug", () => {
     // If a root is an accepted `?next=` target, the login page needs a sentence
     // to put in its heading. A row with a root and no proper name renders
-    // "Continue to imbatranim-os".
+    // "Continue to sports-app".
     for (const app of ESTATE_APPS) {
       if (app.root === null) continue;
       expect(rootName(app.root)).toBe(app.name);

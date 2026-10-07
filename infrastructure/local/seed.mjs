@@ -47,13 +47,6 @@ const APPS = [
   { slug: "newspapper", name: "Newspapper", repo: "newspapper", envFiles: [".env"] },
   { slug: "prm", name: "Public Resource Map", repo: "public-resource-map", envFiles: [".env"] },
   { slug: "sports-app", name: "Sports", repo: "sports-app", envFiles: [".env"] },
-  {
-    slug: "imbatranim-os",
-    name: "ImbatranimOS",
-    repo: "imbatranimOS",
-    // Nest loads .env from its working directory, apps/backend.
-    envFiles: [".env", "apps/backend/.env"],
-  },
 ];
 
 async function main() {

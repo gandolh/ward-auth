@@ -26,9 +26,8 @@
  *
  * Ward's app **slug** (`apps.slug`, what `POST /register` takes) and the app's
  * **path root** on the origin are different strings for the same app — `prm` is
- * served at `/prm`, but the pairing is coincidence rather than a rule, and
- * `imbatranim-os` is one row where a naive derivation would be wrong. Both are
- * spelled out.
+ * served at `/prm`, but the pairing is coincidence rather than a rule. Both
+ * are spelled out.
  */
 export interface EstateApp {
   /** `apps.slug` in Ward's database — what `POST /register` takes as `app`. */
@@ -56,7 +55,6 @@ export const ESTATE_APPS: readonly EstateApp[] = [
   { slug: "atrium", root: "atrium", name: "Atrium" },
   { slug: "newspapper", root: "newspapper", name: "Newspapper" },
   { slug: "prm", root: "prm", name: "Public Resource Map" },
-  { slug: "imbatranim-os", root: "imbatranim-os", name: "ImbatranimOS" },
   { slug: "sports-app", root: "sports-app", name: "Sports" },
   { slug: "trips", root: "trips", name: "Trips" },
   { slug: "design-study", root: "design-study", name: "Design Study" },

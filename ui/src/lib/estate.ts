@@ -56,6 +56,7 @@ export const ESTATE_APPS: readonly EstateApp[] = [
   { slug: "newspapper", root: "newspapper", name: "Newspapper" },
   { slug: "prm", root: "prm", name: "Public Resource Map" },
   { slug: "sports-app", root: "sports-app", name: "Sports" },
+  { slug: "satchel", root: "satchel", name: "Satchel" },
   { slug: "trips", root: "trips", name: "Trips" },
   { slug: "design-study", root: "design-study", name: "Design Study" },
   { slug: "saloon", root: "saloon", name: "Saloon" },

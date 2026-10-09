@@ -47,6 +47,7 @@ const APPS = [
   { slug: "newspapper", name: "Newspapper", repo: "newspapper", envFiles: [".env"] },
   { slug: "prm", name: "Public Resource Map", repo: "public-resource-map", envFiles: [".env"] },
   { slug: "sports-app", name: "Sports", repo: "sports-app", envFiles: [".env"] },
+  { slug: "satchel", name: "Satchel", repo: "satchel", envFiles: [".env"] },
 ];
 
 async function main() {

@@ -54,6 +54,7 @@ way it does behind Caddy, and Ward sends you back into the app afterwards.
 | newspapper | http://localhost:4321/newspapper/ | `newspapper/.env` |
 | prm | http://localhost:5173/prm/ | `public-resource-map/.env` |
 | sports-app | http://localhost:5173/sports-app/ | `sports-app/.env` |
+| satchel | http://localhost:5175/satchel/ | `satchel/.env` |
 
 Each app's own `.env.example` has the other dev values that layout needs (the
 base path and API URL).

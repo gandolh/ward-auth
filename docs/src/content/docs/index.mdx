@@ -19,7 +19,7 @@ the estate at `/ward`.
   <dt>Does not own</dt>
   <dd>Anything an app stores about a person — apps keep their own rows, keyed on an opaque <strong>subject</strong></dd>
   <dt>Consumed by</dt>
-  <dd>atrium · public-resource-map · newspapper · imbatranimOS · sports-app</dd>
+  <dd>atrium · public-resource-map · newspapper · sports-app</dd>
   <dt>Signs with</dt>
   <dd>One Ed25519 key, held by Ward alone; apps get the public half over JWKS</dd>
 </dl>
@@ -72,10 +72,11 @@ Three sources, kept apart on purpose, because they go stale in different ways.
   [archify](https://github.com/tt-a1i/archify) from typed JSON in `docs/diagrams/`
   and validated before they ship.
 
-:::note[One honest caveat, carried over from the corpus]
-At the time of writing, **nothing here has ever run against a deployed Ward**.
-Every verification is `app.inject`, a local socket, or a dev server that
-*imitates* Caddy. The cookie paths are the part most likely to be wrong in a
-way no local test can show, because `handle_path` strips a prefix that nothing
-local strips. See [Status](/wiki/status/).
+:::note[In production]
+Ward has been deployed at `https://gandolh.ro/ward` since 2026-10-04, and
+atrium, newspapper, public-resource-map and sports-app sign in through it.
+imbatranimOS was a fifth consumer until 2026-10-07, when it began signing
+people in itself. Local tests still cannot show the cookie paths, because
+`handle_path` strips a prefix that nothing local strips; the deployed Ward is
+where they run for real. See [Status](/wiki/status/).
 :::

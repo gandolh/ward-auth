@@ -121,13 +121,25 @@ means copying a newer build in and adapting the app's code, like vendoring a C
 library. No registry, no git dependency, no npm link.
 
 **Built, not minified.** The copy is compiled TypeScript bundled into plain ES
-modules with `.d.ts` types and source maps. Its third-party dependencies
-(`openid-client` and its own) are bundled in, so the copy has no install step
-of its own and drops into sports-app's plain `.mjs` server as-is. Every server
-in the estate is `"type": "module"`, so one output format serves all of them.
-It is not minified: it is security code that an app owner must be able to read,
-step through and diff between versions, and size does not matter on a server.
-React and Fastify are peer dependencies taken from the app, never bundled.
+modules. Its third-party dependencies (`openid-client` and its own) are bundled
+in, so the copy has no install step of its own and drops into sports-app's
+plain `.mjs` server as-is. Every server in the estate is `"type": "module"`, so
+one output format serves all of them. It is not minified: it is security code
+that an app owner must be able to read, step through and diff between versions,
+and size does not matter on a server. React and Fastify are peer dependencies
+taken from the app, never bundled.
+
+**What a copy holds** (owner, 2026-10-13): the bundle, its types, a
+`README.md` and a `LICENSE`, and nothing else.
+- Two bundles, not one: `ward-auth.js` for the server and `ward-auth-react.js`
+  for the hooks. The server bundle must not import React.
+- `ward-auth.d.ts` and `ward-auth-react.d.ts` beside them.
+- The README gives the version and the source, linking the remote repository
+  (`https://github.com/gandolh/ward-auth`, folder `shared-library/`), plus where
+  the upgrade notes are.
+- The LICENSE is MIT, as Ward's `package.json` declares.
+- No source maps, which would carry build paths, and no `package.json`. An app
+  imports the bundle by relative path.
 
 **Customizable, not duplicated.** The library owns the logic: password
 hashing, lockout, sessions, the Ward sign-in, linking, the 30-second check and

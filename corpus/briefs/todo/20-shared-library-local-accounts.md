@@ -69,14 +69,16 @@ Every one of them can hand over a synchronous SQLite handle.
    render nothing, so every app keeps its own login page. React is a peer
    dependency.
 5. **Build and vendoring:**
-   - Bundle to ES modules with `.d.ts` and source maps. Bundle the third-party
-     dependencies in. Do not minify.
-   - The output has a `package.json` with `name`, `version` and `exports`
-     (`./server`, `./fastify`, `./react`), so an app can depend on it as
-     `file:vendor/ward` (or a relative path from a workspace).
-   - `npm run vendor -- <target dir>` writes the build plus a README that says
-     only that it was copied from `ward/shared-library` at version X.Y.Z, with
-     a link to the upgrade notes. No local paths, no domain.
+   - The copy holds exactly the files listed in
+     [decisions-oidc.md](../../wiki/decisions-oidc.md) under "What a copy
+     holds": `ward-auth.js`, `ward-auth-react.js`, their two `.d.ts` files, a
+     `README.md` and a `LICENSE` (MIT).
+   - Bundle the third-party dependencies in. Do not minify. No source maps and
+     no `package.json`; apps import the bundle by relative path.
+   - `npm run vendor -- <target dir>` writes the build plus the README. The
+     README gives the version, the source (`https://github.com/gandolh/ward-auth`,
+     folder `shared-library/`), and the CHANGELOG link for upgrade notes. No
+     local paths, no domain.
    - Keep a `CHANGELOG.md` in `shared-library/`. Every breaking change gets an
      upgrade note, because upgrading is a manual copy.
 6. Add glossary entries for **local account**, **linked Ward identity** and
@@ -91,5 +93,6 @@ Every one of them can hand over a synchronous SQLite handle.
 - `npm run vendor` into a scratch directory produces something a plain `.mjs`
   Fastify server imports and runs with no install step beyond its own
   dependencies.
-- The vendored README contains no path and no domain (a test greps it).
+- The vendored directory holds exactly the six files. The README contains no
+  local path and no production domain (a test greps it).
 - Ward's test suite, typecheck and lint pass.

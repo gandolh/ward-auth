@@ -67,7 +67,7 @@ Depends on brief 18 (the provider and its client authentication), brief 19
 9. **Write `shared-library/README.md` as the adoption guide** that briefs 22–26
    follow. It replaces [integrating.md](../../wiki/integrating.md) for new
    work. It covers:
-   - Vendoring the build and depending on `file:vendor/ward`.
+   - Vendoring the build and importing it by relative path.
    - Handing over the SQLite handle.
    - Registering the plugin and the allowlist.
    - Cookie scoping.

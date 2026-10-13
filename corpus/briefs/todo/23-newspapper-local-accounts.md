@@ -51,6 +51,6 @@ Depends on briefs 20 and 21. Follow the adoption guide in this repo's `shared-li
   30 seconds. With Ward stopped, that session is rejected with the
   `ward_unavailable` message, and a local session keeps working.
 - Settings can link Ward to a local user, unlink it, and set a local password.
-- `vendor/ward/README.md` names only the source and the version.
+- `vendor/ward/` holds only the bundles, their types, the README and the LICENSE.
 - The app's test suite, typecheck and lint pass. Its corpus has a log entry and
   a decision recording the change.

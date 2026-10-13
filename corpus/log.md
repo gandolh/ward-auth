@@ -309,3 +309,7 @@ The owner's answers:
 
 The shared code lives in `shared-library/` and is copied into each app as a built, unminified bundle with a README naming only the source and version. Recorded in wiki/decisions-oidc.md, with revision notes on decisions.md Q4 and Q21, decisions-accounts.md's grants call, decisions-app-keys.md and integrating.md. Briefs 18–27 written in four waves (status.md). Two questions left for brief 18 are on open-questions.md. The subdomain move is a todo. The same day, the production domain was removed from every Markdown file across the estate, this repo included.
 
+## [2026-10-13] decide | What a vendored copy holds
+
+The owner refined answer 9: a copy is the bundle plus a README (version, and the source linked to the remote repository) and a LICENSE. It is two bundles (server and React hooks, so the server never imports React), their `.d.ts`, the README and an MIT LICENSE (as `package.json` declares). No source maps and no `package.json`; apps import by relative path. Recorded in decisions-oidc.md and brief 20. The owner also said to go ahead with briefs 18–27; brief-board is down and is skipped until the owner says it is back.
+

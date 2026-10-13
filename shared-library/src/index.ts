@@ -1,10 +1,11 @@
 /**
  * `ward-auth.js` — the server bundle.
  *
- * Local accounts, sessions and lockout for an app in the estate, plus the
- * Fastify plugin. Framework-free core first, then the plugin; nothing here
- * imports React, and Fastify is imported for types only, so the bundle has no
- * runtime import other than `node:` built-ins.
+ * Local accounts, sessions and lockout for an app in the estate, "Sign in
+ * with Ward" (OpenID Connect against Ward, through the bundled
+ * `openid-client`), plus the Fastify plugin. Framework-free core first, then
+ * the plugin; nothing here imports React, and Fastify is imported for types
+ * only, so the bundle has no runtime import other than `node:` built-ins.
  */
 
 export {
@@ -72,15 +73,43 @@ export {
   type SyncStore,
 } from "./store/sqlite.js";
 export {
+  AlreadyLinkedError,
   UserIdTakenError,
   UsernameTakenError,
+  WardSubjectTakenError,
+  isWardAuthStore,
   type AuthStore,
   type Awaitable,
   type NewUserRecord,
   type SessionOrigin,
   type SessionRecord,
   type UserRecord,
+  type WardAuthStore,
+  type WardLinkRecord,
 } from "./store/types.js";
+export {
+  DEFAULT_NOTIFY_TIMEOUT_MS,
+  DEFAULT_WARD_TIMEOUT_MS,
+  SESSION_STATUS_CACHE_SECONDS,
+  createWardClient,
+  wardClientOptionsFromEnv,
+  type WardClient,
+  type WardClientOptions,
+  type WardFlowSecrets,
+  type WardIdentity,
+  type WardNotification,
+  type WardSessionStatus,
+} from "./ward/client.js";
+export { WardConfigurationError, WardSignInError, WardUnavailableError } from "./ward/errors.js";
+export {
+  NoLocalPasswordError,
+  NotLinkedError,
+  createWardIdentities,
+  type NewLinkedUserInput,
+  type WardIdentities,
+  type WardIdentitiesOptions,
+} from "./ward/identities.js";
+export { InvalidClientKeyError } from "./ward/key.js";
 export {
   requireRole,
   wardAuth,
@@ -89,3 +118,4 @@ export {
   type SessionVerdict,
   type WardAuthOptions,
 } from "./fastify/plugin.js";
+export { FRESH_SIGN_IN_SECONDS, type WardSignInOptions } from "./fastify/ward.js";

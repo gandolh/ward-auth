@@ -94,3 +94,34 @@ Depends on brief 18 (the provider and its client authentication), brief 19
 - Unlink without a local password is refused.
 - The library's suite, Ward's suite, typecheck and lint pass. The vendored
   build still needs no install step of its own.
+
+## Outcome (2026-10-13)
+
+Shipped as shared library 0.2.0, with `openid-client` 6.8.8 bundled in. Done:
+- Sign-in, link, reauthenticate, unlink, set local password and "sign out of
+  Ward too" routes.
+- Migration 2: `auth_ward_links`, and `auth_sessions.ward_id_token` for the
+  end-session hint.
+- The 30-second `/session-status` check as a session validator, failing closed
+  with `ward_unavailable`.
+- `notifyUser`, and the React hooks.
+- The adoption guide in `shared-library/README.md`, which replaces
+  integrating.md for new work.
+
+Deviations:
+- **The callback lives under the app's API prefix**
+  (`<API prefix>/auth/ward/callback`), not under the UI path. A link callback
+  needs the session cookie, which is scoped to the API prefix. The seed
+  carries each app's dev API prefix, and the controller fixed the stale
+  example in `oidc.mdx` and the console placeholder.
+- **There is a fifth, optional variable,
+  `WARD_OIDC_POST_LOGOUT_REDIRECT_URI`.** Ward's end-session request needs the
+  exact registered URI.
+- **The build calls are in decisions-oidc-build.md.**
+
+Verified by the controller: 1243 tests, typecheck, lint, build and corpus lint
+clean. Docker became available during the run, so the local container was
+rebuilt and `seed.mjs` was run for real. It registered all five apps as
+clients with the new callback URIs and wrote their env files, which were backed
+up first outside the repo. Discovery on `localhost:8792` advertises the
+prefixed issuer, `private_key_jwt` and `EdDSA`.

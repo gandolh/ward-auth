@@ -117,7 +117,7 @@ export function OidcClientPanel({
             spellCheck={false}
             value={redirectUris}
             disabled={writer.busy}
-            placeholder="https://example.com/app/auth/ward/callback"
+            placeholder="https://example.com/app-api/auth/ward/callback"
             onChange={(event) => {
               setRedirectUris(event.target.value);
             }}

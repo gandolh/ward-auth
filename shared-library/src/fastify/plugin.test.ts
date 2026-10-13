@@ -107,6 +107,7 @@ describe("end to end", () => {
     expect((await h.app.inject({ method: "GET", url: "/auth/session" })).json()).toEqual({
       user: null,
       session: null,
+      ward: { enabled: false, linked: false },
     });
 
     // Two sign-ins: this browser and a second device.
@@ -290,6 +291,7 @@ describe("the validateSession hook", () => {
       user: null,
       session: null,
       reason: "ward_unavailable",
+      ward: { enabled: false, linked: false },
     });
 
     // Not ended: when the check passes again, the same cookie works.

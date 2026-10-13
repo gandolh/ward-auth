@@ -15,10 +15,26 @@ import {
   secureCookiesFor,
   serializeCookie,
 } from "../core/cookie.js";
-import { MAX_USERNAME_LENGTH, UsernamePolicyError, foldUsername } from "../core/identifiers.js";
+import { UsernamePolicyError, foldUsername } from "../core/identifiers.js";
 import { createLockout, lockoutKeyFor, type Lockout, type LockoutTarget } from "../core/lockout.js";
-import { MAX_PASSWORD_LENGTH, PasswordPolicyError } from "../core/password.js";
+import { PasswordPolicyError } from "../core/password.js";
 import { UsernameTakenError, type SessionRecord } from "../store/types.js";
+import {
+  credentialsBody,
+  crossSite,
+  passwordChangeBody,
+  publicSession,
+  sameOrigin,
+  tooManyAttempts,
+} from "./http.js";
+import { createWardIdentities, type WardIdentities } from "../ward/identities.js";
+import {
+  registerWardRoutes,
+  validateWardOptions,
+  wardSessionValidator,
+  wardStatusFor,
+  type WardSignInOptions,
+} from "./ward.js";
 
 /**
  * The Fastify plugin: the auth routes, and the app-wide guard.
@@ -31,6 +47,12 @@ import { UsernameTakenError, type SessionRecord } from "../store/types.js";
  *   publicOrigin: "https://example.com",
  *   routePrefix: "/auth",             // Fastify-side; routes are /auth/login …
  *   publicRoutes: ["GET /health"],
+ *   ward: {                           // optional: "Sign in with Ward"
+ *     client: wardClient,             // await createWardClient(...)
+ *     loginPath: "/atrium/login",
+ *     settingsPath: "/atrium/settings",
+ *     afterSignInPath: "/atrium/",
+ *   },
  * });
  * // …then every other route. Each one now has `request.auth`.
  * ```
@@ -63,6 +85,19 @@ import { UsernameTakenError, type SessionRecord } from "../store/types.js";
  * | 403 | `cross_site` | a browser said the request came from another origin |
  * | 409 | `username_taken` | registration |
  * | 429 | `too_many_attempts` (+ `retryAfterSeconds`, and `Retry-After`) | lockout |
+ *
+ * The session `reason`s the library itself sets: `ward_unavailable` (Ward
+ * could not vouch for a Ward-originated session, or the app has no Ward
+ * configured), `ward_misconfigured` (Ward refused this app's credential),
+ * `ward_session_ended` (the Ward session it began with ended), and
+ * `session_check_failed` (a validator threw). The Ward routes and their codes
+ * are in `ward.ts`.
+ *
+ * ## "Sign in with Ward"
+ *
+ * The `ward` option turns on the Ward routes under `routePrefix` and the
+ * 30-second check, which always runs first among the session checks. Without
+ * it a Ward-originated session is refused outright: nothing could check it.
  *
  * ## Nothing sensitive travels in a URL
  *
@@ -146,8 +181,17 @@ export interface WardAuthOptions {
   publicRoutes?: readonly string[];
   /** For anything `publicRoutes` cannot say, such as a static-file wildcard. */
   isPublic?: (request: FastifyRequest) => boolean;
-  /** Session checks, run in order. See `SessionValidator`. */
+  /**
+   * Session checks, run in order, after the library's own Ward check. See
+   * `SessionValidator`.
+   */
   validateSession?: SessionValidator | readonly SessionValidator[];
+  /**
+   * Turns on "Sign in with Ward", linking and the 30-second check. See
+   * `WardSignInOptions` and the adoption guide. Without it, the app has local
+   * accounts only and any Ward-originated session is refused.
+   */
+  ward?: WardSignInOptions;
   /** Shared counter, if the app wants one across plugins. A fresh one otherwise. */
   lockout?: Lockout;
   /** Epoch milliseconds, for cookie `Max-Age`. Must match the one `accounts` uses. */
@@ -163,7 +207,7 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
   const now = options.now ?? (() => Date.now());
   const routePrefix = normaliseRoutePrefix(options.routePrefix ?? "/auth");
   const lockout = options.lockout ?? createLockout({ now });
-  const validators =
+  const appValidators =
     options.validateSession === undefined
       ? []
       : Array.isArray(options.validateSession)
@@ -184,6 +228,22 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
   const secure = secureCookiesFor(publicOrigin);
   const { cookieName, cookiePath } = options;
 
+  // The Ward half, when configured. Its session check runs first, before the
+  // app's own: it is the one that decides whether the session is live at all.
+  let identities: WardIdentities | undefined;
+  if (options.ward !== undefined) {
+    validateWardOptions(options.ward, cookiePath, routePrefix);
+    identities = options.ward.identities ?? createWardIdentities({ accounts, now });
+  }
+  const validators: SessionValidator[] = [
+    wardSessionValidator(
+      options.ward === undefined || identities === undefined
+        ? undefined
+        : { client: options.ward.client, identities },
+    ),
+    ...appValidators,
+  ];
+
   const publicRoutes = new Set<string>();
   for (const entry of options.publicRoutes ?? []) publicRoutes.add(normalisePublicRoute(entry));
   for (const path of [
@@ -191,6 +251,7 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
     "/logout",
     "/session",
     ...(options.registration ? ["/register"] : []),
+    ...(options.ward ? ["/ward/start", "/ward/callback"] : []),
   ]) {
     publicRoutes.add(`* ${routePrefix}${path}`);
   }
@@ -266,6 +327,21 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
     return { kind: "ok", context: { user: resolved.user, session: resolved.session } };
   }
 
+  /** The body every route that reports a session answers with. */
+  async function sessionBody(
+    user: AuthUser | null,
+    session: SessionRecord | null,
+    reason?: string,
+  ): Promise<Record<string, unknown>> {
+    const body: Record<string, unknown> = {
+      user,
+      session: session === null ? null : publicSession(session),
+      ward: await wardStatusFor(identities, user),
+    };
+    if (reason !== undefined) body["reason"] = reason;
+    return body;
+  }
+
   app.decorateRequest("auth", null);
 
   app.addHook("onRequest", async (request, reply) => {
@@ -324,7 +400,7 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
 
         const { token, session } = await accounts.startSession(user.id);
         reply.header("set-cookie", sessionCookie(token, session.expiresAt));
-        return reply.code(200).send({ user, session: publicSession(session) });
+        return reply.code(200).send(await sessionBody(user, session));
       });
 
       /**
@@ -352,11 +428,9 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
       routes.get("/session", async (request, reply) => {
         const result = await authenticate(request, reply);
         if (result.kind === "ok") {
-          return { user: result.context.user, session: publicSession(result.context.session) };
+          return sessionBody(result.context.user, result.context.session);
         }
-        return result.kind === "rejected" && result.reason !== undefined
-          ? { user: null, session: null, reason: result.reason }
-          : { user: null, session: null };
+        return sessionBody(null, null, result.kind === "rejected" ? result.reason : undefined);
       });
 
       /**
@@ -445,7 +519,23 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
 
           const { token, session } = await accounts.startSession(user.id);
           reply.header("set-cookie", sessionCookie(token, session.expiresAt));
-          return reply.code(201).send({ user, session: publicSession(session) });
+          return reply.code(201).send(await sessionBody(user, session));
+        });
+      }
+
+      if (options.ward !== undefined && identities !== undefined) {
+        registerWardRoutes(routes, {
+          accounts,
+          identities,
+          ward: options.ward,
+          publicOrigin,
+          cookieName,
+          secure,
+          now,
+          lockout,
+          lockoutKey,
+          sessionCookie,
+          clearedSessionCookie: () => clearedCookie(cookieName, cookiePath, secure),
         });
       }
     },
@@ -478,80 +568,6 @@ export function requireRole(...roles: string[]): preHandlerAsyncHookHandler {
       return reply.code(403).send({ error: "forbidden" });
     }
   };
-}
-
-/** What the browser is told about its session. No ids, no hashes. */
-function publicSession(session: SessionRecord): {
-  origin: SessionRecord["origin"];
-  expiresAt: number;
-} {
-  return { origin: session.origin, expiresAt: session.expiresAt };
-}
-
-function credentialsBody(body: unknown): { username: string; password: string } | undefined {
-  if (typeof body !== "object" || body === null) return undefined;
-  const { username, password } = body as Record<string, unknown>;
-  if (typeof username !== "string" || typeof password !== "string") return undefined;
-  // Trimmed: a trailing space in a username is invisible and never intended.
-  const trimmed = username.trim();
-  if (trimmed.length === 0 || trimmed.length > MAX_USERNAME_LENGTH) return undefined;
-  // NOT trimmed: a space is a legitimate password character. Capped so an
-  // anonymous endpoint cannot be handed a multi-megabyte string.
-  if (password.length === 0 || password.length > MAX_PASSWORD_LENGTH) return undefined;
-  return { username: trimmed, password };
-}
-
-function passwordChangeBody(
-  body: unknown,
-): { currentPassword: string; newPassword: string } | undefined {
-  if (typeof body !== "object" || body === null) return undefined;
-  const { currentPassword, newPassword } = body as Record<string, unknown>;
-  if (typeof currentPassword !== "string" || typeof newPassword !== "string") return undefined;
-  if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH)
-    return undefined;
-  // The new password's length rules are the policy's, answered with its codes.
-  if (newPassword.length === 0) return undefined;
-  return { currentPassword, newPassword };
-}
-
-/**
- * Whether the request is same-origin enough to act on the session cookie.
- *
- * **Absent headers pass**: a server-side caller or a script sends neither, and
- * refusing them would break every non-browser caller to defend against a
- * browser-only attack. What this catches is a browser that *did* send them and
- * said the request came from elsewhere. `Sec-Fetch-Site` must be exactly
- * `same-origin`; an unparseable `Origin` (including the literal `null`) is a
- * mismatch.
- */
-function sameOrigin(request: FastifyRequest, publicOrigin: string): boolean {
-  const fetchSite = request.headers["sec-fetch-site"];
-  if (typeof fetchSite === "string" && fetchSite.length > 0 && fetchSite !== "same-origin") {
-    return false;
-  }
-
-  const origin = request.headers.origin;
-  if (origin !== undefined && origin.length > 0) {
-    try {
-      if (new URL(origin).origin !== publicOrigin) return false;
-    } catch {
-      return false;
-    }
-  }
-  return true;
-}
-
-/** Decided on headers alone, before any credential is looked at. No cookie is touched. */
-function crossSite(reply: FastifyReply): FastifyReply {
-  return reply.code(403).send({ error: "cross_site" });
-}
-
-/** `429` with `Retry-After`, and no artificial delay before it. */
-function tooManyAttempts(reply: FastifyReply, retryAfterSeconds: number): FastifyReply {
-  return reply
-    .code(429)
-    .header("retry-after", String(retryAfterSeconds))
-    .send({ error: "too_many_attempts", retryAfterSeconds });
 }
 
 function parseOrigin(value: string): string {

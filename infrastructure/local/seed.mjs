@@ -16,9 +16,9 @@
  *   4. each app is an OpenID Connect client (brief 18): its dev redirect URI and
  *      sign-out return URI are registered, and its client key pair exists. The
  *      private half goes into the app's env file(s) as WARD_OIDC_CLIENT_KEY,
- *      next to WARD_OIDC_ISSUER, WARD_OIDC_CLIENT_ID and WARD_OIDC_REDIRECT_URI;
- *      Ward gets only the public half. A key already in the env file and
- *      registered at Ward is kept.
+ *      next to WARD_OIDC_ISSUER, WARD_OIDC_CLIENT_ID, WARD_OIDC_REDIRECT_URI
+ *      and WARD_OIDC_POST_LOGOUT_REDIRECT_URI; Ward gets only the public half.
+ *      A key already in the env file and registered at Ward is kept.
  *
  * The owner's username and password come from WARD_OWNER_USERNAME and
  * WARD_OWNER_PASSWORD, or are asked for. They go to Ward, which stores a hash,
@@ -40,11 +40,16 @@ const OWNER_ROLE = "admin";
 /** Must match WARD_OIDC_ISSUER in compose.yaml: it is the `iss` of every ID token. */
 const OIDC_ISSUER = `${API}/oidc`;
 /**
- * Where each app's "Sign in with Ward" comes back to, under its dev base path.
- * A convention of this seed, which the shared library (brief 21) follows; an
- * app that picks another path registers it in the console.
+ * Where each app's "Sign in with Ward" comes back to: the shared library's
+ * callback route (`<routePrefix>/ward/callback`, routePrefix `/auth`) under the
+ * app's API prefix as the browser sees it. Under the API prefix because the
+ * session cookie is scoped there and a link callback needs it, and because the
+ * dev server and Caddy already route that prefix to the app's server: no new
+ * proxy rule. An app that picks another path registers it in the console.
  */
-const OIDC_CALLBACK_PATH = "auth/ward/callback";
+const OIDC_CALLBACK_PATH = "/auth/ward/callback";
+/** brief 18's convention, under the UI base path; replaced by the one above. */
+const OLD_OIDC_CALLBACK_PATH = "auth/ward/callback";
 const KEY_LABEL = "local dev (seed.mjs)";
 
 const ENV_FILE = process.env.WARD_LOCAL_ENV_FILE ?? join(homedir(), ".config/ward/local.env");
@@ -56,14 +61,16 @@ const PROJECTS = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
  * The apps that authenticate against Ward. `slug` is Ward's `apps.slug`, `repo`
  * the checkout under PROJECTS, and `envFiles` the gitignored files holding that
  * app's local Ward settings, relative to the repo. `dev` is the app's dev
- * server URL with its base path, which its OIDC redirect URI hangs off.
+ * server URL with its base path, where Ward returns after "sign out of Ward
+ * too"; `api` is the API prefix that dev server proxies to the app's server,
+ * which the OIDC redirect URI hangs off.
  */
 const APPS = [
-  { slug: "atrium", name: "Atrium", repo: "atrium", envFiles: [".env"], dev: "http://localhost:5173/atrium/" },
-  { slug: "newspapper", name: "Newspapper", repo: "newspapper", envFiles: [".env"], dev: "http://localhost:4321/newspapper/" },
-  { slug: "prm", name: "Public Resource Map", repo: "public-resource-map", envFiles: [".env"], dev: "http://localhost:5173/prm/" },
-  { slug: "sports-app", name: "Sports", repo: "sports-app", envFiles: [".env"], dev: "http://localhost:5173/sports-app/" },
-  { slug: "satchel", name: "Satchel", repo: "satchel", envFiles: [".env"], dev: "http://localhost:5175/satchel/" },
+  { slug: "atrium", name: "Atrium", repo: "atrium", envFiles: [".env"], dev: "http://localhost:5173/atrium/", api: "/atrium-api" },
+  { slug: "newspapper", name: "Newspapper", repo: "newspapper", envFiles: [".env"], dev: "http://localhost:4321/newspapper/", api: "/newspapper/api" },
+  { slug: "prm", name: "Public Resource Map", repo: "public-resource-map", envFiles: [".env"], dev: "http://localhost:5173/prm/", api: "/prm-api" },
+  { slug: "sports-app", name: "Sports", repo: "sports-app", envFiles: [".env"], dev: "http://localhost:5173/sports-app/", api: "/api" },
+  { slug: "satchel", name: "Satchel", repo: "satchel", envFiles: [".env"], dev: "http://localhost:5175/satchel/", api: "/satchel-api" },
 ];
 
 async function main() {
@@ -219,9 +226,12 @@ async function ensureOidcClient(cookie, app) {
     outcome = "minted";
   }
 
-  const redirect = `${app.dev}${OIDC_CALLBACK_PATH}`;
+  const redirect = `${new URL(app.dev).origin}${app.api}${OIDC_CALLBACK_PATH}`;
+  const stale = `${app.dev}${OLD_OIDC_CALLBACK_PATH}`;
   const body = {
-    redirectUris: [...new Set([...registered.oidc.redirectUris, redirect])],
+    redirectUris: [
+      ...new Set([...registered.oidc.redirectUris.filter((uri) => uri !== stale), redirect]),
+    ],
     postLogoutRedirectUris: [...new Set([...registered.oidc.postLogoutRedirectUris, app.dev])],
     jwks: {
       keys: [...known.filter((key) => key.kid !== publicJwk.kid), publicJwk],
@@ -239,6 +249,7 @@ async function ensureOidcClient(cookie, app) {
       WARD_OIDC_CLIENT_ID: app.slug,
       WARD_OIDC_CLIENT_KEY: envKey,
       WARD_OIDC_REDIRECT_URI: redirect,
+      WARD_OIDC_POST_LOGOUT_REDIRECT_URI: app.dev,
     });
   }
   console.log(`✓ ${app.slug}: OIDC client, key ${outcome} (kid ${publicJwk.kid.slice(0, 8)}…), ${redirect}`);

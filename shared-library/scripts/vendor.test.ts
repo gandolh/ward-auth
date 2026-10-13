@@ -75,12 +75,17 @@ describe("the vendored copy", () => {
    * either; instead every URL must be on an allowed host. The README allows
    * only GitHub. The bundles' doc comments may also use the reserved
    * `example.com` and `localhost` in examples, and nothing else.
+   *
+   * One exception, in the server bundle's third-party code: `openid-client`
+   * compares an issuer against Microsoft's login host to switch on its Entra
+   * ID quirks. It is the library's code, not configuration, and names nothing
+   * of the estate's.
    */
   it("names no local path and no domain other than the source repository's", async () => {
     const examples = ["github.com", "example.com", "localhost"];
     const allowed: Record<string, string[]> = {
       "README.md": ["github.com"],
-      "ward-auth.js": examples,
+      "ward-auth.js": [...examples, "login.microsoftonline.com"],
       "ward-auth-react.js": examples,
       "ward-auth.d.ts": examples,
       "ward-auth-react.d.ts": examples,

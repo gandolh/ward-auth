@@ -10,11 +10,10 @@
  *
  * ## Extending it
  *
- * The next brief adds Ward identities. It extends this interface rather than
- * editing it — `interface WardAuthStore extends AuthStore { ... }` — and
- * appends a migration to `SQLITE_MIGRATIONS` for its table. Existing methods
- * keep their signatures, so an app that only uses local accounts is not
- * affected by the upgrade.
+ * Ward identities (0.2.0) extend this interface rather than editing it —
+ * `WardAuthStore` below — and appended migration 2 for their table. Existing
+ * methods kept their signatures, so an app that only uses local accounts is
+ * not affected by the upgrade.
  */
 
 export type Awaitable<T> = T | Promise<T>;
@@ -113,4 +112,73 @@ export interface AuthStore {
   deleteUserSessions(userId: string, exceptIdHash?: string): Awaitable<number>;
   /** Housekeeping: drop rows whose `expiresAt` has passed. Returns how many. */
   deleteExpiredSessions(now: number): Awaitable<number>;
+}
+
+/**
+ * A link between a local user and a Ward account. Created by a first "Sign in
+ * with Ward" (which also creates the user) or by "Link Ward" in the user's own
+ * settings; never by matching a username.
+ */
+export interface WardLinkRecord {
+  /** Ward's subject: the ID token's `sub`. */
+  subject: string;
+  userId: string;
+  linkedAt: number;
+}
+
+/** Thrown when a Ward account is already linked to another local user. */
+export class WardSubjectTakenError extends Error {
+  readonly code = "ward_account_in_use" as const;
+  constructor() {
+    super("that Ward account is already linked to another user");
+    this.name = "WardSubjectTakenError";
+  }
+}
+
+/** Thrown when the local user already has a Ward account linked. */
+export class AlreadyLinkedError extends Error {
+  readonly code = "already_linked" as const;
+  constructor() {
+    super("this user already has a Ward account linked");
+    this.name = "AlreadyLinkedError";
+  }
+}
+
+/**
+ * The store the Ward half needs: `AuthStore` plus the link table and the ID
+ * token a Ward-originated session keeps for "sign out of Ward too". The
+ * built-in SQLite store implements all of it.
+ */
+export interface WardAuthStore extends AuthStore {
+  findWardLinkBySubject(subject: string): Awaitable<WardLinkRecord | undefined>;
+  findWardLinkByUserId(userId: string): Awaitable<WardLinkRecord | undefined>;
+  /** Throws `WardSubjectTakenError` or `AlreadyLinkedError`. */
+  createWardLink(link: WardLinkRecord): Awaitable<void>;
+  /**
+   * Insert a user and its link in one transaction, so a failed link never
+   * leaves a user nobody can sign in as. Throws what `createUser` and
+   * `createWardLink` throw.
+   */
+  createUserWithWardLink(user: NewUserRecord, subject: string): Awaitable<UserRecord>;
+  /** Returns how many links were removed (0 or 1). */
+  deleteWardLink(userId: string): Awaitable<number>;
+  /** End every Ward-originated session the user holds. Returns how many. */
+  deleteUserWardSessions(userId: string): Awaitable<number>;
+  setSessionWardIdToken(idHash: string, idToken: string): Awaitable<void>;
+  findSessionWardIdToken(idHash: string): Awaitable<string | undefined>;
+}
+
+/** Whether a store has the Ward methods (a custom `AuthStore` may not). */
+export function isWardAuthStore(store: AuthStore): store is WardAuthStore {
+  const candidate = store as Partial<WardAuthStore>;
+  return (
+    typeof candidate.findWardLinkBySubject === "function" &&
+    typeof candidate.findWardLinkByUserId === "function" &&
+    typeof candidate.createWardLink === "function" &&
+    typeof candidate.createUserWithWardLink === "function" &&
+    typeof candidate.deleteWardLink === "function" &&
+    typeof candidate.deleteUserWardSessions === "function" &&
+    typeof candidate.setSessionWardIdToken === "function" &&
+    typeof candidate.findSessionWardIdToken === "function"
+  );
 }

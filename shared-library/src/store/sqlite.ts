@@ -1,12 +1,15 @@
 import { SQLITE_MIGRATIONS, type Migration } from "./migrations.js";
 import {
+  AlreadyLinkedError,
   UserIdTakenError,
   UsernameTakenError,
-  type AuthStore,
+  WardSubjectTakenError,
   type NewUserRecord,
   type SessionOrigin,
   type SessionRecord,
   type UserRecord,
+  type WardAuthStore,
+  type WardLinkRecord,
 } from "./types.js";
 
 /**
@@ -64,8 +67,11 @@ export type SyncStore<S> = {
   [K in keyof S]: S[K] extends (...args: infer A) => infer R ? (...args: A) => Awaited<R> : S[K];
 };
 
-/** The SQLite store's own type: `AuthStore`, answered synchronously. */
-export type SqliteAuthStore = SyncStore<AuthStore>;
+/**
+ * The SQLite store's own type: `WardAuthStore` (and so `AuthStore`), answered
+ * synchronously.
+ */
+export type SqliteAuthStore = SyncStore<WardAuthStore>;
 
 export interface SqliteStoreOptions {
   /**
@@ -168,6 +174,16 @@ interface UserRow {
   updated_at: number | bigint;
 }
 
+interface WardLinkRow {
+  subject: string;
+  user_id: string;
+  linked_at: number | bigint;
+}
+
+function toWardLink(row: WardLinkRow): WardLinkRecord {
+  return { subject: row.subject, userId: row.user_id, linkedAt: Number(row.linked_at) };
+}
+
 interface SessionRow {
   id_hash: string;
   user_id: string;
@@ -241,27 +257,47 @@ export function createSqliteStore(
       "DELETE FROM auth_sessions WHERE user_id = ? AND id_hash <> ?",
     ),
     deleteExpired: db.prepare("DELETE FROM auth_sessions WHERE expires_at <= ?"),
+    linkBySubject: db.prepare("SELECT * FROM auth_ward_links WHERE subject = ?"),
+    linkByUserId: db.prepare("SELECT * FROM auth_ward_links WHERE user_id = ?"),
+    insertLink: db.prepare(
+      "INSERT INTO auth_ward_links (subject, user_id, linked_at) VALUES (?, ?, ?)",
+    ),
+    deleteLink: db.prepare("DELETE FROM auth_ward_links WHERE user_id = ?"),
+    deleteUserWardSessions: db.prepare(
+      "DELETE FROM auth_sessions WHERE user_id = ? AND origin = 'ward'",
+    ),
+    setSessionIdToken: db.prepare("UPDATE auth_sessions SET ward_id_token = ? WHERE id_hash = ?"),
+    sessionIdToken: db.prepare("SELECT ward_id_token FROM auth_sessions WHERE id_hash = ?"),
   };
+
+  function insertUser(user: NewUserRecord): UserRecord {
+    // Checked inside the caller's savepoint rather than by catching the
+    // constraint error: the two drivers report a UNIQUE violation with
+    // different error shapes, and an explicit check gives one typed error on
+    // both.
+    if (s.userById.get(user.id) !== undefined) throw new UserIdTakenError();
+    if (s.userByFolded.get(user.usernameFolded) !== undefined) throw new UsernameTakenError();
+    s.insertUser.run(
+      user.id,
+      user.username,
+      user.usernameFolded,
+      user.passwordHash,
+      user.role,
+      user.createdAt,
+      user.createdAt,
+    );
+    return toUser(s.userById.get(user.id) as UserRow);
+  }
+
+  function insertLink(link: WardLinkRecord): void {
+    if (s.linkBySubject.get(link.subject) !== undefined) throw new WardSubjectTakenError();
+    if (s.linkByUserId.get(link.userId) !== undefined) throw new AlreadyLinkedError();
+    s.insertLink.run(link.subject, link.userId, link.linkedAt);
+  }
 
   return {
     createUser(user: NewUserRecord): UserRecord {
-      // Checked inside one savepoint rather than by catching the constraint
-      // error: the two drivers report a UNIQUE violation with different error
-      // shapes, and an explicit check gives one typed error on both.
-      return inSavepoint(db, () => {
-        if (s.userById.get(user.id) !== undefined) throw new UserIdTakenError();
-        if (s.userByFolded.get(user.usernameFolded) !== undefined) throw new UsernameTakenError();
-        s.insertUser.run(
-          user.id,
-          user.username,
-          user.usernameFolded,
-          user.passwordHash,
-          user.role,
-          user.createdAt,
-          user.createdAt,
-        );
-        return toUser(s.userById.get(user.id) as UserRow);
-      });
+      return inSavepoint(db, () => insertUser(user));
     },
 
     findUserById(id: string): UserRecord | undefined {
@@ -317,6 +353,45 @@ export function createSqliteStore(
 
     deleteExpiredSessions(now: number): number {
       return Number(s.deleteExpired.run(now).changes);
+    },
+
+    findWardLinkBySubject(subject: string): WardLinkRecord | undefined {
+      const row = s.linkBySubject.get(subject) as WardLinkRow | undefined;
+      return row === undefined ? undefined : toWardLink(row);
+    },
+
+    findWardLinkByUserId(userId: string): WardLinkRecord | undefined {
+      const row = s.linkByUserId.get(userId) as WardLinkRow | undefined;
+      return row === undefined ? undefined : toWardLink(row);
+    },
+
+    createWardLink(link: WardLinkRecord): void {
+      inSavepoint(db, () => insertLink(link));
+    },
+
+    createUserWithWardLink(user: NewUserRecord, subject: string): UserRecord {
+      return inSavepoint(db, () => {
+        const created = insertUser(user);
+        insertLink({ subject, userId: created.id, linkedAt: user.createdAt });
+        return created;
+      });
+    },
+
+    deleteWardLink(userId: string): number {
+      return Number(s.deleteLink.run(userId).changes);
+    },
+
+    deleteUserWardSessions(userId: string): number {
+      return Number(s.deleteUserWardSessions.run(userId).changes);
+    },
+
+    setSessionWardIdToken(idHash: string, idToken: string): void {
+      s.setSessionIdToken.run(idToken, idHash);
+    },
+
+    findSessionWardIdToken(idHash: string): string | undefined {
+      const row = s.sessionIdToken.get(idHash) as { ward_id_token: string | null } | undefined;
+      return row?.ward_id_token ?? undefined;
     },
   };
 }

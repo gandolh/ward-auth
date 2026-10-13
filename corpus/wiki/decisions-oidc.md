@@ -110,8 +110,10 @@ handling in Ward for no gain over a 30-second pull.
 
 How clients authenticate, why Ward's refresh family outranks the provider's
 own session, the prefix and logout details, the session-status endpoint
-(brief 19), and the local half's build calls live in
-[decisions-oidc-build.md](./decisions-oidc-build.md).
+(brief 19), and the library's build calls for its local half (brief 20) and
+its Ward half (brief 21, which moved the callback under each app's API prefix)
+live in [decisions-oidc-build.md](./decisions-oidc-build.md). An app adopts
+the library by following `shared-library/README.md`.
 
 ## Mail stays a Ward service, for Ward-linked users only
 _2026-10-13, default accepted_ — `POST /notify` stays, authenticated by the

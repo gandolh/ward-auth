@@ -9,7 +9,13 @@ import {
   migrateSqlite,
   type SqliteHandle,
 } from "./sqlite.js";
-import { UserIdTakenError, UsernameTakenError, type SessionRecord } from "./types.js";
+import {
+  AlreadyLinkedError,
+  UserIdTakenError,
+  UsernameTakenError,
+  WardSubjectTakenError,
+  type SessionRecord,
+} from "./types.js";
 
 /**
  * The built-in store, run once per driver. Every app hands over one of these
@@ -59,6 +65,9 @@ function session(overrides: Partial<SessionRecord> = {}): SessionRecord {
   };
 }
 
+/** The version an appended migration takes. */
+const NEXT = SQLITE_MIGRATIONS.length + 1;
+
 describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
   it("creates its own auth_* tables and records the migration", () => {
     const db = open();
@@ -71,11 +80,12 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
         name: string;
       }>
     ).map((row) => row.name);
-    expect(tables).toEqual(["auth_migrations", "auth_sessions", "auth_users"]);
+    expect(tables).toEqual(["auth_migrations", "auth_sessions", "auth_users", "auth_ward_links"]);
 
     const versions = db.prepare("SELECT version, name FROM auth_migrations").all();
     expect(versions.map((row) => ({ ...(row as object) }))).toEqual([
       { version: 1, name: "local_accounts" },
+      { version: 2, name: "ward_links" },
     ]);
   });
 
@@ -92,9 +102,9 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
 
     const appended: Migration[] = [
       ...SQLITE_MIGRATIONS,
-      { version: 2, name: "extra", sql: "CREATE TABLE auth_extra (id TEXT PRIMARY KEY)" },
+      { version: NEXT, name: "extra", sql: "CREATE TABLE auth_extra (id TEXT PRIMARY KEY)" },
     ];
-    expect(migrateSqlite(db, appended)).toEqual([2]);
+    expect(migrateSqlite(db, appended)).toEqual([NEXT]);
     expect(db.prepare("SELECT COUNT(*) AS n FROM auth_extra").get()).toMatchObject({ n: 0 });
   });
 
@@ -102,7 +112,7 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     const db = open();
     migrateSqlite(db, [
       ...SQLITE_MIGRATIONS,
-      { version: 2, name: "future", sql: "CREATE TABLE auth_future (id TEXT)" },
+      { version: NEXT, name: "future", sql: "CREATE TABLE auth_future (id TEXT)" },
     ]);
     expect(() => createSqliteStore(db)).toThrow(SchemaTooNewError);
   });
@@ -117,12 +127,12 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     const db = open();
     const broken: Migration[] = [
       ...SQLITE_MIGRATIONS,
-      { version: 2, name: "broken", sql: "CREATE TABLE auth_half (id TEXT); NOT SQL AT ALL" },
+      { version: NEXT, name: "broken", sql: "CREATE TABLE auth_half (id TEXT); NOT SQL AT ALL" },
     ];
     expect(() => migrateSqlite(db, broken)).toThrow();
-    // Migration 1 committed; migration 2 left no table and no record.
+    // The shipped migrations committed; the broken one left no table and no record.
     expect(db.prepare("SELECT MAX(version) AS v FROM auth_migrations").get()).toMatchObject({
-      v: 1,
+      v: NEXT - 1,
     });
     expect(
       db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name = 'auth_half'").get(),
@@ -243,5 +253,62 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     expect(store.deleteExpiredSessions(5_000)).toBe(1);
     expect(store.findSession("old")).toBeUndefined();
     expect(store.findSession("new")).toBeDefined();
+  });
+
+  it("links a Ward subject one-to-one, and refuses either side twice", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user());
+    store.createUser(user({ id: "u-bob", username: "Bob" }));
+
+    store.createWardLink({ subject: "s-alice", userId: "u-alice", linkedAt: 1 });
+    expect(store.findWardLinkBySubject("s-alice")).toEqual({
+      subject: "s-alice",
+      userId: "u-alice",
+      linkedAt: 1,
+    });
+    expect(store.findWardLinkByUserId("u-alice")?.subject).toBe("s-alice");
+
+    expect(() =>
+      store.createWardLink({ subject: "s-alice", userId: "u-bob", linkedAt: 2 }),
+    ).toThrow(WardSubjectTakenError);
+    expect(() =>
+      store.createWardLink({ subject: "s-other", userId: "u-alice", linkedAt: 2 }),
+    ).toThrow(AlreadyLinkedError);
+
+    expect(store.deleteWardLink("u-alice")).toBe(1);
+    expect(store.findWardLinkBySubject("s-alice")).toBeUndefined();
+  });
+
+  it("creates a user with its link in one transaction, or neither", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user({ id: "u-bob", username: "Bob" }));
+    store.createWardLink({ subject: "taken", userId: "u-bob", linkedAt: 1 });
+
+    // The subject as the local id: the migration path for rows keyed by it.
+    const created = store.createUserWithWardLink(
+      user({ id: "s-carol", username: "Carol" }),
+      "s-carol",
+    );
+    expect(created.id).toBe("s-carol");
+    expect(store.findWardLinkBySubject("s-carol")?.userId).toBe("s-carol");
+
+    expect(() =>
+      store.createUserWithWardLink(user({ id: "u-dan", username: "Dan" }), "taken"),
+    ).toThrow(WardSubjectTakenError);
+    expect(store.findUserById("u-dan")).toBeUndefined();
+  });
+
+  it("keeps a Ward session's ID token, and ends only the user's Ward sessions", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user());
+    store.createSession(session({ idHash: "local" }));
+    store.createSession(session({ idHash: "ward", origin: "ward", wardSid: "family" }));
+    store.setSessionWardIdToken("ward", "header.claims.signature");
+    expect(store.findSessionWardIdToken("ward")).toBe("header.claims.signature");
+    expect(store.findSessionWardIdToken("local")).toBeUndefined();
+
+    expect(store.deleteUserWardSessions("u-alice")).toBe(1);
+    expect(store.findSession("ward")).toBeUndefined();
+    expect(store.findSession("local")).toBeDefined();
   });
 });

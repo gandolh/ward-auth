@@ -75,11 +75,11 @@ issuer is `http://localhost:8792/ward-api/oidc` (`WARD_OIDC_ISSUER` in
 http://localhost:8792/ward-api/oidc/.well-known/openid-configuration.
 
 `seed.mjs` registers each app as a client: `client_id` is the app's slug, the
-redirect URI is its dev URL plus `auth/ward/callback` (for example
-`http://localhost:5173/atrium/auth/ward/callback`) and the sign-out return URI
-is its dev URL. It also makes each app a client key pair, registers the public
-half, and writes the private half into the app's env file with the rest of
-the client settings:
+redirect URI is the shared library's callback under the app's API prefix on its
+dev server (for example `http://localhost:5173/atrium-api/auth/ward/callback`)
+and the sign-out return URI is its dev URL. It also makes each app a client key
+pair, registers the public half, and writes the private half into the app's env
+file with the rest of the client settings:
 
 | Variable | Value |
 | --- | --- |
@@ -87,6 +87,7 @@ the client settings:
 | `WARD_OIDC_CLIENT_ID` | the app's slug |
 | `WARD_OIDC_CLIENT_KEY` | the app's private key, a base64url JWK |
 | `WARD_OIDC_REDIRECT_URI` | the dev callback above |
+| `WARD_OIDC_POST_LOGOUT_REDIRECT_URI` | the app's dev URL |
 
 A key that is already in the env file and registered at Ward is kept. The app
 on `localhost:5173` and Ward on `localhost:8792` are two origins, which is the

@@ -1,5 +1,5 @@
 ---
-summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), and the shared library's build calls (brief 20).
+summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), the shared library's build calls (brief 20), and its Ward half — callback path, link binding, fail-closed check, fresh sign-in for a first password (brief 21).
 updated: 2026-10-13
 ---
 
@@ -102,3 +102,41 @@ _2026-10-13, brief 20_ — Settled while building `shared-library/`:
   rollup-plugin-dts for the two `.d.ts` files. **Rejected: esbuild**, which
   strips every comment that is not a licence, and the comments are where this
   code says why.
+
+## The Ward half's build calls
+_2026-10-13, brief 21_ — Settled while adding "Sign in with Ward" to
+`shared-library/` (0.2.0). The adoption guide is `shared-library/README.md`.
+- **The callback lives under the app's API prefix:**
+  `<api prefix>/auth/ward/callback`, not brief 18's `<ui base>auth/ward/callback`.
+  The session cookie is scoped to the API prefix and a link callback must see
+  it. The dev server and Caddy already route that prefix, so no proxy gains a
+  rule. The plugin refuses at boot a redirect URI that is not its route under
+  `cookiePath`. The seed writes the new URI and drops the old one.
+- **Starts are POSTs that answer `{ url }`.** A link changes the account, so it
+  must not be a cross-site `GET`. The hook then navigates, and can show
+  `ward_unavailable` without leaving the page.
+- **The flow cookie** (`<cookie>_ward`, callback path, ten minutes) holds
+  state, nonce and verifier. A link or reauthentication also records the
+  starting session's hash, and the callback finishes only for that session,
+  so a planted flow cannot link a victim's Ward account to an attacker's user.
+- **The check fails closed but keeps the row.** Ward down refuses a
+  Ward-originated session as `ward_unavailable`. The row stays, so the session
+  resumes when Ward answers. Only answers are cached, never failures. `active:
+  false`, or a user unlinked since, ends the session. A plugin without Ward
+  configured refuses Ward-originated sessions rather than leaving them
+  unchecked.
+- **A first local password needs a fresh Ward sign-in:** a Ward-originated
+  session under ten minutes old. Reauthentication (`prompt=login`) makes one.
+  An open session on a shared machine cannot become a permanent password.
+- **Unlink ends the user's Ward-originated sessions.** Without the link there
+  is no subject to ask Ward about.
+- **The ID token is kept on the session row** as the logout hint. Ward accepts
+  an expired hint (oidc-provider ignores `exp` on it), so it outlives the
+  token's hour.
+- **Errors from the round trip are codes in the redirect** (`?ward_error=`).
+  The provider's own codes, `access_denied` first, pass through. The client
+  reads the code once and removes it from the address bar.
+- **The library's tests run a real Ward in-process** behind a fetch that
+  strips the prefix. They import `api/` by computed path, as dev-only code
+  that no bundle reaches.
+

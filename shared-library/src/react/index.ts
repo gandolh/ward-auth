@@ -16,6 +16,8 @@ export {
   type SessionInfo,
   type SessionState,
   type SessionUser,
+  type WardResult,
+  type WardStatus,
 } from "./client.js";
 export {
   useChangePassword,
@@ -23,5 +25,11 @@ export {
   useLogout,
   useRegister,
   useSession,
+  useSetLocalPassword,
+  useWardLink,
+  useWardResult,
+  useWardSignIn,
+  useWardSignOut,
+  useWardUnlink,
   type HookOptions,
 } from "./hooks.js";

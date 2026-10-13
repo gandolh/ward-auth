@@ -10,8 +10,8 @@
  *
  * Add an entry at the **end** with the next `version`. Never edit or reorder
  * one that has shipped: a vendored copy in some app has already applied it,
- * and the runner records versions, not contents. Brief 21 appends version 2
- * (the Ward identity link table) this way.
+ * and the runner records versions, not contents. Version 2 (0.2.0) added the
+ * Ward link table this way.
  *
  * ## The SQL is the intersection of two drivers
  *
@@ -65,6 +65,28 @@ export const SQLITE_MIGRATIONS: readonly Migration[] = [
       CREATE INDEX auth_sessions_user_id ON auth_sessions (user_id);
       CREATE INDEX auth_sessions_expires_at ON auth_sessions (expires_at);
       CREATE INDEX auth_sessions_ward_sid ON auth_sessions (ward_sid) WHERE ward_sid IS NOT NULL;
+    `,
+  },
+  {
+    version: 2,
+    name: "ward_links",
+    sql: `
+      -- One Ward account per local user and one local user per Ward account.
+      -- A row exists only because a person signed in with Ward (creating the
+      -- user) or linked Ward from their own settings: never by matching a
+      -- username (decisions-oidc.md, "linking never guesses").
+      CREATE TABLE auth_ward_links (
+        -- Ward's subject, the ID token's "sub". Opaque, stable, never reused.
+        subject    TEXT    PRIMARY KEY NOT NULL,
+        user_id    TEXT    NOT NULL UNIQUE REFERENCES auth_users (id),
+        linked_at  INTEGER NOT NULL
+      );
+
+      -- The ID token a Ward-originated session began with, kept only to be
+      -- the id_token_hint of "sign out of Ward too". Ward accepts an
+      -- expired hint, so it outlives the token's own hour. NULL for a local
+      -- session.
+      ALTER TABLE auth_sessions ADD COLUMN ward_id_token TEXT;
     `,
   },
 ];

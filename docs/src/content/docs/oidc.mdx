@@ -70,7 +70,10 @@ introspection and revocation are off.
 
 An app with no redirect URI or no key is not a client, and Ward answers
 `invalid_client`. The local seed registers each app with its dev redirect URI
-(`<dev URL>auth/ward/callback`).
+(`<dev origin><API prefix>/auth/ward/callback`, for example
+`http://localhost:5173/atrium-api/auth/ward/callback`). The callback sits under
+the app's API prefix because a link callback needs the app's session cookie,
+which is scoped to that path.
 
 ## How an app authenticates: `private_key_jwt`
 
@@ -215,4 +218,5 @@ browser back. Without `id_token_hint`, nothing at Ward is revoked.
 | `WARD_UI_URL` | Required with the issuer. Ward's UI, absolute, on the issuer's origin; the login page is `<this>/login`. |
 
 On the app's side the local seed writes `WARD_OIDC_ISSUER`, `WARD_OIDC_CLIENT_ID`,
-`WARD_OIDC_CLIENT_KEY` and `WARD_OIDC_REDIRECT_URI`.
+`WARD_OIDC_CLIENT_KEY`, `WARD_OIDC_REDIRECT_URI` and the optional
+`WARD_OIDC_POST_LOGOUT_REDIRECT_URI`.

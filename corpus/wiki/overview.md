@@ -1,46 +1,57 @@
 ---
-summary: What Ward is — one identity, one credential store and one set of access grants for every side project on the shared VPS — the settled shape in a paragraph, and how to pick up the thread.
-updated: 2026-09-01
+summary: What Ward is — the estate's identity service and, since the 2026-10-13 redesign, the OpenID Connect provider behind every app's "Sign in with Ward" button, while each app owns its accounts — the shape in a paragraph, what the repo holds, and how to pick up the thread.
+updated: 2026-10-13
 ---
 
 # Overview
 
-> **⚠ Revised 2026-10-13.** Apps are getting their own accounts back, with Ward
-> as an OIDC provider behind a "Sign in with Ward" button. See
-> [decisions-oidc.md](./decisions-oidc.md). Below is the shape in production
-> today; brief 27 rewrites this page.
-
-**Ward is the one place a person signs in to any of the side projects on the
-shared VPS.** Today atrium and newspapper each own a full, separately-designed
-auth stack, and four more apps have grown their own. Ward replaces all of them
-with one identity, one credential store, and one set of access grants.
+**Ward is the estate's identity service.** Since the redesign of 2026-10-13
+([decisions-oidc.md](./decisions-oidc.md)), every app on the shared VPS owns
+its own accounts and its own login page. Ward is a second way in, the OpenID
+Connect provider behind each app's "Sign in with Ward" button. A person can
+have a local account in an app, a Ward account, or both linked. Apps keep
+working while Ward is down, because local sign-in never calls Ward.
 
 The repo directory is still called `wzd_auth`; the service is **Ward**.
 
-## The settled shape
+## The shape
 
-A Fastify + SQLite pm2 service at `/ward-api` on the shared origin. It owns
-credentials, account identity and **grants** — `(subject, app, roles)` triples
-saying who may use what. Each app keeps its own per-user rows, keyed on an
-opaque **subject**.
+Ward is a Fastify + SQLite service in a container at `/ward-api` on the shared
+origin, with a Vite + React UI at `/ward`: the login page, self-service and
+the superuser console. It owns Ward accounts and **grants**, which are
+`(subject, app, role)` rows saying who may use the button for which app.
 
-Login issues a 15-minute EdDSA-signed access token in a `Path=/` cookie, plus a
-30-day opaque refresh row that rotates on every use. Apps verify the signature
-locally to establish *who*, then ask Ward whether the session is live and what
-it may do, caching that answer 30 seconds. Revoking anything is one write.
+"Sign in with Ward" is an authorization code flow with PKCE against
+[`oidc-provider`](https://github.com/panva/node-oidc-provider), mounted at
+`/ward-api/oidc`. Each app's server is a confidential client that signs its
+requests with its own Ed25519 key (`private_key_jwt`). Ward completes the flow
+only for an account with a grant for that app. The app creates or finds the
+linked local user and owns its role from then on.
 
-**Anyone may register; registering grants almost nothing.** The security
-boundary is the grant, not the signup form.
+**Revoke-everywhere survives for Ward-originated sessions.** The app asks
+`POST /session-status` at most every 30 seconds whether the Ward session (the
+refresh family) is still live and the grant still held. When Ward cannot
+answer, the session is refused. Local sessions are never checked against Ward.
+
+The shared logic (passwords, lockout, sessions, the Ward client, linking) is a
+built, unminified library in `shared-library/`. Each app copies it into
+`vendor/ward/` and builds its own screens on its unstyled hooks.
 
 ## What the repo contains right now
 
-A corpus, a README, and **the scaffold** — three npm workspaces, a fail-closed
-environment contract, better-sqlite3 with a migration runner, and `GET /health`
-on loopback (brief 00, landed 2026-09-02). No schema, no auth, no deploy yet.
+- `api/`: the service, including the provider (brief 18) and the old
+  shared-cookie contract (app keys, `/introspect`), which stays until brief 30.
+- `ui/`: the login page, self-service and the console, with a "Sign in with
+  Ward" panel per app for its redirect URIs and public key.
+- `shared-library/`: the library, at 0.3.0, vendored into atrium, newspapper,
+  prm, sports-app and satchel.
+- `client/`: the old reference client, retired by brief 30.
+- `docs/`: the Starlight site at `/ward/docs`, and `docs/cutover-oidc.md`, the
+  owner's runbook for taking the redesign to production (brief 27).
 
-The design was grilled to completion before any of it, because the expensive
-mistakes here — identity model, session shape, whether the estate stays on one
-origin — are all cheap to change on a wiki page and very costly in code.
+The deploy lives in vps-deploy (`stacks/ward.ts` and each app's stack).
+Production still runs the shared-cookie contract until the owner runs the
+runbook. [status.md](./status.md) has where things stand.
 
 ## Where the thread is
 
@@ -57,17 +68,23 @@ origin — are all cheap to change on a wiki page and very costly in code.
 4. [decisions-implementation.md](./decisions-implementation.md) — the calls
    made *while building*: the storage driver, password hashing, the bind
    address, and why closing the database is a backup decision.
-5. [open-questions.md](./open-questions.md) — deliberately empty. The design
+5. [decisions-oidc.md](./decisions-oidc.md) and
+   [decisions-oidc-build.md](./decisions-oidc-build.md) — the 2026-10-13
+   redesign this page describes, and the calls made building it. They revise
+   parts of the pages in item 3, each with a dated note.
+6. [open-questions.md](./open-questions.md) — deliberately empty. The design
    was settled across six rounds; the page is kept so the next open question
    has somewhere to land.
 
 ## The one thing worth knowing before reading anything else
 
 Every project is a **sub-path on a single origin** (the production domain). There
-are no subdomains. That makes a shared session cookie nearly free and makes
+are no subdomains. That made a shared session cookie nearly free and makes
 isolation between apps impossible — the browser treats `/atrium` and
 `/design-study` as the same security context. Most of the interesting design
-tension in this repo traces back to that one fact.
+tension in this repo traces back to that one fact. The OIDC redesign stops
+depending on it: nothing in the flow assumes Ward shares an app's origin, so
+Ward can move to a subdomain later.
 
 ## Naming
 

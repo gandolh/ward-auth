@@ -54,3 +54,37 @@ Depends on briefs 18–26, 28 and 29.
 - The deploy changes typecheck in vps-deploy, and its own tests pass.
 - The owner has the exact command list, in order, in `docs/cutover-oidc.md`
   (brief-board is down).
+
+## Outcome (2026-10-13)
+
+The code side is done, and the deploy is the owner's.
+
+**vps-deploy.**
+- `useWard` writes the OIDC client environment and `AUTH_TRUSTED_PROXIES`.
+- Ward gets `WARD_OIDC_ISSUER`, `WARD_UI_URL` and `WARD_TRUSTED_PROXIES`.
+  The trusted range is one constant, `172.16.0.0/12`, unverified under the
+  rootless daemon.
+- Each app's key is the required secret `WARD_OIDC_CLIENT_KEY` in
+  `secrets/<stack>.env`.
+- newspapper gets `NEWSPAPPER_BASE` at runtime. sports-app gets
+  `SPORTS_APP_API_PREFIX` at runtime and at build time.
+- just-a-bot now depends on atrium.
+- Typecheck and `--check` are clean; vps-deploy has no test suite.
+
+**Images.** newspapper's and sports-app's production images already ship
+`vendor/`, and their seed commands run inside the images.
+
+**Runbook.** The owner's steps are in `docs/cutover-oidc.md`. Two departures
+from this brief:
+- **Owners of atrium, prm and sports-app are not seeded.** Their migrated
+  Ward user already holds the data, so they sign in with Ward once and set a
+  local password.
+- **The Jukebox order is deploy atrium, then seed, then rename, then deploy the
+  bot.** The seed script exists only in the new image.
+
+**Commands.** Containers are reached through
+`docker compose -f infrastructure/docker-compose.yml exec`, because no stack
+sets `container_name`.
+
+**Possibly stale.** The secrets templates in vps-deploy were not read (its
+corpus forbids opening `secrets/`). They may still name `WARD_APP_KEY`.

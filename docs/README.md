@@ -1,8 +1,8 @@
 # Ward docs
 
 Start with the [main README](../README.md). This folder is the source of the docs site at
-`/ward/docs/` on the production site, plus the images the main README uses. The site build ignores this
-file and `images/`.
+`/ward/docs/` on the production site, plus the images the main README uses and the owner's cutover
+runbook. The site build ignores this file, `images/` and `cutover-oidc.md`.
 
 | Path | What it is |
 | --- | --- |
@@ -10,6 +10,7 @@ file and `images/`.
 | [diagrams/](diagrams/) | archify JSON sources for the site's three diagrams, compiled into `public/diagrams/` |
 | [scripts/](scripts/) | `sync-corpus.mjs` copies the corpus wiki into the site; `build-diagrams.mjs` compiles the diagrams |
 | [images/](images/shots.md) | Screenshots used in the main README, and how each was made |
+| [cutover-oidc.md](cutover-oidc.md) | The owner's runbook for moving production to local accounts and "Sign in with Ward" (brief 27) |
 
 The rest (`astro.config.mjs`, `src/components/`, `src/styles/`, `public/`, `typedoc.json`) is the
 Starlight site's own setup and build output.

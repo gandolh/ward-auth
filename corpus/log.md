@@ -352,3 +352,11 @@ Briefs 22–26 adopted the shared library in atrium, newspapper, prm, sports-app
 
 Brief 27 (deploy and retirement) is next.
 
+
+## [2026-10-13] build | Brief 27: the cutover's deploy config and the owner's runbook
+
+vps-deploy now deploys the new contract; nothing was deployed. Ward's stack sets `WARD_OIDC_ISSUER` (`<origin>/ward-api/oidc`), `WARD_UI_URL` and `WARD_TRUSTED_PROXIES`. `useWard` stops writing `WARD_PUBLIC_ORIGIN`, `WARD_API_BASE_PATH` and `WARD_APP_KEY`. It now writes the app's public origin, `WARD_OIDC_ISSUER`, `WARD_OIDC_CLIENT_ID`, `WARD_OIDC_CLIENT_KEY`, the redirect and post-logout URIs and `AUTH_TRUSTED_PROXIES`, through one function that newspapper's stack shares. The client key is a required secret in `secrets/<stack>.env`, so prm's lives in `secrets/public-resource-map.env` under client id `prm`. newspapper gets `NEWSPAPPER_BASE` at runtime. sports-app gets `SPORTS_APP_API_PREFIX` in its service and its client build. just-a-bot now depends on atrium. The trusted range is `172.16.0.0/12`, one constant in `stacks/ward.ts`, and the runbook says how to confirm it on the box. vps-deploy's typecheck and `--check` pass. It has no test suite.
+
+newspapper's and sports-app's production images already contain `vendor/`. Both were built locally, imported `wardAuth` inside the image, and ran their seed scripts against a throwaway database.
+
+The owner's runbook is `docs/cutover-oidc.md`, outside the docs site's content. It found two facts that would have been wrong on the box. First, every compose project there is named `infrastructure`, so `docker exec <service>` misses and the runbook uses `docker compose … exec`. Second, for atrium, prm and sports-app, seeding a fresh owner account would make a second, empty account beside the migrated one. So there the owner signs in with Ward and sets a local password, and seeds only in newspapper and satchel. Brief 27 stays open until the owner has deployed. Brief 30 follows the owner's confirmation.

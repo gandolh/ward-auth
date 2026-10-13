@@ -35,7 +35,7 @@ something an attacker already has.
 
 **2. The base path is `/ward-api`, and it is not optional.** Ward is behind
 Caddy at `handle_path /ward-api/*`. The JWKS is
-`https://gandolh.ro/ward-api/.well-known/jwks.json`. This has already been got
+`https://example.com/ward-api/.well-known/jwks.json`. This has already been got
 wrong once: an earlier default of `""` resolved to a path nothing serves, which
 would have made every app fetch a 404 for Ward's public key and reject every
 token in the estate on the deploy that shipped it.
@@ -95,7 +95,7 @@ never assume a role you did not find means the account is unknown.
 Every consuming app sets exactly these three:
 
 ```
-WARD_PUBLIC_ORIGIN=https://gandolh.ro   # bare origin, no trailing slash
+WARD_PUBLIC_ORIGIN=https://example.com  # bare origin, no trailing slash
 WARD_API_BASE_PATH=/ward-api            # explicit; see point 2
 WARD_APP_KEY=wak_…                      # secret; issued per app from the console
 ```

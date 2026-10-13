@@ -43,7 +43,7 @@ Any other project's block in the Caddyfile. Anything in the Ward repo itself.
 
 ## Acceptance
 
-- `https://gandolh.ro/ward/` serves the login page and `/ward-api/health`
+- `/ward/` on the production site serves the login page and `/ward-api/health`
   answers, both over the real certificate.
 - Deploying any *other* project afterwards does not remove Ward's routes —
   verified by deploying one, which is the actual failure mode this file has.

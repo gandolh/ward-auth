@@ -54,5 +54,5 @@ The compiler, renderer, markup and editor. `output/**`.
 - Rendering still works end to end — Chromium fetches its images and the JPEGs
   come out. This is the test that proves whatever you chose in step 4.
 - No `SESSION_SECRET` anywhere; the app boots without it.
-- Newspapper is reachable at `https://gandolh.ro/newspapper/` and gated.
+- Newspapper is reachable at `/newspapper/` on the production site and gated.
 - `decisions-security.md` carries three dated revision notes.

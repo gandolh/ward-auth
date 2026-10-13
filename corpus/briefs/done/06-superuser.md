@@ -95,7 +95,7 @@ lifetime, both enforced.
   tested `startsWith("https:")`, dropping the loopback check its own comment
   claimed. `cookie.ts` deliberately keeps `Secure` for plain HTTP on a real
   hostname so the cookie breaks loudly rather than travelling in clear — so with
-  `WARD_PUBLIC_ORIGIN=http://gandolh.ro` the session cookies failed closed while
+  `WARD_PUBLIC_ORIGIN=http://example.com` the session cookies failed closed while
   the **console** cookie, carrying the non-revocable credential, shipped without
   `Secure`. It now delegates to `cookie.ts`.
 - `idleExpiresAt` was not clamped to the absolute deadline, so the console UI

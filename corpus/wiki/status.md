@@ -84,7 +84,7 @@ through Ward.
 
 ## What is actually known
 
-- The estate is **one origin**, `https://gandolh.ro`, sub-paths only. This
+- The estate is **one origin**, sub-paths only. This
   constrains every candidate design and is the single most load-bearing fact.
 - **Six apps** have or will have identity: atrium and newspapper (the two named
   in the request), plus public-resource-map, imbatranimOS, sports-app and

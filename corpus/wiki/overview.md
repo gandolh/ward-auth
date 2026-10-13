@@ -58,7 +58,7 @@ origin — are all cheap to change on a wiki page and very costly in code.
 
 ## The one thing worth knowing before reading anything else
 
-Every project is a **sub-path on a single origin**, `https://gandolh.ro`. There
+Every project is a **sub-path on a single origin** (the production domain). There
 are no subdomains. That makes a shared session cookie nearly free and makes
 isolation between apps impossible — the browser treats `/atrium` and
 `/design-study` as the same security context. Most of the interesting design

@@ -68,7 +68,7 @@ below).
 
 A small Fastify + SQLite service on the VPS, deployed like any other pm2 app,
 owning `users` / `sessions` and issuing **one HttpOnly cookie at `Path=/` on
-`gandolh.ro`**. Every app validates it — either by calling
+the production domain**. Every app validates it — either by calling
 `GET /wzd-auth/session` or by verifying a signed token locally.
 
 - Cross-app SSO falls out of the single origin for free: log in once, the cookie

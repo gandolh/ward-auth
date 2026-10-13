@@ -16,7 +16,7 @@ Account, registration and grant calls live in
 [open-questions.md](./open-questions.md).
 
 ## The estate stays on one origin; sub-paths are routing, not a boundary
-_2026-09-01, grilled Q3_ — Everything stays at `https://gandolh.ro/<path>`.
+_2026-09-01, grilled Q3_ — Everything stays on the production origin, at `/<path>`.
 A single session cookie at `Path=/` is therefore sent to every app with no
 redirect protocol, no CORS and no token relay, and it rides on `<img>` and
 `<video>` requests — which retires atrium's `?token=` query-string workaround,
@@ -28,7 +28,7 @@ an XSS anywhere in the estate reaches every app's API with credentials attached.
 This is judged bounded because the static sites take no user input and one
 person writes all of it.
 
-**Rejected: subdomains** (`auth.gandolh.ro`, `atrium.gandolh.ro`). They buy real
+**Rejected: subdomains** (`auth.<domain>`, `atrium.<domain>`). They buy real
 isolation and force a proper redirect protocol, at the cost of rewriting the
 master Caddyfile, re-cutting build config across seventeen projects, and
 breaking atrium specifically — it bakes an absolute `VITE_API_URL` into its

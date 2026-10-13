@@ -10,7 +10,7 @@ it is the thing a centralized service has to absorb.
 
 ## The topology is the biggest constraint
 
-Every deployed project is a **sub-path on one origin**: `https://gandolh.ro/<name>`,
+Every deployed project is a **sub-path on one origin**: `/<name>` on the production origin,
 served by a single Caddy instance from a master `Caddyfile` in the `vps-deploy`
 repo (`infrastructure/Caddyfile`). There are no subdomains. `www` and the bare IP
 `178.105.182.117` both redirect to the apex so there is exactly one canonical
@@ -18,7 +18,7 @@ origin.
 
 That single fact removes most of the usual SSO difficulty and adds one risk:
 
-- **A cookie set at `Path=/` on `gandolh.ro` is sent to every app automatically.**
+- **A cookie set at `Path=/` on the production domain is sent to every app automatically.**
   No redirect dance, no CORS, no token relay. Cross-app SSO is nearly free.
 - **It also means there is no isolation between apps.** Same origin is same
   security context: any app's frontend JS can call any other app's API with the

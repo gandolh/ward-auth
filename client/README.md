@@ -59,7 +59,7 @@ mistake into a compile error instead of an outage.
 import { createWardClient } from "@ward/client";
 
 const ward = createWardClient({
-  publicOrigin: "https://gandolh.ro", // WARD_PUBLIC_ORIGIN, bare origin, no trailing slash
+  publicOrigin: "https://example.com", // WARD_PUBLIC_ORIGIN, bare origin, no trailing slash
   apiBasePath: "/ward-api", // required — see above
   appKey: process.env.WARD_APP_KEY!, // required — see above
 });

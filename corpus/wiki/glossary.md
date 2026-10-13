@@ -19,7 +19,7 @@ _Avoid_: "the projects", "the apps", "the monorepo" (there is no monorepo — ea
 project is its own repo).
 
 ## Origin
-Scheme + host + port, in the browser's sense: `https://gandolh.ro`. **The whole
+Scheme + host + port, in the browser's sense: `https://example.com`. **The whole
 estate is one origin**; the per-project `/atrium`, `/trips` and so on are paths
 *within* it, and paths are not a security boundary.
 _Avoid_: using "site", "domain" or "app" when the browser's isolation rule is

@@ -1,13 +1,13 @@
 # Ward
 
-The sign-in service for the side projects on gandolh.ro. A person has one account for all of them
+The sign-in service for the side projects on one production domain. A person has one account for all of them
 and signs in on one page, and a grant per app decides what they can open.
 
 <p align="center">
   <img src="docs/images/sign-in.webp" width="100%" alt="Ward's login page, headed 'Continue to Atrium' because the visitor came from Atrium, with Username and Password fields and a Sign in button">
 </p>
 
-**Status:** Personal project, in production since 2026-10-04 at <https://gandolh.ro/ward/>. Four
+**Status:** Personal project, in production since 2026-10-04 at `/ward/` on the production site. Four
 apps sign in through it: atrium, newspapper, public-resource-map and sports-app. Satchel is
 registered for local development. The GitHub repo is `gandolh/ward-auth` and the folder is still
 called `wzd_auth`; the service is Ward ([why](corpus/wiki/overview.md#naming)).
@@ -70,10 +70,8 @@ sequenceDiagram
 ```
 
 Rotation, the stolen-cookie alarm and the two-tab race that is not theft are on the docs site's
-[Sessions and tokens](https://gandolh.ro/ward/docs/sessions/) page
-([source](docs/src/content/docs/sessions.mdx)). The full picture is
-[Architecture](https://gandolh.ro/ward/docs/architecture/)
-([source](docs/src/content/docs/architecture.mdx)).
+[Sessions and tokens](docs/src/content/docs/sessions.mdx) page. The full picture is
+[Architecture](docs/src/content/docs/architecture.mdx).
 
 ## Run it locally
 
@@ -106,8 +104,8 @@ listed in [.env.example](.env.example).
 ## Docs
 
 - [docs/](docs/README.md): what is in the docs folder, and the images used here
-- Docs site: <https://gandolh.ro/ward/docs/>, with the HTTP API, the data model, configuration and
-  the [`@ward/client` reference](https://gandolh.ro/ward/docs/reference/client/)
+- Docs site: `/ward/docs/` on the production site, with the HTTP API, the data model, configuration and
+  the `@ward/client` reference
 - [Integration contract](corpus/wiki/integrating.md): what an app must get right to sign in
   through Ward
 - [Project wiki](corpus/index.md): decisions, status and the briefs that built it

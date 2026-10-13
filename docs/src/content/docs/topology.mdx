@@ -4,7 +4,7 @@ description: Every project is a sub-path on one hostname. That single fact makes
 ---
 
 Every deployed project in the estate is a **sub-path on one origin**:
-`https://gandolh.ro/<name>`, served by a single Caddy instance from a generated
+`/<name>` on the production origin, served by a single Caddy instance from a generated
 `Caddyfile` in the `vps-deploy` repo. There are no subdomains. `www` and the
 bare IP both redirect to the apex, so there is exactly one canonical origin.
 

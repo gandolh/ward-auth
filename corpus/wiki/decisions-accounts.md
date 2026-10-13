@@ -46,7 +46,7 @@ where becoming a different person costs one tap. Passkey-only turns that into
 which may otherwise port across untouched.
 
 Adding passkeys later is cheap specifically because of the one-origin decision —
-the WebAuthn relying-party ID is just `gandolh.ro`, with no per-app registration.
+the WebAuthn relying-party ID is just the production domain, with no per-app registration.
 
 ## Ward owns access grants; the security boundary moves from signup to authorization
 

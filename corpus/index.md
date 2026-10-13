@@ -45,7 +45,7 @@ paragraph, then [wiki/estate.md](wiki/estate.md) for what it has to absorb.
 | [landscape.md](wiki/landscape.md) | The candidate answers researched on 2026-09-01 — off-the-shelf identity providers from Keycloak down to Pocket ID, the forward-auth gateways, and building wzd_auth as a small owned service — with what each one costs against this estate specifically. |
 | [open-questions.md](wiki/open-questions.md) | What is genuinely open (nothing, as of brief 18), work deferred to briefs, and items that belong to other repos. |
 | [overview.md](wiki/overview.md) | What Ward is — the estate's identity service and, since the 2026-10-13 redesign, the OpenID Connect provider behind every app's "Sign in with Ward" button, while each app owns its accounts — the shape in a paragraph, what the repo holds, and how to pick up the thread. |
-| [status.md](wiki/status.md) | Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). The owner's one step left is redeploying Ward. |
+| [status.md](wiki/status.md) | Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Nothing is open. |
 
 <!-- catalog:end -->
 

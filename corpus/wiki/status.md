@@ -1,5 +1,5 @@
 ---
-summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). The owner's one step left is redeploying Ward.
+summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Nothing is open.
 updated: 2026-10-13
 ---
 
@@ -23,7 +23,7 @@ enabled, and Ward's OIDC discovery is live.
 | B | 19 session status for clients · 21 library: Sign in with Ward | **Done** |
 | C | 22 atrium · 23 newspapper · 24 prm · 25 sports-app · 26 satchel, plus 28 lockout behind containers and 29 the Jukebox | **Done**; library 0.3.1 vendored in all five |
 | D | 27 cutover config and runbook | **Done**; the owner deployed it 2026-10-13 |
-| E | 30 retire the cookie contract | **Done** 2026-10-13; Ward's redeploy is the owner's |
+| E | 30 retire the cookie contract | **Done** and deployed 2026-10-13 |
 
 **Brief 27** put the new contract into vps-deploy. Ward gets
 `WARD_OIDC_ISSUER`, `WARD_UI_URL` and `WARD_TRUSTED_PROXIES`. Each app gets its
@@ -73,7 +73,7 @@ out. The subdomain move is a todo
 | Briefs done | 00–10, 13–30 in [briefs/done/](../briefs/done/); 11 superseded |
 | Briefs open | None |
 | Shared library | `shared-library/` 0.3.1, vendored into atrium, newspapper, prm, sports-app and satchel |
-| Deploy entry in `vps-deploy` | The OIDC contract deployed 2026-10-13. Brief 30 needs only Ward redeployed; no app stack passes the old variables |
+| Deploy entry in `vps-deploy` | The OIDC contract deployed 2026-10-13. Ward redeployed with brief 30 the same day; no app stack passes the old variables |
 
 ## What is actually known
 
@@ -94,11 +94,9 @@ out. The subdomain move is a todo
 
 ## The next move
 
-The owner redeploys Ward, and only Ward, from vps-deploy:
-`node cli.ts ward server` (the API container, which runs the drop migration),
-then `node cli.ts ward deploy` (the UI and the docs site), or
-`node cli.ts ward all`. No app stack needs a redeploy. Nothing is queued after
-that.
+Nothing is queued. Ward was redeployed with brief 30 on 2026-10-13, after
+vps-deploy's Ward stack stopped uploading the deleted reference client's manifest
+(the first attempt failed on it). Open ideas are in [../todos/](../todos/).
 
 ## The old waves
 

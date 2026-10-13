@@ -69,3 +69,30 @@ to prevent. Every app on shared library 0.2.0 inherits the same behaviour.
   forwarded addresses do not lock out a seventh caller.
 - Ward's suite, typecheck, lint and build pass, and `npm run vendor` still
   writes six files.
+
+## Outcome (2026-10-13)
+
+Shipped. `lockoutKeyFor` honours the last `X-Forwarded-For` element when the
+peer is loopback or inside a configured trusted range (IPv4, IPv6, and
+IPv4-mapped in both spellings). The settings are `WARD_TRUSTED_PROXIES` for
+Ward and `AUTH_TRUSTED_PROXIES` for apps; the library option is
+`trustedProxies`. Shared library 0.3.0. All five Ward lockout surfaces read
+the one list, including console, account and register, which were outside the
+brief's file list but must key identically.
+
+- **Malformed settings are refused at boot.** That covers `/0`, host bits set
+  past the prefix, and IPv4-mapped ranges shorter than /96.
+- **A new throttled warning** fires when an untrusted peer sends the header.
+  Expect it in production until brief 27 sets the variable.
+
+**Local setup.** The compose network is pinned to `10.87.92.0/24` and trusted.
+The probe ran from separate containers with pinned addresses through Caddy:
+seven callers no longer share a bucket, a spoofed header is never read, and
+one caller alone still locks out on its sixth failure. The audit log from
+before the fix showed every failure keyed on the Caddy container's address.
+
+**Production.** Recommended value: `172.16.0.0/12`. Confirm it on the host
+with `docker network inspect` and `docker info`.
+
+Verified by the controller: 1297 tests, typecheck, lint, build and corpus lint
+clean.

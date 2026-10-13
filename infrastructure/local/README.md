@@ -35,20 +35,22 @@ Run everything below from this directory, `infrastructure/local/`.
    ```
 
    This registers the five apps that use Ward, creates an owner account with
-   `admin` on each, and writes a fresh app key, `WARD_PUBLIC_ORIGIN` and
-   `WARD_API_BASE_PATH` into each app's local env file (table below). It also
-   registers each app as an OpenID Connect client (see "Sign in with Ward"
-   below). It asks
+   `admin` on each, and registers each app as an OpenID Connect client (see
+   "Sign in with Ward" below). It writes each app's `WARD_OIDC_*` values into
+   that app's local env file (table below). Until brief 30 retires them, it
+   still writes the old app key, `WARD_PUBLIC_ORIGIN` and `WARD_API_BASE_PATH`
+   too; no app reads them any more. It asks
    for the owner account's username and password, or reads
    `WARD_OWNER_USERNAME` and `WARD_OWNER_PASSWORD`, and stores neither. It is
    safe to re-run: keys that still work are kept and the password is not reset.
 
 ## Signing in to an app
 
-Start the app with its usual `npm run dev` and use its own sign-in. Each app's
-dev server serves the app under the path it has in the deploy and forwards
-`/ward` and `/ward-api` to this container, so the browser sees one origin the
-way it does behind Caddy, and Ward sends you back into the app afterwards.
+Start the app with its usual `npm run dev`. Each app has its own login page.
+Sign in with a local account (each app's seed script creates one), or press
+"Sign in with Ward": the browser goes to this container's own origin, you sign
+in there, and Ward sends you back to the app's callback under its API prefix.
+The apps' dev servers no longer forward `/ward` here.
 
 | App | Open | Env files `seed.mjs` writes |
 | --- | --- | --- |

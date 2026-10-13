@@ -11,7 +11,7 @@
  * Add an entry at the **end** with the next `version`. Never edit or reorder
  * one that has shipped: a vendored copy in some app has already applied it,
  * and the runner records versions, not contents. Version 2 (0.2.0) added the
- * Ward link table this way.
+ * Ward link table this way, and version 3 (0.3.1) a session column.
  *
  * ## The SQL is the intersection of two drivers
  *
@@ -87,6 +87,18 @@ export const SQLITE_MIGRATIONS: readonly Migration[] = [
       -- expired hint, so it outlives the token's own hour. NULL for a local
       -- session.
       ALTER TABLE auth_sessions ADD COLUMN ward_id_token TEXT;
+    `,
+  },
+  {
+    version: 3,
+    name: "session_reauthenticated_at",
+    sql: `
+      -- When this session last came back from a Ward round trip that made
+      -- the person type their Ward password (prompt=login, auth_time checked).
+      -- Epoch milliseconds on the app's clock. Setting a first local password
+      -- requires it to be recent; a plain or silent Ward sign-in never sets
+      -- it. NULL until then.
+      ALTER TABLE auth_sessions ADD COLUMN reauthenticated_at INTEGER;
     `,
   },
 ];

@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 import * as oidc from "openid-client";
 
 import { WardConfigurationError, WardSignInError, WardUnavailableError } from "./errors.js";
@@ -99,6 +101,14 @@ export interface WardIdentity {
   wardSid: string;
   /** The raw ID token, kept as the `id_token_hint` for "sign out of Ward too". */
   idToken: string;
+  /**
+   * `auth_time`, epoch seconds: when the person last typed their Ward
+   * password. Ward sends it only when the request asked (`prompt=login` or
+   * `max_age`), so a plain sign-in usually has none.
+   */
+  authTime?: number;
+  /** `iat`, epoch seconds: when Ward issued the ID token, on Ward's clock. */
+  issuedAt?: number;
 }
 
 /** The secrets one authorization round trip carries in the flow cookie. */
@@ -126,7 +136,8 @@ export interface WardClient {
   /**
    * The authorization URL to send the browser to, and the secrets to keep
    * for the callback. `prompt: "login"` makes Ward ask for the password even
-   * with a live Ward session (a fresh sign-in). Throws `WardUnavailableError`.
+   * with a live Ward session, and makes the ID token carry `auth_time`.
+   * Throws `WardUnavailableError`.
    */
   startAuthorization(options?: { prompt?: "login" }): Promise<{
     url: string;
@@ -401,6 +412,8 @@ export async function createWardClient(options: WardClientOptions): Promise<Ward
       const wardSid = claims?.["ward_sid"];
       const role = claims?.["ward_role"];
       const username = claims?.["preferred_username"];
+      const authTime = claims?.auth_time;
+      const issuedAt = claims?.iat;
       if (
         idToken === undefined ||
         typeof subject !== "string" ||
@@ -421,6 +434,8 @@ export async function createWardClient(options: WardClientOptions): Promise<Ward
         role,
         username: typeof username === "string" ? username : "",
         idToken,
+        ...(typeof authTime === "number" && Number.isFinite(authTime) ? { authTime } : {}),
+        ...(typeof issuedAt === "number" && Number.isFinite(issuedAt) ? { issuedAt } : {}),
       };
     },
 
@@ -563,13 +578,12 @@ function parseHttpUrl(value: string, name: string): URL {
   return url;
 }
 
+/**
+ * `localhost`, `::1`, or an IPv4 literal in 127.0.0.0/8. Never a prefix match
+ * on the name: `127.evil.example` is a public host.
+ */
 function isLoopback(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  return (
-    host === "localhost" ||
-    host === "[::1]" ||
-    host === "::1" ||
-    host === "127.0.0.1" ||
-    host.startsWith("127.")
-  );
+  if (host === "localhost" || host === "[::1]" || host === "::1") return true;
+  return isIP(host) === 4 && host.split(".")[0] === "127";
 }

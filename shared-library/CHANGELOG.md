@@ -7,6 +7,55 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 0.3.1 — 2026-10-13
+
+Review fixes. One is a security fix, so every app should take this.
+
+- **Setting a first local password needs a reauthentication.** Before, any
+  Ward-originated session under ten minutes old was enough. But
+  `POST /ward/start` is public, and with a live Ward session Ward answers it
+  without asking for anything. So anyone at an unattended app session could
+  mint a "fresh" session and set a permanent password. Now only
+  `POST /ward/reauthenticate` counts. It still sends `prompt=login`, and its
+  callback now checks that the ID token's `auth_time` is at most 120 s before
+  its `iat`. Only then is the new session stamped as reauthenticated, and
+  `set-password` without `currentPassword` needs that stamp within ten
+  minutes. A reauthentication whose token fails the check lands on
+  `settingsPath?ward_error=invalid_callback`.
+- **The Ward callback no longer answers a raw `500`.** Anything that throws
+  after the code exchange (the store, the app's `roleFor`) is logged and lands
+  on the attempt's page with `ward_error=sign_in_failed`, a new code.
+- **A suffixed username never splits a character.** A taken
+  `preferred_username` at the length limit was cut through a surrogate pair,
+  and the sign-in failed. The cut now falls between code points. Every
+  candidate is checked against the policy, with `ward-user-<random>` as the
+  last resort.
+- **A plain-HTTP issuer must be real loopback.** `http://127.evil.example`
+  passed the loopback check. Now only `localhost`, `[::1]` and IPv4 literals in
+  `127.0.0.0/8` do.
+- Migration 3, `session_reauthenticated_at`, adds a nullable
+  `auth_sessions.reauthenticated_at`. `WardAuthStore` gains
+  `setSessionReauthenticatedAt` and `findSessionReauthenticatedAt`, and
+  `isWardAuthStore` requires them.
+- `WardIdentity` gains optional `authTime` and `issuedAt`, from the ID token.
+
+Upgrade notes from 0.3.0:
+
+- Re-vendor (`npm run vendor -- <app>/vendor/ward`). Migration 3 runs by
+  itself on the next `createSqliteStore`. Existing sessions keep working.
+  None of them counts as reauthenticated.
+- **Check the settings page's "Set a local password" flow.** A user with no
+  local password now always gets `reauthentication_required` until they
+  have used `reauthenticate()`, including right after signing in with Ward.
+  If the page shows the password form first and offers `reauthenticate()`
+  only on that error, it still works. It is smoother to lead with
+  `reauthenticate()` and show the form once `reauthenticated` is true.
+- Show `sign_in_failed` on the login and settings pages like
+  `invalid_callback`: "that didn't work, try again". An app that treats
+  unknown codes generically needs no change.
+- A custom store (not `createSqliteStore`) used with the `ward` option must
+  implement the two new methods.
+
 ## 0.3.0 — 2026-10-13
 
 The login lockout sees the real client behind a container (Ward's brief 28).

@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance, type LightMyRequestResponse } from "fast
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createAccounts, seedUsers, type Accounts } from "../core/accounts.js";
+import { hashSessionToken } from "../core/identifiers.js";
 import { createSqliteStore } from "../store/sqlite.js";
 import {
   Browser,
@@ -16,6 +17,7 @@ import { createWardClient, type WardClient } from "../ward/client.js";
 import { WardConfigurationError, WardUnavailableError } from "../ward/errors.js";
 import { createWardIdentities, type WardIdentities } from "../ward/identities.js";
 import { wardAuth } from "./plugin.js";
+import { REAUTHENTICATION_MAX_AGE_SECONDS, isFreshReauthentication } from "./ward.js";
 
 /**
  * "Sign in with Ward" end to end: the library's plugin in a test app, against
@@ -49,7 +51,10 @@ interface TestApp {
 
 let t: TestApp;
 
-async function buildTestApp(key = clientKey): Promise<TestApp> {
+async function buildTestApp(
+  key = clientKey,
+  extra: { roleFor?: (wardRole: string) => string } = {},
+): Promise<TestApp> {
   const accounts = createAccounts({ store: createSqliteStore(new Database(":memory:")), now });
   const identities = createWardIdentities({ accounts, now });
   const client = await createWardClient({
@@ -75,6 +80,7 @@ async function buildTestApp(key = clientKey): Promise<TestApp> {
       loginPath: "/myapp/login",
       settingsPath: "/myapp/settings",
       afterSignInPath: "/myapp/",
+      ...extra,
     },
   });
   app.get("/me", async (request) => ({
@@ -103,6 +109,39 @@ async function wardRoundTrip(
   const { url } = started.json<{ url: string }>();
   expect(url.startsWith(`${WARD_ISSUER}/auth?`)).toBe(true);
   return b.follow(url, username);
+}
+
+/**
+ * Walk Ward's side of an authorization by hand, signing in as `username` if
+ * Ward asks, and return the callback URL Ward sends the browser to — without
+ * presenting it, so a test can present it with cookies of its choosing.
+ */
+async function walkToCallback(b: Browser, url: string, username?: string): Promise<string> {
+  let next = url;
+  for (let hop = 0; hop < 10; hop += 1) {
+    const at = new URL(next);
+    if (at.origin === APP_ORIGIN) return next;
+    if (at.pathname === "/ward/login") {
+      if (username === undefined) throw new Error("Ward asked for a password");
+      await b.signInAtWard(username);
+      next = `${WARD_ORIGIN}${WARD_PREFIX}/refresh/oidc/${at.searchParams.get("oidc")}`;
+      continue;
+    }
+    const response = await b.request("GET", next);
+    next = new URL(String(response.headers.location), next).href;
+  }
+  throw new Error("Ward did not send the browser back in 10 hops");
+}
+
+/** Move every Ward sign-in into the past, as if the password was typed that long ago. */
+function backdateWardSignIns(seconds: number): void {
+  ward.db.exec(
+    `UPDATE refresh_tokens SET issued_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-${seconds} seconds')`,
+  );
+}
+
+async function setPassword(b: Browser, newPassword = LOCAL_PASSWORD) {
+  return b.request("POST", api("/auth/ward/set-password"), { json: { newPassword } });
 }
 
 async function me(b: Browser): Promise<LightMyRequestResponse> {
@@ -227,6 +266,25 @@ describe("Ward's refusals", () => {
     const interaction = new URL(String(authorize.headers.location), WARD_ORIGIN).href;
     const { landed } = await b.follow(`${interaction}/abort`);
     expect(landed.searchParams.get("ward_error")).toBe("access_denied");
+  });
+
+  it("lands a failure after the code exchange on the login page as sign_in_failed, not a 500", async () => {
+    await ward.createAccount("vera", "myapp", ["viewer"]);
+    const broken = await buildTestApp(clientKey, {
+      roleFor: () => {
+        throw new Error("the app's roleFor has a bug");
+      },
+    });
+    try {
+      const b = browser(broken);
+      const { landed } = await wardRoundTrip(b, "vera");
+      expect(landed.pathname).toBe("/myapp/login");
+      expect(landed.searchParams.get("ward_error")).toBe("sign_in_failed");
+      expect(b.cookie(APP_ORIGIN, COOKIE)).toBeUndefined();
+      expect(b.cookie(APP_ORIGIN, `${COOKIE}_ward`)).toBeUndefined();
+    } finally {
+      await broken.app.close();
+    }
   });
 
   it("refuses a callback with no flow cookie as invalid_callback", async () => {
@@ -455,32 +513,44 @@ describe("settings: local password and unlink", () => {
     expect(await session(b)).toMatchObject({ ward: { linked: true } });
   });
 
-  it("sets a first local password only after a fresh Ward sign-in, then allows unlinking", async () => {
+  it("does not count a Ward sign-in, typed or silent, as a reauthentication", async () => {
+    await ward.createAccount("tess", "myapp", ["viewer"]);
+    const b = browser();
+    await wardRoundTrip(b, "tess");
+
+    // Seconds after a sign-in where the password was typed: still refused.
+    const typed = await setPassword(b);
+    expect(typed.statusCode).toBe(403);
+    expect(typed.json()).toEqual({ error: "reauthentication_required" });
+
+    // The shared-machine case: anyone at the keyboard can press "Sign in with
+    // Ward" again, and with Ward's session live it asks for nothing.
+    const { askedForPassword } = await wardRoundTrip(b, undefined);
+    expect(askedForPassword).toBe(false);
+    expect((await me(b)).json()).toMatchObject({ user: { username: "tess" }, origin: "ward" });
+    const silent = await setPassword(b);
+    expect(silent.statusCode).toBe(403);
+    expect(silent.json()).toEqual({ error: "reauthentication_required" });
+    expect(await session(b)).toMatchObject({ user: { hasPassword: false } });
+  });
+
+  it("sets a first local password after a reauthentication, then allows unlinking", async () => {
     await ward.createAccount("mia", "myapp", ["viewer"]);
     const b = browser();
     await wardRoundTrip(b, "mia");
-
-    // Ten minutes on, the Ward sign-in is no longer fresh.
-    clock += 11 * 60 * 1000;
-    const stale = await b.request("POST", api("/auth/ward/set-password"), {
-      json: { newPassword: LOCAL_PASSWORD },
-    });
-    expect(stale.statusCode).toBe(403);
-    expect(stale.json()).toEqual({ error: "reauthentication_required" });
+    expect((await setPassword(b)).statusCode).toBe(403);
 
     // Reauthenticate: Ward asks for the password again, even with its session
     // live. Its sign-in must predate the authorization by more than the
     // provider's one-second resolution, as it would in life.
-    ward.db.exec(
-      "UPDATE refresh_tokens SET issued_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 seconds')",
-    );
+    backdateWardSignIns(60);
     const { landed, askedForPassword } = await wardRoundTrip(b, "mia", "/auth/ward/reauthenticate");
     expect(askedForPassword).toBe(true);
     expect(landed.searchParams.get("ward")).toBe("reauthenticated");
 
-    const set = await b.request("POST", api("/auth/ward/set-password"), {
-      json: { newPassword: LOCAL_PASSWORD },
-    });
+    // Nine minutes on, the reauthentication still counts.
+    clock += 9 * 60 * 1000;
+    const set = await setPassword(b);
     expect(set.statusCode, set.body).toBe(204);
     expect(await session(b)).toMatchObject({ user: { hasPassword: true } });
 
@@ -501,6 +571,87 @@ describe("settings: local password and unlink", () => {
     });
     expect(login.statusCode).toBe(200);
     expect(login.json()).toMatchObject({ ward: { enabled: true, linked: false } });
+  });
+
+  it("lets a reauthentication lapse after ten minutes", async () => {
+    await ward.createAccount("nell", "myapp", ["viewer"]);
+    const b = browser();
+    await wardRoundTrip(b, "nell");
+    backdateWardSignIns(60);
+    await wardRoundTrip(b, "nell", "/auth/ward/reauthenticate");
+
+    clock += 10 * 60 * 1000 + 1;
+    const stale = await setPassword(b);
+    expect(stale.statusCode).toBe(403);
+    expect(stale.json()).toEqual({ error: "reauthentication_required" });
+  });
+
+  it("refuses a reauthentication whose ID token shows no password typed for it", async () => {
+    await ward.createAccount("uma", "myapp", ["viewer"]);
+    const b = browser();
+    await wardRoundTrip(b, "uma");
+    // Ward's session is live, but its password was typed ten minutes ago.
+    backdateWardSignIns(600);
+    const sessionToken = b.cookie(APP_ORIGIN, COOKIE)!.value;
+
+    // The flow cookie is not signed: someone at the keyboard can take a plain
+    // (silent) sign-in and relabel it a reauthentication of this session, or
+    // also ask Ward for a long max_age so the token does carry an auth_time.
+    for (const extra of ["", "&max_age=86400"]) {
+      const started = await b.request("POST", api("/auth/ward/start"), { json: {} });
+      const flow = JSON.parse(
+        Buffer.from(b.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value, "base64url").toString("utf8"),
+      ) as Record<string, unknown>;
+      const forged = Buffer.from(
+        JSON.stringify({
+          ...flow,
+          mode: "reauthenticate",
+          sessionIdHash: hashSessionToken(sessionToken),
+        }),
+        "utf8",
+      ).toString("base64url");
+
+      const callback = new URL(
+        await walkToCallback(b, `${started.json<{ url: string }>().url}${extra}`),
+      );
+      expect(callback.href.startsWith(REDIRECT_URI)).toBe(true);
+      const finished = await t.app.inject({
+        method: "GET",
+        url: `${callback.pathname.slice(API_PREFIX.length)}${callback.search}`,
+        headers: { cookie: `${COOKIE}_ward=${forged}; ${COOKIE}=${sessionToken}` },
+      });
+      expect(finished.statusCode).toBe(303);
+      expect(finished.headers.location, extra).toBe(
+        `${APP_ORIGIN}/myapp/settings?ward_error=invalid_callback`,
+      );
+    }
+
+    const refused = await setPassword(b);
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json()).toEqual({ error: "reauthentication_required" });
+  });
+});
+
+describe("isFreshReauthentication", () => {
+  it("needs auth_time and iat, the password typed at most two minutes before issuance", () => {
+    const iat = 1_800_000_000;
+    expect(isFreshReauthentication({ authTime: iat, issuedAt: iat })).toBe(true);
+    expect(
+      isFreshReauthentication({ authTime: iat - REAUTHENTICATION_MAX_AGE_SECONDS, issuedAt: iat }),
+    ).toBe(true);
+    expect(
+      isFreshReauthentication({
+        authTime: iat - REAUTHENTICATION_MAX_AGE_SECONDS - 1,
+        issuedAt: iat,
+      }),
+    ).toBe(false);
+    // Missing: Ward sends auth_time only when asked (prompt=login, max_age).
+    expect(isFreshReauthentication({ issuedAt: iat })).toBe(false);
+    expect(isFreshReauthentication({ authTime: iat })).toBe(false);
+    expect(isFreshReauthentication({})).toBe(false);
+    // A second or two of rounding the other way is tolerated; more is not.
+    expect(isFreshReauthentication({ authTime: iat + 5, issuedAt: iat })).toBe(true);
+    expect(isFreshReauthentication({ authTime: iat + 6, issuedAt: iat })).toBe(false);
   });
 });
 

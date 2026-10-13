@@ -166,6 +166,13 @@ export interface WardAuthStore extends AuthStore {
   deleteUserWardSessions(userId: string): Awaitable<number>;
   setSessionWardIdToken(idHash: string, idToken: string): Awaitable<void>;
   findSessionWardIdToken(idHash: string): Awaitable<string | undefined>;
+  /**
+   * Record that this session just came back from a verified Ward
+   * reauthentication (epoch ms). What setting a first local password checks.
+   */
+  setSessionReauthenticatedAt(idHash: string, at: number): Awaitable<void>;
+  /** `undefined` for a session that never reauthenticated, or no such session. */
+  findSessionReauthenticatedAt(idHash: string): Awaitable<number | undefined>;
 }
 
 /** Whether a store has the Ward methods (a custom `AuthStore` may not). */
@@ -179,6 +186,8 @@ export function isWardAuthStore(store: AuthStore): store is WardAuthStore {
     typeof candidate.deleteWardLink === "function" &&
     typeof candidate.deleteUserWardSessions === "function" &&
     typeof candidate.setSessionWardIdToken === "function" &&
-    typeof candidate.findSessionWardIdToken === "function"
+    typeof candidate.findSessionWardIdToken === "function" &&
+    typeof candidate.setSessionReauthenticatedAt === "function" &&
+    typeof candidate.findSessionReauthenticatedAt === "function"
   );
 }

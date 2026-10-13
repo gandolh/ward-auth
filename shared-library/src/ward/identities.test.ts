@@ -67,6 +67,28 @@ describe("createWardIdentities", () => {
 
     const odd = await identities.userForSignIn(identity({ subject: "s-2", username: "  " }));
     expect(odd.user.username).toBe("ward-user");
+    const odder = await identities.userForSignIn(identity({ subject: "s-3", username: "\u0007" }));
+    expect(odder.user.username).toBe("ward-user-2");
+  });
+
+  it("suffixes a name at the length limit without splitting a character", async () => {
+    const { accounts, identities } = setup();
+    // 253 + 2 (one astral character, a surrogate pair) + 1 = 256 UTF-16 units.
+    const long = `${"a".repeat(253)}\u{1F600}b`;
+    expect(long.length).toBe(256);
+    await accounts.createUser({ username: long, password: "a long local password", role: "x" });
+
+    // Cutting at 254 units would leave half of the pair, which the policy
+    // refuses; the cut falls before the whole character instead.
+    const { user, created } = await identities.userForSignIn(identity({ username: long }));
+    expect(created).toBe(true);
+    expect(user.username).toBe(`${"a".repeat(253)}-2`);
+
+    // A cut that lands just after a space drops it.
+    const spaced = `${"b".repeat(253)} cd`;
+    await accounts.createUser({ username: spaced, password: "a long local password", role: "x" });
+    const second = await identities.userForSignIn(identity({ subject: "s-2", username: spaced }));
+    expect(second.user.username).toBe(`${"b".repeat(253)}-2`);
   });
 
   it("links once, idempotently for the same pair, and refuses either side twice", async () => {

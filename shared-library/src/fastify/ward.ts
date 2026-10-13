@@ -7,7 +7,12 @@ import type { Lockout, LockoutTarget } from "../core/lockout.js";
 import { MAX_PASSWORD_LENGTH, PasswordPolicyError } from "../core/password.js";
 import { AlreadyLinkedError, WardSubjectTakenError, isWardAuthStore } from "../store/types.js";
 import type { SessionRecord, WardAuthStore } from "../store/types.js";
-import { signInErrorFor, type WardClient, type WardFlowSecrets } from "../ward/client.js";
+import {
+  signInErrorFor,
+  type WardClient,
+  type WardFlowSecrets,
+  type WardIdentity,
+} from "../ward/client.js";
 import { WardConfigurationError, WardUnavailableError } from "../ward/errors.js";
 import { NoLocalPasswordError, NotLinkedError, type WardIdentities } from "../ward/identities.js";
 import { crossSite, sameOrigin, tooManyAttempts } from "./http.js";
@@ -24,7 +29,7 @@ import type { SessionValidator } from "./plugin.js";
  * | `POST /ward/start` | public | sign-in: answers `{ url }` to send the browser to |
  * | `GET /ward/callback` | public | the redirect URI; ends in a `303` to an app page |
  * | `POST /ward/link` | session | link Ward from settings: `{ url }` |
- * | `POST /ward/reauthenticate` | session | a fresh Ward sign-in (`prompt=login`): `{ url }` |
+ * | `POST /ward/reauthenticate` | session | Ward asks for the password again (`prompt=login`): `{ url }` |
  * | `POST /ward/unlink` | session | `{ signedOut }`; `409 no_local_password` / `not_linked` |
  * | `POST /ward/set-password` | session | `204`; `403 reauthentication_required` |
  * | `POST /ward/logout` | session | ends the session here: `{ url }` of Ward's end-session, or `null` |
@@ -58,8 +63,28 @@ import type { SessionValidator } from "./plugin.js";
  * - link: `settingsPath?ward=linked`, or `settingsPath?ward_error=<code>`;
  * - reauthenticate: `settingsPath?ward=reauthenticated`, or the error.
  *
+ * Anything unexpected after the code exchange (the store failing, an app's
+ * `roleFor` throwing) is logged and lands on the same error page with
+ * `ward_error=sign_in_failed`, never a raw `500` on a top-level navigation.
+ *
  * The codes are stable and the React hooks expose them; the app writes the
  * words.
+ *
+ * ## Setting a first local password
+ *
+ * A user created from Ward has no local password. Setting one needs a
+ * **reauthentication** in the last ten minutes, recorded on the session, and
+ * nothing else counts: not a Ward sign-in, however recent. `POST /ward/start`
+ * is public, and with a live Ward session Ward answers it without asking for
+ * anything, so "signed in with Ward a minute ago" proves nothing about who is
+ * at the keyboard.
+ *
+ * A reauthentication is the `reauthenticate` round trip, which asks Ward for
+ * `prompt=login`. Ward then makes the person type their password even with a
+ * live Ward session. The callback does not take that on trust: the ID token
+ * must carry `auth_time` no more than two minutes before its own `iat` (both
+ * Ward's clock), or the round trip fails as `invalid_callback`. Only then is
+ * the session stamped.
  */
 
 /** The `ward` option of `wardAuth`. */
@@ -88,8 +113,39 @@ export interface WardSignInOptions {
   identities?: WardIdentities;
 }
 
-/** A user may set a first local password this long after a Ward sign-in. */
+/**
+ * A user with no local password may set one this long after a verified Ward
+ * reauthentication (`POST /ward/reauthenticate`). A plain Ward sign-in does
+ * not count.
+ */
 export const FRESH_SIGN_IN_SECONDS = 10 * 60;
+
+/**
+ * A reauthentication counts when Ward says the password was typed at most
+ * this long before it issued the ID token.
+ */
+export const REAUTHENTICATION_MAX_AGE_SECONDS = 120;
+
+/**
+ * Slack for `auth_time` landing after `iat`. Both are Ward's clock, in whole
+ * seconds, so a second or two of rounding is all this absorbs.
+ */
+const AUTH_TIME_SKEW_SECONDS = 5;
+
+/**
+ * Whether the ID token proves a password typed for this round trip: an
+ * `auth_time`, and an `iat`, no more than two minutes apart. A token without
+ * `auth_time` (Ward sends it only for `prompt=login` or `max_age`) never
+ * counts.
+ */
+export function isFreshReauthentication(
+  identity: Pick<WardIdentity, "authTime" | "issuedAt">,
+): boolean {
+  const { authTime, issuedAt } = identity;
+  if (authTime === undefined || issuedAt === undefined) return false;
+  const age = issuedAt - authTime;
+  return age >= -AUTH_TIME_SKEW_SECONDS && age <= REAUTHENTICATION_MAX_AGE_SECONDS;
+}
 
 /** The flow cookie's life: one Ward interaction's span. */
 const FLOW_MAX_AGE_SECONDS = 10 * 60;
@@ -301,15 +357,17 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     );
   }
 
+  /** Start a Ward-originated session and set its cookie. Returns its id hash. */
   async function startSession(
     reply: FastifyReply,
     userId: string,
     wardSid: string,
     idToken: string,
-  ): Promise<void> {
+  ): Promise<string> {
     const { token, session } = await accounts.startSession(userId, { origin: "ward", wardSid });
     await store.setSessionWardIdToken(session.idHash, idToken);
     reply.header("set-cookie", context.sessionCookie(token, session.expiresAt));
+    return session.idHash;
   }
 
   /** The live session the request's cookie names, without running the checks. */
@@ -384,6 +442,23 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
       return land(reply, errorPage, { ward_error: failure.code });
     }
 
+    try {
+      return await finishCallback(request, reply, flow, identity);
+    } catch (error) {
+      // A top-level navigation: a raw 500 JSON page helps nobody. Log it and
+      // send the person back where they can try again.
+      request.log.error({ err: error }, "Ward callback failed after the code exchange");
+      return land(reply, errorPage, { ward_error: "sign_in_failed" });
+    }
+  });
+
+  /** The callback after a verified code exchange: act on the flow's mode. */
+  async function finishCallback(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    flow: Flow,
+    identity: WardIdentity,
+  ): Promise<FastifyReply> {
     if (flow.mode === "sign_in") {
       const { user } = await identities.userForSignIn(identity, ward.roleFor);
       // Signing in on top of an old session replaces it, as a password sign-in does.
@@ -412,16 +487,25 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
       return land(reply, ward.settingsPath, { ward: "linked" });
     }
 
-    // Reauthenticate: the same Ward account must come back, and the session
-    // is replaced by a fresh Ward-originated one, which is what "set a local
+    // Reauthenticate: the same Ward account must come back, having typed its
+    // password for this round trip. The session is replaced by a fresh
+    // Ward-originated one, stamped as reauthenticated: what "set a local
     // password" checks for.
     if ((await identities.subjectOf(current.user.id)) !== identity.subject) {
       return land(reply, ward.settingsPath, { ward_error: "ward_account_mismatch" });
     }
+    if (!isFreshReauthentication(identity)) {
+      request.log.warn(
+        { authTime: identity.authTime ?? null, issuedAt: identity.issuedAt ?? null },
+        "Ward reauthentication refused: the ID token does not show a password typed for it",
+      );
+      return land(reply, ward.settingsPath, { ward_error: "invalid_callback" });
+    }
     await accounts.endSession(current.token);
-    await startSession(reply, current.user.id, identity.wardSid, identity.idToken);
+    const idHash = await startSession(reply, current.user.id, identity.wardSid, identity.idToken);
+    await store.setSessionReauthenticatedAt(idHash, now());
     return land(reply, ward.settingsPath, { ward: "reauthenticated" });
-  });
+  }
 
   /**
    * Unlink Ward. Refused while the user has no local password, which would
@@ -448,10 +532,11 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
 
   /**
    * Set a local password. A user who has one must give it (this is then a
-   * password change). A user created from Ward has none, and must have signed
-   * in with Ward within the last ten minutes — `POST /ward/reauthenticate`
-   * gets them there — so a session left open on a shared machine cannot be
-   * turned into a permanent password. Ends the user's other sessions.
+   * password change). A user created from Ward has none, and this session
+   * must have come back from `POST /ward/reauthenticate` within the last ten
+   * minutes, so a session left open on a shared machine cannot be turned
+   * into a permanent password — not even by a silent Ward sign-in on top of
+   * it. Ends the user's other sessions.
    */
   routes.post("/ward/set-password", async (request, reply) => {
     if (!sameOrigin(request, publicOrigin)) return crossSite(reply);
@@ -489,9 +574,9 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
         return reply.code(204).send();
       }
 
-      const fresh =
-        auth.session.origin === "ward" &&
-        now() - auth.session.createdAt <= FRESH_SIGN_IN_SECONDS * 1000;
+      const reauthenticatedAt = await store.findSessionReauthenticatedAt(auth.session.idHash);
+      const age = reauthenticatedAt === undefined ? undefined : now() - reauthenticatedAt;
+      const fresh = age !== undefined && age >= 0 && age <= FRESH_SIGN_IN_SECONDS * 1000;
       if (!fresh) return reply.code(403).send({ error: "reauthentication_required" });
       await accounts.setPassword(auth.user.id, body.newPassword, auth.session.idHash);
       return reply.code(204).send();

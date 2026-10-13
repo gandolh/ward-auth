@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 import { calculateJwkThumbprint } from "jose";
 
 import { oidcClientOf, type AppRow, type OidcClientRegistration } from "../db/apps.js";
@@ -97,13 +99,15 @@ export function validRedirectUris(value: readonly string[]): boolean {
   });
 }
 
+/**
+ * `localhost`, `[::1]`, or an IPv4 literal in 127.0.0.0/8. `URL` has already
+ * lower-cased the host and normalised IPv4 forms (`127.1`, `0x7f.0.0.1`) to
+ * dotted quads; a name that merely starts with `127.` (`127.evil.example`) is
+ * a public host and refused.
+ */
 function isLoopback(hostname: string): boolean {
-  return (
-    hostname === "localhost" ||
-    hostname === "[::1]" ||
-    hostname === "127.0.0.1" ||
-    hostname.startsWith("127.")
-  );
+  if (hostname === "localhost" || hostname === "[::1]") return true;
+  return isIP(hostname) === 4 && hostname.split(".")[0] === "127";
 }
 
 /**

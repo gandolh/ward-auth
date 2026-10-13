@@ -18,7 +18,20 @@ describe("client registration", () => {
     expect(validRedirectUris(["https://example.com/atrium/auth/ward/callback"])).toBe(true);
     expect(validRedirectUris(["http://localhost:5173/atrium/auth/ward/callback"])).toBe(true);
     expect(validRedirectUris(["http://127.0.0.1:4321/cb"])).toBe(true);
+    expect(validRedirectUris(["http://127.4.5.6/cb"])).toBe(true);
+    expect(validRedirectUris(["http://[::1]:5173/cb"])).toBe(true);
     expect(validRedirectUris(["http://example.com/cb"])).toBe(false);
+    // Names that only look like loopback are public hosts.
+    for (const evil of [
+      "http://127.evil.com/cb",
+      "http://127.0.0.1.evil.com/cb",
+      "http://127.0.0.1.nip.io/cb",
+      "http://localhost.evil.com/cb",
+      "http://128.0.0.1/cb",
+      "http://[::2]/cb",
+    ]) {
+      expect(validRedirectUris([evil]), evil).toBe(false);
+    }
     expect(validRedirectUris(["https://example.com/cb#frag"])).toBe(false);
     expect(validRedirectUris(["https://user:pw@example.com/cb"])).toBe(false);
     expect(validRedirectUris(["/relative"])).toBe(false);

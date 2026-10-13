@@ -1,5 +1,5 @@
 ---
-summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), the shared library's build calls (brief 20), and its Ward half — callback path, link binding, fail-closed check, fresh sign-in for a first password (brief 21).
+summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), the shared library's build calls (brief 20), and its Ward half — callback path, link binding, fail-closed check, reauthentication for a first password (brief 21, revised in 0.3.1).
 updated: 2026-10-13
 ---
 
@@ -125,9 +125,24 @@ _2026-10-13, brief 21_ — Settled while adding "Sign in with Ward" to
   false`, or a user unlinked since, ends the session. A plugin without Ward
   configured refuses Ward-originated sessions rather than leaving them
   unchecked.
-- **A first local password needs a fresh Ward sign-in:** a Ward-originated
-  session under ten minutes old. Reauthentication (`prompt=login`) makes one.
-  An open session on a shared machine cannot become a permanent password.
+- **A first local password needs a reauthentication, not a sign-in.**
+  _Revised 2026-10-13, library 0.3.1._ The first version took any
+  Ward-originated session under ten minutes old. That did not hold: `/ward/start`
+  is public, and with a live Ward session Ward answers it without asking
+  anything, so anyone at an open session on a shared machine could mint a
+  fresh one and set a permanent password. Now only `POST /ward/reauthenticate`
+  counts. It asks Ward for `prompt=login`, which makes Ward's login page take
+  the password again even with its session live (`needsFreshSignIn`; the page
+  never resumes without a typed password). The callback then checks the ID
+  token: `auth_time` at most 120 s before `iat`, both Ward's clock, so the
+  app's clock never enters it. Only then is `reauthenticated_at` stamped on
+  the new session (migration 3). `set-password` without a current password
+  needs that stamp within ten minutes. A plain or silent sign-in never
+  stamps, so a brand-new Ward user reauthenticates once before a first
+  password. **Rejected: also sending `max_age=0`.** oidc-provider already
+  emits `auth_time` for `prompt=login`. Ward's `max_age` check compares
+  against the time of the resume request, so `max_age=0` sends back to the
+  form anyone whose password and resume straddle a second boundary.
 - **Unlink ends the user's Ward-originated sessions.** Without the link there
   is no subject to ask Ward about.
 - **The ID token is kept on the session row** as the logout hint. Ward accepts

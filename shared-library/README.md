@@ -279,6 +279,14 @@ ten minutes. The callback clears it. Starting a second flow in the same browser
 replaces the first, and the first one's callback then fails as
 `invalid_callback`.
 
+**A reauthentication must show a typed password.** The callback for
+`reauthenticate()` checks the ID token's `auth_time` against its `iat`: the
+password must have been typed at most two minutes before Ward issued the
+token. Otherwise it lands on `settingsPath?ward_error=invalid_callback` and
+records nothing. Anything else that fails after the code exchange lands on
+the same page as the attempt with `ward_error=sign_in_failed`, and the server
+log has the cause.
+
 ## 6. Seed local users
 
 Apps without a Register page create their users with a seed script.
@@ -420,10 +428,14 @@ function Settings() {
   `already_linked`, `ward_account_in_use`, `access_denied`, `invalid_callback`
   or `unauthorized`.
 - **Set a local password**: for `!user.hasPassword`. `setPassword(next)` works
-  within ten minutes of a Ward sign-in. After that it fails with
-  `reauthentication_required`. Call `reauthenticate()`, which goes through
-  Ward (Ward asks for its password) and back to `settingsPath?ward=reauthenticated`,
-  so `local.reauthenticated` is true, and try again. For a user who has a
+  only within ten minutes of `reauthenticate()`. A Ward sign-in does not count,
+  however recent: with a live Ward session, "Sign in with Ward" asks for
+  nothing, so anyone at an unattended machine could do it. So lead with
+  `reauthenticate()` (or offer it on `reauthentication_required`). It goes
+  through Ward, which asks for the Ward password even with its session live,
+  and back to `settingsPath?ward=reauthenticated`, so `local.reauthenticated`
+  is true; then show the new-password form. A failed reauthentication lands
+  with `?ward_error=` instead (`useWardResult` reads it). For a user who has a
   password, `setPassword(next, current)` is a password change.
 - **Unlink Ward**: refused with `no_local_password` until the user has one.
   If the current session began with Ward, it ends too (the answer says
@@ -454,12 +466,13 @@ Every error body is `{ "error": <code> }`. The hooks expose the code as
 | `ward_misconfigured`                                          | same places                                    | Ward refused this app's client credential: an operator problem     |
 | `ward_session_ended`                                          | session `reason`                               | the Ward session this one began with was signed out or revoked     |
 | `invalid_callback`                                            | Ward round trip                                | the round trip expired, was replaced, or did not verify; try again |
+| `sign_in_failed`                                              | Ward round trip                                | the app failed finishing it (logged server-side); try again        |
 | `already_linked`                                              | link                                           | this user already has a Ward account linked                        |
 | `ward_account_in_use`                                         | link                                           | that Ward account is linked to another user here                   |
 | `ward_account_mismatch`                                       | reauthenticate                                 | a different Ward account came back                                 |
 | `not_linked`                                                  | unlink, reauthenticate                         | nothing is linked                                                  |
 | `no_local_password`                                           | unlink                                         | set a local password first                                         |
-| `reauthentication_required`                                   | set-password                                   | the Ward sign-in is older than ten minutes                         |
+| `reauthentication_required`                                   | set-password                                   | no `reauthenticate()` in the last ten minutes                      |
 | `session_check_failed`                                        | session `reason`                               | an app validator threw (fails closed)                              |
 | `network`, `unknown`                                          | client-side                                    | no answer, or an answer without a code                             |
 
@@ -503,6 +516,13 @@ subject directly.
   `createLinkedUser` with the subject, as in section 7.
 - **The role is the app's.** A user's role changes only in the app. Ward's
   `ward_role` sets the first role, and `/session-status`'s role is ignored.
+- **`OPTIONS` requests are always public.** The guard lets every `OPTIONS`
+  through unauthenticated, so an `app.options` or `app.all` handler must not
+  do anything that needs a session.
+- **`GET /auth/ward/callback` is not rate-limited, and the flow cookie is not
+  signed.** Tampering only gets `invalid_callback`, since `state`, `nonce` and
+  PKCE are checked against Ward's answer, but a flood of callbacks with a well-formed
+  cookie can each cost a token request to Ward.
 - **A containerised app without `AUTH_TRUSTED_PROXIES` has one lockout bucket
   for everybody** (section 4). The log says so: a throttled warning, "X-Forwarded-For
   ignored for the login lockout", names the peer.

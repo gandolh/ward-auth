@@ -50,14 +50,19 @@ export interface WardStatus {
  * - `ward_session_ended` — a session `reason`: the Ward session it began with
  *   was signed out or revoked.
  * - `invalid_callback` — the round trip could not be completed (it expired,
- *   was started in another tab, or was tampered with). Try again.
+ *   was started in another tab, or was tampered with; for a reauthentication,
+ *   also when Ward's answer does not show a password typed for it). Try again.
+ * - `sign_in_failed` — Ward's answer was fine but the app failed finishing
+ *   the sign-in, link or reauthentication (logged on the server). Try again;
+ *   if it persists, it is an operator problem.
  * - `already_linked`, `ward_account_in_use` — linking: this user already has
  *   a Ward account, or that Ward account belongs to another user here.
  * - `ward_account_mismatch` — reauthentication came back as another Ward
  *   account.
  * - `not_linked`, `no_local_password` — unlinking.
  * - `reauthentication_required` — setting a first local password needs a
- *   Ward sign-in from the last ten minutes.
+ *   reauthentication (`reauthenticate()`) from the last ten minutes. A plain
+ *   Ward sign-in does not count, however recent.
  */
 export type AuthErrorCode =
   | "invalid_request"
@@ -77,6 +82,7 @@ export type AuthErrorCode =
   | "ward_misconfigured"
   | "ward_session_ended"
   | "invalid_callback"
+  | "sign_in_failed"
   | "already_linked"
   | "ward_account_in_use"
   | "ward_account_mismatch"
@@ -109,7 +115,7 @@ export type SessionState =
  * the address bar so a reload does not show it again.
  */
 export interface WardResult {
-  /** `linked` after a link, `reauthenticated` after a fresh Ward sign-in. */
+  /** `linked` after a link, `reauthenticated` after a verified reauthentication. */
   result?: "linked" | "reauthenticated";
   error?: AuthError;
 }
@@ -157,13 +163,14 @@ export interface AuthClient {
   startWardSignIn(options?: { returnTo?: string }): Promise<ActionResult>;
   /** "Link Ward", from settings while signed in. Navigates to Ward. */
   startWardLink(): Promise<ActionResult>;
-  /** A fresh Ward sign-in (Ward asks for the password again). Navigates to Ward. */
+  /** Reauthenticate with Ward (Ward asks for the password again). Navigates to Ward. */
   startWardReauthentication(): Promise<ActionResult>;
   /** Unlink Ward. The state becomes signed out if this session began with Ward. */
   unlinkWard(): Promise<ActionResult>;
   /**
    * Set a local password: give the current one if there is one; a user with
-   * none needs a fresh Ward sign-in (`reauthentication_required` otherwise).
+   * none needs `startWardReauthentication()` in the last ten minutes
+   * (`reauthentication_required` otherwise; a Ward sign-in does not count).
    */
   setLocalPassword(newPassword: string, currentPassword?: string): Promise<ActionResult>;
   /** Sign out here and at Ward. Navigates to Ward's end-session page when there is one. */

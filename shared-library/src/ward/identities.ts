@@ -232,26 +232,61 @@ export function createWardIdentities(options: WardIdentitiesOptions): WardIdenti
   };
 }
 
+/** The name a Ward user gets when `preferred_username` cannot be used. */
+const FALLBACK_USERNAME = "ward-user";
+
 /**
  * Names to try for a new Ward user: `preferred_username` as Ward has it, then
- * `name-2`, `name-3`, …, then a random suffix. A name that fails the local
- * policy (Ward's rules are not this library's) falls back to `ward-user`.
+ * `name-2`, `name-3`, …, then a random suffix, then `ward-user-<random>`. A
+ * name that fails the local policy (Ward's rules are not this library's)
+ * falls back to `ward-user`. Every name yielded passes the policy, so a
+ * strange `preferred_username` can cost a person their preferred name, never
+ * their sign-in.
  */
 function* candidateUsernames(preferred: string): Generator<string> {
-  let base: string;
-  try {
-    base = normaliseUsername(preferred);
-  } catch (error) {
-    if (!(error instanceof UsernamePolicyError)) throw error;
-    base = "ward-user";
+  const seen = new Set<string>();
+  for (const name of rawCandidates(preferred)) {
+    const valid = validUsername(name);
+    if (valid === undefined || seen.has(valid)) continue;
+    seen.add(valid);
+    yield valid;
   }
+}
+
+function* rawCandidates(preferred: string): Generator<string> {
+  const base = validUsername(preferred) ?? FALLBACK_USERNAME;
   yield base;
   for (let n = 2; n <= MAX_NAME_SUFFIX; n += 1) yield withSuffix(base, `-${n}`);
   for (let attempt = 0; attempt < 5; attempt += 1) {
     yield withSuffix(base, `-${generateUserId().slice(0, 8)}`);
   }
+  // Whatever the base was, these always fit the policy.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    yield `${FALLBACK_USERNAME}-${generateUserId().slice(0, 8)}`;
+  }
 }
 
+function validUsername(name: string): string | undefined {
+  try {
+    return normaliseUsername(name);
+  } catch (error) {
+    if (error instanceof UsernamePolicyError) return undefined;
+    throw error;
+  }
+}
+
+/**
+ * `base` cut to leave room for `suffix` within `MAX_USERNAME_LENGTH` UTF-16
+ * units, then the suffix. Cut by code point, never through a surrogate pair,
+ * and with any trailing space dropped (a cut can land just after one, and
+ * `name -2` is not the name with a suffix).
+ */
 function withSuffix(base: string, suffix: string): string {
-  return `${base.slice(0, MAX_USERNAME_LENGTH - suffix.length).trimEnd()}${suffix}`;
+  const room = MAX_USERNAME_LENGTH - suffix.length;
+  let kept = "";
+  for (const codePoint of base) {
+    if (kept.length + codePoint.length > room) break;
+    kept += codePoint;
+  }
+  return `${kept.trimEnd()}${suffix}`;
 }

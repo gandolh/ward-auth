@@ -86,7 +86,23 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     expect(versions.map((row) => ({ ...(row as object) }))).toEqual([
       { version: 1, name: "local_accounts" },
       { version: 2, name: "ward_links" },
+      { version: 3, name: "session_reauthenticated_at" },
     ]);
+  });
+
+  it("upgrades a 0.2/0.3.0 database in place, keeping its sessions", () => {
+    const db = open();
+    expect(migrateSqlite(db, SQLITE_MIGRATIONS.slice(0, 2))).toEqual([1, 2]);
+    db.exec(
+      `INSERT INTO auth_users (id, username, username_folded, password_hash, role, created_at, updated_at)
+       VALUES ('u-alice', 'Alice', 'alice', NULL, 'member', 1, 1);
+       INSERT INTO auth_sessions (id_hash, user_id, origin, ward_sid, created_at, renewed_at, expires_at)
+       VALUES ('kept', 'u-alice', 'ward', 'family', 1, 1, 9999999999999);`,
+    );
+
+    const store = createSqliteStore(db);
+    expect(store.findSession("kept")).toBeDefined();
+    expect(store.findSessionReauthenticatedAt("kept")).toBeUndefined();
   });
 
   it("is idempotent: a second store over the same handle applies nothing", () => {
@@ -310,5 +326,15 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     expect(store.deleteUserWardSessions("u-alice")).toBe(1);
     expect(store.findSession("ward")).toBeUndefined();
     expect(store.findSession("local")).toBeDefined();
+  });
+
+  it("records when a session reauthenticated, null until then", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user());
+    store.createSession(session({ idHash: "ward", origin: "ward", wardSid: "family" }));
+    expect(store.findSessionReauthenticatedAt("ward")).toBeUndefined();
+    store.setSessionReauthenticatedAt("ward", 1_700_000_000_123);
+    expect(store.findSessionReauthenticatedAt("ward")).toBe(1_700_000_000_123);
+    expect(store.findSessionReauthenticatedAt("missing")).toBeUndefined();
   });
 });

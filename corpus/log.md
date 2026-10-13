@@ -360,3 +360,18 @@ vps-deploy now deploys the new contract; nothing was deployed. Ward's stack sets
 newspapper's and sports-app's production images already contain `vendor/`. Both were built locally, imported `wardAuth` inside the image, and ran their seed scripts against a throwaway database.
 
 The owner's runbook is `docs/cutover-oidc.md`, outside the docs site's content. It found two facts that would have been wrong on the box. First, every compose project there is named `infrastructure`, so `docker exec <service>` misses and the runbook uses `docker compose … exec`. Second, for atrium, prm and sports-app, seeding a fresh owner account would make a second, empty account beside the migrated one. So there the owner signs in with Ward and sets a local password, and seeds only in newspapper and satchel. Brief 27 stays open until the owner has deployed. Brief 30 follows the owner's confirmation.
+
+## [2026-10-13] review | Review gate over the whole redesign; library 0.3.1
+
+Three scoped reviewers read the integrated diff: Ward's OIDC code, the shared library, and every app's wiring against vps-deploy and the runbook.
+
+Fixed in round 1:
+- **Important (library).** "Set a local password" accepted any Ward session under 10 minutes old, which a silent Ward sign-in on a shared machine could mint. Freshness now comes only from a reauthentication with `prompt=login` whose ID token shows a freshly typed password (`iat − auth_time` within 120 s), stamped on the session (store migration 3). `max_age=0` was rejected because it loops against Ward's one-second clock (decisions-oidc-build.md).
+- **Minor (library).** The callback no longer answers a raw 500 (`sign_in_failed`). Username suffixing cuts between whole characters and falls back to a generated name.
+- **Minor (Ward).** The loopback redirect-URI check refuses `127.evil.com`-style hosts. The same check in the library's issuer validation got the same fix.
+- **Critical and Important (sports-app).** A migrated user who unlinked Ward made the next boot crash and restart-loop. Sync ignored the production API prefix.
+- **Minor (satchel, docs).** Migration log noise in satchel; stale docs naming the retired variables in atrium, prm, newspapper and satchel.
+
+Logged, not fixed: `OPTIONS` requests are always public in the guard, and the callback is unthrottled with an unsigned flow cookie. Both are in the README's gotchas.
+
+Library 0.3.1 was re-vendored into all five apps.

@@ -99,9 +99,19 @@ describe("configuration", () => {
     await expect(
       createWardClient({ ...base, issuer: "http://example.com/ward-api/oidc" }),
     ).rejects.toThrow(/https/);
-    await expect(
-      createWardClient({ ...base, issuer: "http://localhost:8792/ward-api/oidc" }),
-    ).resolves.toBeDefined();
+    // A name that only starts like a loopback address is a public host.
+    for (const host of ["127.evil.com", "127.0.0.1.nip.io", "localhost.evil.com"]) {
+      await expect(
+        createWardClient({ ...base, issuer: `http://${host}/ward-api/oidc` }),
+        host,
+      ).rejects.toThrow(/https/);
+    }
+    for (const host of ["localhost:8792", "127.0.0.1:8792", "127.9.9.9", "[::1]:8792"]) {
+      await expect(
+        createWardClient({ ...base, issuer: `http://${host}/ward-api/oidc` }),
+        host,
+      ).resolves.toBeDefined();
+    }
   });
 
   it("discovers a plain-HTTP issuer on loopback, as local development runs", async () => {

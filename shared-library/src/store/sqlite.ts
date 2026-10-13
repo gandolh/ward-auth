@@ -268,6 +268,10 @@ export function createSqliteStore(
     ),
     setSessionIdToken: db.prepare("UPDATE auth_sessions SET ward_id_token = ? WHERE id_hash = ?"),
     sessionIdToken: db.prepare("SELECT ward_id_token FROM auth_sessions WHERE id_hash = ?"),
+    setReauthenticatedAt: db.prepare(
+      "UPDATE auth_sessions SET reauthenticated_at = ? WHERE id_hash = ?",
+    ),
+    reauthenticatedAt: db.prepare("SELECT reauthenticated_at FROM auth_sessions WHERE id_hash = ?"),
   };
 
   function insertUser(user: NewUserRecord): UserRecord {
@@ -392,6 +396,17 @@ export function createSqliteStore(
     findSessionWardIdToken(idHash: string): string | undefined {
       const row = s.sessionIdToken.get(idHash) as { ward_id_token: string | null } | undefined;
       return row?.ward_id_token ?? undefined;
+    },
+
+    setSessionReauthenticatedAt(idHash: string, at: number): void {
+      s.setReauthenticatedAt.run(at, idHash);
+    },
+
+    findSessionReauthenticatedAt(idHash: string): number | undefined {
+      const row = s.reauthenticatedAt.get(idHash) as
+        { reauthenticated_at: number | bigint | null } | undefined;
+      const at = row?.reauthenticated_at;
+      return at === undefined || at === null ? undefined : Number(at);
     },
   };
 }

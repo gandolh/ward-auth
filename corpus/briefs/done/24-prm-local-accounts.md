@@ -60,3 +60,18 @@ Depends on briefs 20 and 21. Follow the adoption guide in this repo's `shared-li
 - `vendor/ward/` holds only the bundles, their types, the README and the LICENSE.
 - The app's test suite, typecheck and lint pass. Its corpus has a log entry and
   a decision recording the change.
+
+## Outcome (2026-10-13)
+
+Shipped in prm (`ec3bf41`, 0.3.0 in `5e64355`).
+- Local registration and a login page with the Ward button, plus settings,
+  all through prm's i18n.
+- Subjects became linked users at boot: `user-<8 chars>`, role `user`.
+  prm never stored roles; promote with `db:set-role`.
+- Mail goes through `notifyUser`, for Ward-linked users only.
+- Playwright now signs in through prm's own accounts.
+- `PUBLIC_ORIGIN` is required in production.
+- The production image copies `backend/vendor`.
+- prm surfaced the shared-lockout bug that became brief 28.
+
+234 vitest and 30 Playwright tests, typecheck and build pass.

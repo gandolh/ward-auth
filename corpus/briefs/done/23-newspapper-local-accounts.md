@@ -54,3 +54,17 @@ Depends on briefs 20 and 21. Follow the adoption guide in this repo's `shared-li
 - `vendor/ward/` holds only the bundles, their types, the README and the LICENSE.
 - The app's test suite, typecheck and lint pass. Its corpus has a log entry and
   a decision recording the change.
+
+## Outcome (2026-10-13)
+
+Shipped in newspapper (`0b81aa6`, 0.3.0 in `d216f2b`).
+- Nothing to migrate: no table holds a user key since its v5.
+- `routePrefix` is `/api/auth`.
+- The cookie is scoped to `/newspapper`, not `/newspapper/api`, because
+  guarded output and upload images sit beside the API prefix.
+- `/uploads/*` stays guarded, as newspapper's own decisions-security.md
+  already decided. This brief's "stays public" was stale.
+- `NEWSPAPPER_BASE` must be set at runtime for the cookie path (brief 27).
+
+905 tests, lint and build pass, and a browser check of local sign-in was
+done.

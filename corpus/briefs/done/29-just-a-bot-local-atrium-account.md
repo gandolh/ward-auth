@@ -64,3 +64,21 @@ step.
   cookie; a `401` re-logs in once; a wrong password is not retried; atrium
   down is `JukeboxUnavailable`; the env rule.
 - Nothing ran the bot or touched `.env`.
+
+## Outcome (2026-10-13)
+
+Shipped in just-a-bot (`296aa33`).
+- The Jukebox logs in to atrium's own `/auth/login` and keeps
+  `atrium_session` in memory.
+- A 401 re-logs in once, single-flight. A refused password is tried once.
+- The variables are `JUKEBOX_ATRIUM_URL`, `JUKEBOX_ATRIUM_USERNAME` and
+  `JUKEBOX_ATRIUM_PASSWORD`. **The bot's real `.env` still has the old names,
+  so any bot deploy before the owner renames them refuses to boot.**
+- Owner steps, in order:
+  1. Seed a `jukebox` user in atrium.
+  2. Rename the variables in the bot's `.env`.
+  3. Deploy atrium, then the bot.
+  4. Remove the bot's `atrium` grant at Ward.
+
+62 tests and typecheck pass (with the old URL variable blanked, because the
+real `.env` is read by one test).

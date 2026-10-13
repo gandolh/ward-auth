@@ -339,3 +339,16 @@ Brief 21 shipped the shared library's Ward half (0.2.0). Docker became available
 ## [2026-10-13] build | Brief 28: the login lockout sees the real client behind a container
 
 `lockoutKeyFor` honoured `X-Forwarded-For` only from a loopback peer. In a container the peer is a Docker bridge address, so every request keyed on the proxy, and five bad passwords from anyone locked everyone out for 15 minutes. Against the local container, six different usernames behind six forwarded addresses locked out the seventh. It now also trusts configured ranges: `WARD_TRUSTED_PROXIES` for Ward, and `AUTH_TRUSTED_PROXIES` or `wardAuth`'s `trustedProxies` for the library, now 0.3.0. These are comma-separated addresses or CIDR ranges, IPv4 or IPv6, and IPv4-mapped peers match IPv4 ranges. Unset means loopback only, and a malformed entry or a `/0` stops the boot. The key is still the last element, and a trusted peer with no header still fails closed and warns. A header from an untrusted peer now warns too. All five lockout callers in Ward (`/login`, `/refresh`, `/console/login`, `/register`, `/account/password`) read the one list, so this went past the brief's file list for `console.ts`, `account.ts` and `register.ts`. The local compose network is pinned to `10.87.92.0/24` and trusted. After the rebuild, seven containers behind the local Caddy each kept their own budget, while one caller rotating a spoofed header was still locked out on its sixth try. Production should use `172.16.0.0/12` (brief 27). Revision note on decisions-implementation.md.
+
+## [2026-10-13] build | Wave C: five apps on local accounts, the lockout fix, and the Jukebox
+
+Briefs 22–26 adopted the shared library in atrium, newspapper, prm, sports-app and satchel. Each app has its own login page, the Ward button, settings for linking and passwords, a seed script, and existing Ward subjects migrated to linked local users. The details are in each brief's outcome.
+
+- **Production images.** Atrium's and satchel's images would have left `vendor/` out; the controller fixed their Dockerfiles and verified the bundle imports inside the built image. prm's agent fixed its own.
+- **Brief 28 (new).** prm's adoption surfaced a live bug: behind containers the lockout keyed every request on the proxy's address, so five bad passwords anywhere locked everyone out. Confirmed on the local container and fixed with trusted proxies. The library went to 0.3.0 and all five apps were re-vendored.
+- **Brief 29 (new).** Atrium's change breaks the Jukebox, which signed in through Ward, so just-a-bot now signs in to atrium's own accounts.
+- **Adoption guide.** It gained five gotchas from the adopters.
+- **Library todo.** Username shaping, rename and disabling a local user went to todos.
+
+Brief 27 (deploy and retirement) is next.
+

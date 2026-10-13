@@ -63,3 +63,22 @@ Depends on briefs 20 and 21. Follow the adoption guide in this repo's `shared-li
 - `vendor/ward/` holds only the bundles, their types, the README and the LICENSE.
 - The app's test suite, typecheck and lint pass. Its corpus has a log entry and
   a decision recording the change.
+
+## Outcome (2026-10-13)
+
+Shipped in atrium (`18e9c2e`, re-vendored 0.3.0 in `1730b88`).
+- The library store shares Knex's pinned connection.
+- Every `profiles.subject` became a linked local user with id = subject and
+  a placeholder name `user-<8 chars>`. Atrium never stored Ward usernames,
+  and the library has no rename yet (todo).
+- Migrated users get `member`, because atrium never stored roles. That
+  includes the Discord bot's subject, until its Ward grant is removed (brief
+  29's owner steps).
+- `profile_selections` were wiped, since their keys were Ward session ids.
+- Login and settings pages are in the Reading Room design. D58 is recorded,
+  with revision notes on D30, D35, D53, D54 and D55.
+- The controller added `vendor/` to the production image (verified by
+  importing the bundle inside the built image).
+- Breaks just-a-bot's Jukebox until brief 29 deploys.
+
+760 tests, typecheck and build pass.

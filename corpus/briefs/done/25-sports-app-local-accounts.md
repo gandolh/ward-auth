@@ -56,3 +56,18 @@ Depends on briefs 20 and 21. Follow the adoption guide in this repo's `shared-li
 - `vendor/ward/` holds only the bundles, their types, the README and the LICENSE.
 - The app's test suite, typecheck and lint pass. Its corpus has a log entry and
   a decision recording the change.
+
+## Outcome (2026-10-13)
+
+Shipped in sports-app (`f449513`, 0.3.0 in `a5b7fc4`).
+- `GET /api/auth/session` added; the sign-in loop is fixed.
+- Snapshots stay keyed by username. Streams keyed by a Ward subject become
+  linked users named by the subject. Name-keyed streams return once a local
+  account with that name is seeded.
+- Usernames sync can't store are refused with `unsupported_username`.
+- The production callback is `/sports-app-api/api/auth/ward/callback`.
+  `SPORTS_APP_API_PREFIX` is needed at build time and at runtime.
+- **Changed a project rule in its `corpus/CLAUDE.md`: "signing in needs
+  the service". The owner has to confirm this.**
+
+1196 tests (`npm run check`) and build pass.

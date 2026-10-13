@@ -56,3 +56,17 @@ Depends on briefs 20 and 21. Follow the adoption guide in this repo's `shared-li
 - `vendor/ward/` holds only the bundles, their types, the README and the LICENSE.
 - The app's test suite, typecheck and lint pass. Its corpus has a log entry and
   a decision recording the change.
+
+## Outcome (2026-10-13)
+
+Shipped in satchel (`95021a5`, 0.3.0 in `d7f68cc`).
+- 11 dev accounts became linked users with their display names; no
+  placeholders were needed.
+- A role heuristic made three admins, two of them test accounts.
+- WebSockets re-check every 10 seconds through the guard, so a Ward revoke
+  ends a live socket in 30 to 40 seconds.
+- The old "lost grant locks the account" rule is retired. A local user
+  keeps working, and how to switch someone off is a todo.
+- The controller added `server/vendor` to the production image (verified).
+
+534 tests, typecheck, lint and build pass.

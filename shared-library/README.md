@@ -506,6 +506,20 @@ subject directly.
 - **A containerised app without `AUTH_TRUSTED_PROXIES` has one lockout bucket
   for everybody** (section 4). The log says so: a throttled warning, "X-Forwarded-For
   ignored for the login lockout", names the peer.
+- **Guarded files beside the API prefix need a wider `cookiePath`.** If the
+  app serves guarded images or downloads outside the API prefix (newspapper's
+  `/newspapper/output/*`), scope the cookie to the app base that covers both.
+  The callback must still sit under `cookiePath`.
+- **Ship `vendor/` in the production image.** A Dockerfile that copies only the
+  build output (`dist/`) leaves the bundle behind, and the server crashes at
+  import. Copy the package's `vendor/` directory next to `dist/`.
+- **better-sqlite3's types may need a cast.** Older `@types/better-sqlite3`
+  versions don't satisfy `SqliteHandle`, although runtime is identical. Cast
+  once where you hand the handle over.
+- **Share an ORM's connection, don't open a second one.** Knex pins a single
+  SQLite connection, and a second connection would block on SQLite's lock
+  while a Knex transaction is open. Hand the library Knex's own handle.
+- **A per-device or per-session key** for app state is `request.auth.session.idHash`.
 - **Tests** can pass `fetch` to `createWardClient` and `fetch`/`navigate`/
   `location` to `createAuthClient`. The library's own suite runs a real Ward
   in-process and is the reference for driving the flow.

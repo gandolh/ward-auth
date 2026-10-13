@@ -42,6 +42,8 @@ admin, so a service that started without one could be locked out of itself.
 | `WARD_SMTP_PORT` | smtp transport | |
 | `WARD_SMTP_USER` | smtp transport | |
 | `WARD_SMTP_PASSWORD` | smtp transport | |
+| `WARD_OIDC_ISSUER` | `api/src/oidc/` | Optional; unset, the OpenID Connect provider is off. The issuer as the browser sees it, ending in `/oidc`. See [Sign in with Ward](/oidc/). |
+| `WARD_UI_URL` | `api/src/oidc/` | Required with the issuer. Ward's UI on the same origin. |
 
 ## The signing key
 

@@ -1,7 +1,7 @@
 import type Database from "better-sqlite3";
 
 import { getDb } from "../../db/connection.js";
-import type { AppRow } from "../../db/apps.js";
+import { oidcClientOf, type AppRow } from "../../db/apps.js";
 import type { AppKeyRow } from "../../db/app-keys.js";
 import type { GrantRow } from "../../db/grants.js";
 import type { UserRow } from "../../db/users.js";
@@ -96,6 +96,15 @@ export interface AppView {
   baselineRole: string | null;
   createdAt: string;
   updatedAt: string;
+  /**
+   * The app as an OpenID Connect client (brief 18). Public keys only, which is
+   * all Ward ever holds; the console shows their `kid`s and the full JWKS.
+   */
+  oidc: {
+    redirectUris: string[];
+    postLogoutRedirectUris: string[];
+    jwks: { keys: Record<string, unknown>[] } | null;
+  };
 }
 
 export function appView(row: AppRow): AppView {
@@ -106,6 +115,7 @@ export function appView(row: AppRow): AppView {
     baselineRole: row.baseline_role,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    oidc: oidcClientOf(row),
   };
 }
 

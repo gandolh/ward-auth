@@ -23,6 +23,22 @@ export interface AppRow {
   baseline_role: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * OpenID Connect client metadata (brief 18), JSON text. Decode with
+   * `oidcClientOf` rather than parsing at call sites. `[]` redirect URIs or a
+   * NULL key set means the app is not an OIDC client.
+   */
+  oidc_redirect_uris: string;
+  oidc_post_logout_redirect_uris: string;
+  oidc_jwks: string | null;
+}
+
+/** An app's OIDC client registration, decoded. */
+export interface OidcClientRegistration {
+  redirectUris: string[];
+  postLogoutRedirectUris: string[];
+  /** The app's public signing keys, or `null` when none is registered. */
+  jwks: { keys: Record<string, unknown>[] } | null;
 }
 
 export interface NewApp {
@@ -67,6 +83,13 @@ const stmts = prepareOnce((db: Database.Database) => ({
   ),
 
   delete: db.prepare<[string]>(`DELETE FROM apps WHERE slug = ?`),
+
+  setOidcClient: db.prepare<[string, string, string | null, string]>(
+    `UPDATE apps
+        SET oidc_redirect_uris = ?, oidc_post_logout_redirect_uris = ?, oidc_jwks = ?,
+            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE slug = ?`,
+  ),
 }));
 
 /**
@@ -122,6 +145,38 @@ export function setPublicRegistration(
 
 export function renameApp(db: Database.Database, slug: string, name: string): boolean {
   return stmts(db).rename.run(name, slug).changes === 1;
+}
+
+/**
+ * Decode a row's OIDC columns. The CHECKs on the columns guarantee valid JSON
+ * of the right outer shape; what is inside was validated by whoever wrote it
+ * (`oidc/clients.ts`), and the provider validates it again as client metadata.
+ */
+export function oidcClientOf(row: AppRow): OidcClientRegistration {
+  return {
+    redirectUris: JSON.parse(row.oidc_redirect_uris) as string[],
+    postLogoutRedirectUris: JSON.parse(row.oidc_post_logout_redirect_uris) as string[],
+    jwks:
+      row.oidc_jwks === null
+        ? null
+        : (JSON.parse(row.oidc_jwks) as { keys: Record<string, unknown>[] }),
+  };
+}
+
+/** Replace an app's whole OIDC client registration. `false` if no such app. */
+export function setOidcClient(
+  db: Database.Database,
+  slug: string,
+  client: OidcClientRegistration,
+): boolean {
+  return (
+    stmts(db).setOidcClient.run(
+      JSON.stringify(client.redirectUris),
+      JSON.stringify(client.postLogoutRedirectUris),
+      client.jwks === null ? null : JSON.stringify(client.jwks),
+      slug,
+    ).changes === 1
+  );
 }
 
 /**

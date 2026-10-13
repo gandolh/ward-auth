@@ -1,5 +1,5 @@
 ---
-summary: Two questions the 2026-10-13 OIDC redesign leaves for its briefs to settle — how an app authenticates as a client given app keys are stored hashed, and what oidc-provider's own session still does once Ward's refresh family is the authority.
+summary: What is genuinely open (nothing, as of brief 18), work deferred to briefs, and items that belong to other repos.
 updated: 2026-10-13
 ---
 
@@ -9,20 +9,9 @@ Only what is actually open. The moment one is answered, **delete it from this
 page** — the history belongs in [../log.md](../log.md) and the outcome in the
 decisions pages.
 
-## Open — settled inside brief 18
+## Open
 
-Both come from the 2026-10-13 redesign ([decisions-oidc.md](./decisions-oidc.md)).
-Neither blocks writing code; brief 18 answers them and deletes them from here.
-
-- **How an app authenticates as an OIDC client.** Ward stores app keys only as
-  `sha256`, and `client_secret_basic` compares plaintext. `private_key_jwt` is
-  preferred because Ward then holds no app secret at all. The fallback is a
-  custom check of a hashed secret.
-- **What oidc-provider's own session still does.** Ward's refresh family is the
-  authority on "signed in at Ward", carried to apps as `ward_sid`. The
-  provider's session must not outlive it or answer differently.
-
-An empty page here is the goal state, not a gap.
+Nothing. An empty page here is the goal state, not a gap.
 
 ## Not open — deferred to briefs
 

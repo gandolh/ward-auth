@@ -30,6 +30,7 @@ import { consoleHref } from "./nav.js";
 import { formatWhen, plural } from "./format.js";
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
 import { AppKeysPanel } from "./AppKeys.js";
+import { OidcClientPanel } from "./OidcClient.js";
 import { Alert, Confirm, Empty, Panel, TextField } from "./ui.js";
 
 export function AppDetailScreen({ slug }: { slug: string }): React.JSX.Element {
@@ -303,6 +304,13 @@ function AppBody({
         panel would put the routine action after the irreversible one.
       */}
       <AppKeysPanel slug={app.slug} />
+
+      {/*
+        The app as an OpenID Connect client (brief 18). Keyed on `updatedAt` so
+        a save that Ward normalised (a key given its alg, duplicates dropped)
+        re-renders from what was stored rather than from what was typed.
+      */}
+      <OidcClientPanel key={app.updatedAt} app={app} reload={reload} />
 
       <Panel
         title="Remove this app"

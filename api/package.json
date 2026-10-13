@@ -9,19 +9,22 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "keygen": "tsx src/tokens/keygen.ts",
-    "register-app-keys": "tsx src/scripts/register-app-keys.ts"
+    "register-app-keys": "tsx src/scripts/register-app-keys.ts",
+    "oidc-client-key": "tsx src/oidc/client-keygen.ts"
   },
   "dependencies": {
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.1",
     "jose": "6.2.10",
     "nodemailer": "10.0.0",
+    "oidc-provider": "9.12.2",
     "zod": "4.5.4"
   },
   "devDependencies": {
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "24.13.3",
     "@types/nodemailer": "8.0.1",
+    "@types/oidc-provider": "9.12.1",
     "tsx": "4.23.13",
     "typescript": "6.0.3"
   }

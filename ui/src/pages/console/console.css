@@ -523,7 +523,8 @@
 
 .wc-field input[type="text"],
 .wc-field input[type="password"],
-.wc-field select {
+.wc-field select,
+.wc-field textarea {
   font: inherit;
   font-size: var(--ward-text-sm);
   padding: var(--ward-space-2) var(--ward-space-3);
@@ -535,8 +536,10 @@
   width: 100%;
 }
 
-/* An opaque identifier is typed as well as read, so the field is mono too. */
-.wc-field input[data-opaque="true"] {
+/* An opaque identifier is typed as well as read, so the field is mono too.
+ * The OIDC panel's textareas hold URLs and a JWK, which are opaque the same way. */
+.wc-field input[data-opaque="true"],
+.wc-field textarea {
   font-family: var(--ward-font-mono);
 }
 

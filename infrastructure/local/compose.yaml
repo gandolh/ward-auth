@@ -29,6 +29,11 @@ services:
       # The origin the browser uses, and the `iss` of every token: an app's
       # WARD_PUBLIC_ORIGIN has to be exactly this string.
       WARD_PUBLIC_ORIGIN: http://localhost:8792
+      # Ward's OpenID Connect provider (brief 18): the issuer as the browser
+      # sees it, behind the gateway's /ward-api, and Ward's UI on the same
+      # origin. An app's WARD_OIDC_ISSUER has to be exactly this string.
+      WARD_OIDC_ISSUER: http://localhost:8792/ward-api/oidc
+      WARD_UI_URL: http://localhost:8792/ward
       WARD_MAIL_TRANSPORT: file
       WARD_MAIL_FROM: ward@localhost
       # HOST, PORT, WARD_DB_PATH, WARD_SIGNING_KEY_PATH and WARD_MAIL_FILE_DIR

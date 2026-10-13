@@ -1,0 +1,157 @@
+---
+title: Sign in with Ward (OpenID Connect)
+description: Ward as an OpenID Connect provider — the issuer and its URLs behind the stripped prefix, how an app registers and authenticates as a client, the ID token's claims, the login step, logout, and the environment variables.
+---
+
+Every app keeps its own accounts and its own login page. "Sign in with Ward" is
+an extra button on that page: an OpenID Connect authorization code flow with
+PKCE, against Ward as the provider. Ward runs
+[`oidc-provider`](https://github.com/panva/node-oidc-provider) rather than a
+hand-written protocol. The design and what it replaced are in the corpus page
+`corpus/wiki/decisions-oidc.md`.
+
+The cookie sign-in, `/introspect`, `/session`, `/refresh` and `/logout` keep
+working unchanged until the cutover. Nothing on this page replaces them yet.
+
+## The issuer
+
+`WARD_OIDC_ISSUER` is the issuer **as the browser sees it**, for example
+`https://example.com/ward-api/oidc`. It must end in `/oidc`, Ward's internal
+mount. Whatever precedes `/oidc` is the prefix the proxy strips: `/ward-api`
+behind Caddy, nothing when a client talks to Ward directly.
+
+:::caution[Pick the prefix with care]
+`oidc-provider` finds its mount by looking for the request's own path inside
+the full one. A prefix that itself contains `/auth`, `/token`, `/jwks`, `/me`,
+`/request` or `/session` would make every advertised URL wrong. `/ward-api`, and
+a subdomain with no prefix at all, are both safe.
+:::
+
+Every URL the provider advertises is built from that value and never from the
+request, so discovery, `iss` and every endpoint name the external URL. A request's
+own `Host` and `X-Forwarded-*` headers cannot change them.
+
+| Endpoint | The browser or app uses (issuer `…/ward-api/oidc`) | Ward serves internally |
+|---|---|---|
+| Discovery | `/ward-api/oidc/.well-known/openid-configuration` | `/oidc/.well-known/openid-configuration` |
+| JWKS | `/ward-api/oidc/jwks` | `/oidc/jwks` |
+| Authorization | `/ward-api/oidc/auth` | `/oidc/auth` |
+| Token | `/ward-api/oidc/token` | `/oidc/token` |
+| End session | `/ward-api/oidc/session/end` | `/oidc/session/end` |
+| Login step | `/ward-api/refresh/oidc/<uid>` | `/refresh/oidc/<uid>` |
+
+The JWKS publishes Ward's existing Ed25519 key, the same `kid` as
+`/ward-api/.well-known/jwks.json`. Userinfo, dynamic registration, PAR,
+introspection and revocation are off.
+
+## What the flow allows
+
+- **Grant:** `authorization_code` only. No implicit flow, no password grant, no
+  refresh tokens.
+- **PKCE:** required, `S256` only.
+- **Response type:** `code`. Scope: `openid`.
+- **Signatures:** Ed25519 throughout. ID tokens are signed `EdDSA`; pin `alg`
+  to `EdDSA` when verifying, and give `openid-client` the client metadata
+  `id_token_signed_response_alg: "EdDSA"`, or it expects RS256. A client
+  assertion may say `EdDSA` or `Ed25519`; `openid-client` 6 sends `Ed25519`.
+
+## Clients are apps
+
+`client_id` is the app's slug. In the console, open Apps, then the app, then
+**Sign in with Ward**, and set:
+
+- **Redirect URIs**, one per line, compared as exact strings. Register one per
+  environment: the dev server's (plain `http` is allowed on `localhost`) and the
+  production one (`https`).
+- **Sign-out return URIs**, where Ward may send someone after "sign out of Ward
+  too".
+- **The app's public key**, a JWK.
+
+An app with no redirect URI or no key is not a client, and Ward answers
+`invalid_client`. The local seed registers each app with its dev redirect URI
+(`<dev URL>auth/ward/callback`).
+
+## How an app authenticates: `private_key_jwt`
+
+Ward stores no app secret. Each app holds an Ed25519 private key in its own
+environment and signs a short client assertion with it at the token endpoint.
+Ward holds only the public JWK.
+
+Make a pair with:
+
+```sh
+npm run oidc-client-key --workspace=api -- <app-slug>
+```
+
+It prints two things and writes nothing:
+
+1. `WARD_OIDC_CLIENT_KEY=…` for the app's environment. The value is the private
+   JWK (`kty`, `crv`, `x`, `d`, `kid`, `use`) as JSON, base64url-encoded.
+2. The public JWK, one JSON line, for the console. Ward refuses a key that
+   carries `d`.
+
+The assertion is a compact JWS with header `alg` `EdDSA` or `Ed25519` and the
+key's `kid` (required once a rotation registers two keys), and these claims:
+
+| Claim | Value |
+|---|---|
+| `iss`, `sub` | the `client_id` |
+| `aud` | the issuer (the token endpoint URL is also accepted) |
+| `exp` | a short time ahead |
+| `jti` | fresh every time; a reused one is refused |
+
+`openid-client`'s `PrivateKeyJwt` builds exactly this. To rotate, register the
+new public key next to the old one (paste `{"keys":[old, new]}`), deploy the new
+private key, then remove the old one.
+
+## The login step
+
+The provider sends every authorization to Ward's login step, and the step asks
+**Ward's refresh cookie**, not the provider's own session:
+
+- A live Ward session finishes the step with no password prompt.
+- Otherwise the person sees Ward's login page, headed "Continue to" the app's
+  display name. Signing in there makes an ordinary Ward session.
+- The account must be active and hold a grant for the client's app. If not, the
+  app receives `error=access_denied` at its redirect URI.
+- "Back to the app" on the login page also returns `access_denied`.
+- There is never a consent screen.
+- `prompt=login` and `max_age` ask for a password typed recently, not just a
+  live session.
+
+A wrong or unregistered redirect URI is never redirected to. Ward shows its own
+error page instead, because sending an error to an unregistered URI would be an
+open redirect.
+
+## The ID token
+
+| Claim | Type | Value |
+|---|---|---|
+| `iss` | string | the issuer |
+| `aud` | string | the `client_id` |
+| `sub` | string | the Ward subject, unchanged |
+| `preferred_username` | string | the Ward username |
+| `ward_sid` | string | the Ward session: the refresh family id |
+| `ward_role` | string | a role the account holds in this app (the first, sorted, if it holds several) |
+| `nonce`, `iat`, `exp` | | standard; `auth_time` too when `max_age` is sent |
+
+Email is never included. `ward_sid` is the id an app keeps on its own session
+row and asks Ward about. The provider's own `sid` claim is not used.
+
+## Logout
+
+An app that wants "sign out of Ward too" sends the browser to the end-session
+endpoint with `id_token_hint` (the ID token it received), and optionally
+`post_logout_redirect_uri` (registered) and `state`. Ward revokes the Ward
+session named by `ward_sid`, exactly as `POST /logout` would, and sends the
+browser back. Without `id_token_hint`, nothing at Ward is revoked.
+
+## Environment variables
+
+| Variable | Notes |
+|---|---|
+| `WARD_OIDC_ISSUER` | Optional. Unset, the provider is not mounted. Must end in `/oidc`. |
+| `WARD_UI_URL` | Required with the issuer. Ward's UI, absolute, on the issuer's origin; the login page is `<this>/login`. |
+
+On the app's side the local seed writes `WARD_OIDC_ISSUER`, `WARD_OIDC_CLIENT_ID`,
+`WARD_OIDC_CLIENT_KEY` and `WARD_OIDC_REDIRECT_URI`.

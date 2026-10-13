@@ -71,6 +71,7 @@ export default defineConfig({
             { label: 'Introspection and revocation', link: '/introspection/' },
             { label: 'Grants — the security boundary', link: '/grants/' },
             { label: 'App keys', link: '/app-keys/' },
+            { label: 'Sign in with Ward (OIDC)', link: '/oidc/' },
           ],
         },
         {

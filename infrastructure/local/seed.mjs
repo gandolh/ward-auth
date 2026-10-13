@@ -12,12 +12,19 @@
  *   2. one owner account exists and holds `admin` on each of them;
  *   3. each app has a working app key, written together with WARD_PUBLIC_ORIGIN
  *      and WARD_API_BASE_PATH into that app's local env file(s). Nothing else in
- *      those files changes, and a key that still works is kept.
+ *      those files changes, and a key that still works is kept;
+ *   4. each app is an OpenID Connect client (brief 18): its dev redirect URI and
+ *      sign-out return URI are registered, and its client key pair exists. The
+ *      private half goes into the app's env file(s) as WARD_OIDC_CLIENT_KEY,
+ *      next to WARD_OIDC_ISSUER, WARD_OIDC_CLIENT_ID and WARD_OIDC_REDIRECT_URI;
+ *      Ward gets only the public half. A key already in the env file and
+ *      registered at Ward is kept.
  *
  * The owner's username and password come from WARD_OWNER_USERNAME and
  * WARD_OWNER_PASSWORD, or are asked for. They go to Ward, which stores a hash,
  * and nowhere else: this script never writes them down.
  */
+import { createHash, generateKeyPairSync } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -30,6 +37,14 @@ const ORIGIN = "http://localhost:8792";
 const API_BASE_PATH = "/ward-api";
 const API = `${ORIGIN}${API_BASE_PATH}`;
 const OWNER_ROLE = "admin";
+/** Must match WARD_OIDC_ISSUER in compose.yaml: it is the `iss` of every ID token. */
+const OIDC_ISSUER = `${API}/oidc`;
+/**
+ * Where each app's "Sign in with Ward" comes back to, under its dev base path.
+ * A convention of this seed, which the shared library (brief 21) follows; an
+ * app that picks another path registers it in the console.
+ */
+const OIDC_CALLBACK_PATH = "auth/ward/callback";
 const KEY_LABEL = "local dev (seed.mjs)";
 
 const ENV_FILE = process.env.WARD_LOCAL_ENV_FILE ?? join(homedir(), ".config/ward/local.env");
@@ -40,14 +55,15 @@ const PROJECTS = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 /**
  * The apps that authenticate against Ward. `slug` is Ward's `apps.slug`, `repo`
  * the checkout under PROJECTS, and `envFiles` the gitignored files holding that
- * app's local Ward settings, relative to the repo.
+ * app's local Ward settings, relative to the repo. `dev` is the app's dev
+ * server URL with its base path, which its OIDC redirect URI hangs off.
  */
 const APPS = [
-  { slug: "atrium", name: "Atrium", repo: "atrium", envFiles: [".env"] },
-  { slug: "newspapper", name: "Newspapper", repo: "newspapper", envFiles: [".env"] },
-  { slug: "prm", name: "Public Resource Map", repo: "public-resource-map", envFiles: [".env"] },
-  { slug: "sports-app", name: "Sports", repo: "sports-app", envFiles: [".env"] },
-  { slug: "satchel", name: "Satchel", repo: "satchel", envFiles: [".env"] },
+  { slug: "atrium", name: "Atrium", repo: "atrium", envFiles: [".env"], dev: "http://localhost:5173/atrium/" },
+  { slug: "newspapper", name: "Newspapper", repo: "newspapper", envFiles: [".env"], dev: "http://localhost:4321/newspapper/" },
+  { slug: "prm", name: "Public Resource Map", repo: "public-resource-map", envFiles: [".env"], dev: "http://localhost:5173/prm/" },
+  { slug: "sports-app", name: "Sports", repo: "sports-app", envFiles: [".env"], dev: "http://localhost:5173/sports-app/" },
+  { slug: "satchel", name: "Satchel", repo: "satchel", envFiles: [".env"], dev: "http://localhost:5175/satchel/" },
 ];
 
 async function main() {
@@ -78,6 +94,7 @@ async function main() {
     const account = await ensureOwner(cookie, owner);
     await ensureGrants(cookie, account.subject);
     for (const app of APPS) await ensureAppKey(cookie, app);
+    for (const app of APPS) await ensureOidcClient(cookie, app);
   } finally {
     await ward("POST", "/console/logout", { cookie });
   }
@@ -134,11 +151,12 @@ async function ensureGrants(cookie, subject) {
   console.log(`✓ grants: ${OWNER_ROLE} on all ${APPS.length} apps`);
 }
 
-async function ensureAppKey(cookie, app) {
+/** The app's env files that are safe to write a secret into, or [] to skip it. */
+function envFilesFor(app) {
   const repoDir = join(PROJECTS, app.repo);
   if (!existsSync(repoDir)) {
     console.log(`- ${app.slug}: no ${app.repo}/ next to wzd_auth, skipped`);
-    return;
+    return [];
   }
 
   const files = [];
@@ -146,6 +164,11 @@ async function ensureAppKey(cookie, app) {
     if (ignoredByGit(repoDir, file)) files.push(file);
     else console.warn(`! ${relative(PROJECTS, file)} is not gitignored; not writing a key into it`);
   }
+  return files;
+}
+
+async function ensureAppKey(cookie, app) {
+  const files = envFilesFor(app);
   if (files.length === 0) return;
 
   let key = files.map((file) => readEnvValue(file, "WARD_APP_KEY")).find(Boolean);
@@ -170,6 +193,83 @@ async function ensureAppKey(cookie, app) {
   // place for it to leak from.
   const where = files.map((file) => relative(PROJECTS, file)).join(", ");
   console.log(`✓ ${app.slug}: key ${outcome} (${key.slice(0, 12)}…) → ${where}`);
+}
+
+/**
+ * Register the app as an OIDC client and give it a key pair. Redirect URIs and
+ * keys already registered (say, added by hand in the console) are kept; the
+ * dev ones are added beside them.
+ */
+async function ensureOidcClient(cookie, app) {
+  const files = envFilesFor(app);
+  if (files.length === 0) return;
+
+  const { app: registered } = expectStatus(
+    await ward("GET", `/console/apps/${app.slug}`, { cookie }),
+    200,
+    `read ${app.slug}`,
+  );
+  const known = registered.oidc.jwks?.keys ?? [];
+
+  let envKey = files.map((file) => readEnvValue(file, "WARD_OIDC_CLIENT_KEY")).find(Boolean);
+  let publicJwk = envKey ? publicHalf(envKey) : undefined;
+  let outcome = "kept";
+  if (!publicJwk || !known.some((key) => key.kid === publicJwk.kid && key.x === publicJwk.x)) {
+    ({ envKey, publicJwk } = newClientKey());
+    outcome = "minted";
+  }
+
+  const redirect = `${app.dev}${OIDC_CALLBACK_PATH}`;
+  const body = {
+    redirectUris: [...new Set([...registered.oidc.redirectUris, redirect])],
+    postLogoutRedirectUris: [...new Set([...registered.oidc.postLogoutRedirectUris, app.dev])],
+    jwks: {
+      keys: [...known.filter((key) => key.kid !== publicJwk.kid), publicJwk],
+    },
+  };
+  expectStatus(
+    await ward("PUT", `/console/apps/${app.slug}/oidc`, { cookie, body }),
+    200,
+    `register ${app.slug} as an OIDC client`,
+  );
+
+  for (const file of files) {
+    writeEnvValues(file, {
+      WARD_OIDC_ISSUER: OIDC_ISSUER,
+      WARD_OIDC_CLIENT_ID: app.slug,
+      WARD_OIDC_CLIENT_KEY: envKey,
+      WARD_OIDC_REDIRECT_URI: redirect,
+    });
+  }
+  console.log(`✓ ${app.slug}: OIDC client, key ${outcome} (kid ${publicJwk.kid.slice(0, 8)}…), ${redirect}`);
+}
+
+/**
+ * The same pair `npm run oidc-client-key` prints (api/src/oidc/client-keygen.ts),
+ * made here with node:crypto alone because this script has no dependencies.
+ */
+function newClientKey() {
+  const { privateKey } = generateKeyPairSync("ed25519");
+  const { crv, x, d } = privateKey.export({ format: "jwk" });
+  const publicJwk = { kty: "OKP", crv, x, kid: thumbprint(crv, x), use: "sig" };
+  const envKey = Buffer.from(JSON.stringify({ ...publicJwk, d })).toString("base64url");
+  return { envKey, publicJwk };
+}
+
+/** The public JWK inside a WARD_OIDC_CLIENT_KEY value, or undefined if it is not one. */
+function publicHalf(envKey) {
+  try {
+    const { kty, crv, x, kid } = JSON.parse(Buffer.from(envKey, "base64url").toString("utf8"));
+    if (kty !== "OKP" || crv !== "Ed25519" || typeof x !== "string") return undefined;
+    return { kty, crv, x, kid: kid ?? thumbprint(crv, x), use: "sig" };
+  } catch {
+    return undefined;
+  }
+}
+
+/** RFC 7638: sha256 over the required members in lexical order. */
+function thumbprint(crv, x) {
+  return createHash("sha256").update(JSON.stringify({ crv, kty: "OKP", x })).digest("base64url");
 }
 
 /** `/introspect` checks the app key before anything else, so a bad one is a 401. */

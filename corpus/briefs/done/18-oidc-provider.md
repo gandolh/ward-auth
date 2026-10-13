@@ -100,3 +100,28 @@ write the protocol by hand.
 - The local seed registers each app as a client with its dev redirect URI.
   Docs describe the new env variables without naming any domain.
 - Ward's test suite, typecheck and lint pass.
+
+## Outcome (2026-10-13)
+
+Shipped. `oidc-provider` 9.12.2 is mounted under `/oidc` behind the stripped
+`/ward-api` prefix when `WARD_OIDC_ISSUER` (ending in `/oidc`) and
+`WARD_UI_URL` are set. With neither set, nothing is mounted and production
+behaves as before. Codes and grants persist in SQLite (migration
+`20261013000000-oidc`). Clients authenticate with `private_key_jwt` only;
+`npm run oidc-client-key --workspace=api -- <slug>` prints the app's key line
+and the public JWK for the console. The ID token carries `sub`,
+`preferred_username`, `ward_sid` (the refresh family) and `ward_role`. Both
+open questions are settled in decisions-oidc.md.
+
+Deviations:
+- A wrong or unregistered redirect URI gets Ward's own 400 page, not
+  `access_denied`, because redirecting an error to an unregistered URI is an
+  open redirect.
+- openid-client 6 signs client assertions as `Ed25519`, so Ward accepts both
+  `EdDSA` and `Ed25519` there. ID tokens stay `EdDSA` only.
+- Docker was not available in the session, so the container was not rebuilt.
+  The full flow was run with openid-client 6.8.8 against Ward in production mode
+  behind a prefix-stripping proxy.
+
+Verified by the controller: 1009 tests, typecheck, lint, build and corpus lint
+clean.

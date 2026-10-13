@@ -101,6 +101,12 @@ describe("the base path", () => {
       run: (api) => api.deleteApp("prm"),
       body: { slug: "prm", grantsRevoked: 0 },
     },
+    {
+      name: "setOidcClient",
+      run: (api) =>
+        api.setOidcClient("prm", { redirectUris: [], postLogoutRedirectUris: [], jwks: null }),
+      body: { app: {} },
+    },
     { name: "grantsForSubject", run: (api) => api.grantsForSubject("s"), body: { grants: [] } },
     { name: "grantsForApp", run: (api) => api.grantsForApp("prm"), body: { grants: [] } },
     {

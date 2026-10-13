@@ -59,6 +59,37 @@ if (existsSync(ENV_FILE)) {
  * cleanly and Ward would boot with a credential that anyone can guess by
  * submitting nothing.
  */
+/**
+ * An absolute http(s) URL that may carry a path but no query or fragment.
+ * Trailing slashes are stripped for the same reason `WARD_PUBLIC_ORIGIN`'s
+ * are: the value is compared as an exact string (`iss`), and a stray slash is
+ * a typo, not a misunderstanding.
+ */
+const externalUrl = z
+  .string()
+  .min(1)
+  .transform((value) => value.trim().replace(/\/+$/, ""))
+  .refine(
+    (value) => {
+      let url: URL;
+      try {
+        url = new URL(value);
+      } catch {
+        return false;
+      }
+      return (
+        (url.protocol === "https:" || url.protocol === "http:") &&
+        url.search === "" &&
+        url.hash === "" &&
+        url.href.replace(/\/+$/, "") === value
+      );
+    },
+    {
+      message:
+        'must be an absolute http(s) URL, lowercase host, with no query, fragment or trailing slash (e.g. "https://example.com/ward-api/oidc")',
+    },
+  );
+
 const envSchema = z.object({
   /** Loopback port Caddy reverse-proxies `/ward-api/*` to. */
   PORT: z.coerce.number().int().positive().max(65_535),
@@ -153,6 +184,33 @@ const envSchema = z.object({
    */
   WARD_MAIL_FROM: z.string().min(1),
 
+  /**
+   * The OpenID Connect issuer (brief 18), as the **browser** sees it — e.g.
+   * `https://example.com/ward-api/oidc`. Optional, and absent means the provider
+   * is not mounted at all: every route that existed before brief 18 behaves as
+   * it did, so a deploy that has not set it yet keeps the estate signing in.
+   * That is the safe direction, the same reasoning as `HOST` above, and unlike a
+   * derived default it cannot be wrong.
+   *
+   * It must end in `/oidc`, Ward's internal mount, and everything before that
+   * is the prefix the proxy strips (`/ward-api` behind Caddy, nothing when the
+   * browser talks to Ward directly). That rule is what lets the provider emit
+   * this URL rather than the internal one in discovery, in `iss` and in every
+   * endpoint it advertises — the `/ward-api` bug class integrating.md rule 2
+   * records. `oidc/layout.ts` does the split.
+   */
+  WARD_OIDC_ISSUER: externalUrl.optional(),
+
+  /**
+   * Ward's own UI, absolute — e.g. `https://example.com/ward`. Required when the
+   * issuer is set, and must share its origin: the provider sends a person who is
+   * not signed in to `<this>/login`, and the cookies that sign-in sets have to be
+   * readable by the issuer's interaction route. A setting rather than a constant
+   * because decisions-oidc.md makes Ward's UI base path configuration, so the
+   * day Ward moves to a subdomain is an env change here.
+   */
+  WARD_UI_URL: externalUrl.optional(),
+
   WARD_PUBLIC_ORIGIN: z
     .string()
     .min(1)
@@ -183,6 +241,33 @@ const envSchema = z.object({
  * which is the property that matters, not where the check happens to sit.
  */
 const mailAwareSchema = envSchema.superRefine((env, ctx) => {
+  // The OIDC pair: the UI URL is needed exactly when the issuer is set, and the
+  // two must share an origin (see `WARD_UI_URL`). The `/oidc` suffix is checked
+  // here rather than in the field so the message can name the rule.
+  if (env.WARD_OIDC_ISSUER !== undefined) {
+    if (!new URL(env.WARD_OIDC_ISSUER).pathname.endsWith("/oidc")) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["WARD_OIDC_ISSUER"],
+        message:
+          'must end in "/oidc", Ward\'s internal mount; the part before it is the prefix the proxy strips (e.g. "https://example.com/ward-api/oidc")',
+      });
+    }
+    if (env.WARD_UI_URL === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["WARD_UI_URL"],
+        message: "is required when WARD_OIDC_ISSUER is set",
+      });
+    } else if (new URL(env.WARD_UI_URL).origin !== new URL(env.WARD_OIDC_ISSUER).origin) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["WARD_UI_URL"],
+        message: "must be on the same origin as WARD_OIDC_ISSUER",
+      });
+    }
+  }
+
   if (env.WARD_MAIL_TRANSPORT === "smtp") {
     for (const key of [
       "WARD_SMTP_HOST",
@@ -288,3 +373,19 @@ export const MAIL: MailTransport =
         password: env.WARD_SMTP_PASSWORD!,
         from: env.WARD_MAIL_FROM,
       };
+
+/**
+ * OpenID Connect provider settings (brief 18), or `undefined` when
+ * `WARD_OIDC_ISSUER` is unset and the provider is not mounted. Read by
+ * `oidc/routes.ts`. The refinement above guarantees `uiUrl` whenever there is
+ * an issuer.
+ */
+export interface OidcSettings {
+  issuer: string;
+  uiUrl: string;
+}
+
+export const OIDC: OidcSettings | undefined =
+  env.WARD_OIDC_ISSUER === undefined
+    ? undefined
+    : { issuer: env.WARD_OIDC_ISSUER, uiUrl: env.WARD_UI_URL! };

@@ -9,9 +9,12 @@ import {
   getApp,
   listApps,
   renameApp,
+  oidcClientOf,
+  setOidcClient,
   setPublicRegistration,
   type AppRow,
 } from "../../db/apps.js";
+import { parseClientRegistration } from "../../oidc/clients.js";
 import { listGrantsForApp } from "../../db/grants.js";
 import {
   appView,
@@ -98,6 +101,23 @@ const patchAppBody = z
   .refine((body) => Object.keys(body).length > 0, { message: "no fields to update" });
 
 /** One field that changed, as the audit row records it. */
+/**
+ * `PUT /console/apps/:slug/oidc` — the app's whole OIDC client registration in
+ * one write (brief 18). A PUT rather than fields on the PATCH above because
+ * the three parts are one decision: redirect URIs without a key, or a key
+ * without a redirect URI, is an app that is not a client yet.
+ *
+ * `jwks` is what the operator pasted from `npm run oidc-client-key`: one
+ * public JWK, or a JWK Set when rotating. `null` removes the keys, which stops
+ * the app signing anyone in through Ward at its next token request.
+ */
+const oidcUri = z.string().trim().min(1).max(512);
+const putOidcBody = z.object({
+  redirectUris: z.array(oidcUri).max(10),
+  postLogoutRedirectUris: z.array(oidcUri).max(10),
+  jwks: z.unknown(),
+});
+
 interface FieldChange {
   from: unknown;
   to: unknown;
@@ -332,6 +352,56 @@ export async function adminAppsRoutes(
    * surface that silently removes rows the operator did not name, so the count
    * is the only trace left that they existed.
    */
+  app.put("/console/apps/:slug/oidc", async (request, reply) => {
+    const params = slugParams.safeParse(request.params);
+    const body = putOidcBody.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ error: "invalid_request" });
+    }
+
+    const registration = await parseClientRegistration({
+      redirectUris: body.data.redirectUris,
+      postLogoutRedirectUris: body.data.postLogoutRedirectUris,
+      jwks: body.data.jwks,
+    });
+    if (typeof registration === "string") {
+      return reply.code(400).send({ error: registration });
+    }
+
+    const db = await database();
+    const before = getApp(db, params.data.slug);
+    if (before === undefined) {
+      return reply.code(404).send({ error: "app_not_found" });
+    }
+
+    const after = db.transaction((): AppRow => {
+      setOidcClient(db, before.slug, registration);
+      const row = getApp(db, before.slug)!;
+      const was = oidcClientOf(before);
+      // Key ids, never key material, in the audit row: the log is read by
+      // whoever reads the console, and a kid is enough to say which key.
+      recordConsoleAudit(db, request, {
+        action: "app.oidc_client",
+        targetKind: "app",
+        targetId: row.slug,
+        detail: {
+          redirectUris: { from: was.redirectUris, to: registration.redirectUris },
+          postLogoutRedirectUris: {
+            from: was.postLogoutRedirectUris,
+            to: registration.postLogoutRedirectUris,
+          },
+          kids: {
+            from: was.jwks?.keys.map((key) => key["kid"]) ?? [],
+            to: registration.jwks?.keys.map((key) => key["kid"]) ?? [],
+          },
+        },
+      });
+      return row;
+    })();
+
+    return reply.code(200).send({ app: appView(after) });
+  });
+
   app.delete("/console/apps/:slug", async (request, reply) => {
     const params = slugParams.safeParse(request.params);
     if (!params.success) {

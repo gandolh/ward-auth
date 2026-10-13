@@ -15,6 +15,7 @@ import { adminAuditRoutes } from "./routes/admin/audit.js";
 import { accountRoutes } from "./routes/account.js";
 import { publicAppsRoutes } from "./routes/public-apps.js";
 import { registerRoutes } from "./routes/register.js";
+import { oidcRoutes } from "./oidc/routes.js";
 
 /**
  * Construct and configure the Fastify instance — nothing more.
@@ -163,6 +164,17 @@ export async function buildApp(): Promise<FastifyInstance> {
    * before any `onRequest` hook could scrub it.
    */
   await app.register(registerRoutes);
+
+  /**
+   * The OpenID Connect provider (brief 18): `/oidc/*` and its login step at
+   * `/refresh/oidc/:uid`. Mounted only when `WARD_OIDC_ISSUER` is set, and it
+   * touches none of the routes above — the cookie sign-in, `/introspect`,
+   * `/session`, `/refresh` and `/logout` serve the four apps on today's
+   * contract until the cutover (brief 27). See the header of `oidc/routes.ts`
+   * for how the stripped `/ward-api` prefix is put back into every URL it
+   * advertises.
+   */
+  await app.register(oidcRoutes);
 
   // Registration order carries no meaning — these plugins share no state and
   // no route prefix, and each declares its own paths. It is alphabetical-ish by

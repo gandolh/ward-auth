@@ -7,6 +7,12 @@ import { Threshold } from "../components/Threshold.js";
 import { WardApiError, login, type WardErrorCode } from "../lib/api.js";
 import { rootName, slugForRoot } from "../lib/estate.js";
 import { resolveNext } from "../lib/next.js";
+import {
+  interactionAbortUrl,
+  interactionResumeUrl,
+  oidcInteraction,
+  useInteractionClient,
+} from "../lib/oidc.js";
 import { useOpenApps } from "../lib/open-apps.js";
 import { deadlineIn, useCountdown } from "../lib/use-countdown.js";
 import { formatWait } from "../lib/wait.js";
@@ -104,6 +110,10 @@ export function Login(): React.JSX.Element {
    */
   const destination = useMemo(() => resolveNext(params.get("next")), [params]);
 
+  /** The provider's interaction this sign-in finishes, when an app sent them. */
+  const interaction = useMemo(() => oidcInteraction(params.get("oidc")), [params]);
+  const interactionClient = useInteractionClient(interaction);
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -132,7 +142,7 @@ export function Login(): React.JSX.Element {
   const destinationSlug =
     destination.accepted && destination.root !== "" ? slugForRoot(destination.root) : undefined;
   const registerApp =
-    destinationSlug !== undefined && Array.isArray(openApps)
+    interaction === undefined && destinationSlug !== undefined && Array.isArray(openApps)
       ? openApps.find((app) => app.slug === destinationSlug)
       : undefined;
 
@@ -149,9 +159,13 @@ export function Login(): React.JSX.Element {
   }, []);
 
   const heading =
-    destination.accepted && destination.root !== ""
-      ? `Continue to ${rootName(destination.root)}`
-      : "Sign in";
+    interaction !== undefined
+      ? interactionClient === undefined
+        ? "Sign in"
+        : `Continue to ${interactionClient.name}`
+      : destination.accepted && destination.root !== ""
+        ? `Continue to ${rootName(destination.root)}`
+        : "Sign in";
 
   async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -196,7 +210,9 @@ export function Login(): React.JSX.Element {
        * about to be replaced, and re-enabling a form for the few milliseconds
        * before that happens is an invitation to double-submit.
        */
-      window.location.assign(destination.path);
+      window.location.assign(
+        interaction === undefined ? destination.path : interactionResumeUrl(interaction),
+      );
     } catch (error) {
       const code = error instanceof WardApiError ? error.code : "unexpected";
       if (code === "too_many_attempts") {
@@ -212,10 +228,19 @@ export function Login(): React.JSX.Element {
     <Threshold
       footer={
         <>
-          One sign-in for every app here.{" "}
-          <Link className="ward-link" to="/account">
-            Your account
-          </Link>
+          {interaction !== undefined ? (
+            // A plain link, not a router one: it leaves the SPA for the API.
+            <a className="ward-link" href={interactionAbortUrl(interaction)}>
+              Back to {interactionClient?.name ?? "the app"}
+            </a>
+          ) : (
+            <>
+              One sign-in for every app here.{" "}
+              <Link className="ward-link" to="/account">
+                Your account
+              </Link>
+            </>
+          )}
           {registerApp !== undefined && (
             <>
               {" · "}
@@ -232,9 +257,11 @@ export function Login(): React.JSX.Element {
     >
       <h1>{heading}</h1>
       <p className="ward-lede">
-        {destination.accepted && destination.root !== ""
-          ? "Ward keeps the estate's accounts. Sign in once and you're through."
-          : "Ward keeps the estate's accounts. One sign-in covers every app here."}
+        {interaction !== undefined
+          ? "Sign in with your Ward account. You'll go straight back to the app."
+          : destination.accepted && destination.root !== ""
+            ? "Ward keeps the estate's accounts. Sign in once and you're through."
+            : "Ward keeps the estate's accounts. One sign-in covers every app here."}
       </p>
 
       {/*

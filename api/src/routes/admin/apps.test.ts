@@ -67,6 +67,11 @@ describe("the gate", () => {
       { method: "GET" as const, url: "/console/apps/atrium" },
       { method: "PATCH" as const, url: "/console/apps/atrium", payload: { name: "X" } },
       { method: "DELETE" as const, url: "/console/apps/atrium" },
+      {
+        method: "PUT" as const,
+        url: "/console/apps/atrium/oidc",
+        payload: { redirectUris: [], postLogoutRedirectUris: [], jwks: null },
+      },
     ]) {
       const response = await app.inject(init);
       expect(response.statusCode, init.url).toBe(401);
@@ -375,5 +380,77 @@ describe("reading and deleting", () => {
     const response = await asConsole({ method: "DELETE", url: "/console/apps/nope" });
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ error: "app_not_found" });
+  });
+});
+
+describe("the OIDC client registration (brief 18)", () => {
+  const PUBLIC_JWK = {
+    kty: "OKP",
+    crv: "Ed25519",
+    x: "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+    kid: "atrium-1",
+  };
+
+  async function put(payload: unknown): Promise<LightMyRequestResponse> {
+    return asConsole({
+      method: "PUT",
+      url: "/console/apps/atrium/oidc",
+      payload: payload as object,
+    });
+  }
+
+  beforeEach(async () => {
+    await asConsole({
+      method: "POST",
+      url: "/console/apps",
+      payload: { slug: "atrium", name: "Atrium" },
+    });
+    db.exec("DELETE FROM audit_log");
+  });
+
+  it("stores redirect URIs and a public key, shows them, and audits key ids only", async () => {
+    const response = await put({
+      redirectUris: ["http://localhost:5173/atrium/auth/ward/callback"],
+      postLogoutRedirectUris: ["http://localhost:5173/atrium/"],
+      jwks: PUBLIC_JWK,
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json().app.oidc).toEqual({
+      redirectUris: ["http://localhost:5173/atrium/auth/ward/callback"],
+      postLogoutRedirectUris: ["http://localhost:5173/atrium/"],
+      jwks: { keys: [{ ...PUBLIC_JWK, use: "sig" }] },
+    });
+
+    const [row] = listAudit(db);
+    expect(row).toMatchObject({ action: "app.oidc_client", target_id: "atrium" });
+    expect(JSON.parse(row!.detail!).kids).toEqual({ from: [], to: ["atrium-1"] });
+    expect(row!.detail).not.toContain(PUBLIC_JWK.x);
+  });
+
+  it("refuses a private key, naming the mistake", async () => {
+    const response = await put({
+      redirectUris: ["https://example.com/atrium/auth/ward/callback"],
+      postLogoutRedirectUris: [],
+      jwks: { ...PUBLIC_JWK, d: "Zm9vYmFyYmF6cXV4Zm9vYmFyYmF6cXV4Zm9vYmFyYmE" },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: "private_key_not_public" });
+    expect(getApp(db, "atrium")!.oidc_jwks).toBeNull();
+  });
+
+  it("refuses a plain-http redirect URI that is not loopback, and an unknown app", async () => {
+    const bad = await put({
+      redirectUris: ["http://example.com/atrium/auth/ward/callback"],
+      postLogoutRedirectUris: [],
+      jwks: null,
+    });
+    expect(bad.json()).toEqual({ error: "invalid_redirect_uri" });
+
+    const missing = await asConsole({
+      method: "PUT",
+      url: "/console/apps/nope/oidc",
+      payload: { redirectUris: [], postLogoutRedirectUris: [], jwks: null },
+    });
+    expect(missing.statusCode).toBe(404);
   });
 });

@@ -1,5 +1,5 @@
 ---
-summary: The 2026-10-13 redesign — every app keeps its own accounts and its own login page, "Sign in with Ward" is an OpenID Connect flow against Ward as the provider, Ward-originated app sessions still die within 30 seconds of a Ward revoke, and the shared code ships as a built library each app copies in. Revises Q4, Q21 and the no-shared-package call.
+summary: The 2026-10-13 redesign — every app keeps its own accounts and its own login page, "Sign in with Ward" is an OpenID Connect flow against Ward as the provider, Ward-originated app sessions still die within 30 seconds of a Ward revoke, and the shared code ships as a built library each app copies in. Revises Q4, Q21 and the no-shared-package call. Brief 18 added how apps authenticate as clients (private_key_jwt) and what the provider's own session still does.
 updated: 2026-10-13
 ---
 
@@ -105,6 +105,46 @@ unaffected.
 **Rejected: back-channel logout** (Ward calls each app). It turns a pull the
 app controls into a push that must reach every app, and needs retry and failure
 handling in Ward for no gain over a 30-second pull.
+
+## Apps authenticate as clients with `private_key_jwt`
+_2026-10-13, brief 18_ — Each app holds an Ed25519 private key in its own env
+(`WARD_OIDC_CLIENT_KEY`, made by `npm run oidc-client-key`) and signs a client
+assertion (`alg` `EdDSA` or `Ed25519`, since `openid-client` 6 sends the
+latter; `aud` the issuer; fresh `jti`). Ward stores only the
+public JWK on the app's row and refuses one carrying `d`. Ward holds no app
+secret at all. `api/src/oidc/client-auth.ts` checks the same assertion outside
+the provider, sharing its replay markers, for brief 19's endpoints.
+
+**Rejected: `client_secret_basic`** (Ward needs the plaintext, which the app
+keys' sha256 design refused), and **a custom check of a hashed secret** (not a
+method `openid-client` speaks, so every app would carry custom code).
+
+## Ward's refresh family decides; the provider's session only hands off
+_2026-10-13, brief 18_ — The provider asks for the login step on **every**
+authorization. That step reads Ward's refresh cookie, so it lives under
+`/refresh` (`/ward-api/refresh/oidc/<uid>`), where the cookie already goes. It
+checks the account is active and holds a grant, and grants `openid` itself. A
+code exchange re-checks the family, the account and the grant, so a sign-out
+inside the code's minute yields no token. The provider's session lives ten
+minutes, one interaction's span: a shorter one can expire under an interaction
+and strand it. It carries the settled account from the step to the resumed
+authorization and to the code exchange, since codes expire with it. It never
+answers "signed in" by itself, and nothing reads its `sid`.
+
+**Rejected: letting a live provider session skip the step.** Then a Ward
+sign-out or revoke would leave apps able to sign in silently for as long as the
+provider's session lived. One cost is accepted: `prompt=none` always answers
+`login_required`.
+
+## Built: the prefix, logout, and an unregistered redirect URI
+_2026-10-13, brief 18_ — `WARD_OIDC_ISSUER` is optional: unset, nothing is
+mounted, so a deploy that lacks it keeps today's routes. The issuer must end in
+`/oidc`, and what precedes it is the stripped prefix. Each request's path, mount
+and forwarded host are rewritten from config before the provider sees it.
+RP-initiated logout revokes the family named in a validated `id_token_hint`'s
+`ward_sid`; without a hint nothing at Ward is revoked. An unregistered redirect
+URI gets Ward's own error page, not `access_denied`. Redirecting an error to an
+unregistered URI is an open redirect, and the spec forbids it.
 
 ## Mail stays a Ward service, for Ward-linked users only
 _2026-10-13, default accepted_ — `POST /notify` stays, authenticated by the

@@ -55,6 +55,22 @@ export interface AppView {
   baselineRole: string | null;
   createdAt: string;
   updatedAt: string;
+  /** The app as an OpenID Connect client (brief 18). Public keys only. */
+  oidc: OidcClientView;
+}
+
+/** `apps`' OIDC columns: redirect URIs and the app's public signing keys. */
+export interface OidcClientView {
+  redirectUris: string[];
+  postLogoutRedirectUris: string[];
+  jwks: { keys: Record<string, unknown>[] } | null;
+}
+
+/** `PUT /console/apps/:slug/oidc`. `jwks` is what was pasted: a JWK or a set. */
+export interface OidcClientInput {
+  redirectUris: string[];
+  postLogoutRedirectUris: string[];
+  jwks: unknown;
 }
 
 /** A `users` row, without the password hash — the API never sends one. */
@@ -318,6 +334,16 @@ export function describeConsoleError(status: number, code: string): string {
     case "baseline_role_requires_open":
       return "A baseline role only means something on an app that is open to public registration. Open the app in the same step, or leave the role unset.";
 
+    // OIDC clients.
+    case "invalid_redirect_uri":
+      return "A redirect URI must be an absolute https URL, or http on localhost for a dev server, with no fragment.";
+    case "invalid_post_logout_redirect_uri":
+      return "A sign-out return URI must be an absolute https URL, or http on localhost, with no fragment.";
+    case "invalid_client_key":
+      return "That is not a public Ed25519 JWK. Paste the JSON line `npm run oidc-client-key` printed.";
+    case "private_key_not_public":
+      return 'That key includes its private part ("d"). Ward must never hold it: treat the key as leaked, generate a new pair, and paste only the public line.';
+
     // App keys.
     case "app_key_not_found":
       return "No app key exists with that id. It may already have been removed with its app.";
@@ -384,6 +410,7 @@ export interface ConsoleApi {
   createApp(input: NewApp): Promise<AppView>;
   patchApp(slug: string, patch: AppPatch): Promise<AppView>;
   deleteApp(slug: string): Promise<{ slug: string; grantsRevoked: number }>;
+  setOidcClient(slug: string, input: OidcClientInput): Promise<AppView>;
 
   keysForApp(slug: string): Promise<AppKeyView[]>;
   createAppKey(slug: string, label: string): Promise<AppKeyCreated>;
@@ -563,6 +590,14 @@ export function createConsoleApi(fetchImpl?: FetchLike): ConsoleApi {
       return call<{ slug: string; grantsRevoked: number }>(`/apps/${encodeURIComponent(slug)}`, {
         method: "DELETE",
       });
+    },
+
+    async setOidcClient(slug, input) {
+      const result = await call<{ app: AppView }>(`/apps/${encodeURIComponent(slug)}/oidc`, {
+        method: "PUT",
+        body: input,
+      });
+      return result.app;
     },
 
     async keysForApp(slug) {

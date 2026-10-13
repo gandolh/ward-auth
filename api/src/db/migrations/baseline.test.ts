@@ -34,7 +34,8 @@ describe("baseline migration", () => {
     const db = freshDb();
 
     // `freshDb` runs the whole `MIGRATIONS` list, not just the baseline, so
-    // `app_keys` (20260906000000) is here too — this assertion is the estate's
+    // `app_keys` (20260906000000) and the two `oidc_*` tables (20261013000000)
+    // are here too — this assertion is the estate's
     // full table set rather than one migration's output, and a new migration
     // adding a table is expected to update it.
     expect(tableNames(db)).toEqual([
@@ -42,6 +43,8 @@ describe("baseline migration", () => {
       "apps",
       "audit_log",
       "grants",
+      "oidc_authorizations",
+      "oidc_payloads",
       "refresh_tokens",
       "users",
       "verification_tokens",

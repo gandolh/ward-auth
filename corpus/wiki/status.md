@@ -58,8 +58,8 @@ todo ([../todos/ward-on-a-subdomain.md](../todos/ward-on-a-subdomain.md)).
 | Decisions | Five design pages plus [decisions-oidc.md](./decisions-oidc.md) and its build calls in [decisions-oidc-build.md](./decisions-oidc-build.md); engineering calls in [decisions-implementation.md](./decisions-implementation.md) |
 | Open questions | **None** — [open-questions.md](./open-questions.md) |
 | Name | **Ward** (repo still `wzd_auth`; rename deferred by the owner) |
-| Briefs done | 00–10, 13–26, 28, 29 in [briefs/done/](../briefs/done/); 11 superseded |
-| Briefs open | 27 (deploy is the owner's), 30 (after the owner confirms) |
+| Briefs done | 00–10, 13–29 in [briefs/done/](../briefs/done/); 11 superseded |
+| Briefs open | 30 (after the owner confirms). Brief 27's deploy is the owner's, per docs/cutover-oidc.md |
 | Shared library | `shared-library/` 0.3.0, vendored into atrium, newspapper, prm, sports-app and satchel |
 | Deploy entry in `vps-deploy` | Old contract deployed 2026-10-04; the new one is configured, not deployed |
 

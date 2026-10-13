@@ -45,12 +45,15 @@ export {
   LOCKOUT_WINDOW_SECONDS,
   createLockout,
   lockoutKeyFor,
+  parseTrustedProxies,
   type Lockout,
   type LockoutDecision,
   type LockoutKeyOptions,
   type LockoutOptions,
   type LockoutSurface,
   type LockoutTarget,
+  type TrustedProxies,
+  type TrustedProxyRange,
 } from "./core/lockout.js";
 export {
   MAX_PASSWORD_LENGTH,

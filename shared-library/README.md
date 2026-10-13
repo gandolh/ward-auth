@@ -154,6 +154,7 @@ await app.register(wardAuth, {
   publicOrigin: process.env.PUBLIC_ORIGIN, // "https://example.com", no path
   routePrefix: "/auth", // Fastify-side; the default
   publicRoutes: ["GET /health"], // the allowlist; see below
+  // trustedProxies: ["172.16.0.0/12"], // omit to read AUTH_TRUSTED_PROXIES; see below
   // registration: { role: "member" },  // only an app with a Register page
   ...(wardClient && {
     ward: {
@@ -191,9 +192,21 @@ origin: "local" | "ward", ... } }`, or `null` on an allowlisted route.
   first role.
 - `validateSession` (one function or an array) adds the app's own session
   checks. They run after the library's Ward check.
-- Lockout keys on the client address. It reads the last `X-Forwarded-For`
-  entry, and only when the peer is loopback (Caddy). No `trustProxy` setting
-  is needed.
+- Lockout keys on the client address. It reads the **last** `X-Forwarded-For`
+  entry, and only when the socket peer is loopback or a trusted proxy.
+  Otherwise it keys on the peer and ignores the header. No Fastify `trustProxy`
+  setting is needed, and none should be set.
+- **In a container, set the trusted proxies.** Host Caddy reaches a container
+  through Docker's proxy, so the peer is a Docker bridge address, never
+  loopback. Without a trusted range every request keys on that one address,
+  and five bad passwords from anyone lock everyone out for 15 minutes. Set
+  `AUTH_TRUSTED_PROXIES` in the app's environment to the network the proxy
+  reaches the app from: comma-separated addresses or CIDR ranges, IPv4 or IPv6.
+  In production that is Docker's default `172.16.0.0/12` unless the stack pins
+  a subnet (`docker network inspect <network>` shows it). The plugin reads the
+  variable only when the `trustedProxies` option is absent. A malformed entry
+  or a `/0` throws at registration. Unset, only loopback is trusted, as before
+  0.3.0. An app on loopback under pm2 needs neither.
 - Use `routePrefix`, not `register(..., { prefix })`. A `prefix` is ignored,
   because the plugin escapes encapsulation.
 
@@ -490,6 +503,9 @@ subject directly.
   `createLinkedUser` with the subject, as in section 7.
 - **The role is the app's.** A user's role changes only in the app. Ward's
   `ward_role` sets the first role, and `/session-status`'s role is ignored.
+- **A containerised app without `AUTH_TRUSTED_PROXIES` has one lockout bucket
+  for everybody** (section 4). The log says so: a throttled warning, "X-Forwarded-For
+  ignored for the login lockout", names the peer.
 - **Tests** can pass `fetch` to `createWardClient` and `fetch`/`navigate`/
   `location` to `createAuthClient`. The library's own suite runs a real Ward
   in-process and is the reference for driving the flow.

@@ -8,6 +8,7 @@ import {
   lockoutKeyFor,
   recordFailure,
   type LockoutTarget,
+  type TrustedProxies,
 } from "../auth/lockout.js";
 import { requireConsoleSession, getConsoleSession } from "../auth/console-guard.js";
 import {
@@ -66,6 +67,11 @@ import { getDb } from "../db/connection.js";
  */
 export interface ConsoleRoutesOptions {
   db?: Database.Database;
+  /**
+   * The lockout's trusted proxies, for tests. Production passes nothing and
+   * the routes read `WARD_TRUSTED_PROXIES` through `config.js`.
+   */
+  trustedProxies?: TrustedProxies;
 }
 
 /** What `GET /console/session` and a successful login return. Non-secret. */
@@ -104,12 +110,12 @@ const loginBody = z.object({
  * The lockout key: brief 03's own derivation, not `request.ip`.
  *
  * `request.ip` would be wrong here for the reason `lockout.ts` documents at
- * length — Ward binds loopback behind Caddy and `buildApp()` sets no
- * `trustProxy`, so Fastify's view of the peer is `127.0.0.1` for the entire
- * internet and the IP-keyed lockout would collapse into one global counter that
- * the sixth failed login anywhere in the estate trips. `lockoutKeyFor` honours
- * `X-Forwarded-For` only when the peer is loopback, and reads its **last**
- * element, which is the address Caddy actually observed.
+ * length — Ward sits behind Caddy and `buildApp()` sets no `trustProxy`, so
+ * Fastify's view of the peer is the proxy for the entire internet and the
+ * IP-keyed lockout would collapse into one global counter that the sixth failed
+ * login anywhere in the estate trips. `lockoutKeyFor` honours `X-Forwarded-For`
+ * only when the peer is loopback or in `WARD_TRUSTED_PROXIES`, and reads its
+ * **last** element, which is the address Caddy actually observed.
  *
  * Using brief 03's helper rather than a second derivation is deliberate:
  * `/login` and `/console/login` must agree on what an address is, or an attacker
@@ -123,8 +129,9 @@ const loginBody = z.object({
  * `/login` is being attacked — so it cannot share a budget with the surface
  * under attack. Same reasoning as the malformed-body carve-out below.
  */
-function lockoutKey(request: FastifyRequest): string {
+function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): string {
   return lockoutKeyFor(request.socket.remoteAddress, request.headers["x-forwarded-for"], {
+    trustedProxies,
     warn: (detail, message) => {
       request.log.warn(detail, message);
     },
@@ -148,6 +155,14 @@ export async function consoleRoutes(
   options: ConsoleRoutesOptions = {},
 ): Promise<void> {
   const resolveDb = async (): Promise<Database.Database> => options.db ?? (await getDb());
+
+  /**
+   * The same trusted proxies `/login` uses, resolved once at registration
+   * through a dynamic import (see `routes/auth.ts`). One list for both is what
+   * keeps the two surfaces agreeing on what an address is.
+   */
+  const trustedProxies =
+    options.trustedProxies ?? (await import("../config.js")).WARD_TRUSTED_PROXIES;
 
   // Encapsulated to this plugin. Everything on the console is administrative,
   // per-operator and stale immediately; a shared cache holding any of it has no
@@ -177,7 +192,7 @@ export async function consoleRoutes(
    */
   app.post("/console/login", async (request, reply) => {
     const db = await resolveDb();
-    const ip = lockoutKey(request);
+    const ip = lockoutKey(request, trustedProxies);
 
     const lockout = checkLockout(consoleLockoutTarget(ip));
     if (!lockout.allowed) {
@@ -282,7 +297,7 @@ export async function consoleRoutes(
         action: "console.logout",
         targetKind: "session",
         targetId: closed.id,
-        detail: { ip: lockoutKey(request) },
+        detail: { ip: lockoutKey(request, trustedProxies) },
       });
     }
 

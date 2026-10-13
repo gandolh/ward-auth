@@ -7,6 +7,39 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 0.3.0 — 2026-10-13
+
+The login lockout sees the real client behind a container (Ward's brief 28).
+
+- `wardAuth` takes `trustedProxies` (`readonly string[]`): socket peers,
+  beyond loopback, whose `X-Forwarded-For` the lockout believes. Addresses or
+  CIDR ranges, IPv4 or IPv6. An IPv4-mapped IPv6 peer matches an IPv4 range.
+  When the option is absent, the plugin reads `AUTH_TRUSTED_PROXIES`
+  (comma-separated) from the environment. A malformed entry, host bits set
+  past the prefix, or a `/0` throws at registration.
+- `lockoutKeyFor` takes `trustedProxies` in its options, parsed once by the
+  new `parseTrustedProxies`. It still reads only the **last** forwarded
+  element. A trusted or loopback peer with no forwarded address still fails
+  closed into one shared bucket and warns.
+- A new throttled warning, "X-Forwarded-For ignored for the login lockout",
+  fires when an untrusted peer sends the header. That is what a proxy missing
+  from the list looks like.
+- Exports `parseTrustedProxies`, `TrustedProxies` and `TrustedProxyRange`.
+
+Upgrade notes from 0.2.0:
+
+- **An app that runs in a container must set `AUTH_TRUSTED_PROXIES`.** Under
+  0.2.0, the peer such an app sees is Docker's proxy or a sibling container,
+  never loopback. So every request keyed on that one address, and five bad
+  passwords from anyone locked everyone out of login, registration and
+  password change for 15 minutes. Use Docker's default `172.16.0.0/12` unless
+  the stack pins a subnet. Vendoring 0.3.0 and setting the variable is the
+  whole fix. No code change is needed.
+- An app on loopback (pm2 on the host) needs nothing. Unset means loopback
+  only, exactly as before.
+- A deploy that sets the variable to something malformed now fails at boot
+  rather than starting with the wrong trust.
+
 ## 0.2.0 — 2026-10-13
 
 "Sign in with Ward". The adoption guide is [README.md](./README.md).

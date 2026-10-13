@@ -26,6 +26,7 @@ import {
   lockoutKeyFor,
   recordFailure,
   type LockoutTarget,
+  type TrustedProxies,
 } from "../auth/lockout.js";
 import {
   hashPassword,
@@ -101,6 +102,11 @@ import { issueRefreshToken } from "../auth/refresh.js";
 
 export interface AccountRoutesOptions {
   db?: Database.Database;
+  /**
+   * The lockout's trusted proxies, for tests. Production passes nothing and
+   * the routes read `WARD_TRUSTED_PROXIES` through `config.js`.
+   */
+  trustedProxies?: TrustedProxies;
 }
 
 /**
@@ -163,7 +169,9 @@ export async function accountRoutes(
 ): Promise<void> {
   /** Resolved once, at registration — see `routes/auth.ts` for both reasons. */
   const secure = await wardSecureCookies();
-  const { WARD_PUBLIC_ORIGIN } = await import("../config.js");
+  const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
+  /** The lockout's trusted proxies (brief 28) — the same list `/login` uses. */
+  const trustedProxies = options.trustedProxies ?? WARD_TRUSTED_PROXIES;
 
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
 
@@ -284,7 +292,7 @@ export async function accountRoutes(
 
     const target: LockoutTarget = {
       surface: "account_password",
-      address: lockoutKey(request),
+      address: lockoutKey(request, trustedProxies),
       // The folded username of the **authenticated** account, so a success
       // forgives only the guesses aimed at it — `auth/lockout.ts` on why
       // forgiveness is per account while the `429` decision is per address.
@@ -482,7 +490,7 @@ export async function accountRoutes(
             sessionsRevoked: others.size,
             tokensRevoked,
             spared: caller.familyId,
-            ip: lockoutKey(request),
+            ip: lockoutKey(request, trustedProxies),
           },
         });
       }
@@ -535,8 +543,9 @@ function lockedOut(reply: FastifyReply, retryAfterSeconds: number): FastifyReply
 }
 
 /** The lockout key for a request. See `lockoutKeyFor` for why not `request.ip`. */
-function lockoutKey(request: FastifyRequest): string {
+function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): string {
   return lockoutKeyFor(request.socket.remoteAddress, request.headers["x-forwarded-for"], {
+    trustedProxies,
     warn: (detail, message) => {
       request.log.warn(detail, message);
     },

@@ -30,6 +30,7 @@ admin, so a service that started without one could be locked out of itself.
 | Variable | Read by | Notes |
 |---|---|---|
 | `PORT` | the listener | Bound on `127.0.0.1` only. Caddy is the sole way in. |
+| `WARD_TRUSTED_PROXIES` | the login lockout | Optional; unset trusts loopback only. Required in practice in a container. See [Trusted proxies](#trusted-proxies). |
 | `WARD_DB_PATH` | the connection | **The only copy of who anybody is.** See the WAL warning below. |
 | `WARD_SIGNING_KEY_PATH` | key loading | Required. |
 | `WARD_ADMIN_USERNAME` | console session | Required. |
@@ -44,6 +45,35 @@ admin, so a service that started without one could be locked out of itself.
 | `WARD_SMTP_PASSWORD` | smtp transport | |
 | `WARD_OIDC_ISSUER` | `api/src/oidc/` | Optional; unset, the OpenID Connect provider is off. The issuer as the browser sees it, ending in `/oidc`. See [Sign in with Ward](/oidc/). |
 | `WARD_UI_URL` | `api/src/oidc/` | Required with the issuer. Ward's UI on the same origin. |
+
+## Trusted proxies
+
+The login lockout counts failures per client address, and Ward only learns
+that address from Caddy's `X-Forwarded-For`. It believes the header only when
+the socket peer is a proxy it trusts, and then reads only the **last**
+element, the one Caddy appended. Anything a client wrote earlier in the header
+is never read.
+
+Loopback is always trusted. `WARD_TRUSTED_PROXIES` adds more: comma-separated
+addresses or CIDR ranges, IPv4 or IPv6. An IPv4-mapped peer
+(`::ffff:172.19.0.3`) matches an IPv4 range.
+
+:::caution[Set it whenever Ward runs in a container]
+Host Caddy reaches a container through Docker's proxy, so the peer Ward sees
+is a Docker bridge address, never loopback. With nothing listed, every request
+keys on that one address, and five bad passwords from anyone lock everyone out
+of `/login` for 15 minutes. Use Docker's default `172.16.0.0/12` unless the
+stack pins a subnet, and confirm it on the host with
+`docker network inspect <network> --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}'`.
+:::
+
+A malformed entry, host bits set past the prefix (`172.19.0.3/16`), or a `/0`
+stops the boot and names the entry. Two misconfigurations are logged as
+throttled warnings: a trusted peer that forwarded no address, and an
+`X-Forwarded-For` from an untrusted peer, which is what a proxy missing from
+the list looks like.
+
+Apps on the shared library set `AUTH_TRUSTED_PROXIES` the same way.
 
 ## The signing key
 

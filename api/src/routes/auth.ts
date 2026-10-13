@@ -20,6 +20,7 @@ import {
   lockoutKeyFor,
   recordFailure,
   type LockoutTarget,
+  type TrustedProxies,
 } from "../auth/lockout.js";
 import { MAX_PASSWORD_LENGTH, spendDummyHash, verifyPassword } from "../auth/password.js";
 import {
@@ -97,6 +98,11 @@ import { newFamilyId } from "../db/refresh-tokens.js";
  */
 export interface AuthRoutesOptions {
   db?: Database.Database;
+  /**
+   * The lockout's trusted proxies, for tests. Production passes nothing and
+   * the routes read `WARD_TRUSTED_PROXIES` through `config.js`.
+   */
+  trustedProxies?: TrustedProxies;
 }
 
 /** `{ username, password }`. Both required, neither trimmed except of surrounding space. */
@@ -136,7 +142,14 @@ export async function authRoutes(
    * `url.origin === value` is one of its own refinements — so a request's
    * `Origin` header can be compared to it after the same normalisation.
    */
-  const { WARD_PUBLIC_ORIGIN } = await import("../config.js");
+  const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
+
+  /**
+   * Which socket peers' `X-Forwarded-For` the lockout believes (brief 28).
+   * Resolved once, like the origin, and threaded into every `lockoutKey` call
+   * so `/login` and `/refresh` cannot disagree about what an address is.
+   */
+  const trustedProxies = options.trustedProxies ?? WARD_TRUSTED_PROXIES;
 
   /**
    * Lazy, and memoised by `getDb()` itself. Not resolved at registration
@@ -155,7 +168,7 @@ export async function authRoutes(
    * page, which is the entire thing `HttpOnly` is for.
    */
   app.post("/login", async (request, reply) => {
-    const address = lockoutKey(request);
+    const address = lockoutKey(request, trustedProxies);
 
     /**
      * The gate reads the **address** budget for this surface and nothing else —
@@ -343,7 +356,7 @@ export async function authRoutes(
       return reply.code(401).send({ error: "invalid_refresh" });
     }
 
-    const address = lockoutKey(request);
+    const address = lockoutKey(request, trustedProxies);
     const db = await database();
 
     /**
@@ -513,11 +526,13 @@ export async function authRoutes(
  * One line, but its own function so brief 06's console login can be read
  * side-by-side with this one and be seen to key identically. See
  * `lockoutKeyFor` for why the socket peer alone is not enough (Ward is behind
- * Caddy on loopback, so every peer is `127.0.0.1`) and why the *last*
- * `X-Forwarded-For` element is the one that cannot be spoofed.
+ * Caddy, so every peer is the proxy — loopback under pm2, a Docker bridge
+ * address in a container) and why the *last* `X-Forwarded-For` element is the
+ * one that cannot be spoofed.
  */
-function lockoutKey(request: FastifyRequest): string {
+function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): string {
   return lockoutKeyFor(request.socket.remoteAddress, request.headers["x-forwarded-for"], {
+    trustedProxies,
     // A loopback peer with no forwarded address collapses the whole estate into
     // one shared counter, and the only visible symptom is an innocent third
     // party being answered `429`. `lockoutKeyFor` throttles this to one line per

@@ -124,6 +124,24 @@ cannot talk its way into a different bucket. Also rejected, upstream of all of
 this: keying on **username**, which lets a stranger lock a real person out of
 their own account indefinitely.
 
+> **Revised 2026-10-13, brief 28 — loopback is not the only proxy any more.**
+> "Only when the peer is loopback" assumed pm2 on the host. In a container that
+> publishes `127.0.0.1:<port>`, host Caddy reaches Ward through Docker's proxy,
+> so the peer is a bridge address; locally it is the Caddy container. The
+> header was ignored for every request and the whole internet shared one
+> bucket, which is the outage this decision exists to prevent. It was live for
+> Ward from the container cutover, and shared library 0.2.0 inherited it. The
+> header is now honoured when the peer is loopback **or inside a trusted
+> range**: `WARD_TRUSTED_PROXIES` for Ward and `AUTH_TRUSTED_PROXIES` (or
+> `wardAuth`'s `trustedProxies`) for apps on library 0.3.0. Both are
+> comma-separated addresses or CIDR ranges, and unset still means loopback
+> only. Still the **last** element, and still no walking leftwards past
+> trusted hops, since anything on a trusted bridge could then pick its bucket.
+> A malformed entry or a `/0` stops the boot. Production is Docker's default
+> `172.16.0.0/12` unless a stack pins its subnet; locally the compose network
+> is pinned to `10.87.92.0/24`. An `X-Forwarded-For` from an untrusted peer
+> now logs a throttled warning, because this went unnoticed for want of one.
+
 ## Integration tests drive the real `buildApp`, not a hand-built instance
 _2026-09-04_ — `api/src/integration/` uses the assembled service: real
 `buildApp()`, a real on-disk database, a real generated Ed25519 key, over

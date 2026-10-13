@@ -1,6 +1,6 @@
 {
   "name": "@ward/shared-library",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Local accounts, sessions and lockout for the estate's apps, shipped as a built bundle each app copies into vendor/ward/.",
   "type": "module",

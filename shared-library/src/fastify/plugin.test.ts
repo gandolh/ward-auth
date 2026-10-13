@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import Fastify, { type FastifyInstance, type LightMyRequestResponse } from "fastify";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   SESSION_RENEW_INTERVAL_SECONDS,
@@ -402,6 +402,81 @@ describe("login", () => {
     expect(
       (await h.app.inject({ method: "GET", url: "/me", headers: { cookie: first } })).statusCode,
     ).toBe(401);
+  });
+});
+
+describe("trusted proxies (0.3.0)", () => {
+  /**
+   * Ward's brief 28, which 0.2.0 inherited. In a container the peer is a Docker
+   * bridge address — Docker's proxy on the host, or a Caddy container — never
+   * loopback, so the forwarded address was ignored and every caller shared the
+   * proxy's one budget.
+   */
+  const PROXY = "172.19.0.3";
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function viaProxy(h: Harness, client: string, username: string, password: string) {
+    return h.app.inject({
+      method: "POST",
+      url: "/auth/login",
+      remoteAddress: PROXY,
+      headers: { "x-forwarded-for": `198.51.100.250, ${client}` },
+      payload: { username, password },
+    });
+  }
+
+  it("reads AUTH_TRUSTED_PROXIES when the option is absent", async () => {
+    vi.stubEnv("AUTH_TRUSTED_PROXIES", "10.0.0.0/8, 172.16.0.0/12");
+    const h = await build();
+
+    for (let caller = 1; caller <= 6; caller += 1) {
+      const response = await viaProxy(h, `203.0.113.${caller}`, `user-${caller}`, "wrong");
+      expect(response.statusCode, `caller ${caller}`).toBe(401);
+    }
+    // The seventh caller, behind the same proxy, signs in.
+    expect((await viaProxy(h, "203.0.113.7", "alice", "correct horse")).statusCode).toBe(200);
+
+    // One caller is still locked out on its own sixth attempt.
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 1; i += 1) {
+      await viaProxy(h, "203.0.113.1", "alice", "wrong");
+    }
+    expect((await viaProxy(h, "203.0.113.1", "alice", "correct horse")).statusCode).toBe(429);
+  });
+
+  it("uses the option as given, and then never reads the environment", async () => {
+    vi.stubEnv("AUTH_TRUSTED_PROXIES", "172.16.0.0/12");
+    const h = await build({ trustedProxies: [] });
+
+    // Loopback only: the bridge peer is untrusted, so everyone behind it is
+    // one caller — the 0.2.0 behaviour, kept when it is asked for.
+    for (let caller = 1; caller <= LOCKOUT_MAX_FAILURES; caller += 1) {
+      await viaProxy(h, `203.0.113.${caller}`, `user-${caller}`, "wrong");
+    }
+    expect((await viaProxy(h, "203.0.113.99", "alice", "correct horse")).statusCode).toBe(429);
+  });
+
+  it("trusts only loopback when neither is set", async () => {
+    vi.stubEnv("AUTH_TRUSTED_PROXIES", undefined);
+    const h = await build();
+    for (let caller = 1; caller <= LOCKOUT_MAX_FAILURES; caller += 1) {
+      await viaProxy(h, `203.0.113.${caller}`, `user-${caller}`, "wrong");
+    }
+    expect((await viaProxy(h, "203.0.113.99", "alice", "correct horse")).statusCode).toBe(429);
+  });
+
+  it("refuses to register with a malformed entry, naming where it came from", async () => {
+    await expect(build({ trustedProxies: ["172.16.0.0/33"] })).rejects.toThrow(
+      /wardAuth: trustedProxies: .*"172\.16\.0\.0\/33"/,
+    );
+
+    vi.stubEnv("AUTH_TRUSTED_PROXIES", "172.16.0.0/12, docker0");
+    await expect(build()).rejects.toThrow(/wardAuth: AUTH_TRUSTED_PROXIES: .*"docker0"/);
+
+    vi.stubEnv("AUTH_TRUSTED_PROXIES", "0.0.0.0/0");
+    await expect(build()).rejects.toThrow(/trusts every address/);
   });
 });
 

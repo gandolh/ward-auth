@@ -16,7 +16,14 @@ import {
   serializeCookie,
 } from "../core/cookie.js";
 import { UsernamePolicyError, foldUsername } from "../core/identifiers.js";
-import { createLockout, lockoutKeyFor, type Lockout, type LockoutTarget } from "../core/lockout.js";
+import {
+  createLockout,
+  lockoutKeyFor,
+  parseTrustedProxies,
+  type Lockout,
+  type LockoutTarget,
+  type TrustedProxies,
+} from "../core/lockout.js";
 import { PasswordPolicyError } from "../core/password.js";
 import { UsernameTakenError, type SessionRecord } from "../store/types.js";
 import {
@@ -47,6 +54,7 @@ import {
  *   publicOrigin: "https://example.com",
  *   routePrefix: "/auth",             // Fastify-side; routes are /auth/login …
  *   publicRoutes: ["GET /health"],
+ *   // trustedProxies: omitted, so AUTH_TRUSTED_PROXIES from the environment
  *   ward: {                           // optional: "Sign in with Ward"
  *     client: wardClient,             // await createWardClient(...)
  *     loginPath: "/atrium/login",
@@ -194,6 +202,21 @@ export interface WardAuthOptions {
   ward?: WardSignInOptions;
   /** Shared counter, if the app wants one across plugins. A fresh one otherwise. */
   lockout?: Lockout;
+  /**
+   * Socket peers, beyond loopback, whose `X-Forwarded-For` the lockout
+   * believes: addresses or CIDR ranges, IPv4 or IPv6, e.g. `["172.16.0.0/12"]`.
+   *
+   * **Absent, the plugin reads `AUTH_TRUSTED_PROXIES`** (comma-separated) from
+   * the environment, so a deploy can fix a containerised app without a code
+   * change. Present — even `[]` — it is used as given and the environment is
+   * not read. Neither set means loopback only.
+   *
+   * An app in a container needs it: host Caddy reaches the container through
+   * Docker's proxy, the peer is a bridge address, and without it every request
+   * keys on that one address. A malformed entry, or a `/0`, throws at
+   * registration. See `lockoutKeyFor`.
+   */
+  trustedProxies?: readonly string[];
   /** Epoch milliseconds, for cookie `Max-Age`. Must match the one `accounts` uses. */
   now?: () => number;
 }
@@ -207,6 +230,7 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
   const now = options.now ?? (() => Date.now());
   const routePrefix = normaliseRoutePrefix(options.routePrefix ?? "/auth");
   const lockout = options.lockout ?? createLockout({ now });
+  const trustedProxies = resolveTrustedProxies(options.trustedProxies);
   const appValidators =
     options.validateSession === undefined
       ? []
@@ -282,6 +306,7 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
 
   function lockoutKey(request: FastifyRequest): string {
     return lockoutKeyFor(request.socket.remoteAddress, request.headers["x-forwarded-for"], {
+      trustedProxies,
       warn: (detail, message) => request.log.warn(detail, message),
     });
   }
@@ -583,6 +608,23 @@ function parseOrigin(value: string): string {
     );
   }
   return url.origin;
+}
+
+/**
+ * The option if it was given, else `AUTH_TRUSTED_PROXIES`, parsed once. A bad
+ * entry throws here, at registration, naming where it came from — so a typo
+ * stops the boot instead of quietly trusting the wrong peers.
+ */
+function resolveTrustedProxies(option: readonly string[] | undefined): TrustedProxies {
+  const [entries, source] =
+    option === undefined
+      ? [process.env["AUTH_TRUSTED_PROXIES"] ?? "", "AUTH_TRUSTED_PROXIES"]
+      : [option, "trustedProxies"];
+  try {
+    return parseTrustedProxies(entries);
+  } catch (error) {
+    throw new TypeError(`wardAuth: ${source}: ${(error as Error).message}`, { cause: error });
+  }
 }
 
 function normaliseRoutePrefix(prefix: string): string {

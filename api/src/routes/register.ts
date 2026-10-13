@@ -4,7 +4,12 @@ import { z } from "zod";
 
 import type { MailTransport } from "../config.js";
 
-import { checkLockout, lockoutKeyFor, recordFailure } from "../auth/lockout.js";
+import {
+  checkLockout,
+  lockoutKeyFor,
+  recordFailure,
+  type TrustedProxies,
+} from "../auth/lockout.js";
 import { hashPassword, PasswordPolicyError } from "../auth/password.js";
 import {
   consumeEmailVerification,
@@ -94,6 +99,11 @@ const REGISTRATION_ACTOR_LABEL = "registration";
  */
 export interface RegisterRoutesOptions {
   db?: Database.Database;
+  /**
+   * The lockout's trusted proxies, for tests. Production passes nothing and
+   * the routes read `WARD_TRUSTED_PROXIES` through `config.js`.
+   */
+  trustedProxies?: TrustedProxies;
 }
 
 /**
@@ -190,11 +200,14 @@ export async function registerRoutes(
    * importing this module does not run `config.ts`'s validation (and its
    * `process.exit(1)`) — the same reasoning `routes/auth.ts` records.
    *
-   * All three are process constants, and resolving them here rather than per
+   * All four are process constants, and resolving them here rather than per
    * request means a misconfigured mail transport or origin is visible at boot
    * instead of at the moment somebody is waiting for a link.
    */
-  const { MAIL, WARD_ADMIN_USERNAME, WARD_PUBLIC_ORIGIN } = await import("../config.js");
+  const { MAIL, WARD_ADMIN_USERNAME, WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } =
+    await import("../config.js");
+  /** The lockout's trusted proxies (brief 28) — the same list `/login` uses. */
+  const trustedProxies = options.trustedProxies ?? WARD_TRUSTED_PROXIES;
 
   /** The break-glass username, folded once. See `usernameIsReserved`. */
   const reservedUsername = foldUsername(WARD_ADMIN_USERNAME);
@@ -211,7 +224,7 @@ export async function registerRoutes(
   app.post("/register", async (request, reply) => {
     reply.header("cache-control", "no-store");
 
-    const address = lockoutKey(request);
+    const address = lockoutKey(request, trustedProxies);
 
     const gate = checkLockout({ surface: "register", address });
     if (!gate.allowed) {
@@ -756,14 +769,15 @@ function withoutQuery(url: string): string {
  * surface can be read side-by-side with `/login` and `/console/login` and be
  * seen to key identically.
  *
- * **Never `request.ip`.** Ward binds loopback behind Caddy, so the socket peer
- * is `127.0.0.1` for the entire internet and keying on it would give everyone
- * one shared counter — the sixth registration anywhere in the estate would
+ * **Never `request.ip`.** Ward sits behind Caddy, so the socket peer is the
+ * proxy for the entire internet and keying on it would give everyone one shared
+ * counter — the sixth registration anywhere in the estate would
  * answer `429` to everybody. See `lockoutKeyFor` for why the *last*
  * `X-Forwarded-For` element is the one that cannot be spoofed.
  */
-function lockoutKey(request: FastifyRequest): string {
+function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): string {
   return lockoutKeyFor(request.socket.remoteAddress, request.headers["x-forwarded-for"], {
+    trustedProxies,
     warn: (detail, message) => {
       request.log.warn(detail, message);
     },

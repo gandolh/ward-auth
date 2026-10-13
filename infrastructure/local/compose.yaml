@@ -36,6 +36,10 @@ services:
       WARD_UI_URL: http://localhost:8792/ward
       WARD_MAIL_TRANSPORT: file
       WARD_MAIL_FROM: ward@localhost
+      # The login lockout believes X-Forwarded-For only from these peers (brief
+      # 28). Ward's peer here is the gateway container on the network below, not
+      # loopback, so without this every caller shares one lockout bucket.
+      WARD_TRUSTED_PROXIES: 10.87.92.0/24
       # HOST, PORT, WARD_DB_PATH, WARD_SIGNING_KEY_PATH and WARD_MAIL_FILE_DIR
       # come from the image.
     volumes:
@@ -61,6 +65,18 @@ services:
       # business being reachable from the network.
       - "127.0.0.1:8792:80"
     restart: unless-stopped
+
+networks:
+  default:
+    ipam:
+      config:
+        # Pinned, because WARD_TRUSTED_PROXIES above names it as a literal and
+        # Docker otherwise picks a subnet in creation order (172.19.0.0/16 on
+        # one machine, something else after a `down` or on the next). Outside
+        # Docker's own pools (172.17-31.x, 192.168.x), so a network Docker
+        # allocates later cannot overlap it. A fixed subnet also lets a probe
+        # container join with `--ip` to test the lockout from a known address.
+        - subnet: 10.87.92.0/24
 
 volumes:
   # ward.db, the signing key and the mail spool (/data/mail). `down -v` deletes

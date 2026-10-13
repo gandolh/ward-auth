@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { z } from "zod";
 
+import { parseTrustedProxies, type TrustedProxies } from "./auth/lockout.js";
+
 /**
  * Ward's runtime configuration: resolved from the environment once, validated
  * at import time, and exported as plain constants.
@@ -20,7 +22,10 @@ import { z } from "zod";
  * check has to happen before anything opens a socket or a database handle, and
  * an import is the only hook that is guaranteed to run first. Keep this module
  * dependency-free apart from zod — anything it imports would run before the
- * environment has been validated.
+ * environment has been validated. The one exception is `parseTrustedProxies`
+ * from `auth/lockout.ts`, which imports nothing but `node:net` and does
+ * nothing at import time; it is imported so that `WARD_TRUSTED_PROXIES` is
+ * read by the same parser that later matches against it.
  *
  * The .env contract, including which module reads each variable, is documented
  * in `.env.example` at the repo root.
@@ -110,6 +115,34 @@ const envSchema = z.object({
    * behaviour you get by forgetting to set anything.
    */
   HOST: z.string().min(1).default("127.0.0.1"),
+
+  /**
+   * Peers, beyond loopback, whose `X-Forwarded-For` the login lockout believes:
+   * comma-separated addresses or CIDR ranges, IPv4 or IPv6. Optional, and
+   * unset means loopback only — the safe direction, like `HOST`, because a
+   * range listed here can choose its own lockout bucket by sending the header.
+   *
+   * It exists because Ward runs in a container (brief 28). Host Caddy reaches
+   * it through Docker's proxy, so the socket peer is a bridge address, never
+   * loopback, and with nothing listed every request in the estate keyed on
+   * that one address: five bad passwords from anyone locked everyone out.
+   * Set it to the network the proxy reaches Ward from — Docker's default
+   * `172.16.0.0/12` in production unless the stack pins a subnet.
+   *
+   * Parsed here so a malformed entry stops the boot naming the entry, rather
+   * than surfacing as a `500` on every login. See `lockoutKeyFor`.
+   */
+  WARD_TRUSTED_PROXIES: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      try {
+        return parseTrustedProxies(value ?? "");
+      } catch (error) {
+        ctx.addIssue({ code: "custom", message: (error as Error).message });
+        return z.NEVER;
+      }
+    }),
 
   /** better-sqlite3 database file. Relative values resolve against the repo root. */
   WARD_DB_PATH: z.string().min(1),
@@ -319,6 +352,13 @@ const env = parsed.data;
 /** Read by `api/src/index.ts` to bind the Fastify listener. */
 export const PORT: number = env.PORT;
 export const HOST: string = env.HOST;
+
+/**
+ * Read by every route that derives a lockout key — `/login`, `/refresh`,
+ * `/console/login`, `/register` and `/account/password` — so they all agree on
+ * what a client address is. Empty means loopback only.
+ */
+export const WARD_TRUSTED_PROXIES: TrustedProxies = env.WARD_TRUSTED_PROXIES;
 
 /**
  * Both file paths are resolved against the repo root rather than left as

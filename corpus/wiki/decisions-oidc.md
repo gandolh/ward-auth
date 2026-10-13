@@ -192,6 +192,31 @@ the app's own database handle.
 source** (each app would compile it under its own `tsconfig`, and sports-app
 has no TypeScript build).
 
+## The local half's build calls
+_2026-10-13, brief 20_ — Settled while building `shared-library/`:
+- **Sessions:** the cookie holds 32 random bytes, the row holds their SHA-256.
+  Idle expiry 14 days, sliding; absolute 30 days, Ward's refresh-family
+  ceiling, so both kinds of session age out on one clock. The sliding expiry
+  is written at most hourly, because a write on every request turns page loads
+  into database writes for nothing.
+- **Tables:** `auth_users`, `auth_sessions`, `auth_migrations`, applied by the
+  library from an append-only migration list. Migration 1 already has a
+  nullable `password_hash` and the session row's `origin` and `ward_sid`
+  (tied by a CHECK), because SQLite cannot relax a column without a table
+  rebuild and brief 21 needs all three.
+- **One store for two drivers:** a structural handle type that better-sqlite3
+  and `node:sqlite` both satisfy, positional parameters, and `SAVEPOINT`
+  transactions, so the store also nests inside an app's own transaction.
+- **The guard** is the plugin's `onRequest` hook on the instance the app
+  registers it on (it escapes encapsulation the way `fastify-plugin` does), so
+  the app must register it before its own routes. Its extension hook,
+  `validateSession`, is where brief 21 puts the 30-second check; a validator
+  that throws fails closed.
+- **The bundler is Rollup with TypeScript's own transpiler**, plus
+  rollup-plugin-dts for the two `.d.ts` files. **Rejected: esbuild**, which
+  strips every comment that is not a licence, and the comments are where this
+  code says why.
+
 ## imbatranimOS stays out
 _2026-10-13, owner answer 6_ — imbatranimOS keeps its own sign-in (its brief
 157) and gets no Ward button for now. Nothing here may assume Fastify in the

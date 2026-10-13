@@ -20,7 +20,7 @@ import reactHooks from "eslint-plugin-react-hooks";
  * @type {import('eslint').Linter.Config[]}
  */
 export default [
-  { ignores: ["**/dist/**", "**/node_modules/**"] },
+  { ignores: ["**/dist/**", "**/node_modules/**", "shared-library/.scratch/**"] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -39,12 +39,25 @@ export default [
      * reports nothing inside them, so a clean run means "nothing found", not
      * "nothing there".
      */
-    files: ["ui/src/**/*.{ts,tsx}"],
+    files: ["ui/src/**/*.{ts,tsx}", "shared-library/src/react/**/*.ts"],
     plugins: { "react-hooks": reactHooks },
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-hooks/set-state-in-effect": "error",
       "react-hooks/refs": "error",
+    },
+  },
+
+  {
+    /**
+     * The shared library's build scripts are plain Node ESM, so they need
+     * Node's globals declared; `no-undef` would otherwise flag `process`.
+     */
+    files: ["shared-library/scripts/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: { process: "readonly", console: "readonly", URL: "readonly" },
     },
   },
 

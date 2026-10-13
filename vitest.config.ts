@@ -27,8 +27,20 @@ export default defineConfig({
      * per-project environment; adding either before then would slow the whole
      * suite down for no coverage.
      */
-    include: ["api/**/*.test.ts", "client/**/*.test.ts", "ui/**/*.test.ts", "ui/**/*.test.tsx"],
-    exclude: ["**/node_modules/**", "**/dist/**"],
+    /**
+     * `shared-library/` joined with brief 20. Its tests are Node-side too: the
+     * React hooks are thin wrappers over a framework-free client, and the
+     * client is what is tested, with a fake `fetch`. `.scratch/` holds the
+     * vendor smoke test's throwaway copies and is never a test source.
+     */
+    include: [
+      "api/**/*.test.ts",
+      "client/**/*.test.ts",
+      "ui/**/*.test.ts",
+      "ui/**/*.test.tsx",
+      "shared-library/**/*.test.ts",
+    ],
+    exclude: ["**/node_modules/**", "**/dist/**", "shared-library/.scratch/**"],
     pool: "forks",
   },
 });

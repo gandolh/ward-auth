@@ -8,7 +8,8 @@
     "api",
     "ui",
     "client",
-    "docs"
+    "docs",
+    "shared-library"
   ],
   "engines": {
     "node": ">=22"
@@ -18,11 +19,12 @@
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
-    "lint": "eslint \"api/src/**/*.ts\" \"client/src/**/*.ts\" \"ui/src/**/*.{ts,tsx}\"",
-    "fmt": "prettier --write \"api/src/**/*.ts\" \"client/src/**/*.ts\" \"ui/src/**/*.{ts,tsx,css}\" \"ui/index.html\" \"*.md\" \"vitest.config.ts\"",
-    "fmt:check": "prettier --check \"api/src/**/*.ts\" \"client/src/**/*.ts\" \"ui/src/**/*.{ts,tsx,css}\" \"ui/index.html\" \"*.md\" \"vitest.config.ts\"",
+    "lint": "eslint \"api/src/**/*.ts\" \"client/src/**/*.ts\" \"ui/src/**/*.{ts,tsx}\" \"shared-library/src/**/*.ts\" \"shared-library/scripts/**/*.{mjs,ts}\"",
+    "fmt": "prettier --write \"api/src/**/*.ts\" \"client/src/**/*.ts\" \"shared-library/src/**/*.ts\" \"shared-library/scripts/**/*.mjs\" \"ui/src/**/*.{ts,tsx,css}\" \"ui/index.html\" \"*.md\" \"vitest.config.ts\"",
+    "fmt:check": "prettier --check \"api/src/**/*.ts\" \"client/src/**/*.ts\" \"shared-library/src/**/*.ts\" \"shared-library/scripts/**/*.mjs\" \"ui/src/**/*.{ts,tsx,css}\" \"ui/index.html\" \"*.md\" \"vitest.config.ts\"",
     "test:watch": "vitest",
-    "keygen": "npm run keygen --workspace=api"
+    "keygen": "npm run keygen --workspace=api",
+    "vendor": "npm run vendor --workspace=shared-library --"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

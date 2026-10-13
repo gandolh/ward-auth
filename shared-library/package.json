@@ -1,0 +1,39 @@
+{
+  "name": "@ward/shared-library",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local accounts, sessions and lockout for the estate's apps, shipped as a built bundle each app copies into vendor/ward/.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "vendor": "node scripts/vendor.mjs"
+  },
+  "peerDependencies": {
+    "fastify": ">=5",
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "fastify": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "16.0.3",
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "better-sqlite3": "13.0.3",
+    "fastify": "5.12.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "rollup": "4.64.5",
+    "rollup-plugin-dts": "6.5.1",
+    "typescript": "6.0.3"
+  },
+  "license": "MIT"
+}

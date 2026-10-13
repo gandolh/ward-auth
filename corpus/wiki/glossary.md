@@ -1,6 +1,6 @@
 ---
 summary: The vocabulary — one canonical definition per term wzd_auth uses in a particular way, and the synonyms each displaces. Terms whose meaning is still being grilled are marked provisional.
-updated: 2026-09-01
+updated: 2026-10-13
 ---
 
 # Glossary
@@ -122,3 +122,30 @@ An app that delegates authentication to wzd_auth rather than performing it. What
 atrium and newspapper would become.
 _Avoid_: "client", which in an OAuth context means something narrower and in a
 frontend context means the browser bundle.
+
+## Local account
+A user row in **one app's own database**, with that app's own password check
+and sessions — the shape every app returns to under
+[decisions-oidc.md](./decisions-oidc.md). Its id is the app's, minted by the
+shared library (or a migrated **subject**, kept so old rows keep their keys).
+It works while Ward is down. It may have no local password at all, if it was
+created by a first "Sign in with Ward".
+_Avoid_: "Ward account" for it, and "user" unqualified when the point is which
+database holds the row.
+
+## Linked Ward identity
+The record that a **local account** may also be entered through Ward: the
+pairing of the app's local user id with a Ward **subject**. Created by a first
+Ward sign-in or by the signed-in person choosing "link" in their settings —
+**never by matching a username or email**. Unlinking is refused while the
+local account has no local password.
+_Avoid_: "SSO account", "merged account" — nothing is merged; one local row
+gains a second way in.
+
+## Ward-originated session
+An app session that began with "Sign in with Ward" rather than a local
+password. It carries Ward's session id (`ward_sid`) and is the only kind the
+app checks against Ward, at most every 30 seconds, so a Ward revoke ends it.
+A session that began with a local password is never checked against Ward.
+_Avoid_: "Ward session" for it — that is the session at Ward itself (the
+refresh family), which this one points at but is not.

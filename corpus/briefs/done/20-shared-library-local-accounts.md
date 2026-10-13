@@ -96,3 +96,30 @@ Every one of them can hand over a synchronous SQLite handle.
 - The vendored directory holds exactly the six files. The README contains no
   local path and no production domain (a test greps it).
 - Ward's test suite, typecheck and lint pass.
+
+## Outcome (2026-10-13)
+
+Shipped in `shared-library/` (commit "Shared library: local accounts,
+sessions, lockout and the vendor build (brief 20)").
+- Core accounts, scrypt, lockout keyed on the forwarded address, and opaque
+  sessions: 14-day sliding idle, 30-day absolute, renewal written at most
+  hourly.
+- A SQLite store tested on better-sqlite3 and `node:sqlite`.
+- A Fastify plugin with a fail-closed guard and a `validateSession` hook for
+  brief 21.
+- Unstyled React hooks.
+- `npm run vendor -- <dir>` writes exactly the six files.
+
+Build calls are in decisions-oidc-build.md. The bundler is Rollup with
+TypeScript's `transpileModule`, because esbuild strips the comments that carry
+the security reasoning.
+
+Notes for adopters:
+- Register `wardAuth` before any app route; the guard covers only routes
+  registered after it.
+- Use `routePrefix`, not Fastify's `prefix`.
+
+Verified by the controller after merging with brief 18 on main: 1155 tests,
+typecheck, lint, build and corpus lint clean. `npm run fmt:check` already
+failed on three files from before this brief (`api/src/scripts/register-app-keys.ts`,
+`client/src/verify.ts`, `client/src/verify.test.ts`).

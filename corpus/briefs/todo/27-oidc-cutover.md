@@ -9,7 +9,7 @@ behind. See [decisions-oidc.md](../../wiki/decisions-oidc.md).
 **Deploys are an owner step.** This brief writes the deploy changes and the
 exact commands. The owner runs them.
 
-Depends on briefs 18–26.
+Depends on briefs 18–26, 28 and 29.
 
 ## Files you OWN
 
@@ -38,23 +38,22 @@ Depends on briefs 18–26.
    5. Deploy each app; its migration creates the local users.
    6. Seed each app's owner account with a local password, from the
       environment.
-3. **Retire the old contract only after every app is on the new one:**
-   - Remove `/introspect`, app keys and their console panel.
-   - Remove the `?next=` estate list. Ward's own account page keeps its links
-     where they still make sense.
-   - Remove `x-ward-app-key` on `/notify`.
-   - Move `client/` to the superseded reference, or delete it and say which.
-   - Remove the shared `Path=/` session cookie apps used to read; Ward's own
-     cookies stay scoped to Ward.
-4. Rewrite [integrating.md](../../wiki/integrating.md) as a short pointer to
+3. **Every production image must contain the vendored library.** Build each
+   app's production image and import the bundle inside it. Atrium, prm and
+   satchel were fixed in Wave C; check newspapper and sports-app.
+4. **Trusted proxies** (brief 28): `WARD_TRUSTED_PROXIES` for Ward and
+   `AUTH_TRUSTED_PROXIES` for every app, with the value brief 28 recommends.
+5. **The Jukebox** (brief 29): atrium deploys before just-a-bot, and the bot's
+   `.env` is renamed first.
+6. **Retiring the old contract is brief 30**, and it starts only after the
+   owner confirms production runs on the new flow.
+7. Rewrite [integrating.md](../../wiki/integrating.md) as a short pointer to
    the library's adoption guide and the OIDC docs page, with the five rules
    restated for `/session-status`.
-5. Update [status.md](../../wiki/status.md) and
+8. Update [status.md](../../wiki/status.md) and
    [overview.md](../../wiki/overview.md) to the new shape.
 
 ## Acceptance
 
 - The deploy changes typecheck in vps-deploy, and its own tests pass.
-- After the retirement step, Ward's suite passes with no reference to app keys
-  or `/introspect` outside migrations and the corpus history.
 - The owner has the exact command list, in order, on the brief-board ticket.

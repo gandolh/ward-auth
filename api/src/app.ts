@@ -6,6 +6,7 @@ import { consoleRoutes } from "./routes/console.js";
 import { introspectRoutes } from "./routes/introspect.js";
 import { notifyRoutes } from "./routes/notify.js";
 import { sessionRoutes } from "./routes/session.js";
+import { sessionStatusRoutes } from "./routes/session-status.js";
 import { adminAppsRoutes } from "./routes/admin/apps.js";
 import { adminAppKeysRoutes } from "./routes/admin/app-keys.js";
 import { adminGrantsRoutes } from "./routes/admin/grants.js";
@@ -175,6 +176,14 @@ export async function buildApp(): Promise<FastifyInstance> {
    * advertises.
    */
   await app.register(oidcRoutes);
+
+  /**
+   * `POST /session-status` (brief 19): an app asks whether a Ward-originated
+   * session is still live, authenticated with its client assertion. Registers
+   * nothing when `WARD_OIDC_ISSUER` is unset, like the provider above. See
+   * `routes/session-status.ts`.
+   */
+  await app.register(sessionStatusRoutes);
 
   // Registration order carries no meaning — these plugins share no state and
   // no route prefix, and each declares its own paths. It is alphabetical-ish by

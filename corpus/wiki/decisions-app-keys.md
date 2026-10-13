@@ -8,7 +8,10 @@ updated: 2026-10-07
 > **⚠ Being replaced (2026-10-13).** Once the estate moves to OpenID Connect
 > ([decisions-oidc.md](./decisions-oidc.md)), an app authenticates to Ward as
 > an OIDC client, and the app key and `/introspect` retire at the cutover
-> (brief 27). Until then everything below is live.
+> (brief 27). Until then everything below is live. Brief 19 added the
+> replacement for `/introspect` (`POST /session-status`) and let `/notify` take
+> a client assertion as well as the key; see
+> [decisions-oidc-build.md](./decisions-oidc-build.md).
 
 Session and token mechanics are in [decisions-tokens.md](./decisions-tokens.md),
 which is where introspection itself is decided; this page is only about **who is

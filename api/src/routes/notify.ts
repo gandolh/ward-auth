@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import type { MailTransport } from "../config.js";
 
-import { readAppKeyHeader, resolveAppKey, type AuthenticatedApp } from "../auth/app-key.js";
+import { readAppKeyHeader, resolveAppKey } from "../auth/app-key.js";
 import { getApp, type AppRow } from "../db/apps.js";
 import { recordAudit } from "../db/audit-log.js";
 import { getDb } from "../db/connection.js";
@@ -16,6 +16,7 @@ import {
   NOTIFY_TEXT_MAX,
 } from "../mail/templates.js";
 import { sendMail } from "../mail/transport.js";
+import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-auth.js";
 
 /**
  * `POST /notify`: an app asks Ward to mail one of its own users.
@@ -32,10 +33,9 @@ import { sendMail } from "../mail/transport.js";
  *
  * ## The contract
  *
- * - `x-ward-app-key` is checked first, in `onRequest`, before the body is even
- *   parsed. A bad key is `401 {"error":"invalid_app_key"}`, the same answer
- *   `/introspect` gives, for the same reason: a misconfigured app must fail
- *   loudly.
+ * - The caller proves which app it is in one of two ways (below). A bad
+ *   credential is `401`, never `{"sent":false}`, for the reason `/introspect`
+ *   gives: a misconfigured app must fail loudly.
  * - The body is `{ subject, mailSubject, text }`, plain text.
  * - Success is `200 {"sent":true}`.
  * - Every refusal is `200 {"sent":false}`, byte for byte: no such account, a
@@ -50,6 +50,26 @@ import { sendMail } from "../mail/transport.js";
  *   `@ward/client` raises `WardUnavailableError` for it, as for any non-200.
  *   It does not leak more than success does: it is only reachable on the path
  *   that would have sent.
+ *
+ * ## Two ways to authenticate, until brief 27 retires the first
+ *
+ * - **The app key**, the `x-ward-app-key` header. Checked first, in
+ *   `onRequest`, before the body is even parsed. A bad key is
+ *   `401 {"error":"invalid_app_key"}`. A call with no credential at all gets
+ *   the same answer. A request that sends the header is judged by it alone.
+ * - **A client assertion**, the `private_key_jwt` an app already signs for the
+ *   token endpoint and `/session-status`: `client_assertion_type` and
+ *   `client_assertion` beside the other body fields, the assertion's `aud` the
+ *   issuer. That credential lives in the body, so it can only be checked after
+ *   the body is parsed, in `preHandler`; the body limit below bounds what an
+ *   unauthenticated caller can make Ward read. A bad assertion is
+ *   `401 {"error":"invalid_client"}`, and with no issuer configured there is
+ *   nothing to verify against, so any assertion is refused the same way.
+ *
+ * The two credential fields are taken off the body before the strict check
+ * below, so they are not "unknown keys". Either way the app is the one the
+ * credential belongs to, and the rest of the route does not know which was used
+ * beyond the audit row's detail.
  *
  * ## An app can mail its own users and nobody else
  *
@@ -68,16 +88,18 @@ import { sendMail } from "../mail/transport.js";
  *
  * ## Every call is audited, under the app's name
  *
- * One `audit_log` row per keyed call: `notify.sent`, `notify.refused` with the
+ * One `audit_log` row per authenticated call: `notify.sent`, `notify.refused` with the
  * reason, or `notify.failed`. The actor is `system` with the label
  * `app:<slug>`: the table's actor kinds are a CHECK, Ward is the one sending,
  * and the label names the app it sent for. A new `app` actor kind would need
- * a table rebuild for a distinction the label already carries. The row holds
+ * a table rebuild for a distinction the label already carries. The detail
+ * names the credential: `keyId` for an app key, `auth: "client_assertion"` for
+ * an assertion, never the assertion itself. The row holds
  * the subject as its target and never the mail's subject line or text, because
  * the audit log is never pruned and what an app writes to a person is not
  * Ward's to keep.
  *
- * A call with a bad key is not audited. It has no app to name, and an
+ * A call with a bad credential is not audited. It has no app to name, and an
  * anonymous caller must not be able to write to the audit log.
  *
  * ## The rate limit
@@ -165,6 +187,8 @@ export interface NotifyRoutesOptions {
   transport?: MailTransport;
   /** For tests that need a small limit. Production builds one with the defaults. */
   limiter?: NotifyLimiter;
+  /** For tests. Production reads `WARD_OIDC_ISSUER`; the assertion's `aud`. */
+  issuer?: string;
 }
 
 /** Any C0 or C1 control character. A subject line is one header line. */
@@ -242,6 +266,41 @@ function claimedSubject(body: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 && value.length <= 64 ? value : undefined;
 }
 
+/**
+ * The body without the client-authentication fields, which are the credential
+ * and not part of the message. Anything that is not a plain object is returned
+ * as it is, for the body check to refuse.
+ */
+function withoutCredentials(body: unknown): unknown {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return body;
+  const {
+    client_assertion_type: _type,
+    client_assertion: _assertion,
+    ...rest
+  } = body as Record<string, unknown>;
+  return rest;
+}
+
+/** The assertion fields of a body, if it carries both as strings. */
+function presentedAssertion(body: unknown): { type: string; assertion: string } | undefined {
+  if (typeof body !== "object" || body === null) return undefined;
+  const { client_assertion_type: type, client_assertion: assertion } = body as Record<
+    string,
+    unknown
+  >;
+  return typeof type === "string" && typeof assertion === "string" && assertion.length > 0
+    ? { type, assertion }
+    : undefined;
+}
+
+/** Who a request authenticated as, and with what. Never the credential. */
+interface Caller {
+  appSlug: string;
+  /** `app_keys.id` for an app key; absent for a client assertion. */
+  keyId?: string;
+  via: "app_key" | "client_assertion";
+}
+
 /** The serialisation schema. Also a filter: nothing else can reach the app. */
 const NOTIFY_ROUTE_SCHEMA = {
   200: {
@@ -275,8 +334,8 @@ export async function notifyRoutes(
   // One limiter per registration, so one per process in production.
   const limiter = options.limiter ?? createNotifyLimiter();
 
-  // The app each request authenticated as, handed from the hook to the handler.
-  const callers = new WeakMap<FastifyRequest, AuthenticatedApp>();
+  // The app each request authenticated as, handed from the hooks to the handler.
+  const callers = new WeakMap<FastifyRequest, Caller>();
 
   app.post(
     "/notify",
@@ -284,13 +343,18 @@ export async function notifyRoutes(
       bodyLimit: NOTIFY_BODY_LIMIT,
       schema: { response: NOTIFY_ROUTE_SCHEMA },
       /**
-       * The app key, before anything else, including body parsing. Nothing an
-       * anonymous caller sends is parsed, counted or written.
+       * The app key, before anything else, including body parsing. A request
+       * that sends the header is judged by it alone, and nothing it sends is
+       * parsed, counted or written until it passes. A request with no header
+       * is left for `preHandler`, which reads the assertion from the body.
        */
       onRequest: async (request, reply) => {
         reply.header("cache-control", "no-store");
 
-        const caller = resolveAppKey(await database(), readAppKeyHeader(request));
+        const presented = readAppKeyHeader(request);
+        if (presented === undefined) return;
+
+        const caller = resolveAppKey(await database(), presented);
         if (!caller.ok) {
           request.log.warn(
             { reason: caller.reason },
@@ -299,7 +363,46 @@ export async function notifyRoutes(
           return reply.code(401).send({ error: "invalid_app_key" });
         }
 
-        callers.set(request, caller.app);
+        callers.set(request, {
+          appSlug: caller.app.appSlug,
+          keyId: caller.app.keyId,
+          via: "app_key",
+        });
+      },
+      /**
+       * The client assertion, for a request that sent no app key. The body is
+       * parsed by now (the credential is in it), but nothing has been counted
+       * or written, and a failure writes nothing.
+       */
+      preHandler: async (request, reply) => {
+        if (callers.has(request)) return;
+
+        const presented = presentedAssertion(request.body);
+        if (presented === undefined) {
+          // No credential of either kind: the app-key answer, as before.
+          request.log.warn(
+            { reason: "absent" },
+            "notify: refusing a request with no usable app key",
+          );
+          return reply.code(401).send({ error: "invalid_app_key" });
+        }
+
+        const issuer = options.issuer ?? (await import("../config.js")).OIDC?.issuer;
+        const client =
+          issuer === undefined || presented.type !== CLIENT_ASSERTION_TYPE
+            ? ({ ok: false, reason: "not_accepted" } as const)
+            : await verifyClientAssertion(await database(), presented.assertion, {
+                audience: issuer,
+              });
+        if (!client.ok) {
+          request.log.warn(
+            { reason: client.reason },
+            "notify: refusing a request with no usable client assertion",
+          );
+          return reply.code(401).send({ error: "invalid_client" });
+        }
+
+        callers.set(request, { appSlug: client.clientId, via: "client_assertion" });
       },
     },
     async (request, reply) => {
@@ -321,7 +424,11 @@ export async function notifyRoutes(
           action,
           targetKind: target === undefined ? null : "user",
           targetId: target ?? null,
-          detail: { app: slug, keyId: caller.keyId, ...detail },
+          detail: {
+            app: slug,
+            ...(caller.via === "app_key" ? { keyId: caller.keyId } : { auth: caller.via }),
+            ...detail,
+          },
         });
       };
 
@@ -336,7 +443,7 @@ export async function notifyRoutes(
 
       if (!limiter.take(slug)) return refuse("rate_limited");
 
-      const parsed = notifyBody.safeParse(request.body);
+      const parsed = notifyBody.safeParse(withoutCredentials(request.body));
       // zod's issues are not logged: they would echo the submitted text.
       if (!parsed.success) return refuse("invalid_body");
 

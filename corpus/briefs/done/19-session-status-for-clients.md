@@ -53,3 +53,21 @@ Depends on brief 18 (client authentication).
   A missing or bad client credential is `401`.
 - `/notify` works with client authentication and still works with the app key.
 - Ward's test suite, typecheck and lint pass.
+
+## Outcome (2026-10-13)
+
+Shipped. `POST /session-status` takes a `private_key_jwt` client assertion in
+the JSON body (audience: the issuer) with `wardSid` and `subject`. It answers
+`200 {"active":true,"role"}`, one identical `200 {"active":false}` for every
+"no", or `401 {"error":"invalid_client"}`, with `cache-control: no-store`.
+When no issuer is configured the route is not registered (404).
+
+- It writes no audit row, like `/introspect`. One row per session every
+  30 seconds would bury the rows an operator needs. Refused assertions are
+  logged at `warn`.
+- `/notify` also accepts the assertion in its body. A request that carries
+  `x-ward-app-key` is still judged by the key alone.
+
+Docs are in `oidc.mdx` and `api.mdx`, and the call is recorded in
+decisions-oidc-build.md. Verified by the controller: 1192 tests, typecheck,
+lint and corpus lint clean.

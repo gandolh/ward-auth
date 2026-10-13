@@ -1,5 +1,5 @@
 ---
-summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), and the shared library's build calls (brief 20).
+summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), and the shared library's build calls (brief 20).
 updated: 2026-10-13
 ---
 
@@ -47,6 +47,36 @@ RP-initiated logout revokes the family named in a validated `id_token_hint`'s
 `ward_sid`; without a hint nothing at Ward is revoked. An unregistered redirect
 URI gets Ward's own error page, not `access_denied`. Redirecting an error to an
 unregistered URI is an open redirect, and the spec forbids it.
+
+## Apps ask `POST /session-status`; `/notify` takes the same credential
+_2026-10-13, brief 19_ — The pull in decisions-oidc.md ("Ward-originated
+sessions still end within 30 seconds") is `POST /ward-api/session-status`, the
+OIDC replacement for `/introspect`. The body carries the client assertion in
+the standard form for `private_key_jwt` (`client_assertion_type` and
+`client_assertion`) beside `wardSid` and `subject`; `aud` is the issuer. An app
+needs no access token and no app key. The answer is `{active:true, role}` or
+`{active:false}`, and **every no is the same bytes**: a revoked, lapsed or
+unknown family, a disabled account, a subject that is not the family's, no grant
+in the calling client's app, a malformed body. The app is always the
+assertion's client, never one named in the body. It asks what `findAccount`
+asks at code exchange, so a session that could not be signed in cannot be kept.
+
+**A bad assertion is `401 {"error":"invalid_client"}`**, the one exception, for
+the reason `/introspect` made its bad app key one: a misconfigured client must
+not read as an app full of signed-out people. A body that is not JSON is read as
+no body, so it is the same `401`. Without `WARD_OIDC_ISSUER` the route is not
+mounted and answers `404`, like the provider. **Not audited**, as `/introspect`
+is not: one row per session per 30 seconds would bury the rows an operator
+needs. A refused assertion is logged at `warn` with its reason. No rate limit,
+for `/introspect`'s reason.
+
+`/notify` accepts `client_assertion_type` and `client_assertion` in its body as
+well as the `x-ward-app-key` header, and a request that sends the header is
+judged by it alone. The assertion lives in the body, so it is checked after the
+body parses (a bad app key is still refused before). A bad assertion is the same
+`401 invalid_client`; no credential at all keeps `invalid_app_key`. Audit rows
+name the credential (`keyId`, or `auth: "client_assertion"`) and never hold it.
+The app key and `/introspect` retire in brief 27.
 
 ## The local half's build calls
 _2026-10-13, brief 20_ — Settled while building `shared-library/`:

@@ -1,17 +1,22 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import Fastify, { type FastifyInstance, type LightMyRequestResponse } from "fastify";
+import { SignJWT, importJWK, type JWK } from "jose";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { MailTransport } from "../config.js";
 import { APP_KEY_HEADER, resetAppKeyTouchThrottle } from "../auth/app-key.js";
 import { createAppKey, revokeAppKey } from "../db/app-keys.js";
+import { setOidcClient } from "../db/apps.js";
 import { countAudit, listAudit, type AuditLogRow } from "../db/audit-log.js";
 import { grantRole, SUPERUSER_ACTOR } from "../db/grants.js";
 import { freshDb, seedAppKey, seedApps, seedUser } from "../db/test-support.js";
 import { markEmailVerified, setDisabled, type UserRow } from "../db/users.js";
+import { CLIENT_ASSERTION_TYPE } from "../oidc/client-auth.js";
+import { generateClientKeyPair } from "../oidc/client-keygen.js";
 import {
   createNotifyLimiter,
   NOTIFY_LIMIT,
@@ -30,6 +35,7 @@ import {
  */
 
 const FROM = "Ward <ward@gandolh.ro>";
+const ISSUER = "https://ward.test/ward-api/oidc";
 
 let dir: string;
 let outbox: string;
@@ -37,6 +43,9 @@ let db: Database.Database;
 let app: FastifyInstance;
 let prmKey: string;
 let atriumKey: string;
+/** The apps' client keys, for the assertion path. */
+let prmClientKey: JWK;
+let atriumClientKey: JWK;
 
 /** The people this suite mails, or tries to. */
 let alice: UserRow; // verified, prm grant: the one who gets mail
@@ -54,6 +63,7 @@ async function build(options: { transport?: MailTransport; limiter?: NotifyLimit
   await instance.register(notifyRoutes, {
     db,
     transport: options.transport ?? fileTransport(outbox),
+    issuer: ISSUER,
     ...(options.limiter ? { limiter: options.limiter } : {}),
   });
   await instance.ready();
@@ -71,6 +81,40 @@ function notify(
     // `null` for no header: `undefined` would take the default.
     headers: key === null ? {} : { [APP_KEY_HEADER]: key },
     payload: body as Record<string, unknown>,
+  });
+}
+
+/** What an app's server signs: the assertion it also presents at the token endpoint. */
+async function assertion(
+  key: JWK,
+  claims: { iss?: string; aud?: string; jti?: string; exp?: string } = {},
+): Promise<string> {
+  const iss = claims.iss ?? "prm";
+  return new SignJWT({})
+    .setProtectedHeader({ alg: "EdDSA", kid: key.kid! })
+    .setIssuer(iss)
+    .setSubject(iss)
+    .setAudience(claims.aud ?? ISSUER)
+    .setJti(claims.jti ?? randomUUID())
+    .setIssuedAt()
+    .setExpirationTime(claims.exp ?? "60s")
+    .sign(await importJWK(key, "EdDSA"));
+}
+
+/** `POST /notify` authenticated by client assertion in the body, no app-key header. */
+async function notifyAsClient(
+  body: Record<string, unknown>,
+  signed: Promise<string> = assertion(prmClientKey),
+  on: FastifyInstance = app,
+): Promise<LightMyRequestResponse> {
+  return on.inject({
+    method: "POST",
+    url: "/notify",
+    payload: {
+      client_assertion_type: CLIENT_ASSERTION_TYPE,
+      client_assertion: await signed,
+      ...body,
+    },
   });
 }
 
@@ -134,6 +178,16 @@ beforeAll(async () => {
   seedApps(db);
   prmKey = seedAppKey(db, "prm");
   atriumKey = seedAppKey(db, "atrium");
+  for (const slug of ["prm", "atrium"]) {
+    const pair = await generateClientKeyPair();
+    setOidcClient(db, slug, {
+      redirectUris: [`http://localhost:5173/${slug}/auth/ward/callback`],
+      postLogoutRedirectUris: [],
+      jwks: { keys: [pair.publicJwk] },
+    });
+    if (slug === "prm") prmClientKey = pair.privateJwk;
+    else atriumClientKey = pair.privateJwk;
+  }
 
   const verified = (name: string): UserRow => {
     const user = seedUser(db, name, `${name}@example.com`);
@@ -203,16 +257,154 @@ describe("the app key comes first", () => {
     expect(countAudit(db)).toBe(0);
   });
 
-  it("checks the key before parsing the body", async () => {
-    // Unparseable JSON with no key is a 401, not Fastify's 400: the hook runs
-    // before the body is read.
+  it("checks a presented key before parsing the body", async () => {
+    // Unparseable JSON behind a bad key is a 401, not Fastify's 400: the hook
+    // runs before the body is read.
     const response = await app.inject({
       method: "POST",
       url: "/notify",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", [APP_KEY_HEADER]: "not-a-key" },
       payload: "{not json",
     });
     expect(response.statusCode).toBe(401);
+    expect(response.body).toBe('{"error":"invalid_app_key"}');
+  });
+});
+
+describe("client authentication", () => {
+  it("mails with an assertion in the body and no app key, as the assertion's app", async () => {
+    const response = await notifyAsClient(message(alice.subject));
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ sent: true });
+    expect(response.headers["cache-control"]).toBe("no-store");
+
+    const { headers } = await onlyMessage();
+    expect(headers).toMatch(/^From: Public Resource Map via Ward/m);
+    expect(headers).toMatch(/^To: alice@example\.com$/m);
+  });
+
+  it("still mails with the app key and no assertion", async () => {
+    const response = await notify(message(alice.subject));
+    expect(response.json()).toEqual({ sent: true });
+  });
+
+  it("keeps the same rules: another app's user is refused", async () => {
+    const response = await notifyAsClient(
+      message(alice.subject),
+      assertion(atriumClientKey, { iss: "atrium" }),
+    );
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ sent: false });
+    expect(await outboxFiles()).toEqual([]);
+    expect(JSON.parse(lastAudit().detail!)).toMatchObject({ reason: "no_grant" });
+  });
+
+  it("does not treat the credential fields as an unknown key of the message", async () => {
+    // The strict body would refuse them if they were not taken off first; the
+    // app-key path accepts them too, and ignores them.
+    const response = await app.inject({
+      method: "POST",
+      url: "/notify",
+      headers: { [APP_KEY_HEADER]: prmKey },
+      payload: {
+        ...message(alice.subject),
+        client_assertion_type: CLIENT_ASSERTION_TYPE,
+        client_assertion: "ignored",
+      },
+    });
+    expect(response.json()).toEqual({ sent: true });
+  });
+
+  it("is audited under the app's name, naming the credential and never holding it", async () => {
+    const signed = await assertion(prmClientKey);
+    await notifyAsClient(message(alice.subject), Promise.resolve(signed));
+
+    const row = lastAudit();
+    expect(row).toMatchObject({
+      action: "notify.sent",
+      actor_kind: "system",
+      actor_label: "app:prm",
+      target_id: alice.subject,
+    });
+    expect(JSON.parse(row.detail!)).toMatchObject({ app: "prm", auth: "client_assertion" });
+    expect(JSON.parse(row.detail!)).not.toHaveProperty("keyId");
+    expect(row.detail).not.toContain(signed);
+  });
+
+  it("counts against the same per-app limit as the key", async () => {
+    const limited = await build({ limiter: createNotifyLimiter(2, 60_000) });
+    try {
+      expect((await notify(message(alice.subject), prmKey, limited)).json()).toEqual({
+        sent: true,
+      });
+      expect((await notifyAsClient(message(alice.subject), undefined, limited)).json()).toEqual({
+        sent: true,
+      });
+      expect((await notifyAsClient(message(alice.subject), undefined, limited)).json()).toEqual({
+        sent: false,
+      });
+    } finally {
+      await limited.close();
+    }
+  });
+
+  it("refuses a bad assertion with 401 invalid_client: no mail, no audit row", async () => {
+    const stranger = (await generateClientKeyPair()).privateJwk;
+    const cases: [string, Promise<string>][] = [
+      ["signed by another key", assertion(stranger)],
+      ["an unknown client", assertion(stranger, { iss: "no-such-app" })],
+      ["a wrong audience", assertion(prmClientKey, { aud: "https://ward.test/other" })],
+      ["expired", assertion(prmClientKey, { exp: "-1h" })],
+      ["not a jwt", Promise.resolve("not-a-jwt")],
+    ];
+    for (const [label, signed] of cases) {
+      const response = await notifyAsClient(message(alice.subject), signed);
+      expect(response.statusCode, label).toBe(401);
+      expect(response.body, label).toBe('{"error":"invalid_client"}');
+    }
+    expect(await outboxFiles()).toEqual([]);
+    expect(countAudit(db)).toBe(0);
+  });
+
+  it("refuses a replayed assertion", async () => {
+    const once = await assertion(prmClientKey);
+    expect((await notifyAsClient(message(alice.subject), Promise.resolve(once))).statusCode).toBe(
+      200,
+    );
+    const again = await notifyAsClient(message(alice.subject), Promise.resolve(once));
+    expect(again.statusCode).toBe(401);
+    expect(again.body).toBe('{"error":"invalid_client"}');
+  });
+
+  it("refuses an assertion type other than jwt-bearer", async () => {
+    const wrongType = await app.inject({
+      method: "POST",
+      url: "/notify",
+      payload: {
+        ...message(alice.subject),
+        client_assertion_type: "urn:example:other",
+        client_assertion: await assertion(prmClientKey),
+      },
+    });
+    expect(wrongType.statusCode).toBe(401);
+    expect(wrongType.body).toBe('{"error":"invalid_client"}');
+  });
+
+  it("lets a presented app key win: a bad key is refused even beside a good assertion", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/notify",
+      headers: { [APP_KEY_HEADER]: "not-a-key" },
+      payload: {
+        ...message(alice.subject),
+        client_assertion_type: CLIENT_ASSERTION_TYPE,
+        client_assertion: await assertion(prmClientKey),
+      },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.body).toBe('{"error":"invalid_app_key"}');
+    expect(await outboxFiles()).toEqual([]);
   });
 });
 

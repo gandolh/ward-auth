@@ -56,7 +56,8 @@ is deliberately **not** keyed on `request.ip` — see
 | Method | Path | What it does |
 |---|---|---|
 | `POST` | `/introspect` | Is this session live, and what may it do? Requires `x-ward-app-key`. |
-| `POST` | `/notify` | Mail one of the calling app's users. Ward holds the address; the app never sees it. Requires `x-ward-app-key`. |
+| `POST` | `/notify` | Mail one of the calling app's users. Ward holds the address; the app never sees it. Requires `x-ward-app-key`, or a client assertion in the body. |
+| `POST` | `/session-status` | Is this Ward session, signed in through OpenID Connect, still live and the grant still held? Requires a client assertion in the body; only mounted when `WARD_OIDC_ISSUER` is set. See [Sign in with Ward](/oidc/). |
 
 Introspection is the endpoint every app calls on every request. It is fully
 described in [Introspection and revocation](/introspection/). The notify

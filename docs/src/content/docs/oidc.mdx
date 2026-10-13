@@ -1,6 +1,6 @@
 ---
 title: Sign in with Ward (OpenID Connect)
-description: Ward as an OpenID Connect provider — the issuer and its URLs behind the stripped prefix, how an app registers and authenticates as a client, the ID token's claims, the login step, logout, and the environment variables.
+description: Ward as an OpenID Connect provider — the issuer and its URLs behind the stripped prefix, how an app registers and authenticates as a client, the ID token's claims, the login step, logout, asking Ward whether a session is still live (POST /session-status), and the environment variables.
 ---
 
 Every app keeps its own accounts and its own login page. "Sign in with Ward" is
@@ -11,7 +11,8 @@ hand-written protocol. The design and what it replaced are in the corpus page
 `corpus/wiki/decisions-oidc.md`.
 
 The cookie sign-in, `/introspect`, `/session`, `/refresh` and `/logout` keep
-working unchanged until the cutover. Nothing on this page replaces them yet.
+working unchanged until the cutover. `POST /session-status` below is what
+replaces `/introspect` for an app that signs people in through Ward.
 
 ## The issuer
 
@@ -137,6 +138,66 @@ open redirect.
 
 Email is never included. `ward_sid` is the id an app keeps on its own session
 row and asks Ward about. The provider's own `sid` claim is not used.
+
+## Asking whether a Ward session is still live
+
+A session that began with "Sign in with Ward" ends within 30 seconds of a Ward
+sign-out, a console revoke, a password change or a removed grant. The app keeps
+the ID token's `ward_sid` on its own session row and asks Ward. Sessions that
+began with a local password are never asked about.
+
+`POST /ward-api/session-status` (Fastify sees `/session-status`), JSON body:
+
+```json
+{
+  "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+  "client_assertion": "<a fresh client assertion, aud = the issuer>",
+  "wardSid": "<the ID token's ward_sid>",
+  "subject": "<the ID token's sub>"
+}
+```
+
+The first two fields are the standard form of `private_key_jwt`, the same
+assertion the app signs for the token endpoint, with the issuer as `aud`. Sign a
+new one for every call: its `jti` is spent on use, and Ward shares the markers
+with the token endpoint, so a reused assertion is refused wherever it is
+presented.
+
+| Answer | Meaning |
+|---|---|
+| `200 {"active":true,"role":"<role>"}` | The Ward session is live and is this subject's, the account is active, and the account holds a grant in this app. `role` is the one `ward_role` carries. |
+| `200 {"active":false}` | Anything else: a revoked, expired or unknown session, a disabled account, a subject that is not the session's, no grant in this app, a malformed body. Ward never says which. |
+| `401 {"error":"invalid_client"}` | The assertion is missing or does not verify: no assertion, the wrong type, an unknown client, a wrong key, audience or expiry, or a reused `jti`. |
+
+The app is always the assertion's client. A body cannot name another app's
+grants, and there is nothing to configure. Without `WARD_OIDC_ISSUER`, Ward does
+not mount the route at all, and the answer is `404`. The call is not audited and
+not rate limited, because every Ward-originated session of every app makes it
+every 30 seconds.
+
+The app's side:
+
+1. **Cache each answer for 30 seconds per `wardSid`**, in process, and ask
+   again only after that. The 30 seconds is the longest a revoked session
+   survives, so a longer cache breaks the promise.
+2. **Collapse concurrent calls.** While one call for a `wardSid` is in flight,
+   every other request for it waits for that answer instead of sending its own.
+3. **Fail closed.** A timeout, a network error, any status other than `200`, or
+   a body that is not `{ "active": boolean }` means the Ward-originated session
+   is rejected, and the person is told to sign in with their local password.
+   Never treat an error as "still live", and do not cache a failure as an
+   answer.
+4. **A `401` is its own error.** It does not mean the person signed out. It means
+   the app's client key, `client_id`, or the issuer it signs for is wrong, so
+   every Ward-originated session of the app fails at once. Log it as a
+   configuration error naming the client, and keep failing closed.
+
+`POST /ward-api/notify` takes the same credential. Instead of the
+`x-ward-app-key` header, put `client_assertion_type` and `client_assertion` in
+the JSON body beside `subject`, `mailSubject` and `text`. A request that sends
+the header is judged by the header alone. A bad assertion is the same
+`401 {"error":"invalid_client"}`, and `/notify` otherwise behaves exactly as
+before. The app key keeps working until the cutover.
 
 ## Logout
 

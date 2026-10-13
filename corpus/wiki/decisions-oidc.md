@@ -109,8 +109,9 @@ handling in Ward for no gain over a 30-second pull.
 ## Calls settled while building
 
 How clients authenticate, why Ward's refresh family outranks the provider's
-own session, the prefix and logout details, and the local half's build calls
-live in [decisions-oidc-build.md](./decisions-oidc-build.md).
+own session, the prefix and logout details, the session-status endpoint
+(brief 19), and the local half's build calls live in
+[decisions-oidc-build.md](./decisions-oidc-build.md).
 
 ## Mail stays a Ward service, for Ward-linked users only
 _2026-10-13, default accepted_ — `POST /notify` stays, authenticated by the

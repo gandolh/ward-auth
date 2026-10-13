@@ -49,6 +49,12 @@ Adding passkeys later is cheap specifically because of the one-origin decision �
 the WebAuthn relying-party ID is just `gandolh.ro`, with no per-app registration.
 
 ## Ward owns access grants; the security boundary moves from signup to authorization
+
+> **⚠ PARTLY REVISED 2026-10-13.** A grant now decides only whether a Ward
+> account may use an app's "Sign in with Ward" button. The role inside the app
+> lives in the app's own users table, seeded from the grant on a first Ward
+> sign-in. See [decisions-oidc.md](./decisions-oidc.md).
+
 _2026-09-01, grilled Q12; **revises the two decisions above**_ — Anyone may
 register. **Registering grants almost nothing.** A grant is a
 `(subject, app, role)` triple held by Ward, and without one for a given app, an

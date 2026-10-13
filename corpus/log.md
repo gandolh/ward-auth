@@ -293,3 +293,19 @@ The one assumption on open-questions.md, that the owner account's grants are exp
 ## [2026-10-07] change | imbatranimOS leaves Ward
 
 ImbatranimOS's brief 157 dropped Ward: the desktop now signs its single owner in itself, in the estate too, and its deploy passes a `SETUP_TOKEN` instead of `WARD_APP_KEY`. Here, `register-app-keys` no longer creates an `imbatranim-os` row, `ESTATE_APPS` no longer lists it (so `/imbatranim-os` is no longer a `?next=` destination), and the local seed no longer registers it or writes its env files. 946 tests pass. Owner step after imbatranimOS is redeployed: delete the `imbatranim-os` app in the console (Apps, then the app, then Delete app), which cascades its grants and service keys.
+
+## [2026-10-13] decide | Local accounts in every app, Ward as an OIDC provider, a shared library
+
+The owner redesigned how the estate signs in. Every app gets its own users, its own login page in its own design, and a "Sign in with Ward" button. The button is an OIDC authorization code flow with PKCE against Ward running `oidc-provider`, so it keeps working if Ward moves to a subdomain. Apps keep working while Ward is down, through local sign-in.
+
+The owner's answers:
+- A first Ward sign-in with a grant creates the local user. Linking otherwise happens only from settings, never by username.
+- Existing Ward users migrate with their subject as their local id.
+- The grant decides who may use the button; the role lives in the app.
+- Revoke-everywhere stays at 30 seconds for Ward-originated sessions.
+- prm gets a local register page; no other app gains a sign-up.
+- imbatranimOS stays out.
+- `/notify` stays for Ward-linked users.
+
+The shared code lives in `shared-library/` and is copied into each app as a built, unminified bundle with a README naming only the source and version. Recorded in wiki/decisions-oidc.md, with revision notes on decisions.md Q4 and Q21, decisions-accounts.md's grants call, decisions-app-keys.md and integrating.md. Briefs 18–27 written in four waves (status.md). Two questions left for brief 18 are on open-questions.md. The subdomain move is a todo. The same day, the production domain was removed from every Markdown file across the estate, this repo included.
+

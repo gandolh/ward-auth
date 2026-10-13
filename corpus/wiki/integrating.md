@@ -5,6 +5,9 @@ updated: 2026-10-07
 
 # Integrating an app with Ward
 
+> **⚠ Being replaced (2026-10-13)** by local accounts plus OIDC
+> ([decisions-oidc.md](./decisions-oidc.md)). Authoritative until brief 27.
+
 Each app **writes its own Ward client**. There is no shared npm package in any
 app's dependencies, by decision (2026-09-06): the apps are separate checkouts
 that `vps-deploy` rsyncs and `npm ci`s independently, and every mechanism for
@@ -12,13 +15,10 @@ sharing one package across them — a registry, a committed tarball, a git
 dependency — costs more in build machinery and deploy authentication than the
 ~200 lines it saves.
 
-The cost is real and is accepted with eyes open: this is **security code,
-duplicated five times**. This page is the mitigation. It is the contract all
-five implementations are written against, and
-[`client/`](../../client/) in this repo stays as the **tested reference
-implementation** — 58 tests, not shipped to anything, kept so that "what should
-this do" has one answer and a new app has something to copy from rather than
-reinvent.
+The cost is accepted: **security code, duplicated five times**. This page is
+the contract all five are written against, and [`client/`](../../client/) is
+the **tested reference implementation** (58 tests, shipped to nothing), so
+"what should this do" has one answer.
 
 > If you are about to change any behaviour on this page, change it here first,
 > then in `client/`, then in all five apps. A change made in one app only is a

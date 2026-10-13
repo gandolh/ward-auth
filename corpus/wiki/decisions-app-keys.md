@@ -5,6 +5,11 @@ updated: 2026-10-07
 
 # Decisions — app keys
 
+> **⚠ Being replaced (2026-10-13).** Once the estate moves to OpenID Connect
+> ([decisions-oidc.md](./decisions-oidc.md)), an app authenticates to Ward as
+> an OIDC client, and the app key and `/introspect` retire at the cutover
+> (brief 27). Until then everything below is live.
+
 Session and token mechanics are in [decisions-tokens.md](./decisions-tokens.md),
 which is where introspection itself is decided; this page is only about **who is
 allowed to ask**. Foundational scope calls are in

@@ -40,6 +40,12 @@ app-scoped tokens at `Path=/atrium-api`, `Path=/prm-api` and so on. Not decided,
 recorded so it is not re-derived.
 
 ## wzd_auth owns credentials and account identity; apps keep their own rows
+
+> **⚠ REVISED 2026-10-13: apps own their accounts again.** Each app keeps its
+> own users and passwords, and a Ward account is an optional linked second way
+> in through OpenID Connect. See [decisions-oidc.md](./decisions-oidc.md). The
+> text below records the 2026-09-01 shape.
+
 _2026-09-01, grilled Q4_ — One `users` table, one password, one place a person
 signs in. Every app keeps its **own** per-user rows keyed by a stable
 **subject** — atrium keeps profiles, reading progress and notes; imbatranimOS
@@ -96,6 +102,12 @@ a token, less well to the service), *Sanctum* (best architectural fit, collides
 with Laravel Sanctum).
 
 ## There is one login page, and it lives in Ward
+
+> **⚠ REVISED 2026-10-13: every app has its own login page again.** Ward's
+> login page is reached only through an app's "Sign in with Ward" button. See
+> [decisions-oidc.md](./decisions-oidc.md). The text below records the
+> 2026-09-01 shape.
+
 _2026-09-01, grilled Q21_ — Apps redirect to a central `/ward/login` with a
 `?next=` and are returned once the cookie is set. No app renders its own login
 form.

@@ -1,13 +1,34 @@
 ---
-summary: Dated snapshot: Ward is deployed and the estate signs in through it (four apps; imbatranimOS left on 2026-10-07); the cutover ran on 2026-10-04. Brief 17 (2026-10-07) added POST /notify, so an app can mail its own users without seeing an address; prm's brief 32 is the first caller. Nothing is open.
-updated: 2026-10-07
+summary: Dated snapshot: Ward is deployed and four apps sign in through it. On 2026-10-13 the owner redesigned the estate — local accounts in every app plus "Sign in with Ward" over OpenID Connect, through a shared library — and briefs 18–27 are written, none started. Brief 17 (POST /notify) is the last one done.
+updated: 2026-10-13
 ---
 
 # Status
 
-_2026-10-07._
+_2026-10-13._
 
 ## Where things stand
+
+**Redesign decided 2026-10-13: local accounts plus "Sign in with Ward" over
+OpenID Connect.** Every app gets its own users and its own login page again,
+Ward becomes an OIDC provider, and the shared logic ships as a built library
+each app copies in. Ward-originated sessions keep the 30-second
+revoke-everywhere. See [decisions-oidc.md](./decisions-oidc.md). It revises Q4,
+Q21 and the no-shared-package call. Briefs 18–27 are written and not started:
+
+| Wave | Briefs | Depends on |
+|---|---|---|
+| A | 18 OIDC provider · 20 library: local accounts | — (disjoint: `api/`+`ui/` vs `shared-library/`) |
+| B | 19 session status for clients · 21 library: Sign in with Ward | 19 on 18; 21 on 18, 19, 20 (run 19 first) |
+| C | 22 atrium · 23 newspapper · 24 prm (with local register) · 25 sports-app · 26 satchel | 20, 21 (one repo each, run in parallel) |
+| D | 27 cutover and retirement of the old contract | 18–26; deploys are owner steps |
+
+imbatranimOS stays out. Moving Ward to a subdomain is a todo
+([../todos/ward-on-a-subdomain.md](../todos/ward-on-a-subdomain.md)), not a
+brief.
+
+Until brief 27, everything below and [integrating.md](./integrating.md) still
+describe production.
 
 **Brief 17 landed 2026-10-07.** `POST /notify` lets an app mail its own
 granted, verified users without seeing an address, capped at 2,000 calls per
@@ -49,11 +70,11 @@ through Ward.
 | Candidate research | **Done** — [landscape.md](./landscape.md) |
 | Design grilling (6 rounds) | **Complete** 2026-09-01 |
 | Decisions locked | **21** design, across five `decisions*.md` pages — [app keys](./decisions-app-keys.md) is the newest, and the only one taken after the build started — plus five engineering calls in [decisions-implementation.md](./decisions-implementation.md) |
-| Open questions | **None** |
+| Open questions | **Two**, each settled inside a brief — [open-questions.md](./open-questions.md) |
 | Cutover | **Full prune** — every account and all its app data, then recreate |
 | UI | **Central `/ward/login` + console + minimal self-service** |
 | Name | **Ward** (repo still `wzd_auth`; rename pending) |
-| Briefs written | **17** |
+| Briefs written | **27** (18–27 written 2026-10-13, see the wave table above) |
 | Briefs done | **All.** 00–10, 13 · 14 · 15 · 16 and 17 in [briefs/done/](../briefs/done/); 11 superseded by vps-deploy's `stacks/ward.ts` (2026-10-04) |
 | App keys | **Built 2026-09-06**, unbriefed — schema, guard, console routes and panel. Consumed by all five apps; not yet deployed |
 | Service code | **Complete.** API, `@ward/client`, and the UI at `/ward` — login, register, verify, self-service, and the console. `POST /notify` added 2026-10-07 |
@@ -78,37 +99,18 @@ through Ward.
   is what moved the estate's boundary from registration to authorization, and
   prm remains the only app with the flag on.
 
-## Each app hand-writes its Ward client
+## Each app hand-writes its Ward client (until brief 27)
 
-**Decided 2026-09-06: there is no shared package in any app's dependencies.**
-The apps are separate checkouts that `vps-deploy` rsyncs and `npm ci`s
-independently, and every mechanism for sharing one package across them — a
-registry, a committed tarball, a git dependency — costs more in build machinery
-and deploy credentials than the ~200 lines it saves.
-
-The cost is real and accepted with eyes open: **security code, written five
-times**. [integrating.md](./integrating.md) is the mitigation — the contract all
-five are written against — and `client/` stays as the tested reference
-implementation (58 tests, shipped to nothing) so "what should this do" has one
-answer. A change to any of the five behaviours goes there first, then to
-`client/`, then to all five apps.
+Decided 2026-09-06 and revised 2026-10-13: today each app carries its own
+client written against [integrating.md](./integrating.md), with `client/` as
+the tested reference. The redesign replaces this with the copied
+`shared-library/` build ([decisions-oidc.md](./decisions-oidc.md)).
 
 ## The next move
 
-prm's brief 32 builds its notification email sweep against `POST /notify`, as
-documented in [integrating.md](./integrating.md). Nothing else is queued here.
-
-## Brief 11 is already written in vps-deploy
-
-**Checked 2026-09-04, extended 2026-09-06.** Ward is `stacks/ward.ts`,
-constructed first in `app.ts`; six of the brief's assumptions were verified
-against what waves 1–6 built (the table is in [log.md](../log.md) under
-2026-09-04). `identityFor(consumer)` now also hands the consumer a required
-`WARD_APP_KEY` secret declared against that app's own stack, and four apps call
-`useWard(ward.identityFor(app))` — so the deploy edge exists because the
-identity was read, which is what the construct tree was refactored for.
-
-It has since deployed, newspapper included (2026-10-04).
+Wave A of the redesign: briefs 18 and 20, in parallel. Brief 11 was superseded
+by vps-deploy's `stacks/ward.ts`, deployed 2026-10-04 (details in
+[log.md](../log.md) under 2026-09-04).
 
 ## The waves
 

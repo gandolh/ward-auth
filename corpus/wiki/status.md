@@ -18,7 +18,7 @@ revises Q4, Q21 and the no-shared-package call.
 |---|---|---|
 | A | 18 OIDC provider · 20 library: local accounts | **Done** |
 | B | 19 session status for clients · 21 library: Sign in with Ward | **Done** |
-| C | 22 atrium · 23 newspapper · 24 prm · 25 sports-app · 26 satchel, plus 28 lockout behind containers and 29 the Jukebox | **Done**; library 0.3.0 vendored in all five |
+| C | 22 atrium · 23 newspapper · 24 prm · 25 sports-app · 26 satchel, plus 28 lockout behind containers and 29 the Jukebox | **Done**; library 0.3.1 vendored in all five |
 | D | 27 cutover config and runbook | **Written**; the deploy is the owner's |
 | E | 30 retire the cookie contract | Starts only after the owner confirms production runs the new flow |
 
@@ -60,7 +60,7 @@ todo ([../todos/ward-on-a-subdomain.md](../todos/ward-on-a-subdomain.md)).
 | Name | **Ward** (repo still `wzd_auth`; rename deferred by the owner) |
 | Briefs done | 00–10, 13–29 in [briefs/done/](../briefs/done/); 11 superseded |
 | Briefs open | 30 (after the owner confirms). Brief 27's deploy is the owner's, per docs/cutover-oidc.md |
-| Shared library | `shared-library/` 0.3.0, vendored into atrium, newspapper, prm, sports-app and satchel |
+| Shared library | `shared-library/` 0.3.1, vendored into atrium, newspapper, prm, sports-app and satchel |
 | Deploy entry in `vps-deploy` | Old contract deployed 2026-10-04; the new one is configured, not deployed |
 
 ## What is actually known

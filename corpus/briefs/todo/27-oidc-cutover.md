@@ -1,10 +1,9 @@
-# Brief 27 — Cut the estate over to local accounts and OIDC, then retire the old contract
+# Brief 27 — Cut the estate over to local accounts and OIDC
 
 ## Context
 
 Briefs 18–26 build Ward's provider, the shared library and each app's adoption.
-This brief takes it to production and removes what the old contract leaves
-behind. See [decisions-oidc.md](../../wiki/decisions-oidc.md).
+This brief takes it to production. See [decisions-oidc.md](../../wiki/decisions-oidc.md).
 
 **Deploys are an owner step.** This brief writes the deploy changes and the
 exact commands. The owner runs them.
@@ -16,10 +15,10 @@ Depends on briefs 18–26, 28 and 29.
 - `vps-deploy/stacks/ward.ts`, `atrium.ts`, `newspapper.ts`,
   `public-resource-map.ts`, `sports-app.ts`, `satchel.ts` and the `app.ts`
   lines that wire Ward into each stack
-- In this repo: `/introspect`, the app-key routes, the console's app-key panel,
-  `api/src/scripts/register-app-keys.ts`, `ui/src/lib/estate.ts` (`ESTATE_APPS`
-  and `?next=`), `client/`, `corpus/wiki/integrating.md`, `status.md`,
-  `overview.md`, `log.md`
+- In this repo: `corpus/wiki/status.md`, `overview.md`, `log.md`, and a new
+  owner runbook `docs/cutover-oidc.md` (no domain, no secrets)
+- In each app repo: only its production Dockerfile, if its image lacks
+  `vendor/`
 
 ## What to do
 
@@ -47,13 +46,11 @@ Depends on briefs 18–26, 28 and 29.
    `.env` is renamed first.
 6. **Retiring the old contract is brief 30**, and it starts only after the
    owner confirms production runs on the new flow.
-7. Rewrite [integrating.md](../../wiki/integrating.md) as a short pointer to
-   the library's adoption guide and the OIDC docs page, with the five rules
-   restated for `/session-status`.
-8. Update [status.md](../../wiki/status.md) and
+7. Update [status.md](../../wiki/status.md) and
    [overview.md](../../wiki/overview.md) to the new shape.
 
 ## Acceptance
 
 - The deploy changes typecheck in vps-deploy, and its own tests pass.
-- The owner has the exact command list, in order, on the brief-board ticket.
+- The owner has the exact command list, in order, in `docs/cutover-oidc.md`
+  (brief-board is down).

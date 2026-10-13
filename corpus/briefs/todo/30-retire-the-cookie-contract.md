@@ -28,9 +28,11 @@ local-accounts version and signs in through the new flow.**
    where they still make sense.
 3. Remove `x-ward-app-key` on `/notify`.
 4. Delete `client/` or move it to a superseded folder, and say which.
-5. Remove the shared `Path=/` session cookie apps used to read. Ward's own
+5. Rewrite `corpus/wiki/integrating.md` as a short pointer to the library's
+   adoption guide and the OIDC docs page.
+6. Remove the shared `Path=/` session cookie apps used to read. Ward's own
    cookies stay scoped to Ward.
-6. Write a migration that drops the app-key table, appended last.
+7. Write a migration that drops the app-key table, appended last.
 
 ## Acceptance
 

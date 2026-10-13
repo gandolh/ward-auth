@@ -89,8 +89,9 @@ _Avoid_: "superuser", "root". It has no special powers in Ward itself; it just
 holds a lot of grants.
 
 ## Access token
-The short-lived signed JWT in the session cookie. Proves *who*. Verified locally
-by each app with Ward's public key; never checked against a denylist, and
+The short-lived signed JWT in Ward's session cookie. Proves *who*. Verified
+locally with Ward's public key (by each app until 2026-10-13; since brief 30
+only Ward reads it, at `Path=/ward-api`); never checked against a denylist, and
 deliberately carries **no permissions** — a token minted before a grant changed
 would otherwise carry stale authority for its whole lifetime.
 _Avoid_: "the JWT" unqualified — the refresh token is not one, and the
@@ -104,9 +105,12 @@ _Avoid_: "session id" — it is not presented on ordinary requests, only at the
 refresh endpoint.
 
 ## Introspection
-An app asking Ward "is this session still live, and what are its grants?",
-cached briefly per session. Establishes **liveness and authorization**, where
-local signature checking establishes only authentication.
+**Retired 2026-10-13 (brief 30)** with `POST /introspect`. An app asked Ward
+"is this session still live, and what are its grants?", cached briefly per
+session. It established **liveness and authorization**, where local signature
+checking establishes only authentication. Its successor for a
+**Ward-originated session** is the session-status check,
+`POST /session-status`, which answers liveness and this app's grant only.
 _Avoid_: "validation", which blurs the two halves — the signature is valid long
 after the session is revoked.
 

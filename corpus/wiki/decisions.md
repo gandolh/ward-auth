@@ -1,6 +1,6 @@
 ---
 summary: The foundational calls for Ward — the one-origin topology and the isolation it costs, what the service owns versus what apps keep, the single central login page, what the UI carries, newspapper's move off loopback, the name, and the two inherited atrium decisions.
-updated: 2026-09-01
+updated: 2026-10-13
 ---
 
 # Decisions
@@ -38,6 +38,11 @@ If the isolation cost ever needs paying down without moving to subdomains, the
 known mitigation is to keep the SSO cookie at `Path=/` but exchange it for
 app-scoped tokens at `Path=/atrium-api`, `Path=/prm-api` and so on. Not decided,
 recorded so it is not re-derived.
+
+> _2026-10-13, brief 30:_ there is no shared session cookie any more. Each app
+> keeps its own session cookie ([decisions-oidc.md](./decisions-oidc.md)), and
+> Ward's `ward_session` moved from `Path=/` to `Path=/ward-api`. The topology
+> call stands; the cookie it made cheap is retired.
 
 ## wzd_auth owns credentials and account identity; apps keep their own rows
 

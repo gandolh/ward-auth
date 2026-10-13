@@ -17,9 +17,10 @@ import { oidcClientOf, type AppRow, type OidcClientRegistration } from "../db/ap
  * Settled 2026-10-13 in decisions-oidc.md. The app holds an Ed25519 private key
  * in its own environment and signs a short client assertion with it; Ward holds
  * only the public JWK. Ward therefore stores no app secret at all — the same
- * property the app keys bought by storing a sha256 (decisions-app-keys.md), but
- * without a shared value to hash. `client_secret_basic` would need the
- * plaintext secret on Ward's side, which is what the app-key design refused.
+ * property the retired per-app keys bought by storing a sha256
+ * (decisions-app-keys.md), but without a shared value to hash.
+ * `client_secret_basic` would need the plaintext secret on Ward's side, which
+ * is what that design refused.
  *
  * Everything the provider could negotiate is pinned instead: one grant type,
  * one response type, one auth method, one algorithm. A client row cannot ask

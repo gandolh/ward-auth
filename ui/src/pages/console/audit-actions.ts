@@ -6,8 +6,7 @@
  * `session.refresh_raced` and `session.reuse_detected` are the same event on the
  * wire — a refresh token presented after it was already spent — and they mean
  * opposite things. A race is two of the estate's tabs waking together, which is
- * the *expected* shape on a one-origin estate where six apps share one access
- * cookie at `Path=/`; the family survives and nothing is wrong. A reuse is a
+ * the *expected* shape when several tabs share one session; the family survives and nothing is wrong. A reuse is a
  * replayed token whose family had no live successor: the estate's stolen-cookie
  * alarm, and the family was burned down.
  *

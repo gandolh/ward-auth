@@ -3,12 +3,10 @@ import { healthRoutes } from "./routes/health.js";
 import { jwksRoutes } from "./routes/jwks.js";
 import { authRoutes } from "./routes/auth.js";
 import { consoleRoutes } from "./routes/console.js";
-import { introspectRoutes } from "./routes/introspect.js";
 import { notifyRoutes } from "./routes/notify.js";
 import { sessionRoutes } from "./routes/session.js";
 import { sessionStatusRoutes } from "./routes/session-status.js";
 import { adminAppsRoutes } from "./routes/admin/apps.js";
-import { adminAppKeysRoutes } from "./routes/admin/app-keys.js";
 import { adminGrantsRoutes } from "./routes/admin/grants.js";
 import { adminAccountsRoutes } from "./routes/admin/accounts.js";
 import { adminSessionsRoutes } from "./routes/admin/sessions.js";
@@ -92,26 +90,20 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(jwksRoutes);
   await app.register(authRoutes);
   await app.register(consoleRoutes);
-  await app.register(introspectRoutes);
 
   /**
-   * `GET /session` — the browser half of introspection, cookie-authenticated.
-   *
-   * Registered beside `/introspect` because the two are one decision read from
-   * two ends: `/introspect` is now server-to-server and carries a mandatory
-   * `x-ward-app-key`, and this is where the first-party UI went when that key
-   * requirement made a browser caller impossible. `routes/session.ts` argues
-   * why exempting cookie-bearing requests instead would have protected nothing.
+   * `GET /session` — "who am I" for Ward's own pages, from the `ward_session`
+   * cookie. Apps never call it; see `routes/session.ts`.
    */
   await app.register(sessionRoutes);
 
   /**
-   * `POST /notify`: an app asks Ward to mail one of its own users. The other
-   * app-key surface, so it sits beside `/introspect`. See `routes/notify.ts`.
+   * `POST /notify`: an app asks Ward to mail one of its own users,
+   * authenticated with its client assertion. See `routes/notify.ts`.
    */
   await app.register(notifyRoutes);
 
-  // The six admin plugins each attach `requireConsoleSession` as a
+  // The five admin plugins each attach `requireConsoleSession` as a
   // plugin-scope preHandler, so registering them here does not open anything —
   // they gate themselves. Their paths all sit under `/console/` and that is
   // functional rather than cosmetic: the `ward_console` cookie is scoped to
@@ -125,11 +117,6 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Fastify refuses to boot with a parametric-conflict error rather than
   // failing at request time.
   await app.register(adminAppsRoutes);
-  // Adds `/console/apps/:slug/keys` alongside `adminAppsRoutes`' own
-  // `/console/apps/:slug`. Same parameter name in both, which is what keeps
-  // find-my-way merging them instead of refusing to boot — the note above
-  // about `:subject` applies verbatim to `:slug` here.
-  await app.register(adminAppKeysRoutes);
   await app.register(adminGrantsRoutes);
   await app.register(adminAccountsRoutes);
   await app.register(adminSessionsRoutes);
@@ -168,12 +155,10 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   /**
    * The OpenID Connect provider (brief 18): `/oidc/*` and its login step at
-   * `/refresh/oidc/:uid`. Mounted only when `WARD_OIDC_ISSUER` is set, and it
-   * touches none of the routes above — the cookie sign-in, `/introspect`,
-   * `/session`, `/refresh` and `/logout` serve the four apps on today's
-   * contract until the cutover (brief 27). See the header of `oidc/routes.ts`
-   * for how the stripped `/ward-api` prefix is put back into every URL it
-   * advertises.
+   * `/refresh/oidc/:uid`. Mounted only when `WARD_OIDC_ISSUER` is set. It is
+   * how every app signs people in since the cutover (brief 27); the routes
+   * above serve Ward's own pages. See the header of `oidc/routes.ts` for how
+   * the stripped `/ward-api` prefix is put back into every URL it advertises.
    */
   await app.register(oidcRoutes);
 

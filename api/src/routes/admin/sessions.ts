@@ -161,9 +161,9 @@ export async function adminSessionsRoutes(
    *
    * This is the call that makes an operator's answer to a suspected theft real,
    * and it is what brief 10's unverifiable acceptance criterion needs: the
-   * family dies here, `/introspect` reports `active: false` for its access
-   * token on the next check, and every app stops honouring it within its 30
-   * second cache window.
+   * family dies here, `GET /session` reports `active: false` for its access
+   * token on the next check, and every app's `/session-status` check ends the
+   * session it began from this one within 30 seconds.
    *
    * ## The subject is verified even though the revoke does not need it
    *

@@ -55,8 +55,9 @@ import {
  * minted a minute earlier stays signed and valid for its full 15 minutes, and
  * the refresh token behind it would keep minting more for thirty days. So
  * disabling revokes the account's refresh families in the same transaction
- * (reason `admin`), which is what actually ends the session. Brief 04's
- * introspection then reports `active: false` within the cache window.
+ * (reason `admin`), which is what actually ends the session. `GET /session`
+ * then reports `active: false`, and apps end theirs within 30 seconds through
+ * `/session-status`.
  *
  * Grants and the subject survive: this is a door being locked, not an identity
  * being destroyed, so re-enabling restores exactly what was there. Re-enabling
@@ -147,9 +148,9 @@ export async function adminAccountsRoutes(
    * `GET /console/accounts/:subject` — one account with everything it holds.
    *
    * `grants` is read straight from `db/grants.ts` rather than through brief 04's
-   * `grants/resolve.ts`: that module answers an app's question about a token on
-   * a hot, cacheable path, and this is an operator looking at a page. Borrowing
-   * it here would couple the console to a shape chosen for introspection.
+   * `grants/resolve.ts`: that module answers the session check on a hot path,
+   * and this is an operator looking at a page. Borrowing
+   * it here would couple the console to a shape chosen for the session check.
    *
    * `liveSessions` is the count that makes "disabling ends live sessions"
    * visible in the UI — and the number an operator checks before believing it.

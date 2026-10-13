@@ -17,10 +17,10 @@ import type { WardKeySet } from "./keys.js";
  * It used to take a `Partial<VerifyAccessTokenOptions>` that was spread *after*
  * the pinned issuer, so any call site could extend a token's lifetime without
  * bound, accept any issuer, accept any audience, or move the clock — all of it
- * type-checking cleanly. Brief 04's `/introspect` is the caller that matters
- * and brief 08 re-exports this surface into six apps, so the failure mode was
- * one line of well-meaning skew-chasing making every expired or stolen token in
- * the estate introspect as authentic, with nothing going red.
+ * type-checking cleanly. `GET /session` and `/account` read Ward's cookie
+ * through it, so the failure mode was one line of well-meaning skew-chasing
+ * making every expired or stolen token verify as authentic, with nothing going
+ * red.
  *
  * The fix is structural: the function takes a token and nothing else. Both
  * halves of that are tested here — the compile-time half with

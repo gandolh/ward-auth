@@ -93,13 +93,17 @@ describe("plain HTTP on loopback", () => {
 
     const raw = response.headers["set-cookie"];
     const headers = Array.isArray(raw) ? raw : [String(raw)];
-    expect(headers).toHaveLength(2);
+    // Three: the two cookies, and the expiry of the legacy Path=/ access cookie.
+    expect(headers).toHaveLength(3);
 
     const byName = new Map(
-      headers.map((header) => {
-        const parsed = setCookieAttributes(header);
-        return [parsed.name, parsed.attributes] as const;
-      }),
+      // The live cookies only; the legacy expiry is checked below.
+      headers
+        .filter((header) => !header.startsWith("ward_session=;"))
+        .map((header) => {
+          const parsed = setCookieAttributes(header);
+          return [parsed.name, parsed.attributes] as const;
+        }),
     );
 
     for (const name of ["ward_session", "ward_refresh"]) {
@@ -135,7 +139,7 @@ describe("plain HTTP on loopback", () => {
 
     const raw = response.headers["set-cookie"];
     const headers = Array.isArray(raw) ? raw : [String(raw)];
-    expect(headers).toHaveLength(2);
+    expect(headers).toHaveLength(3);
 
     for (const header of headers) {
       // A cleared cookie whose `Secure` differs from the original's is a
@@ -157,8 +161,8 @@ describe("a loopback caller with no X-Forwarded-For", () => {
    * *quietly*.
    *
    * `app.inject` defaults its peer to `127.0.0.1`, so a request with no
-   * forwarding header here is exactly the shape brief 08's server-side
-   * `@ward/client` would produce.
+   * forwarding header here is exactly the shape a server-side caller on the
+   * same host would produce.
    */
   it("says so in the log, once", async () => {
     const lines: string[] = [];

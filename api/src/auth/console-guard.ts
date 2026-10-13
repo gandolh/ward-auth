@@ -16,7 +16,7 @@ import { readConsoleCookie, resolveConsoleSession, type ConsoleSession } from ".
  * and the superuser, having no subject, is simply never an answer to it.
  *
  * If a future brief finds itself wanting a branch here that hands the superuser
- * an implicit grant, a subject, or a bypass in `/introspect`, that is the design
+ * an implicit grant, a subject, or a bypass in `GET /session`, that is the design
  * failing rather than a missing feature. `decisions-admin.md` rejected the
  * bypass explicitly, on the grounds that it is extra code whose only effect is
  * to let a break-glass credential read the library and the notes.
@@ -25,7 +25,7 @@ import { readConsoleCookie, resolveConsoleSession, type ConsoleSession } from ".
  *
  * It reads exactly one cookie (`ward_console`) and looks the value up in an
  * in-process map of opaque session tokens. An ordinary account's access token is
- * a signed JWT that appears in a *different* cookie at `Path=/`; this hook never
+ * a signed JWT that appears in a *different* cookie (`ward_session`); this hook never
  * looks there, and a JWT pasted into `ward_console` would simply not be in the
  * map. There is no signature to verify, no claim to read and no `sub` to trust,
  * so the rejection is structural rather than a check that could be forgotten.

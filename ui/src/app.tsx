@@ -36,9 +36,10 @@ import "./ward.css";
  * - Router paths in this app are written **without** the `/ward` prefix. See
  *   `loginRouteFor` versus `loginUrlFor` in `lib/next.ts`; the two exist
  *   because mixing them produces `/ward/ward/login`.
- * - A redirect to somewhere *outside* this SPA — which is what `?next=` almost
- *   always is — must be `window.location.assign`, not a router navigation.
- *   React Router would render a 404 inside Ward instead of leaving it.
+ * - A redirect to somewhere *outside* this SPA — an OIDC interaction's resume
+ *   URL on Ward's API, say — must be `window.location.assign`, not a router
+ *   navigation. React Router would render a 404 inside Ward instead of
+ *   leaving it.
  *
  * ## Why the entry route is the login page
  *

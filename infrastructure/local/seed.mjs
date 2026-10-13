@@ -10,15 +10,17 @@
  *
  *   1. every app that uses Ward is registered;
  *   2. one owner account exists and holds `admin` on each of them;
- *   3. each app has a working app key, written together with WARD_PUBLIC_ORIGIN
- *      and WARD_API_BASE_PATH into that app's local env file(s). Nothing else in
- *      those files changes, and a key that still works is kept;
- *   4. each app is an OpenID Connect client (brief 18): its dev redirect URI and
+ *   3. each app is an OpenID Connect client (brief 18): its dev redirect URI and
  *      sign-out return URI are registered, and its client key pair exists. The
  *      private half goes into the app's env file(s) as WARD_OIDC_CLIENT_KEY,
  *      next to WARD_OIDC_ISSUER, WARD_OIDC_CLIENT_ID, WARD_OIDC_REDIRECT_URI
  *      and WARD_OIDC_POST_LOGOUT_REDIRECT_URI; Ward gets only the public half.
- *      A key already in the env file and registered at Ward is kept.
+ *      A key already in the env file and registered at Ward is kept, and
+ *      nothing else in those files changes.
+ *
+ * It no longer writes WARD_APP_KEY, WARD_PUBLIC_ORIGIN or WARD_API_BASE_PATH:
+ * those served the shared-cookie contract, retired in brief 30. An app env file
+ * that still has them can simply drop the three lines; nothing reads them.
  *
  * The owner's username and password come from WARD_OWNER_USERNAME and
  * WARD_OWNER_PASSWORD, or are asked for. They go to Ward, which stores a hash,
@@ -32,7 +34,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 
-/** Must match WARD_PUBLIC_ORIGIN in compose.yaml: it is the `iss` apps expect. */
+/** Must match WARD_PUBLIC_ORIGIN in compose.yaml: Ward's own public origin. */
 const ORIGIN = "http://localhost:8792";
 const API_BASE_PATH = "/ward-api";
 const API = `${ORIGIN}${API_BASE_PATH}`;
@@ -50,7 +52,6 @@ const OIDC_ISSUER = `${API}/oidc`;
 const OIDC_CALLBACK_PATH = "/auth/ward/callback";
 /** brief 18's convention, under the UI base path; replaced by the one above. */
 const OLD_OIDC_CALLBACK_PATH = "auth/ward/callback";
-const KEY_LABEL = "local dev (seed.mjs)";
 
 const ENV_FILE = process.env.WARD_LOCAL_ENV_FILE ?? join(homedir(), ".config/ward/local.env");
 
@@ -100,7 +101,6 @@ async function main() {
     await ensureApps(cookie);
     const account = await ensureOwner(cookie, owner);
     await ensureGrants(cookie, account.subject);
-    for (const app of APPS) await ensureAppKey(cookie, app);
     for (const app of APPS) await ensureOidcClient(cookie, app);
   } finally {
     await ward("POST", "/console/logout", { cookie });
@@ -172,34 +172,6 @@ function envFilesFor(app) {
     else console.warn(`! ${relative(PROJECTS, file)} is not gitignored; not writing a key into it`);
   }
   return files;
-}
-
-async function ensureAppKey(cookie, app) {
-  const files = envFilesFor(app);
-  if (files.length === 0) return;
-
-  let key = files.map((file) => readEnvValue(file, "WARD_APP_KEY")).find(Boolean);
-  let outcome = "kept";
-  if (!key || !(await appKeyWorks(key))) {
-    const minted = await ward("POST", `/console/apps/${app.slug}/keys`, {
-      cookie,
-      body: { label: KEY_LABEL },
-    });
-    key = expectStatus(minted, 201, `mint a key for ${app.slug}`).key;
-    outcome = "minted";
-  }
-
-  for (const file of files) {
-    writeEnvValues(file, {
-      WARD_PUBLIC_ORIGIN: ORIGIN,
-      WARD_API_BASE_PATH: API_BASE_PATH,
-      WARD_APP_KEY: key,
-    });
-  }
-  // A prefix only. The key is a secret, and a terminal scrollback is one more
-  // place for it to leak from.
-  const where = files.map((file) => relative(PROJECTS, file)).join(", ");
-  console.log(`✓ ${app.slug}: key ${outcome} (${key.slice(0, 12)}…) → ${where}`);
 }
 
 /**
@@ -283,17 +255,10 @@ function thumbprint(crv, x) {
   return createHash("sha256").update(JSON.stringify({ crv, kty: "OKP", x })).digest("base64url");
 }
 
-/** `/introspect` checks the app key before anything else, so a bad one is a 401. */
-async function appKeyWorks(key) {
-  const answer = await ward("POST", "/introspect", { appKey: key, body: {} });
-  return answer.status === 200;
-}
-
-async function ward(method, path, { body, cookie, appKey } = {}) {
+async function ward(method, path, { body, cookie } = {}) {
   const headers = { accept: "application/json" };
   if (body !== undefined) headers["content-type"] = "application/json";
   if (cookie) headers.cookie = cookie;
-  if (appKey) headers["x-ward-app-key"] = appKey;
 
   const response = await fetch(`${API}${path}`, {
     method,

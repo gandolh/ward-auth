@@ -10,9 +10,9 @@ runbook. The site build ignores this file, `images/` and `cutover-oidc.md`.
 | [diagrams/](diagrams/) | archify JSON sources for the site's three diagrams, compiled into `public/diagrams/` |
 | [scripts/](scripts/) | `sync-corpus.mjs` copies the corpus wiki into the site; `build-diagrams.mjs` compiles the diagrams |
 | [images/](images/shots.md) | Screenshots used in the main README, and how each was made |
-| [cutover-oidc.md](cutover-oidc.md) | The owner's runbook for moving production to local accounts and "Sign in with Ward" (brief 27) |
+| [cutover-oidc.md](cutover-oidc.md) | The owner's runbook for moving production to local accounts and "Sign in with Ward" (brief 27; done 2026-10-13) |
 
-The rest (`astro.config.mjs`, `src/components/`, `src/styles/`, `public/`, `typedoc.json`) is the
+The rest (`astro.config.mjs`, `src/components/`, `src/styles/`, `public/`) is the
 Starlight site's own setup and build output.
 
 ## Pages on the site
@@ -23,17 +23,14 @@ Starlight site's own setup and build output.
 | Architecture | `/ward/docs/architecture/` | [architecture.mdx](src/content/docs/architecture.mdx) |
 | The one-origin estate | `/ward/docs/topology/` | [topology.mdx](src/content/docs/topology.mdx) |
 | Sessions and tokens | `/ward/docs/sessions/` | [sessions.mdx](src/content/docs/sessions.mdx) |
-| Introspection and revocation | `/ward/docs/introspection/` | [introspection.mdx](src/content/docs/introspection.mdx) |
 | Grants | `/ward/docs/grants/` | [grants.mdx](src/content/docs/grants.mdx) |
-| App keys | `/ward/docs/app-keys/` | [app-keys.mdx](src/content/docs/app-keys.mdx) |
+| Sign in with Ward (OIDC) | `/ward/docs/oidc/` | [oidc.mdx](src/content/docs/oidc.mdx) |
 | HTTP API | `/ward/docs/api/` | [api.mdx](src/content/docs/api.mdx) |
 | Data model | `/ward/docs/data/` | [data.mdx](src/content/docs/data.mdx) |
 | Configuration | `/ward/docs/configuration/` | [configuration.mdx](src/content/docs/configuration.mdx) |
 
 The site's "Deep dive" and "Status" sections are copies of `corpus/wiki/` and `corpus/log.md`,
-made on every build into `src/content/docs/wiki/` (gitignored). Edit the corpus, not the copies. The
-`@ward/client` reference (`/ward/docs/reference/client/`) is TypeDoc output from
-`client/`, also generated and gitignored.
+made on every build into `src/content/docs/wiki/` (gitignored). Edit the corpus, not the copies.
 
 `npm run docs` in this folder runs the whole build into `dist/`, and `npm run dev` serves a local
 preview. The diagram step regenerates `public/diagrams/` only where the archify skill is installed;
@@ -52,6 +49,8 @@ wants:
   one-origin layout that ruled out several designs
 - [landscape.md](../corpus/wiki/landscape.md): the options considered, from forward-auth gateways
   and OIDC providers to an owned service
-- [integrating.md](../corpus/wiki/integrating.md): the contract every app's Ward client follows
+- [integrating.md](../corpus/wiki/integrating.md): where an app that signs in through Ward starts;
+  the contract itself is the site's [oidc.mdx](src/content/docs/oidc.mdx) page and the shared
+  library's adoption guide, [shared-library/README.md](../shared-library/README.md)
 
 `bash corpus/lint.sh` must exit clean before you commit corpus changes.

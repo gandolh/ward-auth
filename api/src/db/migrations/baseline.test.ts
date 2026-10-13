@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { openDatabase } from "../connection.js";
 import { runMigrations } from "../migrate.js";
 import { MIGRATIONS } from "./index.js";
+import * as appKeys from "./20260906000000-app-keys.js";
 import { freshDb, seedApps, seedUser } from "../test-support.js";
 
 /** Names + DDL of every table and index, as one comparable snapshot. */
@@ -34,12 +35,11 @@ describe("baseline migration", () => {
     const db = freshDb();
 
     // `freshDb` runs the whole `MIGRATIONS` list, not just the baseline, so
-    // `app_keys` (20260906000000) and the two `oidc_*` tables (20261013000000)
-    // are here too — this assertion is the estate's
+    // the two `oidc_*` tables (20261013000000) are here too, and `app_keys`
+    // (20260906000000) is not: 20261013120000 drops it — this assertion is the estate's
     // full table set rather than one migration's output, and a new migration
     // adding a table is expected to update it.
     expect(tableNames(db)).toEqual([
-      "app_keys",
       "apps",
       "audit_log",
       "grants",
@@ -50,6 +50,30 @@ describe("baseline migration", () => {
       "verification_tokens",
       "ward_migrations",
     ]);
+
+    db.close();
+  });
+
+  it("drops app_keys, rows and index included, from a database that still has it", () => {
+    // A production database before brief 30: app_keys exists and holds a key.
+    // Rebuild that state on a fresh one by re-creating the table and forgetting
+    // that the drop ran, then migrate again as a deploy would.
+    const db = freshDb();
+    seedApps(db);
+    appKeys.up(db);
+    db.prepare(
+      `INSERT INTO app_keys (id, app_slug, label, key_hash, created_by)
+       VALUES ('k1', 'atrium', 'atrium production', ?, 'superuser')`,
+    ).run("a".repeat(64));
+    db.prepare("DELETE FROM ward_migrations WHERE name = ?").run("20261013120000-drop-app-keys");
+    expect(tableNames(db)).toContain("app_keys");
+
+    runMigrations(db);
+
+    expect(tableNames(db)).not.toContain("app_keys");
+    expect(schemaSnapshot(db).some((entry) => entry.name.startsWith("app_keys"))).toBe(false);
+    // Nothing else went with it.
+    expect(db.prepare<[], number>("SELECT count(*) FROM apps").pluck().get()).toBeGreaterThan(0);
 
     db.close();
   });

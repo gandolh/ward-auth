@@ -17,8 +17,7 @@
  *   • The console's dark palette is NOT adopted. `data-ward-surface="console"`
  *     exists so that reaching for break-glass looks different from signing in —
  *     a safety property, not a style. Borrowing it for documentation would spend
- *     that signal on prose. It is quoted once, in the App keys page's console
- *     screenshot framing, and nowhere else.
+ *     that signal on prose, so no page here uses it.
  *
  * Light-only: see src/components/ThemeProvider.astro.
  */

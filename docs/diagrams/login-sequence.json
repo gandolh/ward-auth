@@ -2,93 +2,101 @@
   "schema_version": 1,
   "diagram_type": "sequence",
   "meta": {
-    "title": "Signing in, and the first request that follows",
-    "viewBox": [980, 820],
+    "title": "Sign in with Ward, and the requests that follow",
+    "viewBox": [980, 960],
     "column_fit": "spread",
     "quality_profile": "showcase",
     "views": [
       {
         "id": "handover",
         "label": "The handover",
-        "focus": ["user", "app", "ward_ui"],
-        "note": "An app hands its sign-in moment to Ward and gets the person back with ?next=."
+        "focus": ["user", "app", "ward_ui", "ward_api"],
+        "note": "The app starts an OpenID Connect code flow; Ward's login step decides whether a password is needed."
       },
       {
         "id": "issuing",
         "label": "Issuing the session",
         "focus": ["ward_ui", "ward_api", "ward_db"],
-        "note": "One password check writes a session row and mints two very different credentials."
+        "note": "One password check writes a refresh family; Ward's own cookies stay under /ward-api."
       },
       {
         "id": "checking",
-        "label": "Checking the caller",
+        "label": "Checking the session",
         "focus": ["app", "ward_api", "ward_db"],
-        "note": "Verify the signature locally, then ask Ward whether the session is still live."
+        "note": "The app keeps its own session and asks Ward at most every 30 seconds whether ward_sid is still live."
       }
     ]
   },
   "participants": [
-    { "id": "user", "type": "external", "label": "Person", "sublabel": "one browser, one origin" },
+    { "id": "user", "type": "external", "label": "Person", "sublabel": "one browser" },
+    { "id": "app", "type": "backend", "label": "Consuming app", "sublabel": "e.g. atrium, own sessions" },
     { "id": "ward_ui", "type": "frontend", "label": "Ward UI", "sublabel": "/ward/login" },
-    { "id": "app", "type": "backend", "label": "Consuming app", "sublabel": "e.g. atrium" },
-    { "id": "ward_api", "type": "backend", "label": "Ward API", "sublabel": "/ward-api" },
+    { "id": "ward_api", "type": "backend", "label": "Ward API", "sublabel": "/ward-api, OIDC provider" },
     { "id": "ward_db", "type": "database", "label": "SQLite", "sublabel": "accounts, sessions, grants" }
   ],
   "segments": [
-    { "from": 150, "to": 470, "label": "Sign in" },
-    { "from": 490, "to": 760, "label": "The first request back at the app" }
+    { "from": 150, "to": 510, "label": "Sign in with Ward" },
+    { "from": 520, "to": 670, "label": "The app's own session" },
+    { "from": 680, "to": 900, "label": "Every request after" }
   ],
   "messages": [
-    { "id": "visit", "from": "user", "to": "app", "y": 186, "label": "GET /atrium", "variant": "default" },
-    { "id": "bounce", "from": "app", "to": "user", "y": 224, "label": "302 → /ward/login?next=/atrium", "variant": "return" },
-    { "id": "load-login", "from": "user", "to": "ward_ui", "y": 266, "label": "the one central login page", "variant": "default" },
-    { "id": "post-login", "from": "ward_ui", "to": "ward_api", "y": 306, "label": "POST /login — identifier + password", "variant": "emphasis" },
-    { "id": "verify", "from": "ward_api", "to": "ward_db", "y": 346, "label": "scrypt verify · write session + refresh row", "variant": "security" },
-    { "id": "subject", "from": "ward_db", "to": "ward_api", "y": 384, "label": "subject", "variant": "return" },
-    { "id": "cookies", "from": "ward_api", "to": "ward_ui", "y": 424, "label": "Set-Cookie: access 15 min (Path=/) · refresh 30 d", "variant": "return" },
-    { "id": "back", "from": "ward_ui", "to": "user", "y": 462, "label": "302 → /atrium", "variant": "return" },
-    { "id": "revisit", "from": "user", "to": "app", "y": 524, "label": "GET /atrium — the Path=/ cookie rides along", "variant": "emphasis" },
-    { "id": "introspect", "from": "app", "to": "ward_api", "y": 570, "label": "POST /introspect + x-ward-app-key", "variant": "security" },
-    { "id": "live", "from": "ward_api", "to": "ward_db", "y": 610, "label": "is this session still live?", "variant": "default" },
-    { "id": "grants", "from": "ward_db", "to": "ward_api", "y": 648, "label": "active · grants for this app", "variant": "return" },
-    { "id": "resolution", "from": "ward_api", "to": "app", "y": 688, "label": "{ active, subject, grants } — cached 30 s", "variant": "return" },
-    { "id": "page", "from": "app", "to": "user", "y": 730, "label": "200 — the page", "variant": "return" }
+    { "id": "visit", "from": "user", "to": "app", "y": 186, "label": "press Sign in with Ward", "variant": "default" },
+    { "id": "authorize", "from": "app", "to": "user", "y": 222, "label": "302 → /ward-api/oidc/auth (PKCE)", "variant": "return" },
+    { "id": "login-step", "from": "user", "to": "ward_api", "y": 260, "label": "authorize → login step /refresh/oidc/:uid", "variant": "default" },
+    { "id": "to-login", "from": "ward_api", "to": "user", "y": 298, "label": "no live Ward session → /ward/login?oidc=", "variant": "return" },
+    { "id": "load-login", "from": "user", "to": "ward_ui", "y": 336, "label": "Continue to Atrium", "variant": "default" },
+    { "id": "post-login", "from": "ward_ui", "to": "ward_api", "y": 374, "label": "POST /login — identifier + password", "variant": "emphasis" },
+    { "id": "verify", "from": "ward_api", "to": "ward_db", "y": 412, "label": "scrypt verify · write refresh family", "variant": "security" },
+    { "id": "cookies", "from": "ward_api", "to": "ward_ui", "y": 450, "label": "Set-Cookie under /ward-api: access · refresh", "variant": "return" },
+    { "id": "code", "from": "ward_api", "to": "user", "y": 488, "label": "login step done → app callback ?code=", "variant": "return" },
+    { "id": "callback", "from": "user", "to": "app", "y": 552, "label": "GET /auth/ward/callback?code=", "variant": "default" },
+    { "id": "token", "from": "app", "to": "ward_api", "y": 590, "label": "POST /oidc/token + client assertion", "variant": "security" },
+    { "id": "id-token", "from": "ward_api", "to": "app", "y": 628, "label": "ID token: sub · ward_role · ward_sid", "variant": "return" },
+    { "id": "app-cookie", "from": "app", "to": "user", "y": 662, "label": "the app's own session cookie", "variant": "return" },
+    { "id": "revisit", "from": "user", "to": "app", "y": 716, "label": "GET /atrium — the app's cookie", "variant": "emphasis" },
+    { "id": "status", "from": "app", "to": "ward_api", "y": 754, "label": "POST /session-status (≤ every 30 s)", "variant": "security" },
+    { "id": "live", "from": "ward_api", "to": "ward_db", "y": 792, "label": "family live? account active? grant held?", "variant": "default" },
+    { "id": "answer", "from": "ward_api", "to": "app", "y": 830, "label": "{ active, role } — cached 30 s", "variant": "return" },
+    { "id": "page", "from": "app", "to": "user", "y": 868, "label": "200 — the page", "variant": "return" }
   ],
   "activations": [
-    { "participant": "app", "from": 181, "to": 232, "type": "backend" },
-    { "participant": "ward_ui", "from": 261, "to": 470, "type": "frontend" },
-    { "participant": "ward_api", "from": 301, "to": 432, "type": "backend" },
-    { "participant": "ward_db", "from": 341, "to": 392, "type": "database" },
-    { "participant": "app", "from": 519, "to": 738, "type": "backend" },
-    { "participant": "ward_api", "from": 565, "to": 696, "type": "backend" },
-    { "participant": "ward_db", "from": 605, "to": 656, "type": "database" }
+    { "participant": "app", "from": 181, "to": 230, "type": "backend" },
+    { "participant": "ward_api", "from": 255, "to": 306, "type": "backend" },
+    { "participant": "ward_ui", "from": 331, "to": 458, "type": "frontend" },
+    { "participant": "ward_api", "from": 369, "to": 496, "type": "backend" },
+    { "participant": "ward_db", "from": 407, "to": 420, "type": "database" },
+    { "participant": "app", "from": 547, "to": 670, "type": "backend" },
+    { "participant": "ward_api", "from": 585, "to": 636, "type": "backend" },
+    { "participant": "app", "from": 711, "to": 876, "type": "backend" },
+    { "participant": "ward_api", "from": 749, "to": 838, "type": "backend" },
+    { "participant": "ward_db", "from": 787, "to": 800, "type": "database" }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Why a redirect and not a token relay",
+      "title": "Why a code flow",
       "items": [
-        "Every app is a sub-path on one origin, so a Path=/ cookie is already sent",
-        "No CORS, no fragment parsing, no cross-domain handover",
-        "?next= is allowlisted — an open redirect here would be an estate-wide one"
+        "Each app keeps its own accounts; Ward is a second way in",
+        "Ward redirects only to an app's registered redirect URIs",
+        "Apps prove who they are with a client assertion; Ward holds no app secret"
       ]
     },
     {
       "dot": "emerald",
-      "title": "Two credentials, deliberately unalike",
+      "title": "Ward's cookies stay at Ward",
       "items": [
-        "Access: 15-minute EdDSA JWT, verified locally, never checked with Ward",
-        "Refresh: opaque 30-day row, rotated on use, scoped to /ward-api/refresh",
-        "Signature validity and session liveness are separate questions"
+        "Access: 15-minute EdDSA JWT at /ward-api, for Ward's own pages",
+        "Refresh: opaque 30-day row, rotated on use, at /ward-api/refresh",
+        "The refresh family is the Ward session an app knows as ward_sid"
       ]
     },
     {
       "dot": "rose",
       "title": "The 30-second window",
       "items": [
-        "Apps cache the introspection answer for 30 seconds",
-        "So revoking a session is one write, visible estate-wide within 30 s",
-        "That delay is the price of not running a JWT denylist"
+        "Apps cache the /session-status answer for 30 seconds",
+        "So a sign-out or revoke at Ward ends app sessions within 30 s",
+        "Ward unreachable fails closed: the person uses the app's local password"
       ]
     }
   ]

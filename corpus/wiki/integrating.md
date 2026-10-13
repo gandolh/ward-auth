@@ -1,204 +1,66 @@
 ---
-summary: The contract every consuming app implements by hand — the five things a Ward integration must get right (algorithm pinning, the base path, the app key, the 30-second cache, failing closed), the exact environment variables, the shape of the local ward module each app writes for itself, and POST /notify, which mails an app's own user without the app seeing the address.
-updated: 2026-10-07
+summary: Where an app's Ward integration is specified — the shared library's adoption guide and the docs site's OIDC page — plus the app-side rules for POST /session-status (30-second cache per Ward session, collapsed calls, fail closed, a 401 is a configuration error). The hand-written cookie, /introspect and app-key contract was retired 2026-10-13 (brief 30).
+updated: 2026-10-13
 ---
 
 # Integrating an app with Ward
 
-> **⚠ Being replaced (2026-10-13)** by local accounts plus OIDC
-> ([decisions-oidc.md](./decisions-oidc.md)). Authoritative until brief 27.
+An app integrates through the **shared library**, not by hand. It copies the
+built library into `vendor/ward/` and builds its own screens on the library's
+hooks. Two documents carry the contract:
 
-Each app **writes its own Ward client**. There is no shared npm package in any
-app's dependencies, by decision (2026-09-06): the apps are separate checkouts
-that `vps-deploy` rsyncs and `npm ci`s independently, and every mechanism for
-sharing one package across them — a registry, a committed tarball, a git
-dependency — costs more in build machinery and deploy authentication than the
-~200 lines it saves.
+- [shared-library/README.md](../../shared-library/README.md), the adoption
+  guide: vendoring, wiring `wardAuth`, the hooks, migrating existing users,
+  error codes, mail through `notifyUser`, and the gotchas the five adopters hit.
+- The docs site's OIDC page
+  ([docs/src/content/docs/oidc.mdx](../../docs/src/content/docs/oidc.mdx),
+  served at `/oidc/` on the docs site): the issuer and its URLs, client
+  registration and `private_key_jwt`, the ID token's claims, logout,
+  `POST /session-status`, `POST /notify` and the environment variables.
 
-The cost is accepted: **security code, duplicated five times**. This page is
-the contract all five are written against, and [`client/`](../../client/) is
-the **tested reference implementation** (58 tests, shipped to nothing), so
-"what should this do" has one answer.
+Why the estate moved to this shape is in
+[decisions-oidc.md](./decisions-oidc.md); the calls made building it are in
+[decisions-oidc-build.md](./decisions-oidc-build.md).
 
-> If you are about to change any behaviour on this page, change it here first,
-> then in `client/`, then in all five apps. A change made in one app only is a
-> divergence nothing will detect.
+## The app-side rules for `POST /session-status`
 
-## The five things that must be right
+A session that began with "Sign in with Ward" (a **Ward-originated session**)
+stores the ID token's `ward_sid` and asks `POST /ward-api/session-status`
+whether that Ward session is still live and the grant still held. The library
+does all of this; the rules are here so nobody loosens them by accident.
 
-**1. Pin the algorithm.** Pass `algorithms: ["EdDSA"]` on every verification,
-as a literal — never derived from the token's own `alg` header. Without it a
-verifier accepts whatever the resolved key supports, which is the
-`alg`-confusion class: `alg: "none"`, and `alg: "HS256"` with the *public* key's
-own bytes handed over as the HMAC secret. A public key is by definition
-something an attacker already has.
+1. **Ask at most every 30 seconds per Ward session.** Cache each answer for 30
+   seconds per `wardSid`, in process, and ask again only after that. Thirty
+   seconds is the longest a revoked session survives (a sign-out at Ward, a
+   console revoke, a password change, a removed grant), so a longer cache
+   breaks the promise. Several server processes each keep their own cache.
+2. **Collapse concurrent calls.** While one call for a `wardSid` is in flight,
+   every other request for it waits for that answer.
+3. **`{"active":false}` ends the app session.** The person is signed out of the
+   app (`ward_session_ended`). Ward never says why.
+4. **Fail closed when Ward cannot answer.** A timeout, a network error, any
+   status other than `200` (a `404` too: Ward has no issuer configured), or a
+   body that is not `{ "active": boolean }` rejects the Ward-originated session
+   for that request (`ward_unavailable`). It is never read as "still live", and
+   a failure is never cached as an answer. It is not a sign-out either: the
+   app keeps the session row, and the session works again once Ward answers.
+   Meanwhile the person can sign in with their local password.
+5. **A `401 {"error":"invalid_client"}` is a configuration error, not "signed
+   out".** The app's client key, `client_id` or the issuer it signs for is
+   wrong, so every Ward-originated session of the app fails at once. Log it as
+   a configuration error naming the client (`ward_misconfigured`) and keep
+   failing closed.
+6. **Sign a fresh client assertion for every call**, `aud` = the issuer. Its
+   `jti` is spent on use, shared with the token endpoint.
 
-**2. The base path is `/ward-api`, and it is not optional.** Ward is behind
-Caddy at `handle_path /ward-api/*`. The JWKS is
-`https://example.com/ward-api/.well-known/jwks.json`. This has already been got
-wrong once: an earlier default of `""` resolved to a path nothing serves, which
-would have made every app fetch a 404 for Ward's public key and reject every
-token in the estate on the deploy that shipped it.
+Sessions that began with a local password are never checked against Ward, and
+local sign-in never calls Ward, so an app keeps working while Ward is down.
 
-**3. Send the app key on every introspection.** Header `x-ward-app-key`, value
-from `WARD_APP_KEY`. Ward refuses an unkeyed call — see
-[decisions-app-keys.md](./decisions-app-keys.md). It is a **server-side
-secret**: it must never reach a browser bundle or any client-side config.
+## The retired contract
 
-**4. Cache the introspection answer for 30 seconds, per token, and collapse
-concurrent calls.** Thirty seconds is the number the whole revocation design
-rests on ([decisions-tokens.md](./decisions-tokens.md)) — it is how long a
-revoked session stays usable, and it must not be raised in production. Keying
-per token, not per subject, matters: each token is verified independently and
-the cache must only ever hold an answer received for that exact value.
-
-**5. Fail closed, always.** Ward unreachable, a timeout, a `500`, a `401`, a
-body that does not match the contract — every one of these **rejects the
-request**. Never fall back to a stale cache entry, and never let any of them
-resolve as "not signed in", which a caller could mistake for an ordinary
-signed-out response. **This covers the key-set fetch too, not only
-introspection.** Verifying a token fetches the JWKS whenever the cache is empty
-or older than ten minutes: at boot, and ten minutes into an outage. A failed
-fetch is Ward unavailable. Only "no key matches this token's `kid`" (or
-"several do") is the token's fault. `@ward/client`'s `verifyAccessToken`
-classifies it this way since 2026-10-04; atrium and prm did it first.
-
-Point 5 has one refinement worth implementing: treat a `401` as its own error
-type whose message names `WARD_APP_KEY`. It still fails closed, but a
-misconfigured deployment must be distinguishable in a log from Ward being down,
-because the fix is completely different and only one of them resolves by
-waiting.
-
-## The endpoints
-
-| | |
-|---|---|
-| `GET /ward-api/.well-known/jwks.json` | Ward's public keys. Cache ~10 minutes. No key needed. |
-| `POST /ward-api/introspect` | `{ accessToken }` + `x-ward-app-key`. **Always `200`** except `401` for a bad key. |
-| `POST /ward-api/notify` | Mail one of your users. See [Mailing a user](#mailing-a-user-post-notify) below. |
-| `GET /ward-api/session` | Cookie-authenticated. **Ward's own UI only** — an app has no use for it. |
-| `/ward/login?next=…` | Where an app sends somebody who is not signed in. |
-
-The access token arrives in the **`ward_session` cookie**, `Path=/`, which the
-browser sends to every app on the origin automatically — that is the concrete
-payoff of the one-origin decision, and it is why atrium can delete its
-`?token=` query-string fallback for `<img>` tags.
-
-Introspection answers `{ active: false }` or
-`{ active: true, subject, username, grants }`. `grants` is
-`{ "atrium": ["admin"], … }` — **the whole estate's**, not just yours. Check
-membership in `grants[yourSlug]`; never compare the object for equality, and
-never assume a role you did not find means the account is unknown.
-
-## The environment contract
-
-Every consuming app sets exactly these three:
-
-```
-WARD_PUBLIC_ORIGIN=https://example.com  # bare origin, no trailing slash
-WARD_API_BASE_PATH=/ward-api            # explicit; see point 2
-WARD_APP_KEY=wak_…                      # secret; issued per app from the console
-```
-
-`WARD_APP_KEY` is issued in Ward's console on the app's own page, under
-*Service keys*. It is shown **once** and cannot be read back — Ward stores only
-a digest. If it is lost, issue a new one and revoke the old one; that is also
-the rotation procedure, and an app may hold several live keys at once precisely
-so a rotation needs no window where it has none.
-
-`vps-deploy` declares `WARD_APP_KEY` as a required secret against **each app's
-own stack** (`WardStack.identityFor(consumer)`), so it is read from
-`secrets/<app>.env` and a preflight names the right file when it is absent.
-
-## The shape each app writes
-
-One module, no framework dependency in the core of it:
-
-```
-<app>/…/ward/
-  claims.ts      the constants — EdDSA, "ward-estate", 5s skew, 30_000ms
-  verify.ts      jwks resolver + verifyAccessToken(token)
-  introspect.ts  the cached, stampede-collapsing POST /introspect
-  client.ts      verify → introspect → authenticate(cookieHeader)
-  guard.ts       the framework binding (Fastify preHandler, Nest guard, …)
-```
-
-Copy it from [`client/src/`](../../client/src/) and adapt the last file. The
-first four are the same in all five apps; the fifth is the only part that is
-genuinely per-app, which is also the honest reason a shared package bought less
-here than it looked like it would.
-
-## Authorization is a grant, not an account
-
-Holding a Ward account confers **nothing**. An app must guard on a grant:
-
-```ts
-const session = await ward.authenticate(request.headers.cookie);
-if (!session.grants["atrium"]?.includes("admin")) throw forbidden();
-```
-
-A valid, live Ward session with no grant for your app is a **403**, not a 200.
-That is the estate's actual security boundary
-([decisions-accounts.md](./decisions-accounts.md)) and it is what lets prm keep
-public self-registration without exposing the other four apps. Every
-integration owes a test that asserts exactly this.
-
-Role strings are opaque and Ward never interprets them — they mean whatever the
-owning app decided. Ward stores the triple `(subject, app, role)` and nothing
-more.
-
-## Keying app rows
-
-Each app keeps its own tables and keys them on the **subject** — a stable,
-opaque identifier that is never recycled. Not the username, which a person can
-change, and not an email, which is Ward's business and not yours.
-
-## Mailing a user: `POST /notify`
-
-An app holds no addresses, so Ward sends the mail for it
-([decisions-app-keys.md](./decisions-app-keys.md)). Built 2026-10-07.
-
-```
-POST /ward-api/notify
-x-ward-app-key: wak_…
-content-type: application/json
-
-{ "subject": "<Ward subject>", "mailSubject": "<one line>", "text": "<plain text>" }
-```
-
-- `subject`: the recipient's subject, 1 to 64 characters.
-- `mailSubject`: one line, trimmed, 1 to 200 characters, no control characters.
-- `text`: plain text, at most 20,000 characters, not blank. Tab, LF and CR
-  are the only control characters allowed; CRLF becomes LF.
-- **No other key.** `from`, `replyTo`, `headers` or anything else is refused.
-
-| Answer | Meaning | What the app does |
-|---|---|---|
-| `200 {"sent":true}` | Ward handed the mail to its transport. | Mark it sent. |
-| `200 {"sent":false}` | Refused. One answer for: no such account, disabled, no verified address, no grant for your app, a malformed body, your rate limit. | Mark it done. Final; never retry. |
-| `401 {"error":"invalid_app_key"}` | The key, checked before the body is read. | Fix `WARD_APP_KEY`. |
-| `503 {"error":"mail_unavailable"}` | Ward could not send. | Retry on the next run. |
-| anything else, or no answer | Ward is down or unreachable. | Retry on the next run. |
-
-Ward sends only to an active account with a verified address that holds **a
-grant for the key's app**: your own users, nobody else. The person sees From
-`<App name> via Ward` at Ward's address, Subject `[<App name>] <mailSubject>`,
-your text, then an English footer naming your app and why they get it.
-
-**Rate limit: 2,000 calls per app in any rolling 24 hours**, counted in
-Ward's process (a restart clears it). Every keyed call counts, refused or
-sent; a call the limit refuses does not. Past it the answer is
-`{"sent":false}`. Why: prm's two daily sweeps make one call per notification
-row, under 1,000 on a heavy day at a few hundred users, and a day window stops
-a loop that an hourly cap would let send 24 times as much.
-
-Every keyed call writes an audit row (`notify.sent`, `notify.refused` with the
-reason, or `notify.failed`; label `app:<slug>`; target the subject), never the
-content. That is where an operator finds why a mail was refused.
-
-The reference is `client/src/notify.ts`: `ward.sendNotification({ subject,
-mailSubject, text })` resolves `{ sent: boolean }`, throws
-`WardConfigurationError` (a `WardUnavailableError` subclass) on a `401`, and
-`WardUnavailableError` for the last two rows, a timeout (15 s default)
-included. Call it from a background sweep, never in a request. A timeout is
-ambiguous: Ward may have sent anyway, so a retry can deliver twice.
+_2026-10-13, brief 30:_ the hand-written contract this page used to hold (the
+`ward_session` cookie at `Path=/`, `POST /introspect`, the `x-ward-app-key`
+app key and the reference client) was removed once production ran the new
+flow. Its reasoning is in [decisions-app-keys.md](./decisions-app-keys.md) and
+[decisions-tokens.md](./decisions-tokens.md), its history in
+[../log.md](../log.md).

@@ -82,11 +82,8 @@ async function login(address = "203.0.113.9"): Promise<Session> {
 
 /**
  * Is this access token still a live session, according to `GET /session`?
- *
- * `/session` rather than `/introspect`, because this probe holds a **cookie**
- * and no app key — which is precisely the caller `/session` exists for. The two
- * routes share `resolveSession`, so this asserts exactly the same liveness rule
- * `/introspect` applies to six apps.
+ * Both routes read the cookie through `auth/access-session.ts`, so this asserts
+ * exactly the liveness rule `/account` applies.
  */
 async function isLive(access: string): Promise<boolean> {
   const response = await app.inject({
@@ -203,11 +200,9 @@ describe("GET /account", () => {
   });
 
   /**
-   * The gap this closes: `/session` (and `/introspect`, which shares its
-   * response schema) answers four fields behind a serialisation schema that
-   * makes a fifth impossible by accident — correct for the endpoint six apps
-   * call on every request, and it left the UI unable to read a person's own
-   * email or verification state after a reload.
+   * The gap this closes: `/session` answers four fields behind a serialisation
+   * schema that makes a fifth impossible by accident, which left the UI unable
+   * to read a person's own email or verification state after a reload.
    */
   it("says what /session deliberately will not", async () => {
     const session = await login();
@@ -249,6 +244,32 @@ describe("GET /account", () => {
       });
       expect(response.statusCode, String(cookie)).toBe(401);
       expect(response.json()).toEqual({ error: "unauthorized" });
+    }
+  });
+
+  /**
+   * A browser that signed in before brief 30 sends the legacy `Path=/`
+   * `ward_session` beside the current one, in an order nobody controls.
+   */
+  it("finds the live session among duplicate ward_session cookies, in either order", async () => {
+    const stale = await login("203.0.113.30");
+    mod.refreshTokens.revokeFamily(db, await familyOf(stale.access), "logout");
+    const live = await login("203.0.113.31");
+
+    for (const values of [
+      ["nonsense", live.access],
+      [live.access, "nonsense"],
+      // Well signed but signed out: not enough to win.
+      [stale.access, live.access],
+      [live.access, stale.access],
+    ]) {
+      const response = await app.inject({
+        method: "GET",
+        url: "/account",
+        headers: { cookie: values.map((value) => `ward_session=${value}`).join("; ") },
+      });
+      expect(response.statusCode, values.join(" / ")).toBe(200);
+      expect(response.json().subject).toBe(subject);
     }
   });
 

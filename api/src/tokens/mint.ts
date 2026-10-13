@@ -19,7 +19,7 @@ import type { WardSigningKey } from "./keys.js";
 
 /** What a caller gets back. `jti` and `expiresAt` are here so brief 03 need not decode its own token. */
 export interface MintedAccessToken {
-  /** The compact JWS. This is what goes in the `Path=/` cookie. */
+  /** The compact JWS. This is what goes in the `ward_session` cookie. */
   readonly token: string;
   /** The token's unique id, already extracted. Audit lines refer to this. */
   readonly jti: string;

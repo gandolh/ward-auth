@@ -97,7 +97,8 @@ The provider keeps a session of its own, and two notions of "signed in at Ward"
 would let one end while the other lives on. Ward passes the family id to the app
 in a custom ID token claim, `ward_sid`. The provider's own `sid` is left alone.
 
-**Failing closed still holds** ([integrating.md](./integrating.md) rule 5).
+**Failing closed still holds** ([integrating.md](./integrating.md) rule 5;
+since brief 30 that page holds the app-side rules for `/session-status`).
 When Ward cannot answer, a Ward-originated session is rejected, and the app
 tells the person to sign in with their local password. Local sessions are
 unaffected.

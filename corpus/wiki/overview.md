@@ -39,19 +39,22 @@ built, unminified library in `shared-library/`. Each app copies it into
 
 ## What the repo contains right now
 
-- `api/`: the service, including the provider (brief 18) and the old
-  shared-cookie contract (app keys, `/introspect`), which stays until brief 30.
+- `api/`: the service, including the provider (brief 18) and
+  `POST /session-status`. Ward's own cookies are scoped to `/ward-api`; the
+  access cookie moved off `Path=/` in brief 30, which also removed app keys
+  and `/introspect`.
 - `ui/`: the login page, self-service and the console, with a "Sign in with
   Ward" panel per app for its redirect URIs and public key.
 - `shared-library/`: the library, at 0.3.1, vendored into atrium, newspapper,
   prm, sports-app and satchel.
-- `client/`: the old reference client, retired by brief 30.
 - `docs/`: the Starlight site at `/ward/docs`, and `docs/cutover-oidc.md`, the
   owner's runbook for taking the redesign to production (brief 27).
 
 The deploy lives in vps-deploy (`stacks/ward.ts` and each app's stack).
-Production still runs the shared-cookie contract until the owner runs the
-runbook. [status.md](./status.md) has where things stand.
+Production has run the OIDC flow since the owner's cutover on 2026-10-13.
+The reference client for the retired shared-cookie contract was deleted in
+brief 30, and Ward's redeploy for that brief is the owner's.
+[status.md](./status.md) has where things stand.
 
 ## Where the thread is
 
@@ -79,8 +82,8 @@ runbook. [status.md](./status.md) has where things stand.
 ## The one thing worth knowing before reading anything else
 
 Every project is a **sub-path on a single origin** (the production domain). There
-are no subdomains. That made a shared session cookie nearly free and makes
-isolation between apps impossible — the browser treats `/atrium` and
+are no subdomains. That made a shared session cookie nearly free (the estate
+used one until 2026-10-13) and makes isolation between apps impossible — the browser treats `/atrium` and
 `/design-study` as the same security context. Most of the interesting design
 tension in this repo traces back to that one fact. The OIDC redesign stops
 depending on it: nothing in the flow assumes Ward shares an app's origin, so

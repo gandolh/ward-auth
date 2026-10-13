@@ -18,8 +18,9 @@ sees it.
   unauthenticated.
 - **Per-session answers are `no-store`.** Nothing between Ward and a caller may
   hold one.
-- **Ambiguous failures are one answer.** Login, introspection and the app-key
-  guard each collapse their failure modes deliberately; see the relevant page.
+- **Ambiguous failures are one answer.** Login, `/session-status` and the client
+  assertion check each collapse their failure modes deliberately; see the
+  relevant page.
 - **Query strings are logged.** Fastify's request log line includes the URL, so
   nothing secret may travel in one — with the single audited exception of
   `GET /verify?token=`, which has its own log serializer to redact it.
@@ -29,19 +30,24 @@ sees it.
 | Method | Path | What it does |
 |---|---|---|
 | `GET` | `/health` | Liveness. Static answer. |
-| `GET` | `/.well-known/jwks.json` | The public half of the signing key. What every app fetches to verify locally. |
+| `GET` | `/.well-known/jwks.json` | The public half of the signing key. The OpenID Connect provider publishes the same key at `/oidc/jwks`. |
 | `GET` | `/apps` | Apps open to public registration, for the register page's app picker. |
 | `POST` | `/register` | Create an account at an app whose `public_registration` flag is on. |
 | `GET` | `/verify?token=` | Consume an emailed verification token. The one route allowed a secret in the query string, because an email client must be able to link to it. |
 
-## Session — the access cookie
+## Session — Ward's own cookies
+
+The access cookie (`ward_session`) is scoped to `Path=/ward-api` and the
+refresh cookie (`ward_refresh`) to `Path=/ward-api/refresh`, so only Ward's own
+pages send them. No app receives either.
 
 | Method | Path | What it does |
 |---|---|---|
 | `POST` | `/login` | Identifier + password. Sets the access and refresh cookies. |
 | `POST` | `/refresh` | Spends the refresh cookie, rotates the family, reissues both. |
 | `POST` | `/logout` | Revokes the family. Rows are marked, not deleted. |
-| `GET` | `/session` | The browser's introspection. Cookie-authenticated, no app key. |
+| `POST` | `/refresh/logout` | The same, for a caller that holds only the refresh cookie. |
+| `GET` | `/session` | Whether this browser has a live Ward session, for Ward's own UI. Always `200`. |
 | `GET` | `/account` | This account's own identity and grants. |
 | `POST` | `/account/password` | Change own password. |
 | `POST` | `/account/sessions/revoke-others` | Sign out every other session, keeping this one. |
@@ -51,17 +57,30 @@ still spend a dummy hash so timing does not leak account existence. The lockout
 is deliberately **not** keyed on `request.ip` — see
 [decisions-implementation](/wiki/decisions-implementation/).
 
-## Service — the app key
+## Service — the client assertion
+
+An app authenticates as its OpenID Connect client: a fresh `private_key_jwt`
+assertion (`client_assertion_type` + `client_assertion`, `aud` = the issuer) in
+the JSON body. A missing or bad assertion is `401 {"error":"invalid_client"}`.
 
 | Method | Path | What it does |
 |---|---|---|
-| `POST` | `/introspect` | Is this session live, and what may it do? Requires `x-ward-app-key`. |
-| `POST` | `/notify` | Mail one of the calling app's users. Ward holds the address; the app never sees it. Requires `x-ward-app-key`, or a client assertion in the body. |
-| `POST` | `/session-status` | Is this Ward session, signed in through OpenID Connect, still live and the grant still held? Requires a client assertion in the body; only mounted when `WARD_OIDC_ISSUER` is set. See [Sign in with Ward](/oidc/). |
+| `POST` | `/session-status` | Is this Ward session, signed in through OpenID Connect, still live and the grant still held? Apps cache the answer for 30 seconds. Only mounted when `WARD_OIDC_ISSUER` is set. |
+| `POST` | `/notify` | Mail one of the calling app's users. Ward holds the address; the app never sees it. |
 
-Introspection is the endpoint every app calls on every request. It is fully
-described in [Introspection and revocation](/introspection/). The notify
-contract is in [integrating](/wiki/integrating/).
+Both are described in [Sign in with Ward](/oidc/#asking-whether-a-ward-session-is-still-live).
+
+:::note[Retired 2026-10-13 (brief 30)]
+`POST /introspect`, the `x-ward-app-key` header and the console's app-key
+routes are gone; a request to `/introspect` is now `404`. The history is in
+[decisions — app keys](/wiki/decisions-app-keys/).
+:::
+
+## OpenID Connect
+
+When `WARD_OIDC_ISSUER` is set, Ward also serves the provider under `/oidc/*`
+(discovery, JWKS, authorization, token, end session) and its login step at
+`/refresh/oidc/:uid`. The full table is on [Sign in with Ward](/oidc/#the-issuer).
 
 ## Console — the superuser cookie
 
@@ -79,15 +98,12 @@ mounted anywhere else would simply never receive it.
 | `GET` | `/console/apps/:slug` | One app. |
 | `PATCH` | `/console/apps/:slug` | Change name, registration flag, baseline role. |
 | `DELETE` | `/console/apps/:slug` | Delete an app — **cascades to every grant into it**. |
-| `GET` | `/console/apps/:slug/keys` | Keys issued to one app. |
-| `POST` | `/console/apps/:slug/keys` | Mint a key. Shown once, never again. |
-| `GET` | `/console/app-keys` | Every key across every app. |
-| `POST` | `/console/app-keys/:id/revoke` | Revoke a key immediately. |
+| `PUT` | `/console/apps/:slug/oidc` | Set the app's OpenID Connect client: redirect URIs, sign-out return URIs, public key. |
 | `GET` | `/console/accounts` | List accounts. |
 | `POST` | `/console/accounts` | Create an account. |
 | `GET` | `/console/accounts/:subject` | One account. |
 | `POST` | `/console/accounts/:subject/enable` | Re-enable a disabled account. |
-| `POST` | `/console/accounts/:subject/disable` | Disable. Existing sessions stop introspecting as active. |
+| `POST` | `/console/accounts/:subject/disable` | Disable. Existing sessions stop answering as active. |
 | `POST` | `/console/accounts/:subject/password` | Set a password on behalf of an account. |
 | `GET` | `/console/accounts/:subject/sessions` | Live refresh families for an account. |
 | `POST` | `/console/accounts/:subject/sessions/revoke` | Revoke all of them. |
@@ -97,7 +113,7 @@ mounted anywhere else would simply never receive it.
 | `DELETE` | `/console/grants` | Remove a grant. |
 | `GET` | `/console/audit` | The audit log, newest first. |
 
-The six admin plugins each attach the console guard as a **plugin-scope**
+The five admin plugins each attach the console guard as a **plugin-scope**
 `preHandler`, so registering them opens nothing — they gate themselves.
 
 :::note[A Fastify detail worth knowing before you add a route]
@@ -107,9 +123,3 @@ plugin spells the parameter the same way. Rename `:subject` to `:sub` in one
 place and Fastify refuses to boot with a parametric-conflict error — which is
 the good outcome, but it is a boot failure, not a test failure.
 :::
-
-## Generated reference
-
-The `@ward/client` surface — the types and functions a consuming app actually
-calls — is [generated by TypeDoc](/reference/client/) from the package's public
-barrel, so it cannot drift from what the module exports.

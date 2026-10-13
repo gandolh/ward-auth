@@ -210,8 +210,8 @@ export function hasGrant(
 }
 
 /**
- * Every grant this person holds, grouped by app slug — the shape the
- * introspection response carries.
+ * Every grant this person holds, grouped by app slug — the shape
+ * `GET /session` carries.
  *
  * Grouped in JavaScript rather than with `json_group_array` because the row
  * count per account is single digits and the SQL stays readable; the query

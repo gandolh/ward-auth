@@ -1,37 +1,35 @@
 # Ward
 
-The sign-in service for the side projects on one production domain. A person has one account for all of them
-and signs in on one page, and a grant per app decides what they can open.
+The shared sign-in for the side projects on one production domain. Each app keeps its own accounts
+and its own login page, and offers "Sign in with Ward" as a second way in. Ward is the OpenID
+Connect provider behind that button, and a grant per app decides who may use it.
 
 <p align="center">
   <img src="docs/images/sign-in.webp" width="100%" alt="Ward's login page, headed 'Continue to Atrium' because the visitor came from Atrium, with Username and Password fields and a Sign in button">
 </p>
 
-**Status:** Personal project, in production since 2026-10-04 at `/ward/` on the production site. Four
-apps sign in through it: atrium, newspapper, public-resource-map and sports-app. Satchel is
-registered for local development. The GitHub repo is `gandolh/ward-auth` and the folder is still
+**Status:** Personal project, in production since 2026-10-04 at `/ward/` on the production site. Since
+2026-10-13 it is an OIDC provider: atrium, newspapper, public-resource-map and sports-app offer
+"Sign in with Ward" beside their own login, and satchel is registered for local development. The GitHub repo is `gandolh/ward-auth` and the folder is still
 called `wzd_auth`; the service is Ward ([why](corpus/wiki/overview.md#naming)).
 
 ## What it does
 
-- Gives every app the same login page, `/ward/login`. An app sends a signed-out visitor there with
-  `?next=`, and Ward sends them back signed in.
-- Lets an app check a visitor without calling Ward on every request. The app verifies a 15-minute
-  signed token itself, and asks Ward at most once every 30 seconds whether that session is still
-  live.
-- Decides access per app with grants: an account, an app, a role. A newly registered app lets
-  nobody in until grants are issued, and public sign-up stays off unless the app turns it on.
+- Runs an OpenID Connect provider (authorization code with PKCE). An app's "Sign in with Ward"
+  button sends the person to Ward's login page, and Ward sends them back with an ID token. Apps
+  authenticate as clients with `private_key_jwt`; Ward stores only their public keys.
+- Decides who may use each app's button with grants: an account, an app, a role. The role only
+  seeds a new user's first role; after that the app owns it.
 - Ends sessions in one place: signing out, "sign out my other devices" (a password change does the
-  same), or a revoke from the admin console. Every app stops accepting the session within 30
-  seconds. A spent refresh token that turns up again revokes the whole session, because that is
-  what a stolen cookie looks like; two tabs refreshing at the same moment are the one exception.
-- Lets an app email its own users through `POST /notify` without ever seeing their addresses.
+  same), or a revoke from the admin console. Apps ask `POST /session-status` at most every 30
+  seconds, so every session that began with Ward ends within 30 seconds. A spent refresh token
+  that turns up again revokes the whole session, because that is what a stolen cookie looks like.
+- Lets an app email its own Ward-linked users through `POST /notify` without seeing their addresses.
+- Ships the code apps share, `shared-library/`: local accounts, sessions, the lockout, the Ward
+  button and the 30-second check, as a built bundle each app copies in.
 
-Every app here lives under a path on one origin, so the cookie Ward sets already travels with the
-next request to any of them. That is why Ward is a small Fastify service and not an OIDC provider
-such as Keycloak or Authentik. There is no code exchange or token relay to do. It has no OAuth,
-social sign-in, passkeys or two-factor, and it cannot serve apps on another domain. The options it
-was weighed against are in [corpus/wiki/landscape.md](corpus/wiki/landscape.md).
+Apps keep working while Ward is down, through their own local sign-in. The design and what it
+replaced are in [corpus/wiki/decisions-oidc.md](corpus/wiki/decisions-oidc.md).
 
 ## Screenshots
 
@@ -47,26 +45,23 @@ set in Ward's environment; no account, not even the owner's, can reach it.
 ## How it works
 
 Ward has two parts on one origin. The API at `/ward-api` is Fastify on SQLite and holds the one
-Ed25519 signing key. The React UI at `/ward` has the login, account and console pages. Apps share no
-code with Ward. Each carries a short client of its own written against
-[the integration contract](corpus/wiki/integrating.md), and `client/` here is the tested reference
-version. A session goes like this:
+Ed25519 signing key; the provider is mounted at `/ward-api/oidc`. The React UI at `/ward` has the
+login, account and console pages. A Ward sign-in goes like this:
 
 ```mermaid
 sequenceDiagram
   participant B as Browser
   participant A as An app, e.g. /atrium
   participant W as Ward
-  B->>A: open /atrium/
-  A-->>B: not signed in, go to /ward/login?next=/atrium/
-  B->>W: username and password
-  W-->>B: access cookie (15 min) and refresh cookie (30 days), back to /atrium/
-  B->>A: next request carries the access cookie
-  A->>A: check the token's signature with Ward's public key
-  A->>W: POST /ward-api/introspect, with the app's key
-  W-->>A: still live? which grants? (cached 30 s)
-  A-->>B: the page, if a grant allows it
-  Note over B,W: /ward-api/refresh swaps the refresh token for a new one each time it is used.<br/>Sign-out, a revoke or a replayed refresh token ends the session for every app.
+  B->>A: press "Sign in with Ward"
+  A-->>B: go to Ward's authorize endpoint (state, nonce, PKCE)
+  B->>W: Ward's login page, username and password
+  W-->>B: back to the app's callback with a code
+  A->>W: exchange the code, signed client assertion
+  W-->>A: ID token: subject, username, role, ward_sid
+  A-->>B: the app's own session cookie
+  A->>W: POST /session-status, at most every 30 s
+  W-->>A: is ward_sid still live and the grant held?
 ```
 
 Rotation, the stolen-cookie alarm and the two-tab race that is not theft are on the docs site's
@@ -79,24 +74,24 @@ Requires Node 22 or later (`.nvmrc` pins 24), and Docker to run Ward itself.
 
 ```bash
 npm install
-npm test             # Vitest across api, client and ui
+npm test             # Vitest across api, ui and shared-library
 npm run typecheck
 npm run lint
 npm run build
 ```
 
 To run Ward with its UI, follow [infrastructure/local/README.md](infrastructure/local/README.md).
-Docker Compose serves it at <http://localhost:8792>, a seed script registers the apps and writes
-each app's local key, and each app's dev server forwards `/ward` and `/ward-api` to it. Environment variables are
+Docker Compose serves it at <http://localhost:8792>, and a seed script registers each app as an OIDC
+client and writes its `WARD_OIDC_*` values into the app's local env file. Environment variables are
 listed in [.env.example](.env.example).
 
 ## Project layout
 
 | Path              | What lives there                                                                             |
 | ----------------- | -------------------------------------------------------------------------------------------- |
-| `api/`            | The Fastify API: sign-in, sessions, grants, app keys, mail, the console's routes, migrations |
+| `api/`            | The Fastify API: the OIDC provider, sign-in, sessions, grants, mail, the console, migrations |
 | `ui/`             | The React UI served at `/ward`: login, register, verify, account and the console             |
-| `client/`         | `@ward/client`, the reference client apps copy from; nothing installs it                     |
+| `shared-library/` | The auth library apps vendor: local accounts and "Sign in with Ward"                         |
 | `docs/`           | The docs site at `/ward/docs` (Starlight), plus the images in this README                    |
 | `infrastructure/` | The container image and compose file; `local/` runs Ward in Docker                           |
 | `corpus/`         | The project wiki: decisions, status and the briefs that built Ward                           |
@@ -104,10 +99,10 @@ listed in [.env.example](.env.example).
 ## Docs
 
 - [docs/](docs/README.md): what is in the docs folder, and the images used here
-- Docs site: `/ward/docs/` on the production site, with the HTTP API, the data model, configuration and
-  the `@ward/client` reference
-- [Integration contract](corpus/wiki/integrating.md): what an app must get right to sign in
-  through Ward
+- Docs site: `/ward/docs/` on the production site, with the HTTP API, OIDC, the data model and
+  configuration
+- [Adoption guide](shared-library/README.md): how an app vendors the library and wires the Ward
+  button
 - [Project wiki](corpus/index.md): decisions, status and the briefs that built it
 
 ## License

@@ -5,7 +5,6 @@ import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
 import { WardApiError, register, type RegisterResult, type WardErrorCode } from "../lib/api.js";
-import { appName } from "../lib/estate.js";
 import { loginRouteFor } from "../lib/next.js";
 import { useOpenApps } from "../lib/open-apps.js";
 import { deadlineIn, useCountdown } from "../lib/use-countdown.js";
@@ -24,12 +23,17 @@ import { formatWait } from "../lib/wait.js";
  *
  * The app's *display name* comes from `GET /ward-api/apps` when that app is
  * one of the open ones — `useOpenApps` fetches it, and `apps.name` is finally
- * readable without the superuser console. `lib/estate.ts`'s hard-coded table
- * is the fallback for everything the open-apps list cannot say anything
- * about: a closed app (the endpoint says nothing about those at all, by
- * design) and a slug this UI has never heard of either way. An unrecognised
- * slug falls all the way through to being shown as the slug — more use to
- * somebody signing up than "Unknown app".
+ * readable without the superuser console. For anything that list cannot say
+ * anything about — a closed app (the endpoint says nothing about those at
+ * all, by design) or an unknown slug — the page shows the slug, which is more
+ * use to somebody signing up than "Unknown app".
+ *
+ * ## Where "Sign in" goes
+ *
+ * To Ward's own sign-in, coming back to the account page. Apps no longer take
+ * people back from Ward's login with `?next=` (that shared-cookie contract is
+ * retired, brief 30): a person signs in to an app from the app, which sends
+ * them through Ward with OpenID Connect.
  *
  * ## `registration_closed` is a state, not an error — and now often known early
  *
@@ -100,7 +104,7 @@ export function Register(): React.JSX.Element {
 
   const openApps = useOpenApps();
   const openEntry = Array.isArray(openApps) ? openApps.find((app) => app.slug === slug) : undefined;
-  const name = openEntry?.name ?? appName(slug);
+  const name = openEntry?.name ?? slug;
   // Only once the list has actually loaded — while it is `"loading"` this is
   // `false` and the form renders as it always did, so a slow fetch cannot
   // flash "closed" at somebody before it resolves.
@@ -166,7 +170,7 @@ export function Register(): React.JSX.Element {
         footer={
           <>
             Signed up for {name}.{" "}
-            <Link className="ward-link" to={loginRouteFor(`/${slug}`)}>
+            <Link className="ward-link" to={loginRouteFor("/ward/account")}>
               Sign in
             </Link>
           </>
@@ -175,7 +179,7 @@ export function Register(): React.JSX.Element {
         <h1>Account created</h1>
         <p className="ward-lede">
           You're registered at {name} as <strong>{created.username}</strong> with the {created.role}{" "}
-          role. Signing up doesn't sign you in — do that next.
+          role. Signing up doesn't sign you in: open {name} and sign in with Ward there.
         </p>
         {created.verificationSent ? (
           <Notice tone="info">
@@ -196,8 +200,8 @@ export function Register(): React.JSX.Element {
           </Notice>
         )}
         <p className="ward-prose ward-prose--spaced">
-          <Link className="ward-link" to={loginRouteFor(`/${slug}`)}>
-            Sign in to {name}
+          <Link className="ward-link" to={loginRouteFor("/ward/account")}>
+            Sign in to your Ward account
           </Link>
         </p>
       </Threshold>
@@ -213,7 +217,7 @@ export function Register(): React.JSX.Element {
           Ask them for one — and if you already have an account, it works everywhere.
         </p>
         <p className="ward-prose">
-          <Link className="ward-link" to={loginRouteFor(`/${slug}`)}>
+          <Link className="ward-link" to={loginRouteFor("/ward/account")}>
             Sign in instead
           </Link>
         </p>
@@ -283,7 +287,7 @@ export function Register(): React.JSX.Element {
   return (
     <Threshold
       footer={
-        <Link className="ward-link" to={loginRouteFor(`/${slug}`)}>
+        <Link className="ward-link" to={loginRouteFor("/ward/account")}>
           Already have an account? Sign in
         </Link>
       }

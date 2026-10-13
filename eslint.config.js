@@ -11,10 +11,11 @@ import reactHooks from "eslint-plugin-react-hooks";
  * cannot see. Rules duplicated from the compiler are worse than absent — they
  * report the same problem twice, in two formats, and drift apart.
  *
- * All three workspaces are linted. That was not true for most of this build —
- * the root `lint` script globbed `api/src/**` alone, so `ui/` and `client/`
- * were never seen by it, and the only reason nothing rotted is that the agents
- * writing them ran eslint over their own files by hand. A gate that covers
+ * Every code workspace (`api/`, `ui/`, `shared-library/`) is linted. That was
+ * not true for most of this build — the root `lint` script globbed `api/src/**`
+ * alone, so the UI and the old reference client were never seen by it, and the
+ * only reason nothing rotted is that the agents writing them ran eslint over
+ * their own files by hand. A gate that covers
  * less than it appears to is worse than no gate, so it covers everything now.
  *
  * @type {import('eslint').Linter.Config[]}

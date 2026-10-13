@@ -1,5 +1,3 @@
-import { ESTATE_ROOTS } from "./estate.js";
-
 /**
  * `?next=` validation — the one piece of security-relevant logic in this UI.
  *
@@ -11,8 +9,18 @@ import { ESTATE_ROOTS } from "./estate.js";
  * accepted the browser is somewhere else entirely.
  *
  * So the rule is not "reject `http://`". The rule is **an accepted value is a
- * path on this origin, under a first segment that names a real app, and
- * nothing else is accepted.** Everything below exists because there are a
+ * path on this origin, inside Ward's own pages (`/ward/...`), and nothing else
+ * is accepted.**
+ *
+ * ## Why only Ward's own pages
+ *
+ * Until 2026-10-13 apps sent people here with `?next=/atrium/...` and read
+ * Ward's cookie when they came back, so the allowlist named every app on the
+ * origin. That shared-cookie contract is retired (brief 30): apps sign people
+ * in through OpenID Connect, which carries its own return address
+ * (`?oidc=<uid>`, handled by `lib/oidc.ts`) and never uses `next`. What is left
+ * is Ward linking to itself — the account page sends a signed-out visitor to
+ * sign in and back — so the allowlist is one root, `ward`. Everything below exists because there are a
  * surprising number of strings that are not that, and look like they are.
  *
  * ## The rules, in order
@@ -45,10 +53,10 @@ import { ESTATE_ROOTS } from "./estate.js";
  *  7. **Resolves, against a sentinel origin, to that same origin** — and so
  *     does its decoded form. Belt and braces over rule 6, and the resolution
  *     is what collapses `..` so rule 8 cannot be walked around.
- *  8. **The resolved first path segment is in `ESTATE_ROOTS`** — exactly, not
- *     as a prefix — for both the raw and the decoded resolution. `/` alone is
- *     accepted as the estate's apex. This is the allowlist proper; rules 3–7
- *     only establish that there is a path to look up.
+ *  8. **The resolved first path segment is exactly `ward`** — not as a
+ *     prefix — for both the raw and the decoded resolution. The apex `/` is
+ *     not accepted: it is not one of Ward's pages. This is the allowlist
+ *     proper; rules 3–7 only establish that there is a path to look up.
  *  9. **Not the sign-in page itself.** `?next=/ward/login` is a loop, and a
  *     loop on the login page reads as "my password did not work".
  *
@@ -61,13 +69,15 @@ import { ESTATE_ROOTS } from "./estate.js";
  * ## What this deliberately does not do
  *
  * It does not consult the network, and it does not check that the path exists.
- * A `?next=` naming an app that is not deployed yet lands on a 404 inside the
- * estate — which is a broken link, not a security event, and is somebody
- * else's bug to fix.
+ * A `?next=` naming a Ward page that does not exist lands on Ward's own 404 —
+ * a broken link, not a security event.
  */
 
-/** Where a refused, absent or unusable `next` sends somebody. */
-export const DEFAULT_NEXT = "/";
+/** Where a refused, absent or unusable `next` sends somebody: their account. */
+export const DEFAULT_NEXT = "/ward/account";
+
+/** The one first path segment `next` may name: Ward's SPA. */
+export const WARD_ROOT = "ward";
 
 /**
  * The login page's own path on the origin, for the loop check.
@@ -100,7 +110,7 @@ export type NextRejection =
   | "not_absolute_path"
   | "protocol_relative"
   | "off_origin"
-  | "unknown_root"
+  | "outside_ward"
   | "sign_in_loop";
 
 export type NextDecision =
@@ -108,8 +118,6 @@ export type NextDecision =
       readonly accepted: true;
       /** Safe to hand to `location.assign`. Normalised: `..` collapsed. */
       readonly path: string;
-      /** The resolved first path segment, or `""` for the apex. */
-      readonly root: string;
     }
   | {
       readonly accepted: false;
@@ -137,7 +145,7 @@ const FORBIDDEN_RAW = /[\u0000-\u0020\u007f\s]/u;
  * Deliberately narrower than `FORBIDDEN_RAW`, and the difference is the whole
  * reason there are two: `%20` is a *legitimate* encoded space in a path, so
  * re-applying the whitespace ban after decoding would refuse
- * `/atrium/My%20Book` — a real link shape — for no gain, since an encoded
+ * `/ward/register?note=My%20Book` — a real link shape — for no gain, since an encoded
  * space is never stripped and never changes how anything routes. A decoded
  * control character has no legitimate use at all, and a decoded NUL truncates
  * the string in enough consumers to be worth refusing on its own.
@@ -169,12 +177,12 @@ function shapeOf(value: string, forbidden: RegExp): NextRejection | undefined {
  * Rules 7 and 8 — resolve against the sentinel and check the first segment.
  *
  * Run over the raw value **and** its decoded form. The two can disagree:
- * `/atrium/%2e%2e/%2e%2e/evil` resolves with its first segment intact, because
+ * `/ward/%2e%2e/%2e%2e/evil` resolves with its first segment intact, because
  * the URL parser does not treat a percent-encoded dot as a dot segment, while
  * its decoded form resolves to `/evil`. Requiring both to pass is what stops
- * an encoded traversal from borrowing an allowlisted root.
+ * an encoded traversal from borrowing the allowlisted root.
  */
-function resolvedRoot(value: string): { root: string; path: string } | NextRejection {
+function resolvedPath(value: string): { path: string } | NextRejection {
   let url: URL;
   try {
     url = new URL(value, SENTINEL_BASE);
@@ -187,13 +195,12 @@ function resolvedRoot(value: string): { root: string; path: string } | NextRejec
     return "sign_in_loop";
   }
 
-  // `"/x/y".split("/")` is `["", "x", "y"]`, so index 1 is the first segment
-  // and is `""` for the apex `"/"` — which is allowed, and is the only empty
-  // root there is.
+  // `"/x/y".split("/")` is `["", "x", "y"]`, so index 1 is the first segment,
+  // and `""` for the apex `"/"`, which is refused like any other root.
   const root = url.pathname.split("/")[1] ?? "";
-  if (root !== "" && !ESTATE_ROOTS.has(root)) return "unknown_root";
+  if (root !== WARD_ROOT) return "outside_ward";
 
-  return { root, path: `${url.pathname}${url.search}${url.hash}` };
+  return { path: `${url.pathname}${url.search}${url.hash}` };
 }
 
 /**
@@ -227,22 +234,22 @@ export function resolveNext(raw: string | null | undefined): NextDecision {
     if (shape !== undefined) return refuse(shape);
   }
 
-  const rawResolved = resolvedRoot(raw);
+  const rawResolved = resolvedPath(raw);
   if (typeof rawResolved === "string") return refuse(rawResolved);
 
-  const decodedResolved = resolvedRoot(decoded);
+  const decodedResolved = resolvedPath(decoded);
   if (typeof decodedResolved === "string") return refuse(decodedResolved);
 
-  return { accepted: true, path: rawResolved.path, root: rawResolved.root };
+  return { accepted: true, path: rawResolved.path };
 }
 
 /**
  * The login URL **on the origin**, with `next` set — `/ward/login?next=…`.
  *
- * This is the shape an app outside Ward needs: briefs 13–15 add "sign in with
- * Ward" links, and this is the string they build (or copy). The value is
- * encoded here so a caller cannot forget to, which is the mistake that makes a
- * deep link with a query string silently lose everything after its first `&`.
+ * For a full navigation (`location.replace`) from one of Ward's pages. The
+ * value is encoded here so a caller cannot forget to, which is the mistake that
+ * makes a deep link with a query string silently lose everything after its
+ * first `&`.
  */
 export function loginUrlFor(next: string): string {
   return `${WARD_LOGIN_PATH}?next=${encodeURIComponent(next)}`;

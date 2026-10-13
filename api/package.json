@@ -9,7 +9,6 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "keygen": "tsx src/tokens/keygen.ts",
-    "register-app-keys": "tsx src/scripts/register-app-keys.ts",
     "oidc-client-key": "tsx src/oidc/client-keygen.ts"
   },
   "dependencies": {

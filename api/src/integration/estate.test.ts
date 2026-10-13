@@ -11,6 +11,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * exercises the real `buildApp()` against a real database and a real key
  * through a full sign-in → introspect → revoke cycle."
  *
+ * "Introspect" here is `GET /session`, Ward's own session check. Apps once
+ * asked the same question through a server-to-server endpoint of their own;
+ * that contract is retired (brief 30), and this suite drives the path that
+ * remains.
+ *
  * Every other test file in this repo either builds a bare Fastify instance
  * with one plugin registered, or opens `openDatabase(":memory:")` directly.
  * Both choices are correct for a unit test and both are exactly what this
@@ -26,7 +31,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  *  - a real `WARD_DB_PATH` file, migrated with `runMigrations`, exactly the
  *    way `index.ts` boots it — not `:memory:`;
  *  - the console's bring-up sequence end to end: brief 04's "a grant added
- *    through the console appears in the next introspection" and brief 05's
+ *    through the console appears in the next session check" and brief 05's
  *    "disabling an account ends its live sessions... verified end to end"
  *    are acceptance criteria neither brief could satisfy alone, because each
  *    needed the other's endpoint. This is the first place both run together.
@@ -54,7 +59,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * every hop that needs a cookie a previous response set has to read it back
  * out of that response's `set-cookie` headers and forward it explicitly.
  * Three cookies exist in this estate and they carry three different `Path`
- * attributes (`ward_session` at `Path=/`, `ward_refresh` at
+ * attributes (`ward_session` at `Path=/ward-api`, `ward_refresh` at
  * `Path=/ward-api/refresh`, `ward_console` at `Path=/ward-api/console`) —
  * meaningless to `app.inject()`, which never filters by path, but real
  * browser behaviour this suite otherwise wants to mirror. `cookieValue`
@@ -71,16 +76,6 @@ const PASSWORD = "correct-horse-battery-staple";
 let dir: string;
 let app: FastifyInstance;
 
-/**
- * The app key every `introspectAsApp` call presents, issued through the real
- * console route in flow 1 as soon as the `atrium` app exists.
- *
- * Module-level and shared across flows for the same reason `consoleCookie` is:
- * these suites deliberately chain on one another to reproduce the estate's
- * actual bring-up sequence rather than re-fixturing between assertions.
- */
-let estateAppKey: string;
-
 let mod: {
   cookie: typeof import("../auth/cookie.js");
   superuser: typeof import("../auth/superuser.js");
@@ -89,7 +84,6 @@ let mod: {
     closeDb: typeof import("../db/connection.js").closeDb;
   };
   auditLog: typeof import("../db/audit-log.js");
-  appKey: typeof import("../auth/app-key.js");
 };
 
 beforeAll(async () => {
@@ -131,7 +125,6 @@ beforeAll(async () => {
     superuser: await import("../auth/superuser.js"),
     connection: { getDb, closeDb },
     auditLog: await import("../db/audit-log.js"),
-    appKey: await import("../auth/app-key.js"),
   };
 
   const { buildApp } = await import("../app.js");
@@ -211,46 +204,14 @@ async function loginAs(
 }
 
 /**
- * Issue an app key through the real console route, the way an operator does.
- *
- * The plaintext comes back exactly once, here and nowhere else — there is no
- * route that reads one back, by design.
+ * Ask whether an access token is a live session, the way Ward's own pages do:
+ * `GET /session` with the token in the `ward_session` cookie.
  */
-async function issueAppKey(
-  consoleCookie: string,
-  slug: string,
-  label = `${slug} integration key`,
-): Promise<{ key: string; id: string }> {
-  const response = await app.inject({
-    method: "POST",
-    url: `/console/apps/${slug}/keys`,
-    headers: withConsole(consoleCookie),
-    payload: { label },
-  });
-  expect(response.statusCode, `POST /console/apps/${slug}/keys`).toBe(201);
-
-  const body = response.json<{ key: string; appKey: { id: string } }>();
-  return { key: body.key, id: body.appKey.id };
-}
-
-/**
- * Introspect exactly the way a consuming app does: the token in the body, the
- * app's key in `x-ward-app-key`, and no cookie jar anywhere.
- *
- * This used to post the token in the `ward_session` cookie. It does not any
- * more, and the change is the point rather than an adaptation: `/introspect` is
- * a server-to-server route now, and this suite's whole purpose is to drive the
- * paths the estate will actually use.
- */
-async function introspectAsApp(
-  accessToken: string,
-  key: string = estateAppKey,
-): Promise<LightMyRequestResponse> {
+async function sessionFor(accessToken: string): Promise<LightMyRequestResponse> {
   return app.inject({
-    method: "POST",
-    url: "/introspect",
-    headers: { [mod.appKey.APP_KEY_HEADER]: key },
-    payload: { accessToken },
+    method: "GET",
+    url: "/session",
+    headers: { cookie: cookieHeader({ [mod.cookie.ACCESS_COOKIE_NAME]: accessToken }) },
   });
 }
 
@@ -380,11 +341,6 @@ describe("flow 1 — the console bootstraps the estate", () => {
     const registered = await createApp(consoleCookie, "atrium", "Atrium");
     expect(registered.slug, "the app just registered is named atrium").toBe("atrium");
 
-    // An app cannot introspect anything until it holds a key, so issuing one is
-    // now part of the estate's bring-up sequence and belongs in the test that
-    // documents that sequence.
-    estateAppKey = (await issueAppKey(consoleCookie, "atrium")).key;
-
     const account = await createAccount(consoleCookie, "alice", PASSWORD);
     subject = account.subject;
 
@@ -394,11 +350,11 @@ describe("flow 1 — the console bootstraps the estate", () => {
     const session = await loginAs("alice", PASSWORD, "203.0.113.10");
     accessToken = session.accessToken;
 
-    const introspected = await introspectAsApp(accessToken);
-    expect(introspected.statusCode, "POST /introspect for alice's fresh login").toBe(200);
+    const introspected = await sessionFor(accessToken);
+    expect(introspected.statusCode, "GET /session for alice's fresh login").toBe(200);
     expect(
       introspected.json(),
-      "the estate's bring-up sequence: register → create → grant twice → login → introspect",
+      "the estate's bring-up sequence: register → create → grant twice → login → session check",
     ).toEqual({
       active: true,
       subject,
@@ -417,7 +373,7 @@ describe("flow 1 — the console bootstraps the estate", () => {
   it("shows a grant added through the console on the very next introspection — no re-login", async () => {
     await grantRoleViaConsole(consoleCookie, subject, "atrium", "admin");
 
-    const introspected = await introspectAsApp(accessToken);
+    const introspected = await sessionFor(accessToken);
     expect(
       introspected.json(),
       "the same access token, unchanged, after POST /console/grants added admin",
@@ -433,7 +389,7 @@ describe("flow 1 — the console bootstraps the estate", () => {
   it("shows a grant revoked through the console disappearing on the very next introspection", async () => {
     await revokeRoleViaConsole(consoleCookie, subject, "atrium", "viewer");
 
-    const introspected = await introspectAsApp(accessToken);
+    const introspected = await sessionFor(accessToken);
     expect(
       introspected.json(),
       "the same access token, unchanged, after DELETE /console/grants removed viewer",
@@ -448,18 +404,18 @@ describe("flow 1 — the console bootstraps the estate", () => {
 
 // ---------------------------------------------------------------------------
 // Flow 4 — disabling an account ends its live session, verified through
-// /introspect and /refresh rather than by inspecting rows (brief 05's owed
+// /session and /refresh rather than by inspecting rows (brief 05's owed
 // criterion).
 // ---------------------------------------------------------------------------
 
 describe("flow 4 — disabling an account ends its live session end to end", () => {
-  it("logs in, confirms active, disables the account, and both /introspect and /refresh refuse the same still-valid credentials", async () => {
+  it("logs in, confirms active, disables the account, and both /session and /refresh refuse the same still-valid credentials", async () => {
     const consoleCookie = await consoleLogin();
     const { subject } = await createAccount(consoleCookie, "diana", PASSWORD);
 
     const session = await loginAs("diana", PASSWORD, "203.0.113.20");
 
-    const before = await introspectAsApp(session.accessToken);
+    const before = await sessionFor(session.accessToken);
     expect(before.json(), "diana's freshly-minted token introspects live").toMatchObject({
       active: true,
     });
@@ -469,7 +425,7 @@ describe("flow 4 — disabling an account ends its live session end to end", () 
     // The signature is untouched — this is the same access token, byte for
     // byte, that just introspected active. Nothing expired and nothing was
     // revoked at the token layer; only `users.disabled_at` changed.
-    const after = await introspectAsApp(session.accessToken);
+    const after = await sessionFor(session.accessToken);
     expect(
       after.json(),
       "the SAME still-cryptographically-valid access token, after POST /console/accounts/:subject/disable",
@@ -497,7 +453,7 @@ describe("flow 5 — refresh rotation, and reuse killing the family, over real H
 
     const login = await loginAs("erin", PASSWORD, "203.0.113.30");
     expect(
-      (await introspectAsApp(login.accessToken)).json(),
+      (await sessionFor(login.accessToken)).json(),
       "erin's freshly-minted access token introspects live",
     ).toMatchObject({ active: true });
 
@@ -507,7 +463,7 @@ describe("flow 5 — refresh rotation, and reuse killing the family, over real H
     const secondAccessToken = cookieValue(first, mod.cookie.ACCESS_COOKIE_NAME)!;
     const secondRefreshToken = cookieValue(first, mod.cookie.REFRESH_COOKIE_NAME)!;
     expect(
-      (await introspectAsApp(secondAccessToken)).json(),
+      (await sessionFor(secondAccessToken)).json(),
       "the access token minted on rotation #1 introspects live",
     ).toMatchObject({ active: true });
 
@@ -529,7 +485,7 @@ describe("flow 5 — refresh rotation, and reuse killing the family, over real H
     expect(second.statusCode, "POST /refresh with R2 (second rotation)").toBe(200);
     const thirdAccessToken = cookieValue(second, mod.cookie.ACCESS_COOKIE_NAME)!;
     expect(
-      (await introspectAsApp(thirdAccessToken)).json(),
+      (await sessionFor(thirdAccessToken)).json(),
       "the access token minted on rotation #2 introspects live",
     ).toMatchObject({ active: true });
 
@@ -541,7 +497,7 @@ describe("flow 5 — refresh rotation, and reuse killing the family, over real H
     // The reuse alarm kills the WHOLE family — including R3, which was live
     // and legitimate a moment ago. This is the theft-response contract: a
     // stolen family dies in full rather than only the specific token reused.
-    const afterReplay = await introspectAsApp(thirdAccessToken);
+    const afterReplay = await sessionFor(thirdAccessToken);
     expect(
       afterReplay.json(),
       "the current, legitimately-rotated access token, after R1 was replayed",
@@ -564,8 +520,8 @@ describe("flow 6 — per-device revocation: the reason the sid claim exists", ()
     const laptop = await loginAs("frank", PASSWORD, "203.0.113.40");
     const phone = await loginAs("frank", PASSWORD, "203.0.113.41");
 
-    const laptopBefore = await introspectAsApp(laptop.accessToken);
-    const phoneBefore = await introspectAsApp(phone.accessToken);
+    const laptopBefore = await sessionFor(laptop.accessToken);
+    const phoneBefore = await sessionFor(phone.accessToken);
     expect(laptopBefore.json(), "the laptop's token, before any logout").toMatchObject({
       active: true,
     });
@@ -578,8 +534,8 @@ describe("flow 6 — per-device revocation: the reason the sid claim exists", ()
     const loggedOut = await logoutWith(laptop.refreshToken);
     expect(loggedOut.statusCode, "POST /logout with the laptop's refresh cookie").toBe(204);
 
-    const laptopAfter = await introspectAsApp(laptop.accessToken);
-    const phoneAfter = await introspectAsApp(phone.accessToken);
+    const laptopAfter = await sessionFor(laptop.accessToken);
+    const phoneAfter = await sessionFor(phone.accessToken);
 
     /**
      * **This is the one result the controller most needs to see.**
@@ -615,24 +571,21 @@ describe("flow 6 — per-device revocation: the reason the sid claim exists", ()
 // ---------------------------------------------------------------------------
 
 describe("flow 7 — the superuser console session cannot open an app, and an app account cannot open the console", () => {
-  it("a real console session presented to /introspect is active: false, in the cookie and in the body", async () => {
+  it("a real console session presented to /session is active: false, in either cookie", async () => {
     const consoleCookie = await consoleLogin();
 
-    const byCookie = await app.inject({
-      method: "POST",
-      url: "/introspect",
-      headers: {
-        [mod.appKey.APP_KEY_HEADER]: estateAppKey,
-        cookie: cookieHeader({ [mod.superuser.CONSOLE_COOKIE_NAME]: consoleCookie }),
-      },
-      payload: {},
+    const byConsoleCookie = await app.inject({
+      method: "GET",
+      url: "/session",
+      headers: { cookie: cookieHeader({ [mod.superuser.CONSOLE_COOKIE_NAME]: consoleCookie }) },
     });
-    const byBody = await introspectAsApp(consoleCookie);
+    const bySessionCookie = await sessionFor(consoleCookie);
 
-    expect(byCookie.json(), "a real console token in the console cookie, to /introspect").toEqual({
-      active: false,
-    });
-    expect(byBody.json(), "the same console token in the introspect body").toEqual({
+    expect(
+      byConsoleCookie.json(),
+      "a real console token in the console cookie, to /session",
+    ).toEqual({ active: false });
+    expect(bySessionCookie.json(), "the same console token in the ward_session cookie").toEqual({
       active: false,
     });
   });
@@ -655,9 +608,9 @@ describe("flow 7 — the superuser console session cannot open an app, and an ap
 
     const session = await loginAs("grace", PASSWORD, "203.0.113.50");
 
-    // /introspect confirms the authority is real, before trying to abuse it.
+    // /session confirms the authority is real, before trying to abuse it.
     expect(
-      (await introspectAsApp(session.accessToken)).json(),
+      (await sessionFor(session.accessToken)).json(),
       "grace's token genuinely carries owner in three apps",
     ).toMatchObject({
       active: true,

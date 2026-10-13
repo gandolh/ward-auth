@@ -34,7 +34,7 @@ import { databaseResolver, type AdminRoutesOptions } from "./support.js";
  * Reading the log does not append to it. An operator paging through a screen
  * would otherwise write a row per page view and bury the rows they came to
  * find under their own scrolling — the same write-amplification reasoning
- * `/introspect` and `/login`'s unknown-username branch both record.
+ * `/session-status` and `/login`'s unknown-username branch both record.
  *
  * ## Pagination is keyset, not offset
  *

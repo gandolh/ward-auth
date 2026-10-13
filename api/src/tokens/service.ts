@@ -15,7 +15,7 @@ import type { AccessTokenClaims } from "./claims.js";
  * documents: a static import is hoisted, so it would run zod validation — and
  * its `process.exit(1)` — merely because something imported `signAccessToken`.
  * Everything else here stays pure and takes its inputs as arguments, which is
- * also what lets brief 08 lift `verify.ts` into `@ward/client` untouched.
+ * also what keeps `verify.ts` free of Ward's configuration.
  */
 
 /**
@@ -78,13 +78,13 @@ export async function mintAccessToken(
 }
 
 /**
- * Verify a token Ward itself received — brief 04's `/introspect` is the caller
- * that matters. Checks against Ward's own published key set, so a token signed
+ * Verify a token Ward itself received — `GET /session` and `/account` read the
+ * cookie through this. Checks against Ward's own published key set, so a token signed
  * by the previous key during a rotation still verifies.
  *
  * Remember what this does not answer: the signature stays good for the full 15
  * minutes after the session was revoked. Liveness is a database read, and it is
- * introspection's other half.
+ * `resolveSession`'s job.
  *
  * ## Why this takes a token and nothing else
  *

@@ -2,7 +2,6 @@ import type Database from "better-sqlite3";
 import { openDatabase } from "./connection.js";
 import { runMigrations } from "./migrate.js";
 import { createApp } from "./apps.js";
-import { createAppKey } from "./app-keys.js";
 import { createUser, type UserRow } from "./users.js";
 
 /**
@@ -45,18 +44,6 @@ export function seedApps(db: Database.Database): void {
     baselineRole: "user",
   });
   createApp(db, { slug: "sports-app", name: "Sports App" });
-}
-
-/**
- * An app key for `appSlug`, returning the plaintext the way the console does —
- * once, and never again.
- *
- * Every test that drives `POST /introspect` needs one, because the route now
- * refuses an unkeyed caller before it does anything else. Tests that want to
- * prove the refusal simply omit the header.
- */
-export function seedAppKey(db: Database.Database, appSlug = "atrium"): string {
-  return createAppKey(db, { appSlug, label: `${appSlug} test key`, createdBy: "superuser" }).key;
 }
 
 /** An account with a throwaway password hash. */

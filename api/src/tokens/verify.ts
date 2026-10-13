@@ -1,4 +1,4 @@
-import { createLocalJWKSet, createRemoteJWKSet, jwtVerify } from "jose";
+import { createLocalJWKSet, jwtVerify } from "jose";
 import type { JSONWebKeySet } from "jose";
 import {
   ACCESS_TOKEN_ALG,
@@ -10,11 +10,11 @@ import {
 /**
  * Verifying a Ward access token.
  *
- * This module is the one brief 08 re-exports through `@ward/client`, so it is
- * written to be liftable: its only import is `jose` and its own constants, it
- * never touches `config.js`, `node:fs`, Fastify or the database, and every
- * input arrives as an argument. Importing it has no side effects, which matters
- * because it will end up inside six other applications.
+ * Written to be pure: its only import is `jose` and its own constants, it never
+ * touches `config.js`, `node:fs`, Fastify or the database, and every input
+ * arrives as an argument. Importing it has no side effects. (It was once lifted
+ * into a client package for the estate's apps; that contract is retired, and
+ * Ward is now the only verifier.)
  *
  * ## The two things that must never change
  *
@@ -26,73 +26,26 @@ import {
  *    bytes handed over as the HMAC secret — a public key being, by definition,
  *    something the attacker already has.
  * 2. **The key comes from the JWKS, resolved by `kid`, never from the token.**
- *    `createLocalJWKSet` and `createRemoteJWKSet` both take the JOSE header only
- *    as a *selector* over a key set that was fetched out of band. Nothing here
+ *    `createLocalJWKSet` takes the JOSE header only as a *selector* over a key
+ *    set obtained out of band. Nothing here
  *    ever reads embedded key material (`jwk`, `jku`, `x5u` header parameters).
  */
 
 /**
- * A resolver over Ward's published keys. Both constructors below return one,
- * and both pick the key by `kid`/`alg`/`use` out of a set the caller obtained
- * independently of the token.
+ * A resolver over Ward's published keys. It picks the key by `kid`/`alg`/`use`
+ * out of a set the caller obtained independently of the token.
  */
-export type WardKeyStore =
-  ReturnType<typeof createLocalJWKSet> | ReturnType<typeof createRemoteJWKSet>;
+export type WardKeyStore = ReturnType<typeof createLocalJWKSet>;
 
 /**
  * A key store over a JWKS already in hand — the JSON body of
- * `GET /.well-known/jwks.json`. Used inside Ward, and by any consumer that
- * wants to control fetching itself.
+ * `GET /.well-known/jwks.json`.
  *
  * Handles rotation for free: a two-key set resolves either `kid`, so tokens
  * signed by the outgoing key keep verifying until they expire.
  */
 export function createJwksKeyStore(jwks: JSONWebKeySet): WardKeyStore {
   return createLocalJWKSet(jwks);
-}
-
-/**
- * A key store that fetches and caches Ward's JWKS over HTTP — the shape brief
- * 08's `@ward/client` wants, since an app must pick up a rotated key without a
- * redeploy. `jose` refetches when it meets an unknown `kid`, rate-limited
- * internally, so a rotation costs one extra request rather than a stampede.
- */
-export function createRemoteJwksKeyStore(
-  jwksUrl: URL,
-  options?: { timeoutMs?: number; cacheMaxAgeMs?: number },
-): WardKeyStore {
-  return createRemoteJWKSet(jwksUrl, {
-    timeoutDuration: options?.timeoutMs ?? 5_000,
-    cacheMaxAge: options?.cacheMaxAgeMs ?? 10 * 60_000,
-  });
-}
-
-/**
- * Where Ward publishes its keys, given the estate's public origin and Ward's
- * API base path.
- *
- *     jwksUrl("https://gandolh.ro", "/ward-api")
- *     // → https://gandolh.ro/ward-api/.well-known/jwks.json
- *
- * **`apiBasePath` is required, and has no default.** It used to default to `""`,
- * which produced `https://gandolh.ro/.well-known/jwks.json` — a path nothing
- * serves, because Caddy reverse-proxies Ward under `/ward-api/*`. Brief 08's
- * `@ward/client` uses this helper to build every app's remote key store, so the
- * default would have had all six apps fetch a 404, `jose` throw, and every
- * token be rejected: an estate-wide lockout on the deploy that shipped the
- * client. It fails closed, so it was availability rather than a bypass — but a
- * wrong default in a module six repositories copy is a bug waiting for a
- * deploy.
- *
- * Required rather than defaulted to `/ward-api`, because the mistake is then a
- * compile error at the call site instead of a 404 in production, and because
- * this module is deliberately ignorant of Ward's own configuration (it is the
- * one file brief 08 lifts unchanged) — baking this estate's deploy path into it
- * as a default is exactly the knowledge it is not supposed to hold. Pass `""`
- * explicitly for a Ward served at the root of its origin.
- */
-export function jwksUrl(publicOrigin: string, apiBasePath: string): URL {
-  return new URL(`${apiBasePath.replace(/\/+$/, "")}/.well-known/jwks.json`, publicOrigin);
 }
 
 /**
@@ -105,9 +58,7 @@ export function jwksUrl(publicOrigin: string, apiBasePath: string): URL {
  * issuer from configuration and exposes no options parameter at all, which is
  * what keeps `audience`, `clockToleranceSeconds` and `currentDate` out of
  * production call sites structurally rather than by convention. This type is
- * the lower-level, fully-explicit surface — the one the tests drive and the one
- * brief 08 lifts into `@ward/client`, where the consuming app supplies the
- * issuer itself.
+ * the lower-level, fully-explicit surface — the one the tests drive.
  */
 export interface VerifyAccessTokenOptions {
   /** Expected `iss`: `WARD_PUBLIC_ORIGIN`, exactly, with no trailing slash. */
@@ -137,7 +88,7 @@ export interface VerifyAccessTokenOptions {
  *
  * The message is deliberately coarse — "expired" and "signed by an unknown key"
  * are the same answer to a caller. `cause` carries `jose`'s own error for the
- * log, which is where the detail belongs; brief 04's `/introspect` must not
+ * log, which is where the detail belongs; `GET /session` must not
  * relay it to the caller, since "why is this token bad" is an oracle.
  */
 export class AccessTokenVerificationError extends Error {

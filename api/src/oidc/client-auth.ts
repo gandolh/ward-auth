@@ -10,7 +10,7 @@ import { CLIENT_ASSERTION_ALGS, clientMetadataFor } from "./clients.js";
  *
  * The token endpoint does this itself, inside `oidc-provider`. Ward's own
  * endpoints that an app calls server-to-server — brief 19's
- * `POST /session-status`, and `/notify` once it moves off app keys — need the
+ * `POST /session-status` and `POST /notify` — need the
  * same check without a Koa context, and this is it. It reads the same keys
  * (the `apps` row) and spends the same replay markers as the provider, so one
  * assertion is good for exactly one call anywhere at Ward.

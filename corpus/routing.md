@@ -7,8 +7,8 @@ The service is called **Ward**. `wzd_auth` is the repo's working name and is
 retired — see [wiki/decisions.md](wiki/decisions.md).
 
 **The design is settled.** The 2026-10-13 redesign (local accounts plus OIDC,
-[wiki/decisions-oidc.md](wiki/decisions-oidc.md)) is decided, and briefs 18–27
-build it. Read the decisions pages before
+[wiki/decisions-oidc.md](wiki/decisions-oidc.md)) is built and deployed;
+briefs 18–30 are done. Read the decisions pages before
 proposing anything; most of the obvious alternatives were considered and
 rejected there for recorded reasons. Proposing an implementation before
 [wiki/open-questions.md](wiki/open-questions.md) is empty is jumping the queue.
@@ -57,8 +57,8 @@ maintained and were grilled at the time.
 
 ## Working a brief
 
-Briefs 18–27 sit in [briefs/todo/](briefs/todo/), grouped into four dependency
-waves (A–D) in [wiki/status.md](wiki/status.md). Briefs within a wave own disjoint
+No brief is open. New work goes in [briefs/todo/](briefs/todo/); a backlog is
+grouped into dependency waves in [wiki/status.md](wiki/status.md). Briefs within a wave own disjoint
 files and can run in parallel.
 
 1. Read the brief in [briefs/todo/](briefs/todo/) — self-contained by design.

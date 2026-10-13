@@ -1,6 +1,6 @@
 ---
 summary: The locked engineering calls made while building — the raw better-sqlite3 driver and why Knex was rejected, static-import migrations, scrypt over argon2id, the loopback bind default, the WAL checkpoint that makes a database backup honest, why the lockout is not keyed on request.ip, and integration tests that drive the real service. Session mechanics settled during the build live in decisions-tokens.md.
-updated: 2026-09-04
+updated: 2026-10-13
 ---
 
 # Decisions — implementation
@@ -30,7 +30,9 @@ path of least resistance. Atrium's own **D47** records what it cost there: three
 correctness properties held only because two statements could not interleave,
 and **all three broke** when a query builder made them able to. Ward's hot path
 is session lookup under concurrency — every request from every app introspects —
-so the property atrium lost is the property Ward most needs. `better-sqlite3` is
+so the property atrium lost is the property Ward most needs. _(2026-10-13:
+`/introspect` is retired; the load is now `/session-status`, once per 30 s per
+Ward-originated session.)_ `better-sqlite3` is
 synchronous, which is not a limitation here but the mechanism: a statement
 cannot interleave with another because there is no await point inside it.
 

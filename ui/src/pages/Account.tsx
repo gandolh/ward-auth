@@ -13,8 +13,8 @@ import {
   type AccountResult,
   type WardErrorCode,
 } from "../lib/api.js";
-import { appName } from "../lib/estate.js";
 import { loginRouteFor, loginUrlFor } from "../lib/next.js";
+import { useOpenApps } from "../lib/open-apps.js";
 import {
   CAN_CHANGE_OWN_PASSWORD,
   CAN_READ_OWN_EMAIL,
@@ -210,6 +210,15 @@ function SignedIn({
 }): React.JSX.Element {
   const grants = Object.entries(session.grants);
   const account = useOwnAccount(onSignedOut);
+
+  /**
+   * An app's display name, from the one public list Ward serves (apps open to
+   * registration), or its slug. There is no public endpoint naming every app,
+   * and the slug is what the console and the apps call it anyway.
+   */
+  const openApps = useOpenApps();
+  const appName = (slug: string): string =>
+    (Array.isArray(openApps) ? openApps.find((app) => app.slug === slug)?.name : undefined) ?? slug;
 
   /**
    * The unverified-address prompt.
@@ -560,7 +569,7 @@ function SignOut({ username }: { username: string }): React.JSX.Element {
       // Nothing to do about it, and nothing to tell the person: the cookies are
       // either cleared or about to be refused.
     }
-    window.location.replace(loginUrlFor("/"));
+    window.location.replace(loginUrlFor("/ward/account"));
   }
 
   return (

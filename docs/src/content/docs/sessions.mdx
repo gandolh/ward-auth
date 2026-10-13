@@ -12,37 +12,49 @@ A Ward session is **two credentials that answer different questions**.
 | Form | EdDSA-signed JWT | 32 random bytes, opaque |
 | Stored by Ward | no | yes — `sha256(token)`, one row |
 | Lifetime | 15 minutes | 30 days, **absolute from login** |
-| Cookie path | `/` | `/ward-api/refresh` |
+| Cookie | `ward_session`, `Path=/ward-api` | `ward_refresh`, `Path=/ward-api/refresh` |
 | Answers | "is this signature genuine?" | "may this session continue?" |
-| Checked by | every app, locally | Ward alone |
+| Read by | Ward's own pages (`GET /session`, `/account/*`) | `/refresh`, `/refresh/logout` and the OIDC login step |
 
-Keeping them apart is the whole design. Signature validity is cheap, local and
-offline; session liveness is a question only Ward can answer. Collapsing them
-into one credential means either a database hit on every request, or a token
-that cannot be revoked.
+Keeping them apart is the whole design. Signature validity is cheap; session
+liveness is a question only the database can answer. Neither cookie ever
+reaches an app: an app holds its own session, and learns whether the Ward
+session behind it is still live from `POST /session-status`, which asks about
+the refresh family (`ward_sid`). See [Sign in with Ward](/oidc/).
+
+:::note[The access cookie moved on 2026-10-13]
+Until brief 30 the access cookie sat at `Path=/` so that every app received it.
+It now sits at `Path=/ward-api`. Every response that sets or clears the session
+also expires any old `Path=/` copy, and Ward's readers try every `ward_session`
+value a browser sends and use the first that is a live session.
+:::
 
 ## Signing in
 
 <Diagram
   name="login-sequence"
-  title="Signing in, and the first request that follows"
-  caption="Note where the two dashed boundaries fall — the person is handed to Ward and back before the app ever sees a credential, and the app's own check happens on the request after"
-  height={860}
+  title="Sign in with Ward, and the requests that follow"
+  caption="The person is handed to Ward and back through an OpenID Connect code flow; the app makes its own session from the ID token, and asks Ward about it at most every 30 seconds"
+  height={1000}
 />
 
-The handover is a plain redirect because it can be: every app shares the origin,
-so the cookie Ward sets is already attached to the next request. There is no
-authorization code, no state parameter, and no token in a URL.
+An app sends the person to Ward's authorization endpoint. Ward's login step
+reads the refresh cookie: a live Ward session finishes at once, otherwise the
+person signs in on `/ward/login?oidc=<uid>`, which is an ordinary `POST /login`
+that starts a refresh family. The app exchanges the code for an ID token
+carrying the subject, `ward_role` and `ward_sid`, and from then on its own
+session cookie carries the person.
 
-`?next=` is [allowlisted](/topology/#the-next-allowlist). It is the one piece of
-this flow where getting it wrong would be an estate-wide problem.
+`/ward/login` used without an OpenID Connect interaction is for Ward's own
+pages, and its `?next=` is [allowlisted](/topology/#the-next-allowlist) to
+paths under `/ward`.
 
 ## Rotation, and the stolen-cookie alarm
 
 Every refresh spends one token and mints its successor **in the same family**.
-A family is the unit of revocation: the `sid` claim in the access token names
-it, so revoking a family invalidates the access tokens that belong to it and
-nothing else.
+A family is the unit of revocation: the `sid` claim in the access token and the
+`ward_sid` claim in an app's ID token both name it, so revoking a family ends
+the access tokens and the app sessions that belong to it and nothing else.
 
 <Diagram
   name="session-lifecycle"

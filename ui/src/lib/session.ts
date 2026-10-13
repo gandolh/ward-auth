@@ -50,7 +50,7 @@ export type Session =
 /** The single in-flight read, shared by every caller. */
 let inFlight: Promise<Session> | undefined;
 
-function fromIntrospection(result: SessionResult): Session | undefined {
+function fromSessionResult(result: SessionResult): Session | undefined {
   if (!result.active) return undefined;
   // `active: true` always carries the other three, but the response type says
   // "optional" because a dead session carries none of them. Treating a missing
@@ -77,7 +77,7 @@ async function read(): Promise<Session> {
     return { status: "unreachable" };
   }
 
-  const live = fromIntrospection(first);
+  const live = fromSessionResult(first);
   if (live !== undefined) return live;
 
   // The access token is expired or its family is gone. One rotation decides
@@ -99,7 +99,7 @@ async function read(): Promise<Session> {
 
   try {
     const second = await readSessionState();
-    return fromIntrospection(second) ?? { status: "signed-out" };
+    return fromSessionResult(second) ?? { status: "signed-out" };
   } catch {
     return { status: "unreachable" };
   }

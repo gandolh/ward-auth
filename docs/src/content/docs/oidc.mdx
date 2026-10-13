@@ -10,9 +10,12 @@ PKCE, against Ward as the provider. Ward runs
 hand-written protocol. The design and what it replaced are in the corpus page
 `corpus/wiki/decisions-oidc.md`.
 
-The cookie sign-in, `/introspect`, `/session`, `/refresh` and `/logout` keep
-working unchanged until the cutover. `POST /session-status` below is what
-replaces `/introspect` for an app that signs people in through Ward.
+This page is the integration contract. The client side of all of it (the code
+flow, the ID token check, the 30-second `/session-status` cache, `/notify`) is
+built into the shared library each app vendors; its adoption guide is
+`shared-library/README.md` in the repo. The shared-cookie contract that came
+before (`/introspect`, app keys, the access cookie at `Path=/`) was retired on
+2026-10-13 (brief 30).
 
 ## The issuer
 
@@ -195,12 +198,13 @@ The app's side:
    every Ward-originated session of the app fails at once. Log it as a
    configuration error naming the client, and keep failing closed.
 
-`POST /ward-api/notify` takes the same credential. Instead of the
-`x-ward-app-key` header, put `client_assertion_type` and `client_assertion` in
-the JSON body beside `subject`, `mailSubject` and `text`. A request that sends
-the header is judged by the header alone. A bad assertion is the same
-`401 {"error":"invalid_client"}`, and `/notify` otherwise behaves exactly as
-before. The app key keeps working until the cutover.
+## Mailing a user: `POST /notify`
+
+`POST /ward-api/notify` takes the same credential: put `client_assertion_type`
+and `client_assertion` in the JSON body beside `subject`, `mailSubject` and
+`text`. Ward mails the subject's address, which the app never sees. A missing
+or bad assertion is the same `401 {"error":"invalid_client"}`. The old
+`x-ward-app-key` header no longer authenticates anything.
 
 ## Logout
 

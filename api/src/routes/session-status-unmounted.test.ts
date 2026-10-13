@@ -8,8 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * With `WARD_OIDC_ISSUER` unset, `POST /session-status` does not exist: no
  * issuer to name as the audience and no clients, so Fastify answers `404`, as
  * it does for the provider's own routes. `/notify` has nothing to verify an
- * assertion against and refuses one as `invalid_client`; its app key keeps
- * working. See `session-status-app.test.ts` for the mounted app.
+ * assertion against and refuses one as `invalid_client`. See `session-status-app.test.ts` for the mounted app.
  */
 
 let dir: string;

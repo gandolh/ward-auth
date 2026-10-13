@@ -8,12 +8,7 @@ import { SignJWT, decodeProtectedHeader } from "jose";
 import { ACCESS_TOKEN_ALG, ACCESS_TOKEN_AUDIENCE, ACCESS_TOKEN_TTL_SECONDS } from "./claims.js";
 import { loadKeySet, previousSigningKeyPath, SigningKeyError } from "./keys.js";
 import { signAccessToken } from "./mint.js";
-import {
-  createJwksKeyStore,
-  jwksUrl,
-  verifyAccessToken,
-  AccessTokenVerificationError,
-} from "./verify.js";
+import { createJwksKeyStore, verifyAccessToken, AccessTokenVerificationError } from "./verify.js";
 import { generateSigningKeyFile } from "./keygen.js";
 import { newFamilyId } from "../db/refresh-tokens.js";
 import type { WardKeySet } from "./keys.js";
@@ -448,33 +443,5 @@ describe("the previous-key slot is trust granted by a filename", () => {
 
     expect(loaded.previous).toBeUndefined();
     expect(warn).not.toHaveBeenCalled();
-  });
-});
-
-describe("jwksUrl", () => {
-  // The default used to be `""`, which resolves to a path nothing serves: Caddy
-  // reverse-proxies Ward under `/ward-api/*`. Brief 08's `@ward/client` builds
-  // every app's remote key store with this helper, so the default would have
-  // had all six apps fetch a 404 and reject every token — an estate-wide
-  // lockout on the deploy that shipped the client. It is required now, so the
-  // mistake is a compile error at the call site instead.
-  it("builds the URL Ward actually serves, given this estate's base path", () => {
-    expect(jwksUrl("https://gandolh.ro", "/ward-api").toString()).toBe(
-      "https://gandolh.ro/ward-api/.well-known/jwks.json",
-    );
-    expect(jwksUrl("https://gandolh.ro", "/ward-api/").toString()).toBe(
-      "https://gandolh.ro/ward-api/.well-known/jwks.json",
-    );
-    // A Ward at the root of its origin has to say so explicitly.
-    expect(jwksUrl("https://gandolh.ro", "").toString()).toBe(
-      "https://gandolh.ro/.well-known/jwks.json",
-    );
-  });
-
-  it("has no default base path — omitting it is a compile error", () => {
-    // @ts-expect-error apiBasePath is required; the old `= ""` default resolved to a 404.
-    // There is no runtime fallback either — the call throws rather than quietly
-    // building a URL nothing serves.
-    expect(() => jwksUrl("https://gandolh.ro")).toThrow(TypeError);
   });
 });

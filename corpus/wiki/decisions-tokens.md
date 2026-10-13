@@ -1,6 +1,6 @@
 ---
-summary: The locked calls about sessions and tokens — the short-lived signed access token, the opaque rotating refresh token, introspection-with-cache as the revocation mechanism, why there is no JWT denylist, EdDSA signing held by Ward alone, the two lifetimes that define the logout delay, and the calls settled once these were built: the absolute family lifetime, logout revoking rather than deleting, and the sid claim that makes revocation per-session.
-updated: 2026-09-06
+summary: The locked calls about sessions and tokens — the short-lived signed access token, the opaque rotating refresh token, introspection-with-cache as the revocation mechanism, why there is no JWT denylist, EdDSA signing held by Ward alone, the two lifetimes that define the logout delay, and the calls settled once these were built: the absolute family lifetime, logout revoking rather than deleting, and the sid claim that makes revocation per-session. Since 2026-10-13 (brief 30) apps no longer read the access token or introspect; the 30 seconds lives on in POST /session-status.
+updated: 2026-10-13
 ---
 
 # Decisions — tokens and sessions
@@ -16,6 +16,8 @@ _2026-09-01, grilled Q6/Q10_ — Three parts, and each one exists for a reason:
 
 - **Access token** — a short-lived JWT in the `Path=/` cookie, signed by Ward.
   Carries `sub`, `jti`, `exp`. Apps verify the signature locally.
+  _(2026-10-13, brief 30: the cookie is now `Path=/ward-api` and only Ward's
+  own UI reads it. Apps hold their own sessions.)_
 - **Refresh token** — long-lived, **opaque, and a row in Ward's database**.
   Rotated on every use: presenting `R1` returns `R2` and invalidates `R1`.
   Presenting an already-invalidated refresh token is a **theft signal** and
@@ -92,6 +94,11 @@ The cost is a JWKS endpoint and a key-rotation story, both of which are
 ordinary.
 
 ## 15-minute access tokens, 30-second introspection cache
+
+> _2026-10-13, brief 30:_ `/introspect` is gone. The 30-second bound now holds
+> for Ward-originated app sessions through `POST /session-status`
+> ([decisions-oidc.md](./decisions-oidc.md)); the lifetimes are unchanged.
+
 _2026-09-01, grilled Q18_ — Access token TTL **15 minutes**; each app caches an
 introspection answer for **30 seconds** per session. Refresh token 30 days,
 rotated on every use.

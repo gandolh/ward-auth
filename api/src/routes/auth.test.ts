@@ -87,7 +87,11 @@ function parseSetCookie(header: string): ParsedCookie {
   return parsed;
 }
 
-/** Every `Set-Cookie` on a response, by name. */
+/**
+ * Every `Set-Cookie` on a response, by name. The expiry of the legacy `Path=/`
+ * access cookie shares the name `ward_session` with the real one, so it is
+ * keyed `legacy:ward_session` rather than overwriting it.
+ */
 function setCookies(headers: Record<string, unknown>): Map<string, ParsedCookie> {
   const raw = headers["set-cookie"];
   const values = raw === undefined ? [] : Array.isArray(raw) ? raw : [raw];
@@ -95,7 +99,8 @@ function setCookies(headers: Record<string, unknown>): Map<string, ParsedCookie>
 
   for (const value of values) {
     const parsed = parseSetCookie(String(value));
-    byName.set(parsed.name, parsed);
+    const legacy = parsed.name === "ward_session" && parsed.path === "/";
+    byName.set(legacy ? `legacy:${parsed.name}` : parsed.name, parsed);
   }
 
   return byName;
@@ -188,10 +193,15 @@ describe("POST /login", () => {
     expect(response.statusCode).toBe(200);
 
     const cookies = setCookies(response.headers);
-    expect([...cookies.keys()].sort()).toEqual(["ward_refresh", "ward_session"]);
+    expect([...cookies.keys()].sort()).toEqual([
+      "legacy:ward_session",
+      "ward_refresh",
+      "ward_session",
+    ]);
 
+    // Scoped to Ward's API since the shared-cookie contract was retired.
     const access = cookies.get("ward_session")!;
-    expect(access.path).toBe("/");
+    expect(access.path).toBe("/ward-api");
     expect(access.httpOnly).toBe(true);
     expect(access.sameSite).toBe("Lax");
     expect(access.secure).toBe(true);
@@ -209,6 +219,13 @@ describe("POST /login", () => {
     expect(refresh.secure).toBe(true);
     expect(refresh.maxAge).toBe(String(30 * 24 * 60 * 60));
     expect(refresh.value).toMatch(/^[0-9a-f]{64}$/);
+
+    // And the access cookie apps used to read, at Path=/, expired in the same
+    // response so a browser that signed in before brief 30 drops it.
+    const legacy = cookies.get("legacy:ward_session")!;
+    expect(legacy.value).toBe("");
+    expect(legacy.maxAge).toBe("0");
+    expect(legacy.secure).toBe(true);
   });
 
   it("returns the identity and no token in the body", async () => {
@@ -489,7 +506,8 @@ describe("POST /refresh", () => {
     expect(second.get("ward_refresh")!.value).not.toBe(first.get("ward_refresh")!.value);
 
     // Same attributes as login's, or the browser stores a second cookie.
-    expect(second.get("ward_session")!.path).toBe("/");
+    expect(second.get("ward_session")!.path).toBe("/ward-api");
+    expect(second.get("legacy:ward_session")!.maxAge).toBe("0");
     expect(second.get("ward_refresh")!.path).toBe("/ward-api/refresh");
     expect(second.get("ward_refresh")!.httpOnly).toBe(true);
     expect(second.get("ward_refresh")!.secure).toBe(true);
@@ -689,8 +707,11 @@ describe("POST /logout", () => {
     // set with — a mismatch on either makes the browser keep the original.
     const cleared = setCookies(response.headers);
     expect(cleared.get("ward_session")!.value).toBe("");
-    expect(cleared.get("ward_session")!.path).toBe("/");
+    expect(cleared.get("ward_session")!.path).toBe("/ward-api");
     expect(cleared.get("ward_session")!.secure).toBe(true);
+    // The legacy Path=/ copy a pre-brief-30 browser may hold goes too.
+    expect(cleared.get("legacy:ward_session")!.value).toBe("");
+    expect(cleared.get("legacy:ward_session")!.maxAge).toBe("0");
     expect(cleared.get("ward_session")!.maxAge).toBe("0");
     expect(cleared.get("ward_session")!.expires).toContain("1970");
     expect(cleared.get("ward_refresh")!.value).toBe("");
@@ -775,7 +796,7 @@ describe("POST /logout", () => {
     ]) {
       const response = await app.inject({ method: "POST", url: "/logout", payload });
       expect(response.statusCode).toBe(204);
-      expect(setCookies(response.headers).size).toBe(2);
+      expect(setCookies(response.headers).size).toBe(3);
     }
   });
 
@@ -1182,7 +1203,7 @@ describe("cross-site requests cannot touch the session cookies", () => {
   });
 
   it("still serves a header-less non-browser client", async () => {
-    // Brief 08's server-side clients send neither header, so an absent header
+    // Server-side callers send neither header, so an absent header
     // must pass. Rejecting them would break every non-browser caller in order
     // to defend against a browser-only attack.
     const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.141");
@@ -1253,7 +1274,7 @@ describe("the exported surface other briefs consume", () => {
     expect(mod.auth.REFRESH_COOKIE_NAME).toBe(mod.cookie.REFRESH_COOKIE_NAME);
   });
 
-  it("brief 04 can read the access token off a request with readCookie", async () => {
+  it("the access token can be read off a request with readCookie", async () => {
     const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.120");
     const header = cookieHeader(loggedIn.headers);
 

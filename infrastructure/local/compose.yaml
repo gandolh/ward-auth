@@ -26,8 +26,7 @@ services:
       # WARD_ADMIN_PASSWORD. Kept outside the repo on purpose.
       - ${WARD_LOCAL_ENV_FILE:-${HOME}/.config/ward/local.env}
     environment:
-      # The origin the browser uses, and the `iss` of every token: an app's
-      # WARD_PUBLIC_ORIGIN has to be exactly this string.
+      # The origin the browser uses, and the `iss` of Ward's own access tokens.
       WARD_PUBLIC_ORIGIN: http://localhost:8792
       # Ward's OpenID Connect provider (brief 18): the issuer as the browser
       # sees it, behind the gateway's /ward-api, and Ward's UI on the same
@@ -80,5 +79,5 @@ networks:
 
 volumes:
   # ward.db, the signing key and the mail spool (/data/mail). `down -v` deletes
-  # it: every session and app key goes with it, so run seed.mjs again after.
+  # it: every session and OIDC client goes with it, so run seed.mjs again after.
   ward_data:

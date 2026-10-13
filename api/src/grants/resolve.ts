@@ -6,8 +6,8 @@ import { findUserBySubject } from "../db/users.js";
 /**
  * The one code path that answers "is this session live, and what may it do".
  *
- * `routes/introspect.ts` establishes *who* — it verifies a compact JWS and gets
- * a `sub` — and then hands that subject here. Everything after the signature is
+ * `auth/access-session.ts` establishes *who* — it verifies a compact JWS and
+ * gets a `sub` — and then hands that subject here. Everything after the signature is
  * decided in this file, once, so there is exactly one answer to "is this live"
  * rather than one per caller. Nothing in here touches Fastify, HTTP or the
  * token layer, which is what makes it directly testable against an in-memory
@@ -20,8 +20,8 @@ import { findUserBySubject } from "../db/users.js";
  *
  * `corpus/wiki/decisions-tokens.md` forbids permissions in the access token: a
  * token minted before a grant changed would carry stale authority for its whole
- * 15 minutes. Resolving grants on every introspection instead means a
- * permission change lands in the **same 30-second window a revocation does**.
+ * 15 minutes. Resolving grants on every check instead means a permission change
+ * lands as soon as a revocation does.
  * That is the entire reason this function returns more than a boolean, and it
  * is why `tokens/mint.ts` has no parameter for extra claims.
  *
@@ -132,7 +132,7 @@ export interface InactiveSession {
   readonly active: false;
 }
 
-/** The introspection answer. Brief 08's `@ward/client` consumes this verbatim. */
+/** The session answer `GET /session` serves; Ward's UI consumes it verbatim. */
 export type SessionResolution = ActiveSession | InactiveSession;
 
 /**

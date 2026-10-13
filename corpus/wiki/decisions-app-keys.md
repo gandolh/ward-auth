@@ -1,17 +1,20 @@
 ---
-summary: The locked calls about how an app proves it is an app — the per-app service key every /introspect call carries, why the endpoint stopped being anonymous, why a rejected key is a 401 rather than an inactive session, why the key authenticates without scoping what it may see, why Ward's own UI moved to GET /session instead of being exempted, and why an app can mail its own users through POST /notify but never read an address.
-updated: 2026-10-07
+summary: Retired 2026-10-13 (brief 30) — app keys, /introspect and the key on /notify are gone, and apps authenticate with client assertions. Kept as history — the per-app key /introspect carried, why the endpoint stopped being anonymous, why a rejected key was a 401 rather than an inactive session, why the key authenticated without scoping, why Ward's own UI moved to GET /session, and why an app mails its own users through POST /notify but never reads an address (still live).
+updated: 2026-10-13
 ---
 
 # Decisions — app keys
 
-> **⚠ Being replaced (2026-10-13).** Once the estate moves to OpenID Connect
-> ([decisions-oidc.md](./decisions-oidc.md)), an app authenticates to Ward as
-> an OIDC client, and the app key and `/introspect` retire at the cutover
-> (brief 27). Until then everything below is live. Brief 19 added the
-> replacement for `/introspect` (`POST /session-status`) and let `/notify` take
-> a client assertion as well as the key; see
-> [decisions-oidc-build.md](./decisions-oidc-build.md).
+> **Retired 2026-10-13 (brief 30).** App keys, `POST /introspect` and the
+> `x-ward-app-key` header on `/notify` were removed once production ran the
+> OpenID Connect flow. The `app_keys` table is dropped by migration
+> `20261013120000-drop-app-keys`; the `app_key.*` audit rows stay. An app now
+> authenticates as an OIDC client with a `private_key_jwt` client assertion
+> ([decisions-oidc.md](./decisions-oidc.md),
+> [decisions-oidc-build.md](./decisions-oidc-build.md)), on
+> `POST /session-status` and on `/notify`, where no credential is
+> `401 {"error":"invalid_client"}`. The `/notify` calls below still stand with
+> the assertion in place of the key. Everything else below is history.
 
 Session and token mechanics are in [decisions-tokens.md](./decisions-tokens.md),
 which is where introspection itself is decided; this page is only about **who is

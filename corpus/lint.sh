@@ -15,9 +15,10 @@ MAX_BODY_LINES=200
 # Path roots the repo has abandoned. A corpus page still pointing at one of
 # these is stale by definition. Add a root here when you retire a directory.
 ABANDONED_ROOTS=(
-  # Empty on purpose: this repo starts at the corpus and has retired nothing.
   # Add a root here the day a directory is abandoned, so any page still pointing
-  # at it fails this check.
+  # at it fails this check. Keep the trailing slash: a bare word like `client`
+  # would match "OIDC client" and "client assertion" on every page.
+  "client/"  # @ward/client workspace, deleted 2026-10-13 (brief 30)
 )
 
 fail=0

@@ -11,8 +11,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
  * builds itself.
  *
  * **Not via `buildApp()`**, deliberately: `app.ts` is not this brief's to edit
- * and brief 08 is writing `client/` in parallel, so registering the plugin
- * directly is what keeps this suite from depending on either.
+ * so registering the plugin directly is what keeps this suite from depending
+ * on it.
  *
  * The environment is set before anything imports `config.ts`, and
  * `WARD_MAIL_TRANSPORT=file` with an outbox in the OS temp directory is the

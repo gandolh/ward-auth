@@ -35,7 +35,6 @@ export default defineConfig({
      */
     include: [
       "api/**/*.test.ts",
-      "client/**/*.test.ts",
       "ui/**/*.test.ts",
       "ui/**/*.test.tsx",
       "shared-library/**/*.test.ts",

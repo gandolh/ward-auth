@@ -1,12 +1,11 @@
 /**
- * The access token's shape, as constants — the two or three literals that six
- * independent verifiers have to agree on exactly.
+ * The access token's shape, as constants — the literals minting and
+ * verification have to agree on exactly.
  *
  * This module is deliberately dependency-free: no `jose`, no `config.js`, no
- * `node:` anything. Brief 08 re-exports the verification surface through
- * `@ward/client`, which runs inside six other repos, and a constants module
- * that drags Ward's environment validation along with it would call
- * `process.exit(1)` inside somebody else's app on import. Keep it that way.
+ * `node:` anything, so importing it never runs Ward's environment validation
+ * (and its `process.exit(1)`). Since the shared-cookie contract was retired
+ * (brief 30) the access token is read by Ward alone, for its own pages.
  */
 
 /**

@@ -28,10 +28,10 @@
 		file_server
 	}
 
-	# A sign-in with no usable ?next= lands on "/", and nothing else lives on
-	# this origin. Send it to the account page, not /ward/: Ward's entry route
-	# always shows the sign-in form, which after a successful sign-in reads as
-	# "my password did not work".
+	# Nothing else lives on this origin, so "/" goes to the account page (a
+	# sign-in with no usable ?next= lands there too). Not /ward/: Ward's entry
+	# route always shows the sign-in form, which after a successful sign-in
+	# reads as "my password did not work".
 	redir / /ward/account 302
 
 	handle {

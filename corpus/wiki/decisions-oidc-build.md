@@ -78,6 +78,11 @@ body parses (a bad app key is still refused before). A bad assertion is the same
 name the credential (`keyId`, or `auth: "client_assertion"`) and never hold it.
 The app key and `/introspect` retire in brief 27.
 
+> _2026-10-13, brief 30 (not 27):_ the app key and `/introspect` are gone.
+> `/notify` takes only the client assertion; no credential, or only the old
+> header, is `401 {"error":"invalid_client"}`, and audit rows carry
+> `auth: "client_assertion"` with no `keyId`.
+
 ## The local half's build calls
 _2026-10-13, brief 20_ — Settled while building `shared-library/`:
 - **Sessions:** the cookie holds 32 random bytes, the row holds their SHA-256.

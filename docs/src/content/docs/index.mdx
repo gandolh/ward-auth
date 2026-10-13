@@ -21,19 +21,21 @@ the estate at `/ward`.
   <dt>Consumed by</dt>
   <dd>atrium · public-resource-map · newspapper · sports-app</dd>
   <dt>Signs with</dt>
-  <dd>One Ed25519 key, held by Ward alone; apps get the public half over JWKS</dd>
+  <dd>One Ed25519 key, held by Ward alone; apps get the public half over JWKS to verify ID tokens</dd>
 </dl>
 
 ## The shape in a paragraph
 
-A person lands on an app, gets bounced to `/ward/login?next=…`, and signs in
-once. Ward writes a session and sets two cookies: a **15-minute EdDSA access
-token** at `Path=/`, and a **30-day opaque refresh row** scoped to
-`/ward-api/refresh`. Because every project is a sub-path on one origin, that
-access cookie is already attached to the next request the person makes to any
-app — no redirect dance, no CORS, no token relay. The app verifies the
-signature locally, then asks Ward whether the session is still live and what it
-may do, and caches that answer for 30 seconds.
+Every app keeps its own accounts and its own login page. "Sign in with Ward" is
+a second button on that page: an OpenID Connect code flow with PKCE, against
+Ward as the provider. Ward checks the password once, keeps the session as a
+**30-day rotating refresh family**, and hands the app an ID token naming the
+person's opaque subject, their role in that app, and the Ward session
+(`ward_sid`). The app makes its own session from that. While it lasts, the app
+asks Ward at most every 30 seconds whether the Ward session is still live
+(`POST /session-status`), so a Ward sign-out or a console revoke ends it
+everywhere within 30 seconds. Ward's own cookies stay under `/ward-api` and are
+never sent to an app.
 
 <Diagram
   name="architecture"
@@ -49,15 +51,15 @@ may do, and caches that answer for 30 seconds.
 | Understand the whole system | [Architecture](/architecture/) |
 | Know why sub-paths shape every decision | [The one-origin estate](/topology/) |
 | Follow a sign-in end to end | [Sessions and tokens](/sessions/) |
-| Know how revocation actually takes effect | [Introspection and revocation](/introspection/) |
+| Know how revocation actually takes effect | [Sign in with Ward](/oidc/#asking-whether-a-ward-session-is-still-live) |
 | Understand who may do what | [Grants](/grants/) |
-| **Wire a new app up to Ward** | [The integration contract](/wiki/integrating/) |
+| **Wire a new app up to Ward** | [Sign in with Ward (OIDC)](/oidc/), then the shared library's adoption guide (`shared-library/README.md` in the repo) |
 | Look up an endpoint | [HTTP API](/api/) |
 | Look up a table | [Data model](/data/) |
 
 ## What this site is made of
 
-Three sources, kept apart on purpose, because they go stale in different ways.
+Two sources, kept apart on purpose, because they go stale in different ways.
 
 - **Authored** — the pages above. Written by hand against the code, and the
   place where architecture, the HTTP surface and the schema are described. The
@@ -66,17 +68,16 @@ Three sources, kept apart on purpose, because they go stale in different ways.
 - **Rendered from the corpus** — everything under *Deep dive* and *Status*. Those
   are generated on every build from `corpus/`, which is the project's own
   decision record. They carry a banner saying so. Edit the corpus, not the copy.
-- **Generated from the code** — [`@ward/client`](/reference/client/) is TypeDoc
-  over the package's public barrel, so it cannot drift from what the module
-  actually exports. The diagrams are compiled by
-  [archify](https://github.com/tt-a1i/archify) from typed JSON in `docs/diagrams/`
-  and validated before they ship.
+The diagrams are compiled by [archify](https://github.com/tt-a1i/archify) from
+typed JSON in `docs/diagrams/` and validated before they ship.
 
 :::note[In production]
 Ward has been deployed at `/ward` on the production site since 2026-10-04, and
 atrium, newspapper, public-resource-map and sports-app sign in through it.
-imbatranimOS was a fifth consumer until 2026-10-07, when it began signing
-people in itself. Local tests still cannot show the cookie paths, because
-`handle_path` strips a prefix that nothing local strips; the deployed Ward is
-where they run for real. See [Status](/wiki/status/).
+They moved to "Sign in with Ward" on 2026-10-13, and the old shared-cookie
+contract (`/introspect`, app keys, the access cookie at `Path=/`) was retired
+the same day (brief 30). imbatranimOS was a fifth consumer until 2026-10-07,
+when it began signing people in itself. Local tests still cannot show the
+cookie paths, because `handle_path` strips a prefix that nothing local strips;
+the deployed Ward is where they run for real. See [Status](/wiki/status/).
 :::

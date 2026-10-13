@@ -1,6 +1,6 @@
 ---
 title: The one-origin estate
-description: Every project is a sub-path on one hostname. That single fact makes cross-app SSO nearly free and removes all isolation between apps — and it constrains every other decision here.
+description: Every project is a sub-path on one hostname. That single fact removes all isolation between apps, shaped Ward's first design, and still decides where every cookie lives.
 ---
 
 Every deployed project in the estate is a **sub-path on one origin**:
@@ -12,17 +12,15 @@ This is the most load-bearing fact about Ward. It is not a preference — it is
 the estate as it already exists — and it rules several designs in and several
 out before anyone proposes them.
 
-## What it gives
+## What it gave, and what replaced it
 
-**A cookie set at `Path=/` is sent to every app automatically.** No redirect
-dance, no CORS preflight, no fragment parsing, no token relay. Cross-app SSO is
-nearly free: an app that receives a request already has the access token
-attached, whether or not it has ever heard of Ward's login page.
-
-It also fixes an existing wart. Atrium accepted `?token=` in the query string
-purely because `<img>` cover tags cannot send an `Authorization` header. Cookies
-ride on `<img>` requests for free, so that carve-out could be deleted rather
-than reproduced.
+Ward's first design leaned on it: an access cookie at `Path=/` reached every
+app with no redirect dance, no CORS and no token relay, and each app asked Ward
+about it through `/introspect` with an app key. That contract was retired on
+2026-10-13 (brief 30). Apps now keep their own sessions and sign people in
+through OpenID Connect ([Sign in with Ward](/oidc/)), and Ward's cookies stay
+under `/ward-api`. A code flow does not need one origin, so an app could move to
+another host without changing how it talks to Ward.
 
 ## What it costs
 
@@ -33,10 +31,10 @@ reaches atrium's API. Sub-paths do not sandbox.
 
 :::danger[This is accepted, not solved]
 Ward does not fix it and cannot. Moving apps to subdomains would restore
-isolation and would cost the free cookie, the absent CORS, and the single
-certificate — and would replace them with a redirect-based SSO flow that has to
-be got right. The estate chose the trade knowingly; see
-[decisions](/wiki/decisions/).
+isolation at the cost of the absent CORS and the single certificate. Narrow
+cookie paths keep Ward's own credentials out of other apps' requests, but they
+are not a security boundary against script running on the same origin. The
+estate chose the trade knowingly; see [decisions](/wiki/decisions/).
 :::
 
 ## The literal-matching trap
@@ -63,12 +61,12 @@ silently, and only the checker would catch it.
 
 ## What it means for the cookies
 
-Two cookies, two very different scopes, both consequences of this topology.
+Three cookies, each scoped as narrowly as its readers allow.
 
 | Cookie | Path | Why that path |
 |---|---|---|
-| access token | `/` | It must reach every app. That is the whole mechanism. |
-| refresh token | `/ward-api/refresh` | It must reach **nothing** but the one endpoint that spends it. A refresh token at `Path=/` would be handed to five apps that have no business holding it. |
+| access token (`ward_session`) | `/ward-api` | Only Ward's own pages read it (`GET /session`, `/account/*`). Until 2026-10-13 it sat at `/` so every app received it; Ward now expires that old copy whenever it sets or clears the session. |
+| refresh token (`ward_refresh`) | `/ward-api/refresh` | It must reach **nothing** but the endpoints that spend or read it: `/refresh`, `/refresh/logout` and the OIDC login step. A refresh token at `Path=/` would be handed to every app on the origin. |
 | console session | `/ward-api/console` | The console is superuser-only; its credential should not travel with ordinary requests. |
 
 The narrow paths are doing real work. They are also the part of the system most
@@ -78,9 +76,10 @@ strips a prefix that no dev server strips — the caveat recorded in
 
 ## The `?next=` allowlist
 
-One central login page means every app sends people to it with
-`?next=/wherever`. An unchecked `next` would be an open redirect on the estate's
-only sign-in surface — the single highest-value phishing target here — so it is
-**allowlisted against the known set of estate paths**, not merely checked for
-being relative. A value that does not match is dropped and the person lands on a
-default destination rather than being sent somewhere unexpected.
+Apps no longer send people to `/ward/login?next=`; they start an OpenID Connect
+authorization, and Ward only ever redirects to an app's registered redirect
+URIs. `?next=` remains for Ward's own pages, and an unchecked `next` would still
+be an open redirect on the estate's sign-in page, so it is **allowlisted to
+Ward's own paths** (first segment exactly `ward`), not merely checked for being
+relative. The apex and every app root are refused. A value that does not match
+is dropped and the person lands on `/ward/account`.

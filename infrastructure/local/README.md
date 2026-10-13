@@ -37,9 +37,10 @@ Run everything below from this directory, `infrastructure/local/`.
    This registers the five apps that use Ward, creates an owner account with
    `admin` on each, and registers each app as an OpenID Connect client (see
    "Sign in with Ward" below). It writes each app's `WARD_OIDC_*` values into
-   that app's local env file (table below). Until brief 30 retires them, it
-   still writes the old app key, `WARD_PUBLIC_ORIGIN` and `WARD_API_BASE_PATH`
-   too; no app reads them any more. It asks
+   that app's local env file (table below), and nothing else. (It used to
+   write `WARD_APP_KEY`, `WARD_PUBLIC_ORIGIN` and `WARD_API_BASE_PATH` too, for
+   the shared-cookie contract brief 30 retired; an env file that still has
+   them can drop the three lines.) It asks
    for the owner account's username and password, or reads
    `WARD_OWNER_USERNAME` and `WARD_OWNER_PASSWORD`, and stores neither. It is
    safe to re-run: keys that still work are kept and the password is not reset.

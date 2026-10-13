@@ -10,9 +10,10 @@ import type Database from "better-sqlite3";
  * prepared once at module load — a `better-sqlite3` statement belongs to the
  * connection it was compiled against and cannot be moved to another.
  *
- * Re-preparing on every call would work and would be wrong for the one query
- * that matters: introspection runs on every request from every one of six apps,
- * and `db.prepare()` re-parses and re-plans the SQL each time. So each module
+ * Re-preparing on every call would work and would be wasteful on the hot
+ * paths — the session check behind every Ward page load and every app's
+ * `/session-status` call — because `db.prepare()` re-parses and re-plans the
+ * SQL each time. So each module
  * declares its statements once through this helper and gets them compiled
  * lazily, per connection, on first use.
  *

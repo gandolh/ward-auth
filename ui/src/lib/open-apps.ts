@@ -6,14 +6,13 @@ import { CAN_LIST_OPEN_APPS } from "./self-service.js";
 /**
  * The apps open to public registration, fetched once per mount.
  *
- * Shared by `Login` (the "create an account" link) and `Register` (naming the
- * app and knowing it is closed before the form is filled), because both need
- * the same answer to the same question and neither should fetch it twice.
+ * Used by `Register` (naming the app and knowing it is closed before the form
+ * is filled) and `Account` (naming the apps a grant refers to).
  *
  * `"unknown"` covers two cases on purpose: `CAN_LIST_OPEN_APPS` is off, or the
  * request failed. Both mean "this UI cannot say", and both callers already
- * have a correct fallback for that — render as if the flag were off, and let
- * `Register`'s own submit still catch `403 registration_closed`. `"loading"`
+ * have a correct fallback for that — show the slug, and let `Register`'s own
+ * submit still catch `403 registration_closed`. `"loading"`
  * is distinct from `"unknown"` so a page does not flash "closed" for the
  * instant before a fast, successful fetch resolves.
  */

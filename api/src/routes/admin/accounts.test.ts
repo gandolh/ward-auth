@@ -216,9 +216,8 @@ describe("disabling an account", () => {
    * tokens for thirty days. Disabling therefore revokes the refresh families in
    * the same transaction.
    *
-   * Brief 04's `/introspect` is what proves this end to end within the cache
-   * window; that endpoint is being written in parallel, so what is asserted here
-   * is the state it reads — no live token remains, and every family member is
+   * `GET /session` and an app's `/session-status` read this state; what is
+   * asserted here is that state — no live token remains, and every family member is
    * revoked with reason `admin`.
    */
   it("ends live sessions: every refresh family is revoked with reason admin", async () => {
@@ -254,7 +253,7 @@ describe("disabling an account", () => {
     }
 
     /**
-     * And the strongest statement available without brief 04's `/introspect`:
+     * And the strongest statement available at this layer:
      * presenting the refresh token no longer buys a session. `disabled_at`
      * alone would have left this rotating happily for thirty days.
      */

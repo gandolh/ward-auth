@@ -42,8 +42,8 @@ import { sendMail } from "../mail/transport.js";
  * Succeeding confers **that app's baseline role and nothing else**: the
  * security boundary of this estate is the grant, not the signup form, so a
  * stranger who registers at `public-resource-map` gets `prm:user` and cannot
- * see that `atrium` exists. Introspection against any other app shows nothing,
- * and there is a test for exactly that.
+ * see that `atrium` exists. Their session shows no grant in any other app, and
+ * there is a test for exactly that.
  *
  * ## Registering does not sign you in
  *

@@ -50,7 +50,7 @@ export async function jwksRoutes(app: FastifyInstance): Promise<void> {
      * year. Too long and a rotation takes hours to propagate — and while the
      * two-key JWKS means a slow-to-refresh app keeps *verifying* fine, it also
      * means an app that has never seen the new `kid` rejects every fresh token
-     * until its cache turns over. `@ward/client` (brief 08) refetches on an
+     * until its cache turns over. A `jose` remote key set refetches on an
      * unknown `kid` anyway, so this is the backstop rather than the mechanism.
      *
      * `public` is correct and intended: this is a public key. Nothing here is

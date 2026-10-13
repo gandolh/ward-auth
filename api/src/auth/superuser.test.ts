@@ -141,11 +141,10 @@ describe("a console session is not a JWT", () => {
 
   it("is rejected by the access-token verify path", async () => {
     /**
-     * The direction brief 04 owns end to end (`/introspect` must answer
-     * `active: false`), asserted here structurally at the token layer instead:
+     * `GET /session` must answer `active: false` for a console token (its own
+     * test asserts that); asserted here structurally at the token layer too:
      * a console token is not verifiable by Ward's own key set, so there is no
-     * `active: true` for `/introspect` to reach. See the handoff note — the
-     * `/introspect` test itself is owed by brief 04.
+     * `active: true` for `/session` to reach.
      */
     const { token } = superuser.openConsoleSession();
 

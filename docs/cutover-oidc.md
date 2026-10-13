@@ -5,6 +5,10 @@ to the shape in [decisions-oidc.md](../corpus/wiki/decisions-oidc.md): every app
 signs people in with its own accounts, and Ward is the OpenID Connect provider
 behind each app's "Sign in with Ward" button.
 
+**Status: done.** Production was cut over on 2026-10-13, and brief 30 removed
+the old contract from Ward's code the same day. It reaches production with the
+next Ward deploy (step 9).
+
 Every step here is yours to run. The deploy configuration is already in
 vps-deploy: `stacks/ward.ts`, the five app stacks, and the `useWard` lines in
 `app.ts`.
@@ -22,11 +26,11 @@ daemon. Run this once in each new shell before any command below:
 export DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock
 ```
 
-**Why this order is safe.** The old contract stays live in Ward until brief 30:
-app keys, `/introspect` and the shared cookie. A new Ward serves both the old
-and the new flow, so the apps still in production keep working after step 3.
-Each new app version stops reading `WARD_APP_KEY`, so apps can move one at a
-time.
+**Why this order was safe.** The old contract (app keys, `/introspect` and the
+shared cookie) stayed live in Ward until brief 30 retired it on 2026-10-13. A
+Ward of that time served both the old and the new flow, so the apps still in
+production kept working after step 3. Each new app version stops reading
+`WARD_APP_KEY`, so apps could move one at a time.
 
 ## 0. Before you start: one key pair per app
 
@@ -59,8 +63,8 @@ Each run prints two things and writes nothing:
 Use new pairs for production. Do not reuse the keys the local seed wrote into
 the apps' development `.env` files.
 
-Leave each file's old `WARD_APP_KEY` where it is. Nothing reads it after its
-app redeploys, and brief 30 is where it goes. `secrets/sports-app.env` must
+Each file's old `WARD_APP_KEY` is read by nothing once its app redeploys.
+Brief 30 is done, so you can delete those lines. `secrets/sports-app.env` must
 also keep `SPORTS_APP_SYNC_SECRET`. The stack still requires it although the
 service no longer reads it (vps-deploy brief 09).
 
@@ -346,10 +350,12 @@ For each app:
 Revoking a session in Ward's console should end that app's Ward-originated
 session within 30 seconds.
 
-## 9. Only then: brief 30
+## 9. Only then: brief 30 (done 2026-10-13)
 
-Retiring the old contract (app keys, `/introspect`, the shared cookie, the
-`?next=` list, `client/`) is brief 30. It starts only after you confirm that
-every app in production runs the new version and signs in through the new
-flow. Until then the old routes stay, and so does each app's `WARD_APP_KEY` in
-vps-deploy's secrets.
+Brief 30 retired the old contract once every app in production ran the new
+version: app keys and the `app_keys` table, `/introspect`, the shared cookie
+(the access cookie is now at `Path=/ward-api`), the app-wide `?next=` list and
+`client/`. Only Ward redeploys for it: here, in vps-deploy,
+`node cli.ts ward all`, which runs the migration that drops `app_keys`. No app
+stack needs a redeploy. Each app's `WARD_APP_KEY` line in vps-deploy's secrets
+can now be deleted.

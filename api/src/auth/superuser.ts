@@ -75,9 +75,9 @@ export const CONSOLE_COOKIE_NAME = "ward_console";
  * is the browser's view, because `Path` is a browser-side matching rule.
  *
  * The scope is doing real work. The estate is a **single origin** with every app
- * on a sub-path, so a cookie at `Path=/` is sent to all six
- * (`wiki/decisions.md`). Scoping this one to the console subtree means the
- * console session is never even *transmitted* to atrium, newspapper or prm — the
+ * on a sub-path (`wiki/decisions.md`), so a cookie at `Path=/` would be sent to
+ * all of them. Scoping this one to the console subtree means the console
+ * session is never even *transmitted* to atrium, newspapper or prm — the
  * "console only" property is enforced by three separate independent things: no
  * grants (the design), not a JWT (the format), and never sent (the scope).
  */
@@ -392,8 +392,8 @@ export function resetConsoleSessionsForTests(): void {
  * Hand-rolled because Ward has no cookie plugin and this brief may not add a
  * dependency — and because the job is genuinely this small. It reads **only**
  * `ward_console` and ignores every other cookie on the header, which matters:
- * `Path=/` in this estate means the access-token cookie is on almost every
- * request, and the guard must never be able to see it, let alone act on it.
+ * the access-token cookie (`Path=/ward-api`) reaches the console's paths too,
+ * and the guard must never be able to see it, let alone act on it.
  */
 export function readConsoleCookie(cookieHeader: string | undefined): string | undefined {
   if (!cookieHeader) return undefined;

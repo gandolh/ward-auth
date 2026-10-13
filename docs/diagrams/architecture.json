@@ -19,13 +19,13 @@
       },
       {
         "id": "app-verification",
-        "label": "How an app checks a caller",
+        "label": "How an app signs in and checks a session",
         "focus": [
           "apps",
           "ward_api",
           "signing_key"
         ],
-        "note": "Verify the signature locally against JWKS, then ask Ward whether the session is still live."
+        "note": "Sign in through OpenID Connect, verify the ID token against JWKS, then ask /session-status at most every 30 seconds."
       },
       {
         "id": "blast-radius",
@@ -48,7 +48,7 @@
       "id": "browser",
       "type": "external",
       "label": "Browser",
-      "sublabel": "one origin, cookies at Path=/",
+      "sublabel": "one origin, many paths",
       "pos": [
         30,
         370
@@ -91,9 +91,9 @@
     {
       "id": "apps",
       "type": "backend",
-      "label": "Five consuming apps",
-      "sublabel": "atrium · prm · newspapper · imbatranimOS · sports-app",
-      "tag": "each hand-writes its Ward client",
+      "label": "Consuming apps",
+      "sublabel": "atrium · prm · newspapper · sports-app",
+      "tag": "each vendors shared-library",
       "pos": [
         440,
         600
@@ -205,15 +205,15 @@
       "id": "ui-session",
       "from": "ward_ui",
       "to": "ward_api",
-      "label": "GET /session (cookie)",
+      "label": "GET /session (cookie at /ward-api)",
       "fromSide": "bottom",
       "toSide": "top"
     },
     {
-      "id": "apps-introspect",
+      "id": "apps-oidc",
       "from": "apps",
       "to": "ward_api",
-      "label": "POST /introspect + x-ward-app-key",
+      "label": "OIDC sign-in · POST /session-status",
       "variant": "security",
       "fromSide": "top",
       "toSide": "bottom"
@@ -222,7 +222,7 @@
       "id": "apps-jwks",
       "from": "apps",
       "to": "ward_api",
-      "label": "GET jwks.json",
+      "label": "GET /oidc/jwks",
       "variant": "dashed",
       "fromSide": "right",
       "toSide": "bottom"
@@ -250,7 +250,7 @@
       "title": "The topology is the constraint",
       "items": [
         "Every project is a sub-path on one origin — there are no subdomains",
-        "A Path=/ cookie therefore reaches every app with no redirect dance",
+        "Ward's cookies stay under /ward-api; apps sign in through OpenID Connect",
         "Same origin is one security context: sub-paths do not sandbox"
       ]
     },
@@ -258,8 +258,8 @@
       "dot": "emerald",
       "title": "What a session is",
       "items": [
-        "15-minute EdDSA access token, verified locally by each app",
-        "30-day opaque refresh row, rotated on every use",
+        "15-minute EdDSA access token, read only by Ward's own pages",
+        "30-day opaque refresh row, rotated on every use — the app's ward_sid",
         "Revoking is one write; apps notice within their 30-second cache"
       ]
     },

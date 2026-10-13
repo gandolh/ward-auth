@@ -57,8 +57,9 @@ import { newFamilyId } from "../db/refresh-tokens.js";
  * `<form method="POST" enctype="text/plain" action=".../ward-api/logout">` on any
  * page reached `/logout` — `text/plain` sails past Fastify's content-type parser
  * where `form-urlencoded` and `multipart` earn a `415` — and the `204` plus two
- * clearing `Set-Cookie` headers were honoured first-party, at `Path=/`, across
- * all six apps, with no navigation for the victim to notice. In a loop it meant
+ * clearing `Set-Cookie` headers were honoured first-party (the access cookie was
+ * then at `Path=/`, signing the victim out of every app at once), with no
+ * navigation for the victim to notice. In a loop it meant
  * they could not hold a session at all.
  *
  * Two things close it, and both are needed. The cookies are cleared **only when
@@ -66,7 +67,7 @@ import { newFamilyId } from "../db/refresh-tokens.js";
  * attack above. And both routes additionally require a same-origin request:
  * `Sec-Fetch-Site`, when present, must be `same-origin`, and `Origin`, when
  * present, must match `WARD_PUBLIC_ORIGIN`. **Absent headers are allowed** —
- * brief 08's server-side clients send neither, and rejecting a header-less
+ * server-side callers send neither, and rejecting a header-less
  * request would break every non-browser caller to defend against a browser-only
  * attack.
  *
@@ -467,9 +468,9 @@ export async function authRoutes(
    * already dead: logout answering differently for a valid token would make it
    * a free oracle for testing stolen tokens, and there is nothing a client can
    * usefully do with the distinction anyway. This is also why logout is
-   * near-instant in practice — the client then holds nothing at all, and the
-   * 30-second introspection window only ever applies to a token that was
-   * already stolen.
+   * near-instant in practice — the browser then holds nothing at all, and the
+   * revoked family is what every later check (`GET /session`, an app's
+   * `/session-status`) reads.
    *
    * ## Served at `/refresh/logout` too, and that is the one browsers use
    *
@@ -498,8 +499,8 @@ export async function authRoutes(
        * the oracle property is untouched. But emitting the two clearing
        * `Set-Cookie` headers for a request that carried no credential is what
        * made `/logout` a cross-site sign-out for the whole estate: the browser
-       * is first-party for Ward on a top-level navigation, honours both
-       * deletions, and `Path=/` reaches all six apps at once.
+       * is first-party for Ward on a top-level navigation and honours the
+       * deletions.
        */
       return reply.code(204).send();
     }
@@ -547,7 +548,7 @@ function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): st
  * Whether the request is same-origin enough to act on the session cookies.
  *
  * **Absent headers pass.** `Sec-Fetch-Site` and `Origin` are set by browsers;
- * brief 08's server-side clients send neither, and refusing a header-less
+ * server-side callers send neither, and refusing a header-less
  * request would break every non-browser caller in order to defend against a
  * browser-only attack. What the check catches is the case that actually exists:
  * a browser that *did* send them and said the request came from somewhere else.
@@ -679,8 +680,6 @@ function clearSessionCookies(reply: FastifyReply, secure: boolean): void {
 }
 
 /**
- * Re-exported so brief 04 (introspection) and brief 06 (console) import the
- * cookie name from one place, and so nothing else has to reach into
- * `auth/cookie.js` to read the access token off a request.
+ * Re-exported so the console and tests import the cookie names from one place.
  */
 export { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME };

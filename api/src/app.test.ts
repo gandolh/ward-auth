@@ -132,7 +132,7 @@ describe("the routes buildApp wires in", () => {
       { method: "POST" as const, url: "/login" },
       { method: "POST" as const, url: "/refresh" },
       { method: "POST" as const, url: "/logout" },
-      { method: "POST" as const, url: "/introspect" },
+      { method: "GET" as const, url: "/session" },
       { method: "POST" as const, url: "/notify" },
       { method: "POST" as const, url: "/console/login" },
       { method: "GET" as const, url: "/console/apps" },
@@ -151,6 +151,20 @@ describe("the routes buildApp wires in", () => {
     ]) {
       expect(app.hasRoute(route), `${route.method} ${route.url}`).toBe(true);
     }
+  });
+
+  it("no longer registers the retired shared-cookie contract's routes", async () => {
+    // Retired with brief 30: apps now use OpenID Connect and /session-status.
+    for (const route of [
+      { method: "POST" as const, url: "/introspect" },
+      { method: "GET" as const, url: "/console/apps/:slug/keys" },
+      { method: "POST" as const, url: "/console/apps/:slug/keys" },
+      { method: "POST" as const, url: "/console/app-keys/:id/revoke" },
+    ]) {
+      expect(app.hasRoute(route), `${route.method} ${route.url}`).toBe(false);
+    }
+    const response = await app.inject({ method: "POST", url: "/introspect", payload: {} });
+    expect(response.statusCode).toBe(404);
   });
 
   it("keeps the new console routes behind the superuser gate", async () => {

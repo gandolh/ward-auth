@@ -11,15 +11,9 @@ import {
   revokeAllForSubjectExceptFamily,
   listLiveTokensForSubject,
 } from "../db/refresh-tokens.js";
-import { resolveSession } from "../grants/resolve.js";
-import { mintAccessToken, verifyWardAccessToken } from "../tokens/service.js";
-import { AccessTokenVerificationError } from "../tokens/verify.js";
-import {
-  ACCESS_COOKIE_NAME,
-  readCookie,
-  sessionCookies,
-  wardSecureCookies,
-} from "../auth/cookie.js";
+import { mintAccessToken } from "../tokens/service.js";
+import { liveAccessSession } from "../auth/access-session.js";
+import { sessionCookies, wardSecureCookies } from "../auth/cookie.js";
 import {
   checkLockout,
   clearFailures,
@@ -61,17 +55,17 @@ import { issueRefreshToken } from "../auth/refresh.js";
  * ## Authentication: two steps, and the second is the one that matters
  *
  * Every route here reads the `ward_session` cookie, verifies it, and then asks
- * `resolveSession` whether the session is **live** — the same pair `/introspect`
- * performs. A valid signature is not enough on its own: an access token stays
+ * `resolveSession` whether the session is **live** — the same pair `GET /session`
+ * performs (`auth/access-session.ts`). A valid signature is not enough on its own: an access token stays
  * verifiable for its full 15 minutes after the session behind it was revoked,
  * so a signature alone is never permission to proceed. Skipping the liveness
  * check would let a revoked session change the password of the account it was
  * revoked from, which inverts the feature.
  *
- * Unlike `/introspect`, failure here is a `401` rather than
- * `200 {"active":false}`. The reasoning that makes introspection statusless is
- * specific to it — six apps on the hot path must have exactly one failure mode
- * — and does not transfer: this is a person's own browser making a
+ * Unlike `GET /session`, failure here is a `401` rather than
+ * `200 {"active":false}`. `/session` is statusless so the UI's "ask, refresh
+ * once, ask again" dance has one failure mode; that does not transfer: this is
+ * a person's own browser making a
  * state-changing request, the UI has to distinguish "signed out" from "that
  * didn't work", and there is no third party to leak anything to.
  *
@@ -80,17 +74,16 @@ import { issueRefreshToken } from "../auth/refresh.js";
  * `SameSite=Lax` stops the cookies being *sent* on a cross-site POST but does
  * nothing about a top-level form navigation, and `enctype="text/plain"` sails
  * past Fastify's content-type rejection — the exact hole that let a cross-site
- * form sign a victim out of all six apps through `/logout`. Both mutations here
+ * form sign a victim out through `/logout`. Both mutations here
  * are cookie-driven and one of them signs the person out of every other device,
  * which is precisely the sort of thing worth doing to a victim from another
  * origin. So both apply the same `Sec-Fetch-Site`/`Origin` rule `/logout` and
  * `/refresh` do, with the same carve-out: **absent headers pass**, because
- * brief 08's server-side clients send neither.
+ * a server-side caller sends neither.
  *
  * `GET /account` is not checked. It changes nothing, Ward sends no CORS headers
  * so a cross-origin caller cannot read the body it provokes, and refusing it
- * would break a server-side caller forwarding a browser's headers — the
- * reasoning `/introspect` records for the same decision.
+ * would break a server-side caller forwarding a browser's headers.
  *
  * ## What is never on the wire
  *
@@ -130,13 +123,12 @@ const passwordBody = z.object({
 /**
  * The response shape of `GET /account`, as a serialisation filter.
  *
- * Same technique and same purpose as `INTROSPECT_RESPONSE_SCHEMA`: making the
+ * Same technique and same purpose as `SESSION_RESPONSE_SCHEMA`: making the
  * omission of `password_hash` structural rather than careful.
  *
- * The difference in *content* is the point of the endpoint. `/introspect`
- * answers four fields to six apps on every request and must not grow a fifth —
- * an app has no use for a contact address and six copies of one is six places
- * to leak it from. This endpoint answers one person about themselves, so
+ * The difference in *content* is the point of the endpoint. `GET /session`
+ * answers four fields and must not grow a fifth — it is the session check, and
+ * a contact address has no business in it. This endpoint answers one person about themselves, so
  * `email` and `emailVerified` belong here and nowhere else. Without it the
  * self-service page cannot show a person their own address or verification
  * state after a reload at all.
@@ -190,39 +182,18 @@ export async function accountRoutes(
    * warns against.
    */
   async function callerFor(request: FastifyRequest): Promise<Caller | undefined> {
-    const token = readCookie(request.headers.cookie, ACCESS_COOKIE_NAME);
-    if (token === undefined) return undefined;
-
-    let subject: string;
-    let familyId: string;
-    try {
-      const claims = await verifyWardAccessToken(token);
-      subject = claims.sub;
-      familyId = claims.sid;
-    } catch (error) {
-      /**
-       * Only a verification failure means "not signed in". Anything else — an
-       * unreadable signing key — is Ward being broken, and rethrowing turns it
-       * into a `500` an operator sees rather than a silent "you are signed
-       * out". Same rule as `/introspect`.
-       *
-       * This is also the branch a **console token** lands in: `wcs_`+random has
-       * one dot-separated segment where a compact JWS has three. There is no
-       * `isSuperuser` check here and there must never be one — the superuser has
-       * no account row, so it has no account to self-service.
-       */
-      if (!(error instanceof AccessTokenVerificationError)) throw error;
-      request.log.debug({ err: error }, "account: access token did not verify");
-      return undefined;
-    }
-
     const db = await database();
-    if (!resolveSession(db, subject, familyId).active) return undefined;
+    // Every `ward_session` value on the header, first live one wins — a
+    // browser may still hold the legacy `Path=/` cookie beside the current one
+    // (`auth/access-session.ts`). A console token fails verification there,
+    // which is why the superuser has no account to self-service.
+    const live = await liveAccessSession(db, request.headers.cookie, request.log);
+    if (live === undefined) return undefined;
 
-    const row = findUserBySubject(db, subject);
+    const row = findUserBySubject(db, live.subject);
     if (row === undefined) return undefined;
 
-    return { row, familyId };
+    return { row, familyId: live.familyId };
   }
 
   /**
@@ -230,7 +201,7 @@ export async function accountRoutes(
    *
    * `{ subject, username, email, emailVerified, createdAt }`. Read-only, no
    * audit row, `no-store` — this is a per-person answer that no shared cache
-   * may hold, the same reasoning `/introspect` records.
+   * may hold, the same reasoning `GET /session` records.
    */
   app.get("/account", { schema: { response: ACCOUNT_RESPONSE_SCHEMA } }, async (request, reply) => {
     reply.header("cache-control", "no-store");
@@ -562,7 +533,7 @@ function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): st
  * write it a third time.
  *
  * **Absent headers pass.** `Sec-Fetch-Site` and `Origin` are set by browsers,
- * and brief 08's server-side clients send neither; refusing a header-less
+ * and a server-side caller sends neither; refusing a header-less
  * request would break every non-browser caller to defend against a browser-only
  * attack. `Sec-Fetch-Site` must be exactly `same-origin` — not `same-site`
  * (the estate is one origin, so there is no sibling a legitimate request could

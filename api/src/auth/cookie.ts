@@ -9,25 +9,45 @@ import { ACCESS_TOKEN_TTL_SECONDS } from "../tokens/claims.js";
  * having them written out where they can be read beats having them spread
  * across a plugin's option bag.
  *
- * ## Two cookies with deliberately different scopes
+ * ## Two cookies, both scoped to Ward
  *
  * | | name | path | lifetime |
  * |---|---|---|---|
- * | access | `ward_session` | `/` | 15 minutes |
+ * | access | `ward_session` | `/ward-api` | 15 minutes |
  * | refresh | `ward_refresh` | `/ward-api/refresh` | 30 days |
  *
- * The **access** cookie is at `Path=/` because that is the whole SSO mechanism:
- * the estate is one origin (`corpus/wiki/decisions.md`), so a `Path=/` cookie
- * reaches atrium, newspapper, prm and everything else with no redirect dance.
- * Its name is fixed by decision — `ward_session`, recorded in decisions.md
- * alongside the `/ward-api` deploy path.
+ * The **access** cookie is read by Ward's own API and nothing else:
+ * `GET /ward-api/session` and the `/ward-api/account` routes, which serve
+ * Ward's sign-in and account pages. Until 2026-10-13 it sat at `Path=/` so the
+ * estate's apps could read it; that shared-cookie contract is retired (brief
+ * 30) and apps now sign people in through OpenID Connect with sessions of their
+ * own. So the cookie is scoped to the API prefix, and an app on the same origin
+ * never receives it.
  *
- * The **refresh** cookie is scoped to `Path=/ward-api/refresh` and this is the
- * point of having two. A 30-day credential that can mint fresh access tokens is
- * the most valuable thing Ward hands out; sending it on every image request in
- * six apps would put it in front of every logging, caching and proxy layer in
- * the estate for no benefit at all. Scoped to one path, the browser only ever
- * discloses it to the one endpoint that consumes it.
+ * The **refresh** cookie is scoped tighter still, to `Path=/ward-api/refresh`.
+ * A 30-day credential that can mint fresh access tokens is the most valuable
+ * thing Ward hands out, and scoped to one path the browser only ever discloses
+ * it to the endpoints that consume it: `/refresh`, `/refresh/logout` and the
+ * OIDC login step at `/refresh/oidc/:uid`.
+ *
+ * ## The legacy `Path=/` access cookie
+ *
+ * Browsers that signed in before the change still hold a `ward_session` at
+ * `Path=/`. A cookie is identified by name, domain **and path**, so setting the
+ * new one does not replace the old one: both are stored, and both are sent to
+ * `/ward-api/...`, in an order no code should rely on. Two things follow:
+ *
+ * - Every response that sets or clears the session also expires the
+ *   `Path=/` variant (`LEGACY_ACCESS_COOKIE_PATH`), so the duplicate disappears
+ *   the next time the person touches Ward.
+ * - Readers take **every** `ward_session` value (`readCookies`) and use the
+ *   first one that is a live session (`auth/access-session.ts`), never simply
+ *   the first one on the header.
+ *
+ * The refresh cookie never moved, so it has no legacy twin and is read with
+ * `readCookie` (first wins) on purpose: trying a second refresh token after a
+ * first one would present a rotated token, which is reuse detection's signal
+ * and revokes the whole family.
  *
  * ## `/ward-api/refresh` is the *browser's* path, not Fastify's
  *
@@ -44,24 +64,29 @@ import { ACCESS_TOKEN_TTL_SECONDS } from "../tokens/claims.js";
  * do not need one: `Lax` means the browser withholds these cookies from any
  * cross-site `POST`, so a form on `evil.example` cannot reach either endpoint
  * with credentials attached. `Strict` was not chosen because it also withholds
- * the access cookie on the top-level navigation that returns a person from the
- * login page to `?next=`, which would break SSO on the first hop. Do not
- * relax this to `None` — that reintroduces the CSRF surface *and* requires
- * `Secure` unconditionally.
+ * the refresh cookie on the top-level navigation an OIDC client starts, which
+ * lands on `/ward-api/refresh/oidc/:uid` from the app's page and has to know
+ * who is signed in. Do not relax this to `None` — that reintroduces the CSRF
+ * surface *and* requires `Secure` unconditionally.
  */
 
-/**
- * The access-token cookie. **Brief 04 reads this**, and brief 08's
- * `@ward/client` is the only thing that should teach an app the name — no app
- * hard-codes it.
- */
+/** The access-token cookie, read by `GET /session` and the `/account` routes. */
 export const ACCESS_COOKIE_NAME = "ward_session";
 
-/** The refresh-token cookie. Only `POST /ward-api/refresh` and `/logout` see it. */
+/** The refresh-token cookie. Only the routes under `/ward-api/refresh` see it. */
 export const REFRESH_COOKIE_NAME = "ward_refresh";
 
-/** `Path=/` — the estate is one origin, so this reaches every app. */
-export const ACCESS_COOKIE_PATH = "/";
+/**
+ * `Path=/ward-api` — Ward's API prefix as the browser sees it, so the cookie
+ * reaches `/ward-api/session` and `/ward-api/account/...` and no app.
+ */
+export const ACCESS_COOKIE_PATH = "/ward-api";
+
+/**
+ * Where the access cookie lived until the shared-cookie contract was retired.
+ * Only ever written to expire it; see the header.
+ */
+export const LEGACY_ACCESS_COOKIE_PATH = "/";
 
 /**
  * `Path=/ward-api/refresh` — the browser-visible path, prefix included.
@@ -140,7 +165,8 @@ export function serializeCookie(options: CookieOptions): string {
 }
 
 /**
- * The pair of `Set-Cookie` values that establish a session.
+ * The `Set-Cookie` values that establish a session: the access cookie, the
+ * refresh cookie, and the expiry of the legacy `Path=/` access cookie.
  *
  * `refreshMaxAgeSeconds` defaults to the full 30 days and is overridden on a
  * rotation, where `R2` inherits its family's absolute expiry and therefore has
@@ -152,7 +178,7 @@ export function sessionCookies(params: {
   refreshToken: string;
   secure: boolean;
   refreshMaxAgeSeconds?: number;
-}): [string, string] {
+}): [string, string, string] {
   return [
     serializeCookie({
       name: ACCESS_COOKIE_NAME,
@@ -168,11 +194,13 @@ export function sessionCookies(params: {
       maxAgeSeconds: params.refreshMaxAgeSeconds ?? REFRESH_TOKEN_TTL_SECONDS,
       secure: params.secure,
     }),
+    clearCookie(ACCESS_COOKIE_NAME, LEGACY_ACCESS_COOKIE_PATH, params.secure),
   ];
 }
 
 /**
- * The pair of `Set-Cookie` values that destroy a session.
+ * The `Set-Cookie` values that destroy a session: both cookies, plus the
+ * legacy `Path=/` access cookie a browser may still hold.
  *
  * **`Path` and `Secure` must match what was set**, or the browser treats these
  * as two *different* cookies and leaves the originals in place — the classic
@@ -183,10 +211,11 @@ export function sessionCookies(params: {
  * Both an empty value and `Max-Age=0` are sent, plus a 1970 `Expires` for the
  * benefit of anything that ignores `Max-Age`.
  */
-export function clearedSessionCookies(params: { secure: boolean }): [string, string] {
+export function clearedSessionCookies(params: { secure: boolean }): [string, string, string] {
   return [
     clearCookie(ACCESS_COOKIE_NAME, ACCESS_COOKIE_PATH, params.secure),
     clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH, params.secure),
+    clearCookie(ACCESS_COOKIE_NAME, LEGACY_ACCESS_COOKIE_PATH, params.secure),
   ];
 }
 
@@ -195,24 +224,23 @@ function clearCookie(name: string, path: string, secure: boolean): string {
 }
 
 /**
- * Read one cookie out of a `Cookie` request header.
+ * Every non-empty value a `Cookie` request header carries for `name`, in
+ * header order.
  *
- * Returns the **first** occurrence. A duplicate cookie name is either a client
- * bug or a cookie-shadowing attempt (setting `ward_session` on a parent domain
- * to sit in front of the real one); the browser sends the more specific path
- * first, and taking the first match is the conventional and safer of the two
- * readings.
+ * A browser sends every stored cookie whose path matches, so the same name can
+ * appear more than once — today, a `ward_session` at `Path=/ward-api` next to
+ * the legacy one at `Path=/`. RFC 6265 only *recommends* sending the longer
+ * path first, so a reader that has to pick one picks by validity, not by
+ * position (`auth/access-session.ts`).
  *
- * Brief 04 needs exactly this to pull the access token out of a request:
- * `readCookie(request.headers.cookie, ACCESS_COOKIE_NAME)`.
+ * A cleared cookie can still be presented by a client that ignored the
+ * expiry; an empty value is treated as absent rather than as a token.
  */
-export function readCookie(
-  header: string | string[] | undefined,
-  name: string,
-): string | undefined {
-  if (header === undefined) return undefined;
+export function readCookies(header: string | string[] | undefined, name: string): string[] {
+  if (header === undefined) return [];
 
   const flat = Array.isArray(header) ? header.join("; ") : header;
+  const values: string[] = [];
 
   for (const pair of flat.split(";")) {
     const eq = pair.indexOf("=");
@@ -220,12 +248,24 @@ export function readCookie(
     if (pair.slice(0, eq).trim() !== name) continue;
 
     const value = pair.slice(eq + 1).trim();
-    // A cleared cookie can still be presented by a client that ignored the
-    // expiry. Treat an empty value as absent rather than as a token.
-    return value.length > 0 ? value : undefined;
+    if (value.length > 0) values.push(value);
   }
 
-  return undefined;
+  return values;
+}
+
+/**
+ * The **first** value a `Cookie` request header carries for `name`.
+ *
+ * For a cookie with one path only — the refresh cookie — where a duplicate is a
+ * client bug or a shadowing attempt and must not be tried twice (see the
+ * header). The access cookie is read with `readCookies`.
+ */
+export function readCookie(
+  header: string | string[] | undefined,
+  name: string,
+): string | undefined {
+  return readCookies(header, name)[0];
 }
 
 /**

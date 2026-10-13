@@ -12,13 +12,12 @@ import { wardRole } from "../oidc/account.js";
  * `POST /session-status`: an app that signed someone in through Ward asks
  * whether that Ward session is still live and the grant still held.
  *
- * This is what `/introspect` was to the cookie sign-in, for the OpenID Connect
- * one (`corpus/wiki/decisions-oidc.md`, "Ward-originated sessions still end
+ * This is how the 30-second revocation guarantee survives the move to OpenID
+ * Connect (`corpus/wiki/decisions-oidc.md`, "Ward-originated sessions still end
  * within 30 seconds"). The app keeps the ID token's `ward_sid` on its own
  * session row and asks at most every 30 seconds, so a sign-out at Ward, a
  * console revoke, a password change or a removed grant ends the app's session
- * within that window. It needs no Ward access token and no app key: the app
- * proves who it is with the same `private_key_jwt` assertion it uses at the
+ * within that window. It needs no Ward access token: the app proves who it is with the same `private_key_jwt` assertion it uses at the
  * token endpoint.
  *
  * The path is Fastify-side. Caddy serves Ward under `handle_path /ward-api/*`,
@@ -43,12 +42,10 @@ import { wardRole } from "../oidc/account.js";
  * - `200 {"active":false}` for **every** other answer, byte for byte: the
  *   family is revoked, lapsed or unknown, the account is disabled or gone, the
  *   subject is not the family's, there is no grant for the caller's app, or the
- *   body is malformed. It never says which, for the reason `/introspect` gave:
- *   a diagnosis is an oracle. Without this an app could ask whether any
+ *   body is malformed. It never says which: a diagnosis is an oracle. Without this an app could ask whether any
  *   family in the estate is live, or whether a subject holds a grant elsewhere.
  * - `401 {"error":"invalid_client"}` for an assertion that is missing or does
- *   not verify. As with `/introspect`'s app key, this is the one exception to
- *   the single answer: a misconfigured client is not a dead session, and
+ *   not verify. This is the one exception to the single answer: a misconfigured client is not a dead session, and
  *   answering `active:false` would sign every one of that app's Ward-originated
  *   users out silently. The app treats it as a configuration error, not as
  *   "signed out". Absent, malformed, unknown, forged, expired, wrong-audience
@@ -71,7 +68,7 @@ import { wardRole } from "../oidc/account.js";
  * authenticated caller with a bad `wardSid` gets `active:false`. There is no
  * second failure mode to branch on.
  *
- * ## Audited like `/introspect`: not at all
+ * ## Not audited
  *
  * No audit row. Every Ward-originated session of every app asks every 30
  * seconds, so an audit row per call is a write amplifier fed by ordinary
@@ -82,8 +79,7 @@ import { wardRole } from "../oidc/account.js";
  *
  * ## No rate limit
  *
- * The argument in `routes/introspect.ts` carries over unchanged: a limit on a
- * call every app makes for every session would be read as "not live" and sign
+ * A limit on a call every app makes for every session would be read as "not live" and sign
  * people out, which is worse than the abuse it prevents. The assertion check
  * runs before any other work, which is the bound: an anonymous caller costs one
  * signature check at most, and only for a client that exists.
@@ -97,7 +93,7 @@ export interface SessionStatusRoutesOptions {
 }
 
 /**
- * The body's own fields. Capped like `/introspect`'s token: a `wardSid` is 32
+ * The body's own fields, capped: a `wardSid` is 32
  * hex characters and a subject at most 64, so nothing larger is a real call.
  * Unknown keys are ignored rather than refused: the credential fields share
  * the object.

@@ -8,12 +8,10 @@ import { SignJWT, importJWK, type JWK } from "jose";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { MailTransport } from "../config.js";
-import { APP_KEY_HEADER, resetAppKeyTouchThrottle } from "../auth/app-key.js";
-import { createAppKey, revokeAppKey } from "../db/app-keys.js";
 import { setOidcClient } from "../db/apps.js";
 import { countAudit, listAudit, type AuditLogRow } from "../db/audit-log.js";
 import { grantRole, SUPERUSER_ACTOR } from "../db/grants.js";
-import { freshDb, seedAppKey, seedApps, seedUser } from "../db/test-support.js";
+import { freshDb, seedApps, seedUser } from "../db/test-support.js";
 import { markEmailVerified, setDisabled, type UserRow } from "../db/users.js";
 import { CLIENT_ASSERTION_TYPE } from "../oidc/client-auth.js";
 import { generateClientKeyPair } from "../oidc/client-keygen.js";
@@ -41,9 +39,7 @@ let dir: string;
 let outbox: string;
 let db: Database.Database;
 let app: FastifyInstance;
-let prmKey: string;
-let atriumKey: string;
-/** The apps' client keys, for the assertion path. */
+/** The apps' client keys: each signs its own assertions. */
 let prmClientKey: JWK;
 let atriumClientKey: JWK;
 
@@ -70,20 +66,6 @@ async function build(options: { transport?: MailTransport; limiter?: NotifyLimit
   return instance;
 }
 
-function notify(
-  body: unknown,
-  key: string | null = prmKey,
-  on: FastifyInstance = app,
-): Promise<LightMyRequestResponse> {
-  return on.inject({
-    method: "POST",
-    url: "/notify",
-    // `null` for no header: `undefined` would take the default.
-    headers: key === null ? {} : { [APP_KEY_HEADER]: key },
-    payload: body as Record<string, unknown>,
-  });
-}
-
 /** What an app's server signs: the assertion it also presents at the token endpoint. */
 async function assertion(
   key: JWK,
@@ -101,7 +83,7 @@ async function assertion(
     .sign(await importJWK(key, "EdDSA"));
 }
 
-/** `POST /notify` authenticated by client assertion in the body, no app-key header. */
+/** `POST /notify` authenticated by a client assertion in the body. */
 async function notifyAsClient(
   body: Record<string, unknown>,
   signed: Promise<string> = assertion(prmClientKey),
@@ -116,6 +98,20 @@ async function notifyAsClient(
       ...body,
     },
   });
+}
+
+/**
+ * `POST /notify` as one of the two apps, with a fresh assertion each call, or
+ * with no credential at all (`null`).
+ */
+async function notify(
+  body: Record<string, unknown>,
+  as: "prm" | "atrium" | null = "prm",
+  on: FastifyInstance = app,
+): Promise<LightMyRequestResponse> {
+  if (as === null) return on.inject({ method: "POST", url: "/notify", payload: body });
+  const key = as === "prm" ? prmClientKey : atriumClientKey;
+  return notifyAsClient(body, assertion(key, { iss: as }), on);
 }
 
 const message = (subject: string, overrides: Record<string, unknown> = {}) => ({
@@ -176,8 +172,6 @@ beforeAll(async () => {
 
   db = freshDb();
   seedApps(db);
-  prmKey = seedAppKey(db, "prm");
-  atriumKey = seedAppKey(db, "atrium");
   for (const slug of ["prm", "atrium"]) {
     const pair = await generateClientKeyPair();
     setOidcClient(db, slug, {
@@ -225,54 +219,35 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  resetAppKeyTouchThrottle();
   await rm(outbox, { recursive: true, force: true });
   db.exec("DELETE FROM audit_log;");
 });
 
-describe("the app key comes first", () => {
-  it("refuses a call with no key: 401, no mail, no audit row", async () => {
+describe("a call with no credential", () => {
+  it("is refused: 401 invalid_client, no mail, no audit row", async () => {
     const response = await notify(message(alice.subject), null);
 
     expect(response.statusCode).toBe(401);
-    expect(response.json()).toEqual({ error: "invalid_app_key" });
+    expect(response.json()).toEqual({ error: "invalid_client" });
     expect(await outboxFiles()).toEqual([]);
     expect(countAudit(db)).toBe(0);
   });
 
-  it("gives malformed, unknown and revoked keys the same 401", async () => {
-    const spare = createAppKey(db, {
-      appSlug: "prm",
-      label: "revoked",
-      createdBy: SUPERUSER_ACTOR,
-    });
-    revokeAppKey(db, spare.row.id);
-
-    for (const key of ["not-a-key", `wak_${"0".repeat(43)}`, spare.key]) {
-      const response = await notify(message(alice.subject), key);
-      expect(response.statusCode, key).toBe(401);
-      expect(response.body).toBe('{"error":"invalid_app_key"}');
-    }
-    expect(await outboxFiles()).toEqual([]);
-    expect(countAudit(db)).toBe(0);
-  });
-
-  it("checks a presented key before parsing the body", async () => {
-    // Unparseable JSON behind a bad key is a 401, not Fastify's 400: the hook
-    // runs before the body is read.
+  it("is refused even with the retired app-key header", async () => {
     const response = await app.inject({
       method: "POST",
       url: "/notify",
-      headers: { "content-type": "application/json", [APP_KEY_HEADER]: "not-a-key" },
-      payload: "{not json",
+      headers: { "x-ward-app-key": `wak_${"0".repeat(43)}` },
+      payload: message(alice.subject),
     });
     expect(response.statusCode).toBe(401);
-    expect(response.body).toBe('{"error":"invalid_app_key"}');
+    expect(response.body).toBe('{"error":"invalid_client"}');
+    expect(countAudit(db)).toBe(0);
   });
 });
 
 describe("client authentication", () => {
-  it("mails with an assertion in the body and no app key, as the assertion's app", async () => {
+  it("mails with an assertion in the body, as the assertion's app", async () => {
     const response = await notifyAsClient(message(alice.subject));
 
     expect(response.statusCode).toBe(200);
@@ -282,11 +257,6 @@ describe("client authentication", () => {
     const { headers } = await onlyMessage();
     expect(headers).toMatch(/^From: Public Resource Map via Ward/m);
     expect(headers).toMatch(/^To: alice@example\.com$/m);
-  });
-
-  it("still mails with the app key and no assertion", async () => {
-    const response = await notify(message(alice.subject));
-    expect(response.json()).toEqual({ sent: true });
   });
 
   it("keeps the same rules: another app's user is refused", async () => {
@@ -301,18 +271,9 @@ describe("client authentication", () => {
   });
 
   it("does not treat the credential fields as an unknown key of the message", async () => {
-    // The strict body would refuse them if they were not taken off first; the
-    // app-key path accepts them too, and ignores them.
-    const response = await app.inject({
-      method: "POST",
-      url: "/notify",
-      headers: { [APP_KEY_HEADER]: prmKey },
-      payload: {
-        ...message(alice.subject),
-        client_assertion_type: CLIENT_ASSERTION_TYPE,
-        client_assertion: "ignored",
-      },
-    });
+    // The strict body would refuse them if they were not taken off first.
+    const response = await notifyAsClient(message(alice.subject));
+    expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ sent: true });
   });
 
@@ -328,14 +289,13 @@ describe("client authentication", () => {
       target_id: alice.subject,
     });
     expect(JSON.parse(row.detail!)).toMatchObject({ app: "prm", auth: "client_assertion" });
-    expect(JSON.parse(row.detail!)).not.toHaveProperty("keyId");
     expect(row.detail).not.toContain(signed);
   });
 
-  it("counts against the same per-app limit as the key", async () => {
+  it("counts against the per-app limit", async () => {
     const limited = await build({ limiter: createNotifyLimiter(2, 60_000) });
     try {
-      expect((await notify(message(alice.subject), prmKey, limited)).json()).toEqual({
+      expect((await notify(message(alice.subject), "prm", limited)).json()).toEqual({
         sent: true,
       });
       expect((await notifyAsClient(message(alice.subject), undefined, limited)).json()).toEqual({
@@ -390,22 +350,6 @@ describe("client authentication", () => {
     expect(wrongType.statusCode).toBe(401);
     expect(wrongType.body).toBe('{"error":"invalid_client"}');
   });
-
-  it("lets a presented app key win: a bad key is refused even beside a good assertion", async () => {
-    const response = await app.inject({
-      method: "POST",
-      url: "/notify",
-      headers: { [APP_KEY_HEADER]: "not-a-key" },
-      payload: {
-        ...message(alice.subject),
-        client_assertion_type: CLIENT_ASSERTION_TYPE,
-        client_assertion: await assertion(prmClientKey),
-      },
-    });
-    expect(response.statusCode).toBe(401);
-    expect(response.body).toBe('{"error":"invalid_app_key"}');
-    expect(await outboxFiles()).toEqual([]);
-  });
 });
 
 describe("who Ward will mail", () => {
@@ -456,8 +400,8 @@ describe("who Ward will mail", () => {
   });
 
   it("lets an app mail its own users and nobody else's", async () => {
-    // alice holds a prm grant and no atrium grant: atrium's key cannot reach her.
-    const response = await notify(message(alice.subject), atriumKey);
+    // alice holds a prm grant and no atrium grant: atrium's assertion cannot reach her.
+    const response = await notify(message(alice.subject), "atrium");
 
     expect(response.json()).toEqual({ sent: false });
     expect(await outboxFiles()).toEqual([]);
@@ -524,7 +468,7 @@ describe("what an app may send", () => {
 });
 
 describe("the audit log", () => {
-  it("records every keyed call under the app's slug, without the mail's content", async () => {
+  it("records every authenticated call under the app's slug, without the mail's content", async () => {
     await notify(message(alice.subject));
     await notify(message(carol.subject));
     await notify({ nonsense: true });
@@ -564,7 +508,7 @@ describe("a transport failure", () => {
     await writeFile(blocker, "");
     broken = await build({ transport: fileTransport(join(blocker, "outbox")) });
 
-    const response = await notify(message(alice.subject), prmKey, broken);
+    const response = await notify(message(alice.subject), "prm", broken);
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ error: "mail_unavailable" });
@@ -583,11 +527,11 @@ describe("the per-app rate limit", () => {
     limited = await build({ limiter: createNotifyLimiter(3, 60_000) });
 
     for (let i = 0; i < 3; i += 1) {
-      expect((await notify(message(alice.subject), prmKey, limited)).json()).toEqual({
+      expect((await notify(message(alice.subject), "prm", limited)).json()).toEqual({
         sent: true,
       });
     }
-    const refused = await notify(message(alice.subject), prmKey, limited);
+    const refused = await notify(message(alice.subject), "prm", limited);
 
     expect(refused.statusCode).toBe(200);
     expect(refused.body).toBe('{"sent":false}');
@@ -601,12 +545,12 @@ describe("the per-app rate limit", () => {
   it("counts each app separately", async () => {
     limited = await build({ limiter: createNotifyLimiter(1, 60_000) });
 
-    expect((await notify(message(alice.subject), prmKey, limited)).json()).toEqual({ sent: true });
-    expect((await notify(message(alice.subject), prmKey, limited)).json()).toEqual({
+    expect((await notify(message(alice.subject), "prm", limited)).json()).toEqual({ sent: true });
+    expect((await notify(message(alice.subject), "prm", limited)).json()).toEqual({
       sent: false,
     });
     // atrium's budget is untouched by prm's: carol holds an atrium grant.
-    expect((await notify(message(carol.subject), atriumKey, limited)).json()).toEqual({
+    expect((await notify(message(carol.subject), "atrium", limited)).json()).toEqual({
       sent: true,
     });
     expect(lastAudit()).toMatchObject({ action: "notify.sent", actor_label: "app:atrium" });

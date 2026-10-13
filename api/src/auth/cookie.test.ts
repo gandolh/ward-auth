@@ -4,11 +4,13 @@ import {
   ACCESS_COOKIE_MAX_AGE_SECONDS,
   ACCESS_COOKIE_NAME,
   ACCESS_COOKIE_PATH,
+  LEGACY_ACCESS_COOKIE_PATH,
   REFRESH_COOKIE_NAME,
   REFRESH_COOKIE_PATH,
   REFRESH_TOKEN_TTL_SECONDS,
   clearedSessionCookies,
   readCookie,
+  readCookies,
   secureCookiesFor,
   serializeCookie,
   sessionCookies,
@@ -37,9 +39,11 @@ function parseSetCookie(header: string): {
 
 describe("the two cookie scopes", () => {
   it("names and paths are the ones the decisions record", () => {
-    // `ward_session` at `/ward-api` is recorded in wiki/decisions.md.
+    // `ward_session`, scoped to Ward's API since the shared-cookie contract
+    // was retired (brief 30). Its old `Path=/` is only ever written to expire.
     expect(ACCESS_COOKIE_NAME).toBe("ward_session");
-    expect(ACCESS_COOKIE_PATH).toBe("/");
+    expect(ACCESS_COOKIE_PATH).toBe("/ward-api");
+    expect(LEGACY_ACCESS_COOKIE_PATH).toBe("/");
 
     // The refresh cookie's path is the BROWSER-side path, prefix included:
     // Caddy's `handle_path` strips `/ward-api` before Fastify sees the request,
@@ -56,18 +60,18 @@ describe("the two cookie scopes", () => {
 });
 
 describe("sessionCookies", () => {
-  const [access, refresh] = sessionCookies({
+  const [access, refresh, legacy] = sessionCookies({
     accessToken: "header.payload.signature",
     refreshToken: "a".repeat(64),
     secure: true,
   });
 
-  it("scopes the access cookie to the whole origin", () => {
+  it("scopes the access cookie to Ward's API, not the whole origin", () => {
     const parsed = parseSetCookie(access);
 
     expect(parsed.name).toBe("ward_session");
     expect(parsed.value).toBe("header.payload.signature");
-    expect(parsed.attributes.get("path")).toBe("/");
+    expect(parsed.attributes.get("path")).toBe("/ward-api");
     expect(parsed.attributes.has("httponly")).toBe(true);
     expect(parsed.attributes.get("samesite")).toBe("Lax");
     expect(parsed.attributes.has("secure")).toBe(true);
@@ -83,6 +87,20 @@ describe("sessionCookies", () => {
     expect(parsed.attributes.get("samesite")).toBe("Lax");
     expect(parsed.attributes.has("secure")).toBe(true);
     expect(parsed.attributes.get("max-age")).toBe(String(30 * 24 * 60 * 60));
+  });
+
+  it("expires the legacy Path=/ access cookie in the same response", () => {
+    // A browser that signed in before brief 30 holds a ward_session at
+    // Path=/. Setting the new one does not replace it (different path, so a
+    // different cookie); this third header does.
+    const parsed = parseSetCookie(legacy);
+
+    expect(parsed.name).toBe("ward_session");
+    expect(parsed.value).toBe("");
+    expect(parsed.attributes.get("path")).toBe("/");
+    expect(parsed.attributes.get("max-age")).toBe("0");
+    expect(parsed.attributes.get("expires")).toContain("1970");
+    expect(parsed.attributes.has("secure")).toBe(true);
   });
 
   it("honours a shorter refresh Max-Age, so the cookie cannot outlive its row", () => {
@@ -113,7 +131,7 @@ describe("sessionCookies", () => {
 
 describe("clearedSessionCookies", () => {
   it("matches the original path and Secure flag, or the browser keeps the original", () => {
-    const [access, refresh] = clearedSessionCookies({ secure: true });
+    const [access, refresh, legacy] = clearedSessionCookies({ secure: true });
     const [live] = sessionCookies({ accessToken: "a.b.c", refreshToken: "d", secure: true });
 
     const cleared = parseSetCookie(access);
@@ -131,6 +149,11 @@ describe("clearedSessionCookies", () => {
 
     expect(parseSetCookie(refresh).attributes.get("path")).toBe("/ward-api/refresh");
     expect(parseSetCookie(refresh).attributes.get("max-age")).toBe("0");
+
+    // And the legacy Path=/ access cookie, so sign-out leaves no copy behind.
+    expect(parseSetCookie(legacy)).toMatchObject({ name: "ward_session", value: "" });
+    expect(parseSetCookie(legacy).attributes.get("path")).toBe("/");
+    expect(parseSetCookie(legacy).attributes.get("max-age")).toBe("0");
   });
 });
 
@@ -189,13 +212,34 @@ describe("readCookie", () => {
     expect(readCookie("ward_session_extra=nope", "ward_session")).toBeUndefined();
   });
 
-  it("takes the first occurrence, which is the more specific path", () => {
-    expect(readCookie("ward_session=real; ward_session=shadow", "ward_session")).toBe("real");
+  it("takes the first occurrence — for the refresh cookie, which has one path", () => {
+    expect(readCookie("ward_refresh=real; ward_refresh=shadow", "ward_refresh")).toBe("real");
   });
 
   it("handles a missing header and an array header", () => {
     expect(readCookie(undefined, "ward_session")).toBeUndefined();
     expect(readCookie(["a=1", "ward_session=a.b.c"], "ward_session")).toBe("a.b.c");
+  });
+});
+
+describe("readCookies", () => {
+  it("returns every value for a duplicated name, in header order", () => {
+    // The current Path=/ward-api cookie and the legacy Path=/ one, in either
+    // order — the browser chooses.
+    expect(readCookies("ward_session=new; theme=dark; ward_session=old", "ward_session")).toEqual([
+      "new",
+      "old",
+    ]);
+    expect(readCookies("ward_session=old; ward_session=new", "ward_session")).toEqual([
+      "old",
+      "new",
+    ]);
+  });
+
+  it("skips cleared values and other names, and handles a missing header", () => {
+    expect(readCookies("ward_session=; ward_session=a.b.c", "ward_session")).toEqual(["a.b.c"]);
+    expect(readCookies("xward_session=1; ward_session_x=2", "ward_session")).toEqual([]);
+    expect(readCookies(undefined, "ward_session")).toEqual([]);
   });
 });
 

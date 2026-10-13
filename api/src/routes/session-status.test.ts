@@ -200,7 +200,7 @@ describe("a live session", () => {
     expect(response.json()).toEqual({ active: true, role: "admin" });
   });
 
-  it("writes no audit row, like /introspect", async () => {
+  it("writes no audit row", async () => {
     await status(signIn(alice), alice.subject);
     expect(countAudit(db)).toBe(0);
   });

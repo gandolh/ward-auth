@@ -5,7 +5,6 @@ import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
 import { WardApiError, login, type WardErrorCode } from "../lib/api.js";
-import { rootName, slugForRoot } from "../lib/estate.js";
 import { resolveNext } from "../lib/next.js";
 import {
   interactionAbortUrl,
@@ -13,22 +12,24 @@ import {
   oidcInteraction,
   useInteractionClient,
 } from "../lib/oidc.js";
-import { useOpenApps } from "../lib/open-apps.js";
 import { deadlineIn, useCountdown } from "../lib/use-countdown.js";
 import { formatWait } from "../lib/wait.js";
 
 /**
  * `/ward/login` — the estate's one sign-in form.
  *
- * Every person who uses any app in the estate sees this page, and they see it
- * on their way to somewhere else. Three calls follow from that:
+ * Most people who see this page are on their way to somewhere else: an app sent
+ * them here through OpenID Connect (`?oidc=<uid>`), and they go straight back
+ * once signed in. Three calls follow from that:
  *
- * 1. **The destination is the headline.** `?next=` says where somebody was
- *    going, so the page leads with "Continue to Atrium" and puts Ward's own
- *    name in the corner at the smallest size on the screen. The recorded cost
- *    of one central login page is that two strongly-designed apps hand their
- *    sign-in moment to a third identity; naming the destination is the one
- *    thing this page can do to make the interruption read as short.
+ * 1. **The destination is the headline.** For an OIDC sign-in the page leads
+ *    with "Continue to <app>" and puts Ward's own name in the corner at the
+ *    smallest size on the screen. The recorded cost of one central login page
+ *    is that strongly-designed apps hand their sign-in moment to a third
+ *    identity; naming the destination is the one thing this page can do to
+ *    make the interruption read as short. Without an interaction the
+ *    destination is one of Ward's own pages (`?next=`, `lib/next.ts`) and the
+ *    heading is simply "Sign in".
  * 2. **Nothing is between the person and the form.** No illustration, no
  *    marketing line, no motion on load. The first Tab from a cold page lands in
  *    the username field.
@@ -63,16 +64,6 @@ import { formatWait } from "../lib/wait.js";
  * it itself, from `GET /ward-api/account`, rather than this page remembering
  * anything for it.
  *
- * ## The "create an account" link, and why it names one app
- *
- * `GET /ward-api/apps` says which apps accept public registration, so the
- * footer can offer "Create an account for Atrium" — but only when `?next=`
- * resolved to a root whose app is one of the open ones. Most apps in the
- * estate do not accept public registration, and a blanket link with no
- * destination in mind would send most people who clicked it to a form that
- * refuses them; a link scoped to the one app this visitor was already headed
- * to does not have that problem. No destination, or a destination that is not
- * open, means no link — silently, the same direction `resolveNext` fails in.
  */
 
 /** The one message per failure. Sentences live in the UI; codes on the wire. */
@@ -101,12 +92,9 @@ export function Login(): React.JSX.Element {
   const [params] = useSearchParams();
 
   /**
-   * Resolved once per `?next=` value, not per render and not per keystroke.
-   *
-   * The decision drives the heading, so it is read before anything is typed
-   * and cannot change while somebody is typing. A refused value silently
-   * becomes `/` — the person who followed a bad link needs to sign in, not to
-   * read a diagnostic about the link.
+   * Resolved once per `?next=` value, not per render and not per keystroke. A
+   * refused value silently becomes the account page — the person who followed
+   * a bad link needs to sign in, not to read a diagnostic about the link.
    */
   const destination = useMemo(() => resolveNext(params.get("next")), [params]);
 
@@ -130,23 +118,6 @@ export function Login(): React.JSX.Element {
   const passwordRef = useRef<HTMLInputElement>(null);
 
   /**
-   * The app to offer "create an account" for, or `undefined` for no link.
-   *
-   * Two conditions, both required: `?next=` has to have resolved to a known
-   * root — the apex (`destination.root === ""`) names nothing to sign up
-   * for — and that root's slug has to be one `GET /ward-api/apps` actually
-   * listed as open. Neither `slugForRoot` finding nothing nor the open-apps
-   * list not (yet) containing the slug is a failure; both just mean no link.
-   */
-  const openApps = useOpenApps();
-  const destinationSlug =
-    destination.accepted && destination.root !== "" ? slugForRoot(destination.root) : undefined;
-  const registerApp =
-    interaction === undefined && destinationSlug !== undefined && Array.isArray(openApps)
-      ? openApps.find((app) => app.slug === destinationSlug)
-      : undefined;
-
-  /**
    * Focus the first field on arrival.
    *
    * The only autofocus in this UI, and it earns its place: this page has one
@@ -159,13 +130,9 @@ export function Login(): React.JSX.Element {
   }, []);
 
   const heading =
-    interaction !== undefined
-      ? interactionClient === undefined
-        ? "Sign in"
-        : `Continue to ${interactionClient.name}`
-      : destination.accepted && destination.root !== ""
-        ? `Continue to ${rootName(destination.root)}`
-        : "Sign in";
+    interaction !== undefined && interactionClient !== undefined
+      ? `Continue to ${interactionClient.name}`
+      : "Sign in";
 
   async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -200,11 +167,11 @@ export function Login(): React.JSX.Element {
       /**
        * A full navigation, not a router push.
        *
-       * `destination.path` is a path on this origin that is usually **outside
-       * this SPA** — `/atrium/`, `/prm/map` — so React Router would render a
-       * 404 inside Ward rather than leaving it. `assign` also leaves the login
-       * page in history, which is right: Back from the app returns here, and
-       * the cookie is already set, so nothing is retyped.
+       * The interaction's resume URL is Ward's API, outside this SPA, so React
+       * Router could not reach it; `destination.path` is one of Ward's own
+       * pages and goes the same way for one code path. `assign` also leaves the
+       * login page in history, which is right: Back returns here, and the
+       * cookie is already set, so nothing is retyped.
        *
        * No state is cleared first and the submitting flag stays on: the page is
        * about to be replaced, and re-enabling a form for the few milliseconds
@@ -241,17 +208,6 @@ export function Login(): React.JSX.Element {
               </Link>
             </>
           )}
-          {registerApp !== undefined && (
-            <>
-              {" · "}
-              <Link
-                className="ward-link"
-                to={`/register?app=${encodeURIComponent(registerApp.slug)}`}
-              >
-                Create an account for {registerApp.name}
-              </Link>
-            </>
-          )}
         </>
       }
     >
@@ -259,9 +215,7 @@ export function Login(): React.JSX.Element {
       <p className="ward-lede">
         {interaction !== undefined
           ? "Sign in with your Ward account. You'll go straight back to the app."
-          : destination.accepted && destination.root !== ""
-            ? "Ward keeps the estate's accounts. Sign in once and you're through."
-            : "Ward keeps the estate's accounts. One sign-in covers every app here."}
+          : "Ward keeps the estate's accounts. Sign in to see yours."}
       </p>
 
       {/*
@@ -289,9 +243,6 @@ export function Login(): React.JSX.Element {
         `required` stays on the inputs regardless, because it is what tells
         assistive technology the field is mandatory.
 
-        The "create an account" link, when there is one, lives in the footer
-        above rather than here — see `registerApp` and the docblock on why it
-        names one specific app instead of being a blanket link.
       */}
       <form
         className="ward-form"

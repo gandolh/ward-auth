@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import type { MailTransport } from "../config.js";
 
-import { readAppKeyHeader, resolveAppKey } from "../auth/app-key.js";
 import { getApp, type AppRow } from "../db/apps.js";
 import { recordAudit } from "../db/audit-log.js";
 import { getDb } from "../db/connection.js";
@@ -23,7 +22,7 @@ import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-aut
  *
  * Apps key people on the opaque subject and hold no addresses. Ward holds the
  * verified address and sends the mail itself, so the address never leaves
- * Ward. The other option, letting an app key read verified addresses, was
+ * Ward. The other option, letting an app read verified addresses, was
  * rejected (`corpus/wiki/decisions-app-keys.md`): six copies of an address are
  * six places to leak it from, and an app that only needs to send a mail does
  * not need to know where it goes.
@@ -33,49 +32,47 @@ import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-aut
  *
  * ## The contract
  *
- * - The caller proves which app it is in one of two ways (below). A bad
- *   credential is `401`, never `{"sent":false}`, for the reason `/introspect`
- *   gives: a misconfigured app must fail loudly.
+ * - The caller proves which app it is with a client assertion (below). A bad
+ *   or absent credential is `401`, never `{"sent":false}`: a misconfigured app
+ *   must fail loudly, not look like an app whose users all lack an address.
  * - The body is `{ subject, mailSubject, text }`, plain text.
  * - Success is `200 {"sent":true}`.
  * - Every refusal is `200 {"sent":false}`, byte for byte: no such account, a
  *   disabled account, no verified address, no grant for the calling app, a
  *   malformed body, or the app's rate limit. An app must not be able to tell
- *   these apart, for the reason `/introspect` has one inactive answer: a
+ *   these apart, for the reason `GET /session` has one inactive answer: a
  *   diagnosis is an oracle. Without this an app could ask whether any subject
  *   in the estate has a verified address, or holds a grant somewhere else.
  *   The reason goes to the audit log and the server log, for an operator.
  * - A mail transport failure is `503 {"error":"mail_unavailable"}`. That is
  *   Ward being broken, not a refusal, and the app should retry later.
- *   `@ward/client` raises `WardUnavailableError` for it, as for any non-200.
+ *   The shared library raises `WardUnavailableError` for it, as for any non-200.
  *   It does not leak more than success does: it is only reachable on the path
  *   that would have sent.
  *
- * ## Two ways to authenticate, until brief 27 retires the first
+ * ## The credential: a client assertion
  *
- * - **The app key**, the `x-ward-app-key` header. Checked first, in
- *   `onRequest`, before the body is even parsed. A bad key is
- *   `401 {"error":"invalid_app_key"}`. A call with no credential at all gets
- *   the same answer. A request that sends the header is judged by it alone.
- * - **A client assertion**, the `private_key_jwt` an app already signs for the
- *   token endpoint and `/session-status`: `client_assertion_type` and
- *   `client_assertion` beside the other body fields, the assertion's `aud` the
- *   issuer. That credential lives in the body, so it can only be checked after
- *   the body is parsed, in `preHandler`; the body limit below bounds what an
- *   unauthenticated caller can make Ward read. A bad assertion is
- *   `401 {"error":"invalid_client"}`, and with no issuer configured there is
- *   nothing to verify against, so any assertion is refused the same way.
+ * The `private_key_jwt` an app already signs for the token endpoint and
+ * `/session-status`: `client_assertion_type` and `client_assertion` beside the
+ * other body fields, the assertion's `aud` the issuer. That credential lives in
+ * the body, so it can only be checked after the body is parsed, in
+ * `preHandler`; the body limit below bounds what an unauthenticated caller can
+ * make Ward read. A bad or absent assertion is `401 {"error":"invalid_client"}`,
+ * and with no issuer configured there is nothing to verify against, so any
+ * assertion is refused the same way.
+ *
+ * Until 2026-10-13 an app could also authenticate with a per-app key in a
+ * header. That path is retired (brief 30) along with the rest of the
+ * shared-cookie contract.
  *
  * The two credential fields are taken off the body before the strict check
- * below, so they are not "unknown keys". Either way the app is the one the
- * credential belongs to, and the rest of the route does not know which was used
- * beyond the audit row's detail.
+ * below, so they are not "unknown keys".
  *
  * ## An app can mail its own users and nobody else
  *
  * Ward sends only when the account exists, is not disabled, has a verified
  * address, and holds at least one grant for the calling app. The app is the
- * one the key belongs to, never one named in the body. Holding a Ward account
+ * one the assertion belongs to, never one named in the body. Holding a Ward account
  * confers nothing; an app with no grant over a person cannot reach them.
  *
  * ## The frame is Ward's
@@ -93,8 +90,8 @@ import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-aut
  * `app:<slug>`: the table's actor kinds are a CHECK, Ward is the one sending,
  * and the label names the app it sent for. A new `app` actor kind would need
  * a table rebuild for a distinction the label already carries. The detail
- * names the credential: `keyId` for an app key, `auth: "client_assertion"` for
- * an assertion, never the assertion itself. The row holds
+ * names the credential kind (`auth: "client_assertion"`), never the assertion
+ * itself. The row holds
  * the subject as its target and never the mail's subject line or text, because
  * the audit log is never pruned and what an app writes to a person is not
  * Ward's to keep.
@@ -104,7 +101,7 @@ import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-aut
  *
  * ## The rate limit
  *
- * `NOTIFY_LIMIT` keyed calls per app per rolling `NOTIFY_WINDOW_MS`, counted
+ * `NOTIFY_LIMIT` authenticated calls per app per rolling `NOTIFY_WINDOW_MS`, counted
  * in process. See the constant for the number and the reasoning.
  */
 
@@ -128,7 +125,7 @@ import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-aut
  * them.
  *
  * Counted per process, in memory. A restart clears it, which is also the
- * operator's reset. Every keyed call counts, refused or sent, because a loop
+ * operator's reset. Every authenticated call counts, refused or sent, because a loop
  * over ineligible subjects still costs reads and audit rows. A call refused by
  * the limit does not count, so the budget comes back as the window rolls.
  */
@@ -138,7 +135,7 @@ export const NOTIFY_WINDOW_MS = 24 * 60 * 60 * 1000;
 /**
  * The route's body limit. 20,000 characters of text is at most about 80 KB of
  * UTF-8, and JSON escaping can grow that; 256 KiB covers any valid body. A
- * larger one is Fastify's own `413`, after the key check.
+ * larger one is Fastify's own `413`.
  */
 export const NOTIFY_BODY_LIMIT = 256 * 1024;
 
@@ -237,8 +234,8 @@ type Recipient = { ok: true; email: string; app: AppRow } | { ok: false; reason:
 /**
  * Whether Ward may mail this subject for this app, and where to.
  *
- * Every check reads Ward's own tables. The app is the key's app, never one the
- * caller names.
+ * Every check reads Ward's own tables. The app is the assertion's client, never
+ * one the caller names.
  */
 function findRecipient(db: Database.Database, subject: string, appSlug: string): Recipient {
   const user = findUserBySubject(db, subject);
@@ -249,7 +246,7 @@ function findRecipient(db: Database.Database, subject: string, appSlug: string):
   }
   if (listRolesInApp(db, subject, appSlug).length === 0) return { ok: false, reason: "no_grant" };
 
-  // Always present: a key belongs to an app and is deleted with it.
+  // Always present: a client is an app row, and deleting the app deletes it.
   const app = getApp(db, appSlug);
   if (app === undefined) return { ok: false, reason: "unknown_app" };
 
@@ -293,12 +290,9 @@ function presentedAssertion(body: unknown): { type: string; assertion: string } 
     : undefined;
 }
 
-/** Who a request authenticated as, and with what. Never the credential. */
+/** Who a request authenticated as. Never the credential. */
 interface Caller {
   appSlug: string;
-  /** `app_keys.id` for an app key; absent for a client assertion. */
-  keyId?: string;
-  via: "app_key" | "client_assertion";
 }
 
 /** The serialisation schema. Also a filter: nothing else can reach the app. */
@@ -342,49 +336,22 @@ export async function notifyRoutes(
     {
       bodyLimit: NOTIFY_BODY_LIMIT,
       schema: { response: NOTIFY_ROUTE_SCHEMA },
-      /**
-       * The app key, before anything else, including body parsing. A request
-       * that sends the header is judged by it alone, and nothing it sends is
-       * parsed, counted or written until it passes. A request with no header
-       * is left for `preHandler`, which reads the assertion from the body.
-       */
-      onRequest: async (request, reply) => {
+      onRequest: async (_request, reply) => {
         reply.header("cache-control", "no-store");
-
-        const presented = readAppKeyHeader(request);
-        if (presented === undefined) return;
-
-        const caller = resolveAppKey(await database(), presented);
-        if (!caller.ok) {
-          request.log.warn(
-            { reason: caller.reason },
-            "notify: refusing a request with no usable app key",
-          );
-          return reply.code(401).send({ error: "invalid_app_key" });
-        }
-
-        callers.set(request, {
-          appSlug: caller.app.appSlug,
-          keyId: caller.app.keyId,
-          via: "app_key",
-        });
       },
       /**
-       * The client assertion, for a request that sent no app key. The body is
-       * parsed by now (the credential is in it), but nothing has been counted
-       * or written, and a failure writes nothing.
+       * The client assertion. The body is parsed by now (the credential is in
+       * it), but nothing has been counted or written, and a failure writes
+       * nothing.
        */
       preHandler: async (request, reply) => {
-        if (callers.has(request)) return;
-
         const presented = presentedAssertion(request.body);
         if (presented === undefined) {
-          // No credential of either kind: the app-key answer, as before.
           request.log.warn(
             { reason: "absent" },
-            "notify: refusing a request with no usable app key",
+            "notify: refusing a request with no client assertion",
           );
-          return reply.code(401).send({ error: "invalid_app_key" });
+          return reply.code(401).send({ error: "invalid_client" });
         }
 
         const issuer = options.issuer ?? (await import("../config.js")).OIDC?.issuer;
@@ -402,7 +369,7 @@ export async function notifyRoutes(
           return reply.code(401).send({ error: "invalid_client" });
         }
 
-        callers.set(request, { appSlug: client.clientId, via: "client_assertion" });
+        callers.set(request, { appSlug: client.clientId });
       },
     },
     async (request, reply) => {
@@ -426,7 +393,7 @@ export async function notifyRoutes(
           targetId: target ?? null,
           detail: {
             app: slug,
-            ...(caller.via === "app_key" ? { keyId: caller.keyId } : { auth: caller.via }),
+            auth: "client_assertion",
             ...detail,
           },
         });

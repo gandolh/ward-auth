@@ -1,7 +1,6 @@
 # Ward — the estate's identity service.
 #
-# Build context is the REPO ROOT (one root lockfile covers the api, ui and
-# client workspaces). Multi-stage: the TypeScript compiler and the native build
+# Build context is the REPO ROOT (one root lockfile covers every workspace). Multi-stage: the TypeScript compiler and the native build
 # toolchain live in build stages and never reach the runtime image.
 #
 #   docker compose -f infrastructure/docker-compose.yml up ward-api
@@ -29,13 +28,12 @@ FROM node:24-alpine AS deps
 # musl prebuild would otherwise fail the build with a cryptic node-gyp error.
 RUN apk add --no-cache python3 make g++
 WORKDIR /app
-# Manifests first, for layer caching: one root lockfile, one npm ci. All three
-# workspace manifests are needed because `npm ci` validates the lockfile against
-# every workspace the root package.json declares and bails on a missing one.
+# Manifests first, for layer caching: one root lockfile, one npm ci. The api
+# and ui manifests are copied; the docs and shared-library workspaces are not
+# needed to build or run the API.
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY api/package.json ./api/
 COPY ui/package.json ./ui/
-COPY client/package.json ./client/
 RUN npm ci
 
 # ---------------------------------------------------------------------------
@@ -54,7 +52,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY api/package.json ./api/
 COPY ui/package.json ./ui/
-COPY client/package.json ./client/
 # Scoped to the api workspace: unscoped this would also install whatever the ui
 # grows (React and its tree), which the server never runs.
 RUN npm ci --omit=dev -w @ward/api --include-workspace-root

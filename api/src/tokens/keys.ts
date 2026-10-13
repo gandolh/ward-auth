@@ -60,8 +60,8 @@ import { ACCESS_TOKEN_ALG, ACCESS_TOKEN_TTL_SECONDS, SIGNING_KEY_CURVE } from ".
  * 4. **Wait at least one access-token lifetime — 15 minutes** (see
  *    `ACCESS_TOKEN_TTL_SECONDS`). After that no unexpired token anywhere in the
  *    estate was signed by the old key. In practice wait longer than the
- *    strict minimum, because `@ward/client` caches the JWKS: an app that
- *    fetched the key set before step 3 keeps using it for its cache window.
+ *    strict minimum, because anything that fetched the key set before step 3
+ *    keeps using it for its cache window.
  * 5. `rm api/data/signing-key.previous.pem` and restart. The JWKS drops back to
  *    one key.
  *
@@ -335,8 +335,8 @@ export async function loadKeySet(currentPath: string): Promise<WardKeySet> {
   //  - It becomes **safe to delete once one access-token lifetime — 15 minutes,
   //    `ACCESS_TOKEN_TTL_SECONDS` — has elapsed since the rotation**, because
   //    after that no unexpired token anywhere was signed by the outgoing key.
-  //    In practice wait longer, since `@ward/client` caches the JWKS for its
-  //    own window.
+  //    In practice wait longer, since a remote verifier caches the JWKS for
+  //    its own window.
   //  - Leaving it populated indefinitely is **not** the tidy-later option it
   //    looks like: it means Ward permanently trusts two signing keys, and the
   //    second is trusted on the strength of a filename. Whatever Ed25519

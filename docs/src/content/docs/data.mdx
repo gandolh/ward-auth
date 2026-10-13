@@ -1,9 +1,9 @@
 ---
 title: Data model
-description: Seven tables, all STRICT, with the invariants pushed into CHECK constraints — what each one holds and which rules are enforced by SQLite rather than by code.
+description: Eight tables, all STRICT, with the invariants pushed into CHECK constraints — what each one holds and which rules are enforced by SQLite rather than by code.
 ---
 
-One SQLite file, WAL mode, seven tables. Every table is `STRICT`, so a column
+One SQLite file, WAL mode, eight tables. Every table is `STRICT`, so a column
 typed `TEXT` cannot quietly accept an integer.
 
 The consistent theme below is that **invariants live in the schema**. A `CHECK`
@@ -42,6 +42,8 @@ and registration's "is this address already spoken for".
 | `name` | Display name. |
 | `public_registration` | `0`/`1`. Only `prm` has it on. |
 | `baseline_role` | What a public registrant becomes. |
+| `oidc_redirect_uris`, `oidc_post_logout_redirect_uris` | JSON arrays. `[]` means the app is not an OpenID Connect client. |
+| `oidc_jwks` | The app's **public** keys as a JWK Set, for its client assertions. Never a secret. |
 
 ```sql
 CHECK (slug <> '' AND slug = lower(slug))
@@ -62,8 +64,9 @@ PRIMARY KEY (subject, app_slug, role)
 The security boundary, described in full on [Grants](/grants/). Both foreign
 keys cascade on delete.
 
-The composite primary key's leading column is `subject`, so introspection's hot
-lookup — "every role this person holds" — is already served. The extra index on
+The composite primary key's leading column is `subject`, so the hot lookup —
+"every role this person holds", asked by `/session-status` and the OIDC login
+step — is already served. The extra index on
 `(app_slug, role)` serves the other direction, which is the console's: everyone
 who can reach a given app.
 
@@ -92,20 +95,24 @@ accumulate.
 See [Sessions and tokens](/sessions/) for why the claim on `used_at` must stay a
 single statement.
 
-## `app_keys`
+## `oidc_payloads` and `oidc_authorizations`
 
-| Column | Notes |
-|---|---|
-| `id` | **PK**, and the identifier — the label is not. |
-| `app_slug` | Cascades from `apps`. |
-| `label` | What an operator reads to tell two keys apart: "atrium production", "atrium laptop". Not a secret. |
-| `key_hash` | **UNIQUE.** `sha256` of the key, never the key. |
-| `last_used_at` | Coarse — stamped at most hourly, never per request. |
-| `revoked_at` | Kept rather than deleted, so the audit trail still has a row to point at. |
+Added by the `20261013000000-oidc` migration for [Sign in with Ward](/oidc/).
+Times here are epoch seconds, because `oidc-provider` works in them.
 
-`last_used_at` being coarse is deliberate: this is the hot path, and a write on
-every introspection would turn a read-only request into a write for the sake of
-a timestamp nobody reads to the minute.
+- **`oidc_payloads`** is the provider's storage: codes, interactions, grants
+  and replay markers, keyed `(model, id)`, with the payload as checked JSON.
+  It survives a restart mid-flow, which the provider's in-memory default would
+  not.
+- **`oidc_authorizations`** bridges a provider grant to Ward's own session: the
+  client, the subject, the refresh family (`family_id`, which becomes
+  `ward_sid`) and the role (`ward_role`). Both foreign keys cascade.
+
+:::note[`app_keys` is gone]
+App keys authenticated apps to the retired `/introspect`. Migration
+`20261013120000-drop-app-keys` dropped the table on 2026-10-13 (brief 30). The
+`app_key.*` rows in `audit_log` stay as history.
+:::
 
 ## `verification_tokens`
 
@@ -153,8 +160,9 @@ see [decisions-implementation](/wiki/decisions-implementation/).
 ## Migrations
 
 Statically imported from `api/src/db/migrations/index.ts` and run to completion
-**before** the listener binds. Two exist: the baseline, and the one that added
-`app_keys`.
+**before** the listener binds. Four exist, in order: the baseline, the one that
+added `app_keys`, the OpenID Connect tables, and the one that dropped
+`app_keys` again.
 
 Static imports rather than a directory scan means the set of migrations is
 fixed at build time — a file that failed to copy into the container is a

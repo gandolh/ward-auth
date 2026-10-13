@@ -305,7 +305,7 @@ describe("what liveness can and cannot be established from", () => {
     // And Bob's own live family, handed to Alice as her `sessionId`, does not
     // resolve Alice active either. `hasLiveFamily` requires the family's row to
     // belong to the subject. That pairing cannot be forged through
-    // `/introspect` — Ward reads `sub` and `sid` off the same verified token —
+    // `GET /session` — Ward reads `sub` and `sid` off the same verified token —
     // but the check is here so the function is safe to hold wrong rather than
     // merely unlikely to be held wrong. See its own describe block below.
     const bobsFamily = login(FUTURE, other);
@@ -339,7 +339,7 @@ describe("hasLiveFamily — the per-family check `sid` makes possible", () => {
   });
 
   it("is false for a family that belongs to somebody else", () => {
-    // The binding this asserts is not reachable through `/introspect` — Ward
+    // The binding this asserts is not reachable through `GET /session` — Ward
     // reads `sub` and `sid` off the same verified token, so mismatching them
     // means forging a signature. It is asserted because the *function* must be
     // safe to hold wrong: brief 09's "sign out my other devices" pairs a

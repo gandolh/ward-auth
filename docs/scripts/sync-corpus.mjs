@@ -25,9 +25,9 @@ const outDir = resolve(here, '../src/content/docs/wiki')
 // Which corpus pages become docs, in sidebar-ish order. `slug` is the URL/file
 // stem under /wiki/; links between these are rewritten to /wiki/<slug>/.
 const PAGES = [
-  // The integration contract comes first: it is the page another repo's author
-  // is sent to, and it is the only corpus page linked from outside the wiki
-  // section of the sidebar.
+  // The integration page comes first: it is the only corpus page linked from
+  // outside the wiki section of the sidebar (under "Integrate an app", after
+  // the OIDC page).
   { src: 'wiki/integrating.md', slug: 'integrating' },
   { src: 'wiki/overview.md', slug: 'overview' },
   { src: 'wiki/estate.md', slug: 'estate' },

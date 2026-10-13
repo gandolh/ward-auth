@@ -161,9 +161,9 @@ async function parseBody(response: Response): Promise<unknown> {
  * `WardApiError`.
  *
  * `credentials: "same-origin"` is stated rather than left to the default. It
- * *is* the default for a same-origin request, but the estate's whole session
- * model is "one cookie at `Path=/` on one origin", and the line that carries
- * the cookie should be visible in the file rather than implied.
+ * *is* the default for a same-origin request, but Ward's session model is
+ * cookies scoped to `/ward-api` on one origin, and the line that carries the
+ * cookie should be visible in the file rather than implied.
  */
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   let response: Response;
@@ -280,12 +280,8 @@ export interface SessionResult {
  * This is the only endpoint that reads back a person's own grants, which is
  * what the self-service grants view is built on.
  *
- * **This used to be `POST /introspect`**, and the move is not cosmetic.
- * `/introspect` now requires an `x-ward-app-key` header identifying the calling
- * app, and a key embedded in this bundle would be a published secret rather
- * than a credential — so the browser caller got its own cookie-authenticated
- * route. The response shape is deliberately identical, which is why this is the
- * only line in the UI that had to change.
+ * The token is the `ward_session` cookie and nothing else; this module never
+ * sees it.
  */
 export function readSessionState(): Promise<SessionResult> {
   return request<SessionResult>("/session", { method: "GET" });

@@ -98,21 +98,16 @@ export const CAN_READ_OWN_EMAIL: boolean = true;
  * Not part of point 5, but the same shape of gap and it changed what this UI
  * could offer. `Register` used to be told which app it was signing somebody up
  * for by `?app=` in the URL, and could only name that app from a hard-coded
- * display-name table in `lib/estate.ts` — the real `apps.name` was readable
- * only through `GET /console/apps`, which is superuser-only.
+ * display-name table — the real `apps.name` was readable only through
+ * `GET /console/apps`, which is superuser-only.
  *
- * Two things followed, and this flag fixes both:
- *
- * - **`Register` can now say an app is closed before a form is filled**,
- *   rather than only after a submit. `403 registration_closed` is still a
- *   state and not an error — a fresh estate answers it to everything until
- *   the console creates an app — but the fetched list lets the page know that
- *   up front.
- * - **`Login` can carry a "create an account" link** for the app it is about
- *   to hand somebody back to, when that app is one of the open ones. Most
- *   apps do not accept public registration, so the link is destination-aware
- *   rather than a blanket link that would send most people to a form that
- *   refuses them.
+ * With the list, **`Register` names the app from Ward's own row and can say an
+ * app is closed before a form is filled**, rather than only after a submit.
+ * `403 registration_closed` is still a state and not an error — a fresh estate
+ * answers it to everything until the console creates an app — but the fetched
+ * list lets the page know that up front. (`Login` once used it for a
+ * destination-aware "create an account" link; that link needed the retired
+ * `?next=` app list and went with it in brief 30.)
  *
  * The query behind the route is `listOpenApps` in `api/src/db/apps.ts`, and
  * the response exposes nothing an anonymous caller cannot already discover by

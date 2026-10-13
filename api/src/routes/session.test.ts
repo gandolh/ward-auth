@@ -6,18 +6,15 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 /**
- * `GET /session` — the cookie half of introspection, over a real login.
+ * `GET /session` — Ward's own "who am I", over a real login.
  *
- * These are the tests that used to live in `introspect.test.ts` under "a
- * cookie-only caller", plus the ones that pin what makes this route safe to
- * leave unkeyed. The split happened when `POST /introspect` grew a mandatory
- * `x-ward-app-key`: a key in Ward's own Vite bundle would be a published
- * string, so the browser caller needed a route that authenticates with the
- * cookie it already has.
+ * Includes the duplicate-cookie case: a browser that signed in before the
+ * shared-cookie contract was retired (brief 30) holds a `ward_session` at
+ * `Path=/` beside the current one at `Path=/ward-api`, and sends both.
  *
- * Every import of `../config.js` and its dependents is dynamic, for the reason
- * `introspect.test.ts` documents: `config.ts` validates the environment at
- * import time and would be hoisted above the `process.env` assignments below.
+ * Every import of `../config.js` and its dependents is dynamic: `config.ts`
+ * validates the environment at import time and would be hoisted above the
+ * `process.env` assignments below.
  */
 
 const ORIGIN = "https://ward.test";
@@ -73,6 +70,17 @@ async function readSession(token: string | undefined): Promise<LightMyRequestRes
     method: "GET",
     url: "/session",
     headers: token === undefined ? {} : { cookie: `${mod.cookie.ACCESS_COOKIE_NAME}=${token}` },
+  });
+}
+
+/** `GET /session` with several `ward_session` values on one header, in order. */
+async function readSessionWith(tokens: string[]): Promise<LightMyRequestResponse> {
+  return app.inject({
+    method: "GET",
+    url: "/session",
+    headers: {
+      cookie: tokens.map((token) => `${mod.cookie.ACCESS_COOKIE_NAME}=${token}`).join("; "),
+    },
   });
 }
 
@@ -161,11 +169,10 @@ describe("a live session", () => {
   });
 
   /**
-   * The reason the split was cheap: `ui/src/lib/session.ts` was written against
-   * `/introspect`'s body and its "always 200" contract, and only its URL had to
-   * change. If these two shapes ever drift, that file breaks silently.
+   * `ui/src/lib/session.ts` is written against exactly these four fields and
+   * the "always 200" contract; if the shape drifts, that file breaks silently.
    */
-  it("returns exactly the shape /introspect returns, field for field", async () => {
+  it("returns exactly the four documented fields", async () => {
     grant("newspapper", "reader");
     const live = await readSession(cookieValue(await login(), mod.cookie.ACCESS_COOKIE_NAME));
 
@@ -234,15 +241,57 @@ describe("active is false", () => {
   });
 });
 
+describe("two ward_session cookies on one request (the legacy Path=/ copy)", () => {
+  /** A token that verifies but whose family was signed out. */
+  async function signedButRevoked(): Promise<string> {
+    const session = await login();
+    const access = cookieValue(session, mod.cookie.ACCESS_COOKIE_NAME);
+    const out = await app.inject({
+      method: "POST",
+      url: "/logout",
+      headers: {
+        cookie: `${mod.cookie.REFRESH_COOKIE_NAME}=${cookieValue(session, mod.cookie.REFRESH_COOKIE_NAME)}`,
+      },
+    });
+    expect(out.statusCode).toBe(204);
+    await expect(mod.service.verifyWardAccessToken(access)).resolves.toBeDefined();
+    return access;
+  }
+
+  it("uses the live one whichever order the browser sends them in", async () => {
+    grant("atrium", "admin");
+    const live = cookieValue(await login(), mod.cookie.ACCESS_COOKIE_NAME);
+    const liveSid = (await mod.service.verifyWardAccessToken(live)).sid;
+    const expected = {
+      active: true,
+      subject,
+      username: "Alice",
+      grants: { atrium: ["admin"] },
+    };
+
+    expect((await readSessionWith(["not-a-token", live])).json()).toEqual(expected);
+    expect((await readSessionWith([live, "not-a-token"])).json()).toEqual(expected);
+    expect((await readSessionWith([live])).json()).toEqual(expected);
+
+    // A well-signed token for a signed-out family first is not enough to win:
+    // "validates" means a live session, not a good signature.
+    const dead = await signedButRevoked();
+    expect((await mod.service.verifyWardAccessToken(dead)).sid).not.toBe(liveSid);
+    expect((await readSessionWith([dead, live])).json()).toEqual(expected);
+    expect((await readSessionWith([live, dead])).json()).toEqual(expected);
+  });
+
+  it("is inactive when neither copy is a live session", async () => {
+    const dead = await signedButRevoked();
+    expect((await readSessionWith([dead, "not-a-token"])).body).toBe(
+      JSON.stringify({ active: false }),
+    );
+  });
+});
+
 /**
- * The property that made splitting this route worthwhile rather than exempting
- * cookie-bearing requests on `/introspect`.
- *
- * The exemption would have been worthless because an attacker chooses their own
- * headers — moving a token from a body into a `Cookie:` header is a one-line
- * change to a `curl` command. What makes *this* route acceptable unkeyed is
- * narrower: the token can come from the cookie and from nowhere else, so the
- * route grants no capability that setting the cookie did not already grant.
+ * The token can come from the cookie and from nowhere else, so the route grants
+ * no capability that setting the cookie did not already grant.
  */
 describe("the token comes from the cookie and nowhere else", () => {
   it("ignores an access token offered in the query string", async () => {

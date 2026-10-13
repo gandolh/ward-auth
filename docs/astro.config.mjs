@@ -8,8 +8,6 @@ import starlight from '@astrojs/starlight'
  *   • Narrative  → authored here (the pages under src/content/docs/*.mdx).
  *   • Corpus     → synced by scripts/sync-corpus.mjs into src/content/docs/wiki/.
  *                  Never edit those by hand; edit corpus/ and rebuild.
- *   • Reference  → generated into public/reference/client/ by TypeDoc from
- *                  @ward/client's public barrel.
  *   • Diagrams   → compiled by scripts/build-diagrams.mjs (archify) from the
  *                  typed JSON IR in diagrams/, into public/diagrams/.
  *
@@ -38,7 +36,7 @@ export default defineConfig({
     starlight({
       title: 'Ward',
       description:
-        'One sign-in for every side project on the shared VPS — architecture, sessions and tokens, grants, the HTTP surface, and the contract every consuming app implements.',
+        'One sign-in for every side project on the shared VPS — architecture, sessions and tokens, grants, the HTTP surface, and Sign in with Ward over OpenID Connect.',
       tagline: 'One identity, one credential store, one set of access grants.',
       customCss: ['./src/styles/theme.css'],
       // Light only. Ward's own UI is a light "limestone" surface with a single
@@ -68,10 +66,7 @@ export default defineConfig({
           label: 'How it works',
           items: [
             { label: 'Sessions and tokens', link: '/sessions/' },
-            { label: 'Introspection and revocation', link: '/introspection/' },
             { label: 'Grants — the security boundary', link: '/grants/' },
-            { label: 'App keys', link: '/app-keys/' },
-            { label: 'Sign in with Ward (OIDC)', link: '/oidc/' },
           ],
         },
         {
@@ -80,16 +75,14 @@ export default defineConfig({
             { label: 'HTTP API', link: '/api/' },
             { label: 'Data model', link: '/data/' },
             { label: 'Configuration', link: '/configuration/' },
-            {
-              label: '@ward/client (TypeDoc) ↗',
-              link: '/reference/client/',
-              attrs: { target: '_blank' },
-            },
           ],
         },
         {
           label: 'Integrate an app',
-          items: [{ label: 'The integration contract', link: '/wiki/integrating/' }],
+          items: [
+            { label: 'Sign in with Ward (OIDC)', link: '/oidc/' },
+            { label: 'Integrating an app', link: '/wiki/integrating/' },
+          ],
         },
         {
           label: 'Deep dive — from the corpus',
@@ -101,7 +94,7 @@ export default defineConfig({
             { label: 'Decisions — accounts', link: '/wiki/decisions-accounts/' },
             { label: 'Decisions — tokens', link: '/wiki/decisions-tokens/' },
             { label: 'Decisions — admin', link: '/wiki/decisions-admin/' },
-            { label: 'Decisions — app keys', link: '/wiki/decisions-app-keys/' },
+            { label: 'Decisions — app keys (retired)', link: '/wiki/decisions-app-keys/' },
             { label: 'Decisions — implementation', link: '/wiki/decisions-implementation/' },
             { label: 'Landscape — roads not taken', link: '/wiki/landscape/' },
             { label: 'Open questions', link: '/wiki/open-questions/' },

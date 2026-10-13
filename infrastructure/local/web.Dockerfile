@@ -10,7 +10,6 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY api/package.json ./api/
 COPY ui/package.json ./ui/
-COPY client/package.json ./client/
 RUN npm ci -w @ward/ui --include-workspace-root
 COPY ui ./ui
 RUN npm run build -w @ward/ui

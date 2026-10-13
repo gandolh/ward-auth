@@ -29,7 +29,6 @@ import { consoleApi, type AppView, type GrantView } from "../../console-api.js";
 import { consoleHref } from "./nav.js";
 import { formatWhen, plural } from "./format.js";
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
-import { AppKeysPanel } from "./AppKeys.js";
 import { OidcClientPanel } from "./OidcClient.js";
 import { Alert, Confirm, Empty, Panel, TextField } from "./ui.js";
 
@@ -297,13 +296,6 @@ function AppBody({
           </div>
         )}
       </Panel>
-
-      {/*
-        Above "Remove this app", below the grants: an app's keys are ordinary
-        operational state, not a hazard, and burying them under the delete
-        panel would put the routine action after the irreversible one.
-      */}
-      <AppKeysPanel slug={app.slug} />
 
       {/*
         The app as an OpenID Connect client (brief 18). Keyed on `updatedAt` so

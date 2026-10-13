@@ -1,22 +1,19 @@
 ---
 title: Architecture
-description: The three workspaces, the process and storage model, and the trust boundaries — what Ward is made of and where each responsibility stops.
+description: The four workspaces, the process and storage model, and the trust boundaries — what Ward is made of and where each responsibility stops.
 ---
 
 import Diagram from '../../components/Diagram.astro'
 
-Ward is a three-workspace npm monorepo producing two deployed artifacts and one
-reference library.
+Ward is a four-workspace npm monorepo: three deployed artifacts and one library
+that each app copies into its own repo.
 
 | Workspace | Ships as | What it is |
 |---|---|---|
-| `api/` | a container behind Caddy at `/ward-api` | Fastify + `better-sqlite3`. The whole service. |
+| `api/` | a container behind Caddy at `/ward-api` | Fastify + `better-sqlite3`. The whole service, including the OpenID Connect provider. |
 | `ui/` | static files at `/ward` | Vite + React. The login page, self-service, and the console. |
-| `client/` | **nothing** | `@ward/client` — the tested reference implementation of the integration contract. |
+| `shared-library/` | a built bundle each app vendors into `vendor/ward/` | Local accounts, sessions and lockout for an app, plus "Sign in with Ward". See [below](#the-shared-library). |
 | `docs/` | static files at `/ward/docs` | This site. |
-
-That `client/` ships to nothing is deliberate, and is the most counter-intuitive
-fact about the estate. See [below](#the-client-that-ships-to-nothing).
 
 ## The process and storage model
 
@@ -36,8 +33,8 @@ fact about the estate. See [below](#the-client-that-ships-to-nothing).
 There is no cache, no queue, no second process, and no network hop inside the
 service. A request is a handful of prepared statements against a local file.
 
-That is a decision rather than an omission. The estate's entire load is six apps
-introspecting sessions for one household of users, and every piece of
+That is a decision rather than an omission. The estate's entire load is a
+handful of apps asking about sessions for one household of users, and every piece of
 infrastructure that would make Ward "scalable" would also make it a thing that
 can be down — while being the one service whose being down signs everybody out
 of everything.
@@ -64,53 +61,50 @@ without consulting any app, and any app can be restored without consulting
 Ward.** The only shared value is an opaque string that neither side derives from
 the other.
 
-## The four request shapes
+## The five request shapes
 
 1. **A browser signing in.** `POST /login` → password check → session row → two
-   cookies. See [Sessions and tokens](/sessions/).
-2. **An app checking a caller.** `POST /introspect`, carrying that app's own
-   service key, answered from the database with no caching on Ward's side. See
-   [Introspection and revocation](/introspection/).
-3. **A browser doing self-service.** `GET /account`, password change, revoke
-   other sessions — authenticated by the access cookie.
-4. **The superuser in the console.** Everything under `/console/*`, gated by a
+   cookies, both under `/ward-api`. See [Sessions and tokens](/sessions/).
+2. **An app signing someone in.** The OpenID Connect code flow under
+   `/oidc/*`, whose login step (`/refresh/oidc/:uid`) reads Ward's refresh
+   cookie, and the app's token request authenticated by a client assertion.
+   See [Sign in with Ward](/oidc/).
+3. **An app checking a session.** `POST /session-status`, at most every 30
+   seconds per Ward session, authenticated by the same client assertion and
+   answered from the database with no caching on Ward's side. `POST /notify`
+   takes the same credential.
+4. **A browser doing self-service.** `GET /account`, password change, revoke
+   other sessions — authenticated by the access cookie, which only Ward's own
+   pages receive.
+5. **The superuser in the console.** Everything under `/console/*`, gated by a
    *separate* cookie scoped to `/ward-api/console` and a separate credential.
    See [the admin decisions](/wiki/decisions-admin/).
 
 Anything else — `/health`, `/.well-known/jwks.json`, `GET /apps` — is a static
 answer with no session involved.
 
-## The client that ships to nothing
+## The shared library
 
-`client/` is a complete, tested Ward client with 43 tests. **No app depends on
-it.** All five consuming apps hand-write their own against
-[the integration contract](/wiki/integrating/).
+Every app signs people in through `shared-library/`: local accounts, opaque
+server-side sessions, lockout, and the client side of "Sign in with Ward" (the
+code flow, the ID token check, and the 30-second `/session-status` cache). It
+ships as a built bundle that each app copies into its own `vendor/ward/`, so no
+app installs anything from a registry and nothing is shared at runtime. Its
+README in the repo is the adoption guide an app follows.
 
-The reason is mechanical: the apps are separate checkouts that `vps-deploy`
-rsyncs and `npm ci`s independently, and every way of sharing one package across
-them — a registry, a committed tarball, a git dependency — costs more in build
-machinery and deploy credentials than the ~200 lines it saves.
-
-The cost is real and was accepted with eyes open: **security code, written five
-times.** Two things contain it. [The integration contract](/wiki/integrating/)
-is what all five are written against, and `client/` stays as the reference
-implementation so "what should this do" has exactly one answer. A change to any
-of the five behaviours goes to the contract first, then to `client/`, then to
-all five apps.
-
-:::caution[The estate's largest standing risk]
-Five hand-written copies of security-critical code will drift. Nothing
-mechanical prevents it today — no shared suite runs against all five, and no CI
-checks an app's client against the contract. If one thing in this architecture
-deserves revisiting, it is this.
-:::
+That replaced the earlier arrangement, in which each app hand-wrote its own
+client against a shared cookie, `/introspect` and an app key, with a reference
+package (`client/`) that nothing installed. Five hand-written copies of
+security code were the estate's largest standing risk; one vendored bundle,
+upgraded by copying a newer build over the old one, is the answer to it. The
+old contract was retired on 2026-10-13 (brief 30).
 
 ## What is deliberately absent
 
 | Not present | Because |
 |---|---|
-| A JWT denylist | Introspection already answers "is this live?". A denylist would be a second, redundant revocation path — see [decisions-tokens](/wiki/decisions-tokens/). |
+| A JWT denylist | `/session-status` already answers "is this live?" for apps, and Ward's own pages check the session row. A denylist would be a second, redundant revocation path — see [decisions-tokens](/wiki/decisions-tokens/). |
 | Knex, or any query builder | Raw `better-sqlite3` with prepared statements — see [decisions-implementation](/wiki/decisions-implementation/). |
 | argon2id | scrypt, from Node's standard library, so there is no native build in the deploy path. |
-| A shared npm package | See above. |
-| Subdomains, CORS, OIDC | One origin makes all three unnecessary — see [The one-origin estate](/topology/). |
+| A published npm package | The shared library is vendored as a built bundle instead — see above. |
+| Subdomains, CORS | One origin makes both unnecessary — see [The one-origin estate](/topology/). |

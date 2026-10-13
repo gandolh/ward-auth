@@ -5,6 +5,11 @@ updated: 2026-09-01
 
 # Overview
 
+> **⚠ Revised 2026-10-13.** Apps are getting their own accounts back, with Ward
+> as an OIDC provider behind a "Sign in with Ward" button. See
+> [decisions-oidc.md](./decisions-oidc.md). Below is the shape in production
+> today; brief 27 rewrites this page.
+
 **Ward is the one place a person signs in to any of the side projects on the
 shared VPS.** Today atrium and newspapper each own a full, separately-designed
 auth stack, and four more apps have grown their own. Ward replaces all of them

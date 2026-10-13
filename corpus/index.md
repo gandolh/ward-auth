@@ -14,12 +14,12 @@ The project's knowledge and work, as an LLM-maintained wiki. Start here.
 the summaries below — that is what they are for. Needing a fourth page is a
 signal a page must split, not a licence to keep reading.
 
-> **The design is settled and the build has started.** Twenty design decisions
-> across four `decisions*.md` pages plus the engineering calls in
-> [wiki/decisions-implementation.md](wiki/decisions-implementation.md), nothing
-> open, and sixteen briefs in nine waves ([wiki/status.md](wiki/status.md)) of
-> which **wave 1 has landed**. Read the decisions before proposing anything —
-> most obvious alternatives were considered and rejected there, with reasons.
+> **Ward is deployed, and a redesign is queued.** On 2026-10-13 the owner moved
+> the estate to local accounts in every app plus "Sign in with Ward" over
+> OpenID Connect ([wiki/decisions-oidc.md](wiki/decisions-oidc.md)). Briefs
+> 18–27 are written in four waves ([wiki/status.md](wiki/status.md)), none
+> started. Read the decisions before proposing anything: most obvious
+> alternatives were considered and rejected there, with reasons.
 
 New here? [wiki/overview.md](wiki/overview.md) for the settled shape in a
 paragraph, then [wiki/estate.md](wiki/estate.md) for what it has to absorb.

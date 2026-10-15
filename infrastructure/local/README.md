@@ -60,6 +60,7 @@ The apps' dev servers no longer forward `/ward` here.
 | prm | http://localhost:5173/prm/ | `public-resource-map/.env` |
 | sports-app | http://localhost:5173/sports-app/ | `sports-app/.env` |
 | satchel | http://localhost:5175/satchel/ | `satchel/.env` |
+| shelfmark | http://localhost:5176/shelfmark/ | `shelfmark/.env` |
 
 Each app's own `.env.example` has the other dev values that layout needs (the
 base path and API URL).

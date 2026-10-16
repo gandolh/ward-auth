@@ -34,7 +34,7 @@ Run everything below from this directory, `infrastructure/local/`.
    node seed.mjs
    ```
 
-   This registers the five apps that use Ward, creates an owner account with
+   This registers the seven apps that use Ward, creates an owner account with
    `admin` on each, and registers each app as an OpenID Connect client (see
    "Sign in with Ward" below). It writes each app's `WARD_OIDC_*` values into
    that app's local env file (table below), and nothing else. (It used to
@@ -61,6 +61,7 @@ The apps' dev servers no longer forward `/ward` here.
 | sports-app | http://localhost:5173/sports-app/ | `sports-app/.env` |
 | satchel | http://localhost:5175/satchel/ | `satchel/.env` |
 | shelfmark | http://localhost:5176/shelfmark/ | `shelfmark/.env` |
+| almanac | http://localhost:5177/almanac/ | `almanac/.env` |
 
 Each app's own `.env.example` has the other dev values that layout needs (the
 base path and API URL).

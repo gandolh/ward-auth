@@ -73,6 +73,7 @@ const APPS = [
   { slug: "sports-app", name: "Sports", repo: "sports-app", envFiles: [".env"], dev: "http://localhost:5173/sports-app/", api: "/api" },
   { slug: "satchel", name: "Satchel", repo: "satchel", envFiles: [".env"], dev: "http://localhost:5175/satchel/", api: "/satchel-api" },
   { slug: "shelfmark", name: "Shelfmark", repo: "shelfmark", envFiles: [".env"], dev: "http://localhost:5176/shelfmark/", api: "/shelfmark-api" },
+  { slug: "almanac", name: "Almanac", repo: "almanac", envFiles: [".env"], dev: "http://localhost:5177/almanac/", api: "/almanac-api" },
 ];
 
 async function main() {

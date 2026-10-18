@@ -48,6 +48,10 @@ client assertion ([integrating.md](./integrating.md)). imbatranimOS stays
 out. The subdomain move is a todo
 ([../todos/ward-on-a-subdomain.md](../todos/ward-on-a-subdomain.md)).
 
+**Open (filed 2026-10-18):** [brief 31](../briefs/todo/31-docs-site-on-docusaurus.md)
+moves the docs site from Starlight to Docusaurus. That also closes the todo
+about `.mdx` links missing the base path.
+
 ## History
 
 - **2026-09-01 → 09-04, waves 1–6:** the service. API, `@ward/client`, one

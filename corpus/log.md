@@ -388,3 +388,7 @@ The local seed no longer mints app keys or writes `WARD_APP_KEY`, `WARD_PUBLIC_O
 
 The owner's first `node cli.ts ward all` failed: vps-deploy's Ward stack still listed `client/package.json` in its upload, and rsync exits 23 on a missing source. Fixed in vps-deploy (`60ac6ef`) after building the image from exactly the uploaded files; the owner's re-run went through. The stale `client/package.json` left in `/srv/ward-api` is unread. Nothing is open.
 
+
+## [2026-10-18] todo | Brief 31 filed: the docs site moves from Starlight to Docusaurus
+
+The owner's call (2026-10-18), one brief in every repo with a docs site. [31](briefs/todo/31-docs-site-on-docusaurus.md) keeps the URLs and the light-only look. Docusaurus adds the base to root-absolute `.mdx` links and the new sync discovers `decisions-oidc` and `decisions-oidc-build`, which closes the todo about base-less links (marked promoted). The deploy waits on vps-deploy brief 11.

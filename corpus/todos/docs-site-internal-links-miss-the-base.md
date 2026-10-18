@@ -1,5 +1,8 @@
 # Docs site: internal links in .mdx pages miss the deploy base
 
+**Promoted 2026-10-18** into [brief 31](../briefs/todo/31-docs-site-on-docusaurus.md):
+moving the site to Docusaurus fixes both halves. Delete this todo when 31 lands.
+
 Captured 2026-10-13 during brief 30's docs pass; it predates that brief.
 
 Links written in the authored `.mdx` pages as root-absolute paths (for example `/oidc/`) build to

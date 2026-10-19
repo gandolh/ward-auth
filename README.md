@@ -65,8 +65,8 @@ sequenceDiagram
 ```
 
 Rotation, the stolen-cookie alarm and the two-tab race that is not theft are on the docs site's
-[Sessions and tokens](docs/src/content/docs/sessions.mdx) page. The full picture is
-[Architecture](docs/src/content/docs/architecture.mdx).
+[Sessions and tokens](docs/docs/sessions.mdx) page. The full picture is
+[Architecture](docs/docs/architecture.mdx).
 
 ## Run it locally
 
@@ -92,7 +92,7 @@ listed in [.env.example](.env.example).
 | `api/`            | The Fastify API: the OIDC provider, sign-in, sessions, grants, mail, the console, migrations |
 | `ui/`             | The React UI served at `/ward`: login, register, verify, account and the console             |
 | `shared-library/` | The auth library apps vendor: local accounts and "Sign in with Ward"                         |
-| `docs/`           | The docs site at `/ward/docs` (Starlight), plus the images in this README                    |
+| `docs/`           | The docs site at `/ward/docs` (Docusaurus), plus the images in this README                   |
 | `infrastructure/` | The container image and compose file; `local/` runs Ward in Docker                           |
 | `corpus/`         | The project wiki: decisions, status and the briefs that built Ward                           |
 

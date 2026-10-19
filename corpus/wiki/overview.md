@@ -47,7 +47,7 @@ built, unminified library in `shared-library/`. Each app copies it into
   Ward" panel per app for its redirect URIs and public key.
 - `shared-library/`: the library, at 0.3.1, vendored into atrium, newspapper,
   prm, sports-app and satchel.
-- `docs/`: the Starlight site at `/ward/docs`, and `docs/cutover-oidc.md`, the
+- `docs/`: the Docusaurus site at `/ward/docs`, and `docs/cutover-oidc.md`, the
   owner's runbook for taking the redesign to production (brief 27).
 
 The deploy lives in vps-deploy (`stacks/ward.ts` and each app's stack).

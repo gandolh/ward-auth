@@ -6,35 +6,37 @@ runbook. The site build ignores this file, `images/` and `cutover-oidc.md`.
 
 | Path | What it is |
 | --- | --- |
-| [src/content/docs/](src/content/docs/) | The site's hand-written pages, listed below |
-| [diagrams/](diagrams/) | archify JSON sources for the site's three diagrams, compiled into `public/diagrams/` |
+| [docs/](docs/) | The site's hand-written pages, listed below |
+| [diagrams/](diagrams/) | archify JSON sources for the site's three diagrams, compiled into `static/diagrams/` |
 | [scripts/](scripts/) | `sync-corpus.mjs` copies the corpus wiki into the site; `build-diagrams.mjs` compiles the diagrams |
 | [images/](images/shots.md) | Screenshots used in the main README, and how each was made |
 | [cutover-oidc.md](cutover-oidc.md) | The owner's runbook for moving production to local accounts and "Sign in with Ward" (brief 27; done 2026-10-13) |
 
-The rest (`astro.config.mjs`, `src/components/`, `src/styles/`, `public/`) is the
-Starlight site's own setup and build output.
+The rest (`docusaurus.config.ts`, `sidebars.ts`, `src/components/`, `src/css/`, `static/`) is the
+Docusaurus site's own setup and build output.
 
 ## Pages on the site
 
 | Page | Live path | Source |
 | --- | --- | --- |
-| What Ward is | `/ward/docs/` | [index.mdx](src/content/docs/index.mdx) |
-| Architecture | `/ward/docs/architecture/` | [architecture.mdx](src/content/docs/architecture.mdx) |
-| The one-origin estate | `/ward/docs/topology/` | [topology.mdx](src/content/docs/topology.mdx) |
-| Sessions and tokens | `/ward/docs/sessions/` | [sessions.mdx](src/content/docs/sessions.mdx) |
-| Grants | `/ward/docs/grants/` | [grants.mdx](src/content/docs/grants.mdx) |
-| Sign in with Ward (OIDC) | `/ward/docs/oidc/` | [oidc.mdx](src/content/docs/oidc.mdx) |
-| HTTP API | `/ward/docs/api/` | [api.mdx](src/content/docs/api.mdx) |
-| Data model | `/ward/docs/data/` | [data.mdx](src/content/docs/data.mdx) |
-| Configuration | `/ward/docs/configuration/` | [configuration.mdx](src/content/docs/configuration.mdx) |
+| What Ward is | `/ward/docs/` | [index.mdx](docs/index.mdx) |
+| Architecture | `/ward/docs/architecture/` | [architecture.mdx](docs/architecture.mdx) |
+| The one-origin estate | `/ward/docs/topology/` | [topology.mdx](docs/topology.mdx) |
+| Sessions and tokens | `/ward/docs/sessions/` | [sessions.mdx](docs/sessions.mdx) |
+| Grants | `/ward/docs/grants/` | [grants.mdx](docs/grants.mdx) |
+| Sign in with Ward (OIDC) | `/ward/docs/oidc/` | [oidc.mdx](docs/oidc.mdx) |
+| HTTP API | `/ward/docs/api/` | [api.mdx](docs/api.mdx) |
+| Data model | `/ward/docs/data/` | [data.mdx](docs/data.mdx) |
+| Configuration | `/ward/docs/configuration/` | [configuration.mdx](docs/configuration.mdx) |
 
 The site's "Deep dive" and "Status" sections are copies of `corpus/wiki/` and `corpus/log.md`,
-made on every build into `src/content/docs/wiki/` (gitignored). Edit the corpus, not the copies.
+made on every build into `docs/wiki/` (gitignored). Edit the corpus, not the copies.
 
-`npm run docs` in this folder runs the whole build into `dist/`, and `npm run dev` serves a local
-preview. The diagram step regenerates `public/diagrams/` only where the archify skill is installed;
-elsewhere it checks that the committed HTML is complete.
+`npm run docs` in this folder runs the whole build into `dist/`, and `npm run start` serves a local
+preview with live reload. To check a build the way it is deployed, serve `dist/` under `/ward/docs/`
+with any static file server; `docusaurus serve` mishandles the trailing-slash URLs. The diagram step
+regenerates `static/diagrams/` only where the archify skill is installed; elsewhere it checks that
+the committed HTML is complete.
 
 Running Ward itself on your machine: [infrastructure/local/README.md](../infrastructure/local/README.md).
 
@@ -50,7 +52,7 @@ wants:
 - [landscape.md](../corpus/wiki/landscape.md): the options considered, from forward-auth gateways
   and OIDC providers to an owned service
 - [integrating.md](../corpus/wiki/integrating.md): where an app that signs in through Ward starts;
-  the contract itself is the site's [oidc.mdx](src/content/docs/oidc.mdx) page and the shared
+  the contract itself is the site's [oidc.mdx](docs/oidc.mdx) page and the shared
   library's adoption guide, [shared-library/README.md](../shared-library/README.md)
 
 `bash corpus/lint.sh` must exit clean before you commit corpus changes.

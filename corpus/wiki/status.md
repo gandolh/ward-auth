@@ -1,11 +1,11 @@
 ---
-summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Nothing is open.
-updated: 2026-10-13
+summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed.
+updated: 2026-10-19
 ---
 
 # Status
 
-_2026-10-13._
+_2026-10-19._
 
 ## Where things stand
 
@@ -48,9 +48,12 @@ client assertion ([integrating.md](./integrating.md)). imbatranimOS stays
 out. The subdomain move is a todo
 ([../todos/ward-on-a-subdomain.md](../todos/ward-on-a-subdomain.md)).
 
-**Open (filed 2026-10-18):** [brief 31](../briefs/todo/31-docs-site-on-docusaurus.md)
-moves the docs site from Starlight to Docusaurus. That also closes the todo
-about `.mdx` links missing the base path.
+**Built 2026-10-19, not deployed:** [brief 31](../briefs/done/31-docs-site-on-docusaurus.md)
+moved the docs site from Starlight to Docusaurus, with the same URLs and look.
+The authored pages' root-absolute links now carry the `/ward/docs/` base, and
+every wiki page is published, `decisions-oidc` and `decisions-oidc-build`
+included. The owner deploys it once vps-deploy brief 11 has flipped the Ward
+docs stack's asset check to `assets`.
 
 ## History
 
@@ -68,6 +71,7 @@ about `.mdx` links missing the base path.
   it.
 - **2026-10-13:** the OIDC redesign, briefs 18–29 (above); the owner's
   cutover; brief 30 retired the shared-cookie contract.
+- **2026-10-19:** brief 31, the docs site on Docusaurus (built, not deployed).
 
 | Thread | State |
 |---|---|
@@ -98,9 +102,10 @@ about `.mdx` links missing the base path.
 
 ## The next move
 
-Nothing is queued. Ward was redeployed with brief 30 on 2026-10-13, after
-vps-deploy's Ward stack stopped uploading the deleted reference client's manifest
-(the first attempt failed on it). Open ideas are in [../todos/](../todos/).
+The docs site deploy, once vps-deploy brief 11 lands (owner). Ward itself was
+redeployed with brief 30 on 2026-10-13, after vps-deploy's Ward stack stopped
+uploading the deleted reference client's manifest (the first attempt failed on
+it). Open ideas are in [../todos/](../todos/).
 
 ## The old waves
 
@@ -138,10 +143,11 @@ also the single largest source of remaining work.
 ## Known gaps in this corpus
 
 - ~~No `architecture.md`, `api.md` or `data.md`.~~ **Closed 2026-09-06** — not in
-  the corpus but in `docs/`, a Starlight site at `/ward/docs`. Architecture, the
-  HTTP surface, the data model, configuration and app keys are authored there
-  against the code; this corpus is *rendered* into the same site rather than
-  duplicated, and `.env.example` stays the canonical variable list.
+  the corpus but in `docs/`, a docs site at `/ward/docs` (Docusaurus since
+  2026-10-19). Architecture, the HTTP surface, the data model, configuration
+  and app keys are authored there against the code; this corpus is *rendered*
+  into the same site rather than duplicated, and `.env.example` stays the
+  canonical variable list.
 - The research in [landscape.md](./landscape.md) is a survey of published
   comparisons, not hands-on evaluation. Nothing has been installed or measured.
   It documents a road not taken and should not be re-opened casually.

@@ -1,12 +1,12 @@
-# Astro's own cache and build output.
-.astro/
+# Docusaurus's own cache and build output.
+.docusaurus/
 dist/
 
 # GENERATED on every docs build — do not commit, do not edit.
 #   scripts/sync-corpus.mjs  renders corpus/ into here
-src/content/docs/wiki/
+docs/wiki/
 
-# NOTE: public/diagrams/ is deliberately NOT ignored. archify is an agent skill
+# NOTE: static/diagrams/ is deliberately NOT ignored. archify is an agent skill
 # installed per-machine, not an npm dependency, so the rendered artifacts are
 # committed and scripts/build-diagrams.mjs regenerates them only where the skill
 # is present. The JSON IR in diagrams/ is the source; the HTML is the build

@@ -1,17 +1,18 @@
 ---
 title: Ward
 description: One identity, one credential store and one set of access grants for every side project on the shared VPS.
-tableOfContents: false
+slug: /
+hide_table_of_contents: true
 ---
 
-import Diagram from '../../components/Diagram.astro'
+import Diagram from '@site/src/components/Diagram'
 
 Ward is the estate's identity service. It replaces six separately-designed auth
 stacks with **one identity, one credential store, and one set of access
 grants** — a Fastify + SQLite service at `/ward-api`, and the one login page in
 the estate at `/ward`.
 
-<dl class="ward-facts">
+<dl className="ward-facts">
   <dt>Runs at</dt>
   <dd><code>/ward</code> (UI) and <code>/ward-api</code> (API) on the production site, one origin, no subdomains</dd>
   <dt>Owns</dt>

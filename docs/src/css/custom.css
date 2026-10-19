@@ -19,12 +19,21 @@
  *     a safety property, not a style. Borrowing it for documentation would spend
  *     that signal on prose, so no page here uses it.
  *
- * Light-only: see src/components/ThemeProvider.astro.
+ * Light-only: `themeConfig.colorMode` in docusaurus.config.ts disables the
+ * switch. The token block also covers [data-theme='dark'], so a crafted
+ * `?docusaurus-data-theme=dark` cannot repaint the site.
+ *
+ * Ported from the Starlight theme (src/styles/theme.css) on 2026-10-19: the
+ * --sl-* palette became Infima's --ifm-* tokens, and the selectors moved
+ * (.sl-markdown-content → .markdown, .site-title → .navbar__title, Expressive
+ * Code → .theme-code-block, Starlight asides → .alert--*).
  */
 
 :root,
 :root[data-theme='light'],
 :root[data-theme='dark'] {
+  color-scheme: light only;
+
   /* --- Ward's own tokens, verbatim ------------------------------------- */
   --ward-bg: #f2f1ec;
   --ward-surface: #fdfdfc;
@@ -54,125 +63,194 @@
   --ward-shadow: 0 1px 2px rgb(26 28 26 / 6%), 0 1px 1px rgb(26 28 26 / 4%);
   --ward-focus: 0 0 0 3px rgb(53 71 60 / 30%);
 
-  /* --- Starlight's palette, re-pointed at them -------------------------- */
-  /* Starlight expects a 6-step accent ramp and a 6-step grey ramp. The accent
-     is one lichen green pushed light and dark from #35473c; the greys are the
-     limestone surfaces, so a Starlight component that reaches for --sl-color-gray-6
-     lands on the same paper the login page uses. */
-  --sl-color-accent-low: #dfe4e0;
-  --sl-color-accent: #35473c;
-  --sl-color-accent-high: #24312a;
+  /* --- Infima's palette, re-pointed at them ----------------------------- */
+  /* The accent ramp is the one lichen green, #35473c, darkened and lightened
+     by 10/15/30% lightness (Docusaurus's own ramp rule). */
+  --ifm-color-primary: #35473c;
+  --ifm-color-primary-dark: #304036;
+  --ifm-color-primary-darker: #2d3c33;
+  --ifm-color-primary-darkest: #25322a;
+  --ifm-color-primary-light: #3a4e42;
+  --ifm-color-primary-lighter: #3d5245;
+  --ifm-color-primary-lightest: #455c4e;
 
-  --sl-color-white: #ffffff;
-  --sl-color-black: #1a1c1a;
-  --sl-color-gray-1: #2c2f2c;
-  --sl-color-gray-2: #4d514b;
-  --sl-color-gray-3: #66695f;
-  --sl-color-gray-4: #a9a69b;
-  --sl-color-gray-5: #d6d4cc;
-  --sl-color-gray-6: #e7e6e0;
-  --sl-color-gray-7: #f2f1ec;
+  /* The grey ramp is the limestone surfaces, so an Infima component that
+     reaches for an emphasis grey lands on the same paper the login page uses. */
+  --ifm-color-emphasis-0: var(--ward-surface);
+  --ifm-color-emphasis-100: #f2f1ec;
+  --ifm-color-emphasis-200: #e7e6e0;
+  --ifm-color-emphasis-300: #d6d4cc;
+  --ifm-color-emphasis-400: #a9a69b;
+  --ifm-color-emphasis-500: #66695f;
+  --ifm-color-emphasis-600: #66695f;
+  --ifm-color-emphasis-700: #4d514b;
+  --ifm-color-emphasis-800: #2c2f2c;
+  --ifm-color-emphasis-900: #1a1c1a;
+  --ifm-color-emphasis-1000: #1a1c1a;
 
-  --sl-color-text: var(--ward-text);
-  --sl-color-text-accent: var(--ward-accent);
-  --sl-color-text-invert: var(--ward-accent-text);
-  --sl-color-bg: var(--ward-bg);
-  --sl-color-bg-nav: var(--ward-bg);
-  --sl-color-bg-sidebar: var(--ward-bg);
-  --sl-color-bg-inline-code: var(--ward-surface-sunken);
-  --sl-color-bg-accent: var(--ward-accent);
-  --sl-color-hairline: var(--ward-border);
-  --sl-color-hairline-light: var(--ward-border);
-  --sl-color-hairline-shade: var(--ward-border);
+  --ifm-background-color: var(--ward-bg);
+  --ifm-background-surface-color: var(--ward-bg);
+  --ifm-navbar-background-color: var(--ward-bg);
+  --ifm-navbar-shadow: none;
+  --ifm-font-color-base: var(--ward-text);
+  --ifm-font-color-secondary: var(--ward-text-muted);
+  --ifm-heading-color: var(--ward-text);
+  --ifm-link-color: var(--ward-accent);
+  --ifm-link-hover-color: var(--ward-accent-hover);
+  --ifm-menu-color: var(--ward-text-muted);
+  --ifm-menu-color-active: var(--ward-accent-text);
+  --ifm-menu-color-background-active: var(--ward-accent);
+  --ifm-toc-border-color: var(--ward-border);
+  --ifm-hr-background-color: var(--ward-border);
+  --ifm-code-background: var(--ward-surface-sunken);
+  --ifm-code-font-size: 90%;
+  --ifm-global-radius: var(--ward-radius);
+  --ifm-global-shadow-lw: var(--ward-shadow);
+  --docusaurus-highlighted-code-line-bg: rgb(53 71 60 / 10%);
 
-  --sl-font: var(--ward-font);
-  --sl-font-mono: var(--ward-font-mono);
+  --ifm-font-family-base: var(--ward-font);
+  --ifm-font-family-monospace: var(--ward-font-mono);
 
-  /* Starlight's asides, mapped onto Ward's two state colours. `danger` in
-     Ward's system is for destructive confirmations, not for ordinary errors,
-     and that distinction is preserved: `caution` gets the notice ochre. */
-  --sl-color-green: var(--ward-accent);
-  --sl-color-green-low: var(--ward-surface-sunken);
-  --sl-color-green-high: var(--ward-accent-hover);
-  --sl-color-orange: var(--ward-notice);
-  --sl-color-orange-low: var(--ward-notice-surface);
-  --sl-color-orange-high: #3f3409;
-  --sl-color-red: var(--ward-danger);
-  --sl-color-red-low: var(--ward-danger-surface);
-  --sl-color-red-high: #5e1f16;
-  --sl-color-blue: var(--ward-text-muted);
-  --sl-color-blue-low: var(--ward-surface-sunken);
-  --sl-color-blue-high: var(--ward-text);
-  --sl-color-purple: var(--ward-accent);
-  --sl-color-purple-low: var(--ward-surface-sunken);
-  --sl-color-purple-high: var(--ward-accent-hover);
+  /* Tables are ruled below rather than boxed and striped. */
+  --ifm-table-border-width: 0;
+  --ifm-table-stripe-background: transparent;
+  --ifm-table-cell-padding: 0.5rem 0.75rem 0.5rem 0;
 }
 
 /* The site title, set in the same type as everything else — Ward has no
    wordmark and inventing one for the docs would be inventing a brand the
    service deliberately does not have. */
-.site-title {
+.navbar__title {
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+/* Starlight drew a hairline under the header; the shadow it replaces is off. */
+.navbar {
+  border-bottom: 1px solid var(--ward-border);
+}
+
+/* "You are here". Not .menu__link--active: Infima puts that on the parent
+   category of the current page as well. */
+.menu__link--active:not([aria-current='page']) {
+  background: none;
+  color: var(--ifm-menu-color);
+}
+
+.menu__link[aria-current='page'] {
+  font-weight: 600;
+}
+
+/* Prose links are underlined, as they were on the Starlight site. Only prose:
+   --ifm-link-decoration would underline the sidebar, the TOC and the navbar. */
+.markdown a:not(.hash-link) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+/* --- Admonitions, mapped onto Ward's two state colours ------------------- */
+/* `danger` in Ward's system is for destructive confirmations, not for ordinary
+   errors, and that distinction is preserved: `caution` gets the notice ochre. */
+.alert--secondary,
+.alert--info {
+  --ifm-alert-background-color: var(--ward-surface-sunken);
+  --ifm-alert-background-color-highlight: rgb(26 28 26 / 6%);
+  --ifm-alert-border-color: var(--ward-text-muted);
+  --ifm-alert-foreground-color: var(--ward-text);
+}
+
+.alert--success {
+  --ifm-alert-background-color: var(--ward-surface-sunken);
+  --ifm-alert-background-color-highlight: rgb(53 71 60 / 10%);
+  --ifm-alert-border-color: var(--ward-accent);
+  --ifm-alert-foreground-color: var(--ward-accent-hover);
+}
+
+.alert--warning {
+  --ifm-alert-background-color: var(--ward-notice-surface);
+  --ifm-alert-background-color-highlight: rgb(94 76 14 / 10%);
+  --ifm-alert-border-color: var(--ward-notice);
+  --ifm-alert-foreground-color: #3f3409;
+}
+
+.alert--danger {
+  --ifm-alert-background-color: var(--ward-danger-surface);
+  --ifm-alert-background-color-highlight: rgb(138 46 33 / 10%);
+  --ifm-alert-border-color: var(--ward-danger);
+  --ifm-alert-foreground-color: #5e1f16;
+}
+
+.theme-admonition {
+  box-shadow: none;
 }
 
 /* --- Structure is drawn with rules --------------------------------------- */
 /* The app's tokens.css calls this "the jamb": a threshold has an edge you
    cross, and a rounded panel floating in the viewport is a lobby. Headings get
    a rule above rather than a card around. */
-.sl-markdown-content h2 {
+.markdown h2 {
   padding-top: 1.5rem;
   border-top: 2px solid var(--ward-border-strong);
   letter-spacing: -0.015em;
 }
 
-.sl-markdown-content h3 {
+.markdown h3 {
   letter-spacing: -0.01em;
 }
 
 /* Tables: ruled, not boxed. Ward's HTTP surface and data model are both mostly
    tables, so this is the single highest-traffic piece of styling on the site. */
-.sl-markdown-content table {
+.markdown table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9375rem;
 }
 
-.sl-markdown-content th {
+.markdown thead tr {
+  border-bottom: none;
+}
+
+.markdown thead,
+.markdown tr {
+  background: none;
+  border-top: none;
+}
+
+.markdown th {
   text-align: left;
   font-weight: 600;
   border-bottom: 2px solid var(--ward-border-strong);
-  padding: 0.5rem 0.75rem 0.5rem 0;
 }
 
-.sl-markdown-content td {
+.markdown td {
   border-bottom: 1px solid var(--ward-border);
-  padding: 0.5rem 0.75rem 0.5rem 0;
   vertical-align: top;
 }
 
-.sl-markdown-content tr:last-child td {
+.markdown tr:last-child td {
   border-bottom: none;
 }
 
 /* Code: the sunken limestone, so a fenced block reads as recessed into the page
    rather than as a floating card. */
-.sl-markdown-content :not(pre) > code {
+.markdown :not(pre) > code {
   border: 1px solid var(--ward-border);
   border-radius: 3px;
   padding: 0.1em 0.3em;
   font-size: 0.9em;
+  font-variant-ligatures: none;
 }
 
-.expressive-code .frame pre,
-.sl-markdown-content pre {
+.theme-code-block {
   border: 1px solid var(--ward-border);
   border-radius: var(--ward-radius);
+  box-shadow: none;
 }
 
 /* --- Diagram frames ------------------------------------------------------ */
 /* An archify artifact is a self-contained interactive HTML document, so it is
-   embedded in an iframe (see src/components/Diagram.astro). The frame is ruled
+   embedded in an iframe (see src/components/Diagram.tsx). The frame is ruled
    like everything else and carries its caption below the rule, not floating. */
 .doc-diagram {
   margin: 1.75rem 0;

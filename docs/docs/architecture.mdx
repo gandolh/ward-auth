@@ -3,7 +3,7 @@ title: Architecture
 description: The four workspaces, the process and storage model, and the trust boundaries — what Ward is made of and where each responsibility stops.
 ---
 
-import Diagram from '../../components/Diagram.astro'
+import Diagram from '@site/src/components/Diagram'
 
 Ward is a four-workspace npm monorepo: three deployed artifacts and one library
 that each app copies into its own repo.
@@ -17,7 +17,7 @@ that each app copies into its own repo.
 
 ## The process and storage model
 
-<dl class="ward-facts">
+<dl className="ward-facts">
   <dt>Process</dt>
   <dd>One Fastify instance, bound to <code>127.0.0.1:8791</code> — by configuration, not by firewall rule</dd>
   <dt>Database</dt>

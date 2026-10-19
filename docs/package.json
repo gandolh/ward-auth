@@ -2,19 +2,48 @@
   "name": "@ward/docs-site",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "Ward documentation site — authored pages, the corpus wiki rendered from corpus/, diagrams compiled by archify.",
   "scripts": {
     "sync-corpus": "node scripts/sync-corpus.mjs",
     "diagrams": "node scripts/build-diagrams.mjs",
-    "predev": "npm run sync-corpus && npm run diagrams",
-    "dev": "astro dev",
-    "docs": "npm run sync-corpus && npm run diagrams && astro build",
-    "preview": "astro preview"
+    "prestart": "npm run sync-corpus && npm run diagrams",
+    "start": "docusaurus start",
+    "dev": "npm run start",
+    "docs": "npm run sync-corpus && npm run diagrams && docusaurus build --out-dir dist",
+    "typecheck": "tsc",
+    "clear": "docusaurus clear"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/faster": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "0.55.3",
+    "@mdx-js/react": "3.1.1",
+    "clsx": "2.1.1",
+    "prism-react-renderer": "2.4.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@astrojs/starlight": "^0.41.3",
-    "astro": "^7.1.1",
-    "sharp": "^0.35.4"
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "@docusaurus/tsconfig": "3.10.2",
+    "@docusaurus/types": "3.10.2",
+    "@types/react": "19.2.18",
+    "typescript": "6.0.3"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

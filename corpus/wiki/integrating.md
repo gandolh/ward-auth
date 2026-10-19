@@ -13,7 +13,7 @@ hooks. Two documents carry the contract:
   guide: vendoring, wiring `wardAuth`, the hooks, migrating existing users,
   error codes, mail through `notifyUser`, and the gotchas the five adopters hit.
 - The docs site's OIDC page
-  ([docs/src/content/docs/oidc.mdx](../../docs/src/content/docs/oidc.mdx),
+  ([docs/docs/oidc.mdx](../../docs/docs/oidc.mdx),
   served at `/oidc/` on the docs site): the issuer and its URLs, client
   registration and `private_key_jwt`, the ID token's claims, logout,
   `POST /session-status`, `POST /notify` and the environment variables.

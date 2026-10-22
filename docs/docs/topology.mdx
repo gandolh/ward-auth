@@ -1,12 +1,15 @@
 ---
 title: The one-origin estate
-description: Every project is a sub-path on one hostname. That single fact removes all isolation between apps, shaped Ward's first design, and still decides where every cookie lives.
+description: Most projects are a sub-path on one hostname. That fact removes all isolation between them, shaped Ward's first design, and is why Ward moved to a host of its own on 2026-10-22.
 ---
 
-Every deployed project in the estate is a **sub-path on one origin**:
+Almost every deployed project in the estate is a **sub-path on one origin**:
 `/<name>` on the production origin, served by a single Caddy instance from a generated
-`Caddyfile` in the `vps-deploy` repo. There are no subdomains. `www` and the
-bare IP both redirect to the apex, so there is exactly one canonical origin.
+`Caddyfile` in the `vps-deploy` repo. `www` and the bare IP both redirect to
+the apex. The exceptions hold what the rest must not reach: since 2026-10-22
+Ward is at `ward.<domain>` (its UI at the root, its API at `/ward-api`), next
+to the imbatranimOS desktop, Postern's webmail and Satchel's messenger, each on
+a host of its own. Ward's docs stay at `/ward/docs` on the apex.
 
 This is the most load-bearing fact about Ward. It is not a preference — it is
 the estate as it already exists — and it rules several designs in and several
@@ -19,8 +22,8 @@ app with no redirect dance, no CORS and no token relay, and each app asked Ward
 about it through `/introspect` with an app key. That contract was retired on
 2026-10-13 (brief 30). Apps now keep their own sessions and sign people in
 through OpenID Connect ([Sign in with Ward](/oidc/)), and Ward's cookies stay
-under `/ward-api`. A code flow does not need one origin, so an app could move to
-another host without changing how it talks to Ward.
+under `/ward-api`. A code flow does not need one origin, which is what let Ward
+itself move to another host by changing the issuer each app is configured with.
 
 ## What it costs
 
@@ -29,12 +32,12 @@ any app's frontend JavaScript can call any other app's API with the user's
 credentials attached, and an XSS in the most trivial static site in the estate
 reaches atrium's API. Sub-paths do not sandbox.
 
-:::danger[This is accepted, not solved]
-Ward does not fix it and cannot. Moving apps to subdomains would restore
-isolation at the cost of the absent CORS and the single certificate. Narrow
-cookie paths keep Ward's own credentials out of other apps' requests, but they
-are not a security boundary against script running on the same origin. The
-estate chose the trade knowingly; see [decisions](/wiki/decisions/).
+:::danger[Accepted for the apex, not for Ward]
+Narrow cookie paths kept Ward's own credentials out of other apps' requests,
+but they are not a boundary against script on the same origin: an XSS in any
+app on the apex could call Ward's console API while the owner was signed in to
+it. That is why Ward has its own host since 2026-10-22. For the apps still on
+the apex the trade stands, taken knowingly; see [decisions](/wiki/decisions/).
 :::
 
 ## The literal-matching trap
@@ -76,10 +79,11 @@ strips a prefix that no dev server strips — the caveat recorded in
 
 ## The `?next=` allowlist
 
-Apps no longer send people to `/ward/login?next=`; they start an OpenID Connect
-authorization, and Ward only ever redirects to an app's registered redirect
-URIs. `?next=` remains for Ward's own pages, and an unchecked `next` would still
-be an open redirect on the estate's sign-in page, so it is **allowlisted to
-Ward's own paths** (first segment exactly `ward`), not merely checked for being
-relative. The apex and every app root are refused. A value that does not match
-is dropped and the person lands on `/ward/account`.
+Apps no longer send people to Ward's login with `?next=`; they start an OpenID
+Connect authorization, and Ward only ever redirects to an app's registered
+redirect URIs. `?next=` remains for Ward's own pages, and an unchecked `next`
+would still be an open redirect on the estate's sign-in page, so it is
+**allowlisted to Ward's own pages** (first segment exactly `account`,
+`console`, `register` or `verify`), not merely checked for being relative. The
+root, `/ward-api` and anything else are refused. A value that does not match is
+dropped and the person lands on `/account`.

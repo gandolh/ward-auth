@@ -37,7 +37,8 @@ export const WARD_API_PREFIX = "/ward-api";
 
 /**
  * Where a **person** lands when they click the link in their inbox: brief 09's
- * `/ward/verify` screen, served by the UI bundle.
+ * `/verify` screen, served by the UI bundle at the root of Ward's own host
+ * (`/ward/verify` on the shared origin until 2026-10-22; those links redirect).
  *
  * This used to be `${WARD_API_PREFIX}/verify`, the API's own server-rendered
  * page, which meant the one screen built for this moment was not on the path
@@ -50,7 +51,7 @@ export const WARD_API_PREFIX = "/ward-api";
  * token, so the API route is still what performs the verification. Only the
  * first hop moved.
  */
-export const WARD_UI_VERIFY_PATH = "/ward/verify";
+export const WARD_UI_VERIFY_PATH = "/verify";
 
 /**
  * The clickable verification URL.

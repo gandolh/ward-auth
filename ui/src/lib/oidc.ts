@@ -6,7 +6,7 @@ import { WARD_API } from "./api.js";
  * The login page's half of "Sign in with Ward" (brief 18).
  *
  * When an app sends someone to Ward and they are not signed in, Ward's
- * provider sends them here as `/ward/login?oidc=<uid>`. The uid names the
+ * provider sends them here as `/login?oidc=<uid>`. The uid names the
  * interaction waiting for them at `/ward-api/refresh/oidc/<uid>`, which is
  * where the browser goes back to once the ordinary `POST /login` has set the
  * refresh cookie. That route, not this page, decides what happens next.

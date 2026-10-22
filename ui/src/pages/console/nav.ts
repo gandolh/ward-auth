@@ -17,14 +17,15 @@
  * route, and even if brief 09 renders the element without a `Route` at all. The
  * only thing it needs from the router is `useLocation`.
  *
- * ## The `/ward` base
+ * ## The base
  *
- * Vite builds with `base: "/ward/"` and Caddy serves the SPA there, so the
- * browser's path is `/ward/console/accounts`. Whether `useLocation().pathname`
- * carries that prefix depends on brief 09's `basename`, which is theirs to set.
- * So the split is on the **first `console` segment** and the prefix before it is
- * kept and reused for every link — the console never assumes it is mounted at
- * the root, and never hard-codes `/ward`.
+ * Since 2026-10-22 Vite builds with `base: "/"` and the SPA is at the root of
+ * Ward's own host, so the browser's path is `/console/accounts`. Until then it
+ * was `/ward/console/accounts`. Whether `useLocation().pathname` carries a
+ * prefix depends on the router's `basename`, which is `app.tsx`'s to set. So
+ * the split is on the **first `console` segment** and the prefix before it is
+ * kept and reused for every link — the console never assumes where it is
+ * mounted.
  */
 
 /** Which console screen a URL names. */
@@ -40,7 +41,7 @@ export type ConsoleView =
 export interface ConsoleLocation {
   /**
    * Everything up to and including the `console` segment, with no trailing
-   * slash — `/console`, or `/ward/console`. Prefix every link with it.
+   * slash — `/console`, or `/x/console` under a prefix. Prefix every link with it.
    */
   basePath: string;
   view: ConsoleView;

@@ -21,7 +21,8 @@ describe("verificationLink", () => {
    *
    * Both pages verify an address, and for a while this pointed at
    * `/ward-api/verify` — the API's own server-rendered page — which meant
-   * brief 09's `/ward/verify` screen was built for a moment nobody reached.
+   * brief 09's verify screen (`/verify` since 2026-10-22, `/ward/verify`
+   * before) was built for a moment nobody reached.
    * The API route is deliberately kept (a non-browser client uses it, and it is
    * content-negotiated for exactly that); only the URL a person is mailed
    * moved.
@@ -32,9 +33,9 @@ describe("verificationLink", () => {
    * the refresh cookie's `Path` documents.
    */
   it("points at the UI verification screen, not at the API route", () => {
-    const link = verificationLink("https://gandolh.ro", "abc123");
-    expect(link).toBe("https://gandolh.ro/ward/verify?token=abc123");
-    expect(WARD_UI_VERIFY_PATH).toBe("/ward/verify");
+    const link = verificationLink("https://ward.gandolh.ro", "abc123");
+    expect(link).toBe("https://ward.gandolh.ro/verify?token=abc123");
+    expect(WARD_UI_VERIFY_PATH).toBe("/verify");
     // Still exported, because the API route it names has not moved.
     expect(WARD_API_PREFIX).toBe("/ward-api");
     expect(link).not.toContain("/ward-api/");
@@ -52,7 +53,7 @@ describe("verificationMail", () => {
     to: "alice@example.com",
     username: "Alice",
     appName: "Public Resource Map",
-    link: "https://gandolh.ro/ward/verify?token=deadbeef",
+    link: "https://ward.gandolh.ro/verify?token=deadbeef",
     expiresInHours: 24,
   });
 
@@ -68,7 +69,7 @@ describe("verificationMail", () => {
 
   it("carries the link, the username and the expiry in a plain-text body", () => {
     expect(mail.to).toBe("alice@example.com");
-    expect(mail.text).toContain("https://gandolh.ro/ward/verify?token=deadbeef");
+    expect(mail.text).toContain("https://ward.gandolh.ro/verify?token=deadbeef");
     expect(mail.text).toContain("Alice");
     expect(mail.text).toContain("24 hours");
     // No HTML part, and no markup in the text one — see the module header.

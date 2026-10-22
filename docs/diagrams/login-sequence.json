@@ -46,7 +46,7 @@
   "participants": [
     { "id": "user", "type": "external", "label": "Person", "sublabel": "one browser" },
     { "id": "app", "type": "backend", "label": "Consuming app", "sublabel": "e.g. atrium, own sessions" },
-    { "id": "ward_ui", "type": "frontend", "label": "Ward UI", "sublabel": "/ward/login" },
+    { "id": "ward_ui", "type": "frontend", "label": "Ward UI", "sublabel": "ward.<domain>/login" },
     { "id": "ward_api", "type": "backend", "label": "Ward API", "sublabel": "/ward-api, OIDC provider" },
     { "id": "ward_db", "type": "database", "label": "SQLite", "sublabel": "accounts, sessions, grants" }
   ],
@@ -59,7 +59,7 @@
     { "id": "visit", "from": "user", "to": "app", "y": 186, "label": "press Sign in with Ward", "variant": "default" },
     { "id": "authorize", "from": "app", "to": "user", "y": 222, "label": "302 → /ward-api/oidc/auth (PKCE)", "variant": "return" },
     { "id": "login-step", "from": "user", "to": "ward_api", "y": 260, "label": "authorize → login step /refresh/oidc/:uid", "variant": "default" },
-    { "id": "to-login", "from": "ward_api", "to": "user", "y": 298, "label": "no live Ward session → /ward/login?oidc=", "variant": "return" },
+    { "id": "to-login", "from": "ward_api", "to": "user", "y": 298, "label": "no live Ward session → /login?oidc=", "variant": "return" },
     { "id": "load-login", "from": "user", "to": "ward_ui", "y": 336, "label": "Continue to Atrium", "variant": "default" },
     { "id": "post-login", "from": "ward_ui", "to": "ward_api", "y": 374, "label": "POST /login — identifier + password", "variant": "emphasis" },
     { "id": "verify", "from": "ward_api", "to": "ward_db", "y": 412, "label": "scrypt verify · write refresh family", "variant": "security" },

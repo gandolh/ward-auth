@@ -398,3 +398,24 @@ The owner's call (2026-10-18), one brief in every repo with a docs site. [31](br
 [31](briefs/done/31-docs-site-on-docusaurus.md) moved `docs/` from Astro Starlight to Docusaurus 3.10, following the corpus-docs-site skill's migration guide (v0.31.0). The base stays `/ward/docs/` (`DOCS_BASE` still overrides), the build still writes `docs/dist/`, and the site stays light only on Ward's limestone tokens, now on Infima's variables in `src/css/custom.css`. The nine authored pages moved to `docs/docs/`, the diagrams to `static/diagrams/`, and `Diagram` became a React component. Search is local (`@easyops-cn/docusaurus-search-local`), which adds `/search/`. `sync-corpus.mjs` is the skill's: it discovers every wiki page instead of reading a list, so `decisions-oidc` and `decisions-oidc-build` are published and in the sidebar, and the OIDC page links the former. Docusaurus puts the base on root-absolute links, so the `/oidc/`, `/api/` and `/data/` links that 404 on the live site now resolve; broken links fail the build. That closes the todo `docs-site-internal-links-miss-the-base.md`, deleted here. integrating.md's link to the OIDC page followed it to `docs/docs/oidc.mdx`.
 
 Checks: the build exits 0 with no broken-link or anchor warnings; the route list equals the Starlight one plus `search/`, `wiki/decisions-oidc/` and `wiki/decisions-oidc-build/`; no `href` misses the base; `index.html` references `/ward/docs/assets/` and no Astro asset path is left. Served from `dist/` at `/ward/docs/` by a plain static server, the configuration page's links reach the API, data and OIDC pages, all three diagrams load, there is no theme toggle, and a search returns results. Typecheck, lint, fmt:check, the 1171 tests and corpus lint pass. Not deployed: the owner deploys after vps-deploy brief 11 sets the Ward docs stack's asset directory to `assets`.
+
+## 2026-10-22: brief 32, Ward on its own host
+
+The owner asked on 2026-10-21 for hosts of their own for the apps that hold a
+shell or a mailbox, and on 2026-10-22 for Ward too. Brief 32 was filed and built
+the same day: the UI at the root of `ward.<domain>`, the API at `/ward-api` on
+that host, the issuer `https://ward.<domain>/ward-api/oidc`. The routes are
+`vps-deploy` brief 16. The `?next=` allowlist now names Ward's pages
+(`account`, `console`, `register`, `verify`) instead of the `/ward` root, since
+on the new host `/ward-api` shares the origin with the pages. The verification
+mail links to `/verify`; mail sent before the move links to `/ward/verify` on
+the apex, which redirects. The local gateway serves the UI at the root and
+redirects `/ward/...`; the local issuer is unchanged, so the apps' local env
+files are too. The shared library was left alone, so no app needs re-vendoring.
+
+Checked: typecheck, lint and 1175 tests; the local containers rebuilt and
+probed (routes, redirects, discovery, an authorization landing on
+`/login?oidc=`); the pages rendered in Chromium. The decision is in
+[decisions.md](wiki/decisions.md); the todo `ward-on-a-subdomain.md` is gone,
+promoted to the brief. brief-board is down (since 2026-10-13), so the progress
+is recorded here only. Owner steps in [status.md](wiki/status.md).

@@ -81,13 +81,14 @@ brief 30, and Ward's redeploy for that brief is the owner's.
 
 ## The one thing worth knowing before reading anything else
 
-Every project is a **sub-path on a single origin** (the production domain). There
-are no subdomains. That made a shared session cookie nearly free (the estate
-used one until 2026-10-13) and makes isolation between apps impossible — the browser treats `/atrium` and
-`/design-study` as the same security context. Most of the interesting design
-tension in this repo traces back to that one fact. The OIDC redesign stops
-depending on it: nothing in the flow assumes Ward shares an app's origin, so
-Ward can move to a subdomain later.
+Almost every project is a **sub-path on a single origin** (the production
+domain). That made a shared session cookie nearly free (the estate used one
+until 2026-10-13) and makes isolation between apps impossible — the browser
+treats `/atrium` and `/design-study` as the same security context. Most of the
+interesting design tension in this repo traces back to that one fact. The OIDC
+redesign stopped depending on it: nothing in the flow assumes Ward shares an
+app's origin, and since 2026-10-22 (brief 32) Ward is on a host of its own,
+`ward.<domain>`, with its UI at the root and its API at `/ward-api`.
 
 ## Naming
 

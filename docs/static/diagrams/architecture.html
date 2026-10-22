@@ -5036,7 +5036,7 @@
 
         <!-- Connection paths (before components for correct z-order) -->
         <path data-edge-from="browser" data-edge-to="caddy" data-edge-label="HTTPS" data-edge-key="0" data-edge-id="browser-caddy" data-composition-points="160,400;220,400" d="M 160 400 L 220 400" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="caddy" data-edge-to="ward_ui" data-edge-label="/ward — static SPA" data-edge-key="1" data-edge-id="caddy-ui" data-composition-points="290,370;290,346;436,346;436,190;460,190" d="M 290 370 L 290 354 Q 290 346 298 346 L 428 346 Q 436 346 436 338 L 436 198 Q 436 190 444 190 L 460 190" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="caddy" data-edge-to="ward_ui" data-edge-label="ward.&lt;domain&gt;/ — static SPA" data-edge-key="1" data-edge-id="caddy-ui" data-composition-points="290,370;290,346;436,346;436,190;460,190" d="M 290 370 L 290 354 Q 290 346 298 346 L 428 346 Q 436 346 436 338 L 436 198 Q 436 190 444 190 L 460 190" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="caddy" data-edge-to="apps" data-edge-label="/atrium, /prm, …" data-edge-key="2" data-edge-id="caddy-apps" data-composition-points="290,430;290,454;416,454;416,630;440,630" d="M 290 430 L 290 446 Q 290 454 298 454 L 408 454 Q 416 454 416 462 L 416 622 Q 416 630 424 630 L 440 630" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="caddy" data-edge-to="ward_api" data-edge-label="/ward-api" data-edge-key="3" data-edge-id="caddy-api" data-composition-points="360,400;460,400" d="M 360 400 L 460 400" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="ward_ui" data-edge-to="ward_api" data-edge-label="GET /session (cookie at /ward-api)" data-edge-key="4" data-edge-id="ui-session" data-composition-points="545,220;545,244;571,244;571,346;555,346;555,370" d="M 545 220 L 545 236 Q 545 244 553 244 L 563 244 Q 571 244 571 252 L 571 338 Q 571 346 563 346 L 563 346 Q 555 346 555 354 L 555 370" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
@@ -5070,8 +5070,8 @@
         <text data-detail="fine" x="290" y="422" class="t-cloud" font-size="7" text-anchor="middle">handle_path strips the prefix</text>
         </g>
 
-        <g id="node-ward_ui" data-node-id="ward_ui" data-node-label="Ward UI" tabindex="0" role="button" aria-label="Focus Ward UI, /ward — Vite + React, Hetzner VPS — one origin, no subdomains" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="/ward — Vite + React" data-node-tag="login · verify · console" data-node-context="Hetzner VPS — one origin, no subdomains">
-          <title>Ward UI · /ward — Vite + React · Hetzner VPS — one origin, no subdomains · login · verify · console</title>
+        <g id="node-ward_ui" data-node-id="ward_ui" data-node-label="Ward UI" tabindex="0" role="button" aria-label="Focus Ward UI, ward.&lt;domain&gt; — Vite + React, Hetzner VPS — one origin, no subdomains" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="ward.&lt;domain&gt; — Vite + React" data-node-tag="login · verify · console" data-node-context="Hetzner VPS — one origin, no subdomains">
+          <title>Ward UI · ward.&lt;domain&gt; — Vite + React · Hetzner VPS — one origin, no subdomains · login · verify · console</title>
           <rect x="460" y="160" width="170" height="60" rx="6" class="c-mask"/>
           <rect x="460" y="160" width="170" height="60" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(466 166) scale(0.6875)">
@@ -5081,7 +5081,7 @@
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="545" y="188" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Ward UI</text>
-        <text data-detail="context" x="545" y="204" class="t-muted" font-size="9" text-anchor="middle">/ward — Vite + React</text>
+        <text data-detail="context" x="545" y="204" class="t-muted" font-size="9" text-anchor="middle">ward.&lt;domain&gt; — Vite + React</text>
         <text data-detail="fine" x="545" y="212" class="t-frontend" font-size="7" text-anchor="middle">login · verify · console</text>
         </g>
 
@@ -5138,9 +5138,9 @@
           <rect x="173" y="380" width="34" height="14" rx="3" class="c-mask"/>
           <text x="190" y="390" class="t-backend" font-size="8" text-anchor="middle">HTTPS</text>
         </g>
-        <g data-detail="context" data-edge-from="caddy" data-edge-to="ward_ui" data-edge-label="/ward — static SPA" data-edge-key="1" data-edge-id="caddy-ui">
-          <rect x="314.8" y="326" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
-          <text x="363" y="336" class="t-muted" font-size="8" text-anchor="middle">/ward — static SPA</text>
+        <g data-detail="context" data-edge-from="caddy" data-edge-to="ward_ui" data-edge-label="ward.&lt;domain&gt;/ — static SPA" data-edge-key="1" data-edge-id="caddy-ui">
+          <rect x="293.2" y="326" width="139.6" height="14" rx="3" class="c-mask"/>
+          <text x="363" y="336" class="t-muted" font-size="8" text-anchor="middle">ward.&lt;domain&gt;/ — static SPA</text>
         </g>
         <g data-detail="context" data-edge-from="caddy" data-edge-to="apps" data-edge-label="/atrium, /prm, …" data-edge-key="2" data-edge-id="caddy-apps">
           <rect x="309.6" y="434" width="86.8" height="14" rx="3" class="c-mask"/>

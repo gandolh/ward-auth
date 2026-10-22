@@ -1,5 +1,6 @@
 # Ward's local gateway: the UI and the API on one origin, routed the way the
-# VPS routes them (vps-deploy/infrastructure/Caddyfile). Local only.
+# VPS routes ward.<domain> (vps-deploy/infrastructure/Caddyfile): the API at
+# /ward-api, the UI at the root. Local only.
 #
 # One origin is not a convenience here. The refresh cookie is scoped to
 # /ward-api/refresh, and /refresh and /logout refuse any request whose Origin
@@ -20,21 +21,22 @@
 		reverse_proxy ward-api:8791
 	}
 
-	# The UI: a static SPA, so deep links fall back to index.html.
-	redir /ward /ward/ 308
+	# The UI's old address, before 2026-10-22: the same page at the root.
+	redir /ward / 308
 	handle_path /ward/* {
+		redir {uri} 308
+	}
+
+	# "/" goes to the account page (a sign-in with no usable ?next= lands there
+	# too). Not the SPA's own "/": its entry route always shows the sign-in
+	# form, which after a successful sign-in reads as "my password did not
+	# work".
+	redir / /account 302
+
+	# The UI: a static SPA at the root, so deep links fall back to index.html.
+	handle {
 		root * /srv/ward
 		try_files {path} {path}/ /index.html
 		file_server
-	}
-
-	# Nothing else lives on this origin, so "/" goes to the account page (a
-	# sign-in with no usable ?next= lands there too). Not /ward/: Ward's entry
-	# route always shows the sign-in form, which after a successful sign-in
-	# reads as "my password did not work".
-	redir / /ward/account 302
-
-	handle {
-		respond "Not found. Ward's pages are under /ward/ and its API under /ward-api/." 404
 	}
 }

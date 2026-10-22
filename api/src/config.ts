@@ -235,12 +235,13 @@ const envSchema = z.object({
   WARD_OIDC_ISSUER: externalUrl.optional(),
 
   /**
-   * Ward's own UI, absolute — e.g. `https://example.com/ward`. Required when the
-   * issuer is set, and must share its origin: the provider sends a person who is
-   * not signed in to `<this>/login`, and the cookies that sign-in sets have to be
-   * readable by the issuer's interaction route. A setting rather than a constant
-   * because decisions-oidc.md makes Ward's UI base path configuration, so the
-   * day Ward moves to a subdomain is an env change here.
+   * Ward's own UI, absolute — e.g. `https://ward.example.com`, the root of its
+   * own host since 2026-10-22 (`https://example.com/ward` before). Required when
+   * the issuer is set, and must share its origin: the provider sends a person
+   * who is not signed in to `<this>/login`, and the cookies that sign-in sets
+   * have to be readable by the issuer's interaction route. A setting rather than
+   * a constant because decisions-oidc.md makes Ward's UI base path
+   * configuration, so the move to a subdomain was an env change here.
    */
   WARD_UI_URL: externalUrl.optional(),
 

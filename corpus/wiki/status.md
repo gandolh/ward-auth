@@ -1,11 +1,11 @@
 ---
-summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed.
-updated: 2026-10-19
+summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed. Brief 32 (built 2026-10-22, not deployed) moves Ward to its own host, ward.<domain>; the apps need a redeploy for the new issuer.
+updated: 2026-10-22
 ---
 
 # Status
 
-_2026-10-19._
+_2026-10-22._
 
 ## Where things stand
 
@@ -45,8 +45,16 @@ sets or clears it also expires the old `Path=/` copy, and its readers take the
 first live session among duplicate cookies. The local seed writes only the
 `WARD_OIDC_*` client settings. An app authenticates to Ward only with its
 client assertion ([integrating.md](./integrating.md)). imbatranimOS stays
-out. The subdomain move is a todo
-([../todos/ward-on-a-subdomain.md](../todos/ward-on-a-subdomain.md)).
+out.
+
+**Built 2026-10-22, not deployed:** [brief 32](../briefs/done/32-ward-on-its-own-host.md)
+moves Ward to `ward.<domain>`: the UI at the root, the API at `/ward-api` on the
+same host, the issuer `https://ward.<domain>/ward-api/oidc`. `vps-deploy` brief 16
+carries the routes and the redirect from `/ward/*`. Owner steps, in order: deploy
+Ward (`node cli.ts ward all` in `vps-deploy`), then redeploy atrium, newspapper, prm,
+sports-app and shelfmark with `server` so each picks up the new issuer. Until
+an app is redeployed its "Sign in with Ward" fails; local passwords keep
+working. Everyone signs in to Ward again on the new host.
 
 **Built 2026-10-19, not deployed:** [brief 31](../briefs/done/31-docs-site-on-docusaurus.md)
 moved the docs site from Starlight to Docusaurus, with the same URLs and look.
@@ -85,7 +93,8 @@ docs stack's asset check to `assets`.
 
 ## What is actually known
 
-- The estate is **one origin**, sub-paths only. This
+- The estate is **one origin**, sub-paths only (Ward and three other apps on
+  hosts of their own since 2026-10-22, brief 32). This
   constrains every candidate design and is the single most load-bearing fact.
 - **Six apps** have or will have identity: atrium and newspapper (the two named
   in the request), plus public-resource-map, imbatranimOS, sports-app and

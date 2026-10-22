@@ -8,7 +8,7 @@ Connect provider behind that button, and a grant per app decides who may use it.
   <img src="docs/images/sign-in.webp" width="100%" alt="Ward's login page, headed 'Continue to Atrium' because the visitor came from Atrium, with Username and Password fields and a Sign in button">
 </p>
 
-**Status:** Personal project, in production since 2026-10-04 at `/ward/` on the production site. Since
+**Status:** Personal project, in production since 2026-10-04 at `/ward/` on the production site. Brief 32 (2026-10-22) moves it to a host of its own, `ward.<domain>`, with its next deploy. Since
 2026-10-13 it is an OIDC provider: atrium, newspapper, public-resource-map and sports-app offer
 "Sign in with Ward" beside their own login, and satchel is registered for local development. The GitHub repo is `gandolh/ward-auth` and the folder is still
 called `wzd_auth`; the service is Ward ([why](corpus/wiki/overview.md#naming)).
@@ -45,7 +45,7 @@ set in Ward's environment; no account, not even the owner's, can reach it.
 ## How it works
 
 Ward has two parts on one origin. The API at `/ward-api` is Fastify on SQLite and holds the one
-Ed25519 signing key; the provider is mounted at `/ward-api/oidc`. The React UI at `/ward` has the
+Ed25519 signing key; the provider is mounted at `/ward-api/oidc`. The React UI at the root of `ward.<domain>` has the
 login, account and console pages. A Ward sign-in goes like this:
 
 ```mermaid
@@ -90,7 +90,7 @@ listed in [.env.example](.env.example).
 | Path              | What lives there                                                                             |
 | ----------------- | -------------------------------------------------------------------------------------------- |
 | `api/`            | The Fastify API: the OIDC provider, sign-in, sessions, grants, mail, the console, migrations |
-| `ui/`             | The React UI served at `/ward`: login, register, verify, account and the console             |
+| `ui/`             | The React UI at the root of `ward.<domain>`: login, register, verify, account and the console |
 | `shared-library/` | The auth library apps vendor: local accounts and "Sign in with Ward"                         |
 | `docs/`           | The docs site at `/ward/docs` (Docusaurus), plus the images in this README                   |
 | `infrastructure/` | The container image and compose file; `local/` runs Ward in Docker                           |

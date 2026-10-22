@@ -16,7 +16,7 @@ import { deadlineIn, useCountdown } from "../lib/use-countdown.js";
 import { formatWait } from "../lib/wait.js";
 
 /**
- * `/ward/login` — the estate's one sign-in form.
+ * `/login` — the estate's one sign-in form.
  *
  * Most people who see this page are on their way to somewhere else: an app sent
  * them here through OpenID Connect (`?oidc=<uid>`), and they go straight back
@@ -59,7 +59,7 @@ import { formatWait } from "../lib/wait.js";
  * `email_verified` gates nothing in Ward — it blocks no sign-in and no grant —
  * and there is no resend endpoint, so the interruption would carry no action.
  * Worse, it would put a stop sign in the middle of a handover this whole page
- * is designed to keep short. The prompt lives on `/ward/account`, which is
+ * is designed to keep short. The prompt lives on `/account`, which is
  * where somebody has actually come to look at their account — `Account` reads
  * it itself, from `GET /ward-api/account`, rather than this page remembering
  * anything for it.

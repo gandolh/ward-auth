@@ -5,13 +5,13 @@ import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
 import { WardApiError, register, type RegisterResult, type WardErrorCode } from "../lib/api.js";
-import { loginRouteFor } from "../lib/next.js";
+import { DEFAULT_NEXT, loginRouteFor } from "../lib/next.js";
 import { useOpenApps } from "../lib/open-apps.js";
 import { deadlineIn, useCountdown } from "../lib/use-countdown.js";
 import { formatWait } from "../lib/wait.js";
 
 /**
- * `/ward/register?app=<slug>` — signing up at one app.
+ * `/register?app=<slug>` — signing up at one app.
  *
  * ## Registration is per-app, and the app is named
  *
@@ -145,7 +145,7 @@ export function Register(): React.JSX.Element {
    *
    * Rendered as a wrong turn rather than as an error, because that is what it
    * is: registration starts from the app, and somebody who typed
-   * `/ward/register` by hand has arrived at a form with no subject.
+   * `/register` by hand has arrived at a form with no subject.
    */
   if (slug === "") {
     return (
@@ -170,7 +170,7 @@ export function Register(): React.JSX.Element {
         footer={
           <>
             Signed up for {name}.{" "}
-            <Link className="ward-link" to={loginRouteFor("/ward/account")}>
+            <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
               Sign in
             </Link>
           </>
@@ -200,7 +200,7 @@ export function Register(): React.JSX.Element {
           </Notice>
         )}
         <p className="ward-prose ward-prose--spaced">
-          <Link className="ward-link" to={loginRouteFor("/ward/account")}>
+          <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in to your Ward account
           </Link>
         </p>
@@ -217,7 +217,7 @@ export function Register(): React.JSX.Element {
           Ask them for one — and if you already have an account, it works everywhere.
         </p>
         <p className="ward-prose">
-          <Link className="ward-link" to={loginRouteFor("/ward/account")}>
+          <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in instead
           </Link>
         </p>
@@ -287,7 +287,7 @@ export function Register(): React.JSX.Element {
   return (
     <Threshold
       footer={
-        <Link className="ward-link" to={loginRouteFor("/ward/account")}>
+        <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
           Already have an account? Sign in
         </Link>
       }

@@ -4,13 +4,13 @@
  * An open redirect on the estate's central login page is the worst possible
  * place to have one. It is a phishing primitive that borrows Ward's own URL,
  * its own TLS certificate and the person's own habit of typing a password
- * there: `https://gandolh.ro/ward/login?next=https://evil.example` is a link
+ * there: `https://ward.gandolh.ro/login?next=https://evil.example` is a link
  * that looks exactly like the real thing, and the moment the credential is
  * accepted the browser is somewhere else entirely.
  *
  * So the rule is not "reject `http://`". The rule is **an accepted value is a
- * path on this origin, inside Ward's own pages (`/ward/...`), and nothing else
- * is accepted.**
+ * path on this origin that names one of Ward's own pages (`/account`,
+ * `/console/...`), and nothing else is accepted.**
  *
  * ## Why only Ward's own pages
  *
@@ -20,8 +20,14 @@
  * in through OpenID Connect, which carries its own return address
  * (`?oidc=<uid>`, handled by `lib/oidc.ts`) and never uses `next`. What is left
  * is Ward linking to itself — the account page sends a signed-out visitor to
- * sign in and back — so the allowlist is one root, `ward`. Everything below exists because there are a
- * surprising number of strings that are not that, and look like they are.
+ * sign in and back.
+ *
+ * Until 2026-10-22 the SPA lived at `/ward` on the shared origin, and the
+ * allowlist was that one root. Ward now has a host of its own with the SPA at
+ * its root, so the allowlist names the pages themselves: on that host
+ * `/ward-api` is not a page, and neither is anything else. Everything below
+ * exists because there are a surprising number of strings that are not one of
+ * those pages, and look like they are.
  *
  * ## The rules, in order
  *
@@ -53,12 +59,13 @@
  *  7. **Resolves, against a sentinel origin, to that same origin** — and so
  *     does its decoded form. Belt and braces over rule 6, and the resolution
  *     is what collapses `..` so rule 8 cannot be walked around.
- *  8. **The resolved first path segment is exactly `ward`** — not as a
- *     prefix — for both the raw and the decoded resolution. The apex `/` is
- *     not accepted: it is not one of Ward's pages. This is the allowlist
- *     proper; rules 3–7 only establish that there is a path to look up.
- *  9. **Not the sign-in page itself.** `?next=/ward/login` is a loop, and a
- *     loop on the login page reads as "my password did not work".
+ *  8. **The resolved first path segment is exactly one of `WARD_PAGES`** —
+ *     not as a prefix — for both the raw and the decoded resolution. The root
+ *     `/` is not accepted: it only leads to the sign-in page. This is the
+ *     allowlist proper; rules 3–7 only establish that there is a path to look
+ *     up.
+ *  9. **Not the sign-in page itself.** `?next=/login` is a loop, and a loop on
+ *     the login page reads as "my password did not work".
  *
  * Anything refused resolves to `DEFAULT_NEXT` **silently**. A person who
  * followed a bad link needs to sign in, not to read a diagnostic about the
@@ -74,10 +81,13 @@
  */
 
 /** Where a refused, absent or unusable `next` sends somebody: their account. */
-export const DEFAULT_NEXT = "/ward/account";
+export const DEFAULT_NEXT = "/account";
 
-/** The one first path segment `next` may name: Ward's SPA. */
-export const WARD_ROOT = "ward";
+/**
+ * The first path segments `next` may name: Ward's own pages, as `app.tsx`
+ * routes them. The sign-in page is one too, refused by rule 9 instead.
+ */
+export const WARD_PAGES: readonly string[] = ["account", "console", "register", "verify"];
 
 /**
  * The login page's own path on the origin, for the loop check.
@@ -86,7 +96,7 @@ export const WARD_ROOT = "ward";
  * module is pure and testable, and because the two would have to be kept in
  * step either way.
  */
-export const WARD_LOGIN_PATH = "/ward/login";
+export const WARD_LOGIN_PATH = "/login";
 
 /** Long enough for a real deep link with a query string, short enough to bound. */
 export const MAX_NEXT_LENGTH = 512;
@@ -110,7 +120,7 @@ export type NextRejection =
   | "not_absolute_path"
   | "protocol_relative"
   | "off_origin"
-  | "outside_ward"
+  | "not_a_ward_page"
   | "sign_in_loop";
 
 export type NextDecision =
@@ -145,7 +155,7 @@ const FORBIDDEN_RAW = /[\u0000-\u0020\u007f\s]/u;
  * Deliberately narrower than `FORBIDDEN_RAW`, and the difference is the whole
  * reason there are two: `%20` is a *legitimate* encoded space in a path, so
  * re-applying the whitespace ban after decoding would refuse
- * `/ward/register?note=My%20Book` — a real link shape — for no gain, since an encoded
+ * `/register?note=My%20Book` — a real link shape — for no gain, since an encoded
  * space is never stripped and never changes how anything routes. A decoded
  * control character has no legitimate use at all, and a decoded NUL truncates
  * the string in enough consumers to be worth refusing on its own.
@@ -177,10 +187,10 @@ function shapeOf(value: string, forbidden: RegExp): NextRejection | undefined {
  * Rules 7 and 8 — resolve against the sentinel and check the first segment.
  *
  * Run over the raw value **and** its decoded form. The two can disagree:
- * `/ward/%2e%2e/%2e%2e/evil` resolves with its first segment intact, because
- * the URL parser does not treat a percent-encoded dot as a dot segment, while
- * its decoded form resolves to `/evil`. Requiring both to pass is what stops
- * an encoded traversal from borrowing the allowlisted root.
+ * `/account/%2e%2e/%2e%2e/evil` resolves with its first segment intact,
+ * because the URL parser does not treat a percent-encoded dot as a dot segment,
+ * while its decoded form resolves to `/evil`. Requiring both to pass is what
+ * stops an encoded traversal from borrowing an allowlisted page.
  */
 function resolvedPath(value: string): { path: string } | NextRejection {
   let url: URL;
@@ -196,9 +206,9 @@ function resolvedPath(value: string): { path: string } | NextRejection {
   }
 
   // `"/x/y".split("/")` is `["", "x", "y"]`, so index 1 is the first segment,
-  // and `""` for the apex `"/"`, which is refused like any other root.
-  const root = url.pathname.split("/")[1] ?? "";
-  if (root !== WARD_ROOT) return "outside_ward";
+  // and `""` for the root `"/"`, which is not one of the pages.
+  const first = url.pathname.split("/")[1] ?? "";
+  if (!WARD_PAGES.includes(first)) return "not_a_ward_page";
 
   return { path: `${url.pathname}${url.search}${url.hash}` };
 }
@@ -244,7 +254,7 @@ export function resolveNext(raw: string | null | undefined): NextDecision {
 }
 
 /**
- * The login URL **on the origin**, with `next` set — `/ward/login?next=…`.
+ * The login URL **on the origin**, with `next` set — `/login?next=…`.
  *
  * For a full navigation (`location.replace`) from one of Ward's pages. The
  * value is encoded here so a caller cannot forget to, which is the mistake that
@@ -256,18 +266,19 @@ export function loginUrlFor(next: string): string {
 }
 
 /**
- * The router basename. Ward's SPA is mounted at `/ward`, and Vite's `base`
- * matches, so React Router paths are relative to it.
+ * The router basename. Ward's SPA is at the root of its own host since
+ * 2026-10-22 (it was `/ward` on the shared origin), and Vite's `base`
+ * matches, so this is empty and router paths are the paths on the origin.
  */
-export const WARD_BASENAME = "/ward";
+export const WARD_BASENAME = "";
 
 /**
  * The same login URL **as a router path** — `/login?next=…`.
  *
- * Two functions rather than one because getting this wrong is silent and
- * annoying: `<Link to="/ward/login">` under a `/ward` basename navigates to
- * `/ward/ward/login`, and a 404 inside your own SPA looks like a routing bug
- * three files away. Use this one inside Ward's UI, `loginUrlFor` outside it.
+ * At the root the two are the same string. Two functions remain because
+ * getting this wrong under a basename is silent and annoying: `<Link
+ * to="/ward/login">` under a `/ward` basename navigated to `/ward/ward/login`.
+ * Use this one inside Ward's UI, `loginUrlFor` outside it.
  */
 export function loginRouteFor(next: string): string {
   return loginUrlFor(next).slice(WARD_BASENAME.length);

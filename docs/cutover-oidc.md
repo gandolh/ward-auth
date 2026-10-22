@@ -9,6 +9,12 @@ behind each app's "Sign in with Ward" button.
 the old contract from Ward's code the same day. It reaches production with the
 next Ward deploy (step 9).
 
+**Since 2026-10-22 (brief 32) Ward has a host of its own.** Read `<origin>/ward`
+below as `https://ward.<domain>` and `<origin>/ward-api` as
+`https://ward.<domain>/ward-api`: the console is at `https://ward.<domain>/console`,
+and every app's `WARD_OIDC_ISSUER` is `https://ward.<domain>/ward-api/oidc`.
+The apps' own redirect URIs did not change.
+
 Every step here is yours to run. The deploy configuration is already in
 vps-deploy: `stacks/ward.ts`, the five app stacks, and the `useWard` lines in
 `app.ts`.

@@ -13,7 +13,7 @@ import {
   type AccountResult,
   type WardErrorCode,
 } from "../lib/api.js";
-import { loginRouteFor, loginUrlFor } from "../lib/next.js";
+import { DEFAULT_NEXT, loginRouteFor, loginUrlFor } from "../lib/next.js";
 import { useOpenApps } from "../lib/open-apps.js";
 import {
   CAN_CHANGE_OWN_PASSWORD,
@@ -25,7 +25,7 @@ import { formatWait } from "../lib/wait.js";
 import { readSession, type Session } from "../lib/session.js";
 
 /**
- * `/ward/account` — self-service, and deliberately minimal.
+ * `/account` — self-service, and deliberately minimal.
  *
  * Four things live here:
  *
@@ -138,7 +138,7 @@ export function Account(): React.JSX.Element {
      * An automatic bounce to the login form is the same pixels as a session
      * that silently expired while somebody was reading, and it loses the one
      * fact worth knowing: nothing went wrong, the session simply ended. The
-     * link carries `?next=/ward/account`, so signing in comes back here.
+     * link carries `?next=/account`, so signing in comes back here.
      */
     return (
       <Threshold wide>
@@ -147,7 +147,7 @@ export function Account(): React.JSX.Element {
           Sessions end after a while, and this one has. Sign in to see your account.
         </p>
         <p className="ward-prose">
-          <Link className="ward-link" to={loginRouteFor("/ward/account")}>
+          <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in
           </Link>
         </p>
@@ -569,7 +569,7 @@ function SignOut({ username }: { username: string }): React.JSX.Element {
       // Nothing to do about it, and nothing to tell the person: the cookies are
       // either cleared or about to be refused.
     }
-    window.location.replace(loginUrlFor("/ward/account"));
+    window.location.replace(loginUrlFor(DEFAULT_NEXT));
   }
 
   return (

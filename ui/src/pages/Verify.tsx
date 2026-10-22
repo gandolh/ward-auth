@@ -7,7 +7,7 @@ import { WardApiError, verifyEmail, type WardErrorCode } from "../lib/api.js";
 import { onceByKey } from "../lib/once.js";
 
 /**
- * `/ward/verify?token=…` — the landing page for a confirmation link.
+ * `/verify?token=…` — the landing page for a confirmation link.
  *
  * ## A single-use token and a double-invoked effect
  *
@@ -42,7 +42,7 @@ import { onceByKey } from "../lib/once.js";
  * ## This page is the one the mail link actually visits
  *
  * `verificationLink` in `api/src/mail/templates.ts` points at
- * `/ward/verify?token=…` — this page, served by the UI bundle — rather than at
+ * `/verify?token=…` — this page, served by the UI bundle — rather than at
  * the API's own small server-rendered page. Both still exist:
  * `GET /ward-api/verify` performs the verification either way, and stays
  * reachable directly for a non-browser client, content-negotiated by

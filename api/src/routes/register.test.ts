@@ -160,7 +160,7 @@ async function linkFromOutbox(): Promise<string> {
  * The Fastify path a mailed link ends up hitting.
  *
  * The mailed link is the **browser-visible** URL of brief 09's verification
- * screen, `/ward/verify?token=…` — a static page, not a Ward route. That page
+ * screen, `/verify?token=…` — a static page, not a Ward route. That page
  * then spends the token by calling `GET /ward-api/verify?token=…`, and Caddy's
  * `handle_path /ward-api/*` strips the prefix, so the Fastify route is
  * `/verify`.
@@ -173,7 +173,7 @@ async function linkFromOutbox(): Promise<string> {
 function apiPathFor(link: string): string {
   const url = new URL(link);
   expect(url.origin).toBe(ORIGIN);
-  expect(url.pathname).toBe("/ward/verify");
+  expect(url.pathname).toBe("/verify");
   return `/verify${url.search}`;
 }
 
@@ -450,7 +450,7 @@ describe("the file transport, end to end, with no SMTP credentials", () => {
 
     // ...carrying the clickable link, prefix and all.
     const link = await linkFromOutbox();
-    expect(link.startsWith(`${ORIGIN}/ward/verify?token=`)).toBe(true);
+    expect(link.startsWith(`${ORIGIN}/verify?token=`)).toBe(true);
     expect(new URL(link).searchParams.get("token")).toMatch(/^[0-9a-f]{64}$/);
 
     // Following it verifies the address.
@@ -482,7 +482,7 @@ describe("the file transport, end to end, with no SMTP credentials", () => {
       now: new Date(Date.now() - 25 * 60 * 60 * 1000),
     });
 
-    const response = await follow(`${ORIGIN}/ward/verify?token=${stale.token}`);
+    const response = await follow(`${ORIGIN}/verify?token=${stale.token}`);
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({ error: "expired_token" });
     expect(mod.users.findUserBySubject(db, subject)!.email_verified).toBe(0);

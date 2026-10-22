@@ -77,7 +77,7 @@
       "id": "ward_ui",
       "type": "frontend",
       "label": "Ward UI",
-      "sublabel": "/ward — Vite + React",
+      "sublabel": "ward.<domain> — Vite + React",
       "tag": "login · verify · console",
       "pos": [
         460,
@@ -182,7 +182,7 @@
       "id": "caddy-ui",
       "from": "caddy",
       "to": "ward_ui",
-      "label": "/ward — static SPA",
+      "label": "ward.<domain>/ — static SPA",
       "fromSide": "top",
       "toSide": "left"
     },

@@ -1,6 +1,6 @@
 ---
-summary: The foundational calls for Ward — the one-origin topology and the isolation it costs, what the service owns versus what apps keep, the single central login page, what the UI carries, newspapper's move off loopback, the name, and the two inherited atrium decisions.
-updated: 2026-10-13
+summary: The foundational calls for Ward — the one-origin topology and the isolation it costs, Ward's own host since 2026-10-22, what the service owns versus what apps keep, the single central login page, what the UI carries, newspapper's move off loopback, the name, and the two inherited atrium decisions.
+updated: 2026-10-22
 ---
 
 # Decisions
@@ -43,6 +43,33 @@ recorded so it is not re-derived.
 > keeps its own session cookie ([decisions-oidc.md](./decisions-oidc.md)), and
 > Ward's `ward_session` moved from `Path=/` to `Path=/ward-api`. The topology
 > call stands; the cookie it made cheap is retired.
+
+> _2026-10-21, owner; built 2026-10-22, brief 32:_ revisited for Ward itself,
+> which now has a host of its own (next entry). The apps without a shell, a
+> mailbox or the keys to the others stay on the one origin.
+
+## Ward has a host of its own, `ward.<domain>`
+_2026-10-21, owner; built 2026-10-22 (brief 32)_ — Ward's UI moves to the root
+of `ward.<domain>` and its API to `/ward-api` on that host. The issuer becomes
+`https://ward.<domain>/ward-api/oidc`. On the shared origin, a script injected
+into any app could call Ward's console API with the owner's console cookie
+attached and read the answer: a cookie's `Path` does not stop a same-origin
+script. That is a grant to every app, not a hole in one. On its own host Ward's
+cookies are host-only and the apex apps are cross-origin to it. The estate's
+rule, recorded in `vps-deploy`'s decisions: an app that holds a shell, a
+mailbox or the keys to the others gets a host of its own.
+
+The 2026-10-13 OIDC design made the move a configuration change: nothing in the
+flow assumes Ward shares an app's origin ([decisions-oidc.md](./decisions-oidc.md)).
+The API keeps its `/ward-api` prefix, so cookie paths, the console's cookie and
+the issuer's shape are unchanged; only the origin moves. Apps keep their own
+redirect URIs, and their account links are keyed on Ward's `sub`, which the
+move does not touch. `/ward/*` on the apex redirects to the same page on the
+new host, so verification links already mailed keep working; `/ward-api` on the
+apex is gone rather than redirected, because a proxy there would set Ward's
+cookies on the apex again. The docs stay at `/ward/docs`. Rejected: keeping the
+API at the host's root (cookie paths and the console would all move for no
+gain); `auth.<domain>` or `id.<domain>` (the estate names hosts after apps).
 
 ## wzd_auth owns credentials and account identity; apps keep their own rows
 

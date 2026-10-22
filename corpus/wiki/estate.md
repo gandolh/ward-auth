@@ -12,7 +12,10 @@ it is the thing a centralized service has to absorb.
 
 Every deployed project is a **sub-path on one origin**: `/<name>` on the production origin,
 served by a single Caddy instance from a master `Caddyfile` in the `vps-deploy`
-repo (`infrastructure/Caddyfile`). There are no subdomains. `www` and the bare IP
+repo (`infrastructure/Caddyfile`). The exceptions, since 2026-10-22, are the apps
+that hold a shell, a mailbox or the keys to the others: Ward at `ward.<domain>`,
+plus the imbatranimOS desktop, Postern and Satchel, each on a host of its own
+([decisions.md](./decisions.md)). `www` and the bare IP
 `178.105.182.117` both redirect to the apex so there is exactly one canonical
 origin.
 

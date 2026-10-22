@@ -21,35 +21,36 @@ import {
  * The `reason` is asserted as well as the refusal. Not because a caller reads
  * it — nothing renders it — but because a rule that stops catching what it was
  * written for should fail loudly rather than be covered by the rule after it.
- * A refusal that moves from `protocol_relative` to `unknown_root` is still a
+ * A refusal that moves from `protocol_relative` to `not_a_ward_page` is still a
  * refusal and is still a change worth seeing.
  */
 
 const ACCEPTED: ReadonlyArray<{ input: string; path: string; why: string }> = [
-  { input: "/ward/account", path: "/ward/account", why: "the account page's own sign-in link" },
-  { input: "/ward", path: "/ward", why: "Ward's root with no trailing slash" },
+  { input: "/account", path: "/account", why: "the account page's own sign-in link" },
   {
-    input: "/ward/register?app=prm",
-    path: "/ward/register?app=prm",
+    input: "/register?app=prm",
+    path: "/register?app=prm",
     why: "a deep link keeps its query string",
   },
   {
-    input: "/ward/account#sessions",
-    path: "/ward/account#sessions",
+    input: "/account#sessions",
+    path: "/account#sessions",
     why: "a fragment survives; it never leaves the browser anyway",
   },
   {
-    input: "/ward/register?app=prm&from=mail",
-    path: "/ward/register?app=prm&from=mail",
+    input: "/register?app=prm&from=mail",
+    path: "/register?app=prm&from=mail",
     why: "an ampersand is not a delimiter once the value is decoded",
   },
-  { input: "/ward/a%20b", path: "/ward/a%20b", why: "an encoded space is fine; a raw one is not" },
+  { input: "/account/a%20b", path: "/account/a%20b", why: "an encoded space is fine; a raw one is not" },
   {
-    input: "/ward/x/../account",
-    path: "/ward/account",
-    why: "traversal inside Ward collapses and stays inside it",
+    input: "/console/x/../../account",
+    path: "/account",
+    why: "traversal between Ward's pages collapses and stays on one of them",
   },
-  { input: "/ward/console", path: "/ward/console", why: "the console is one of Ward's pages" },
+  { input: "/console", path: "/console", why: "the console is one of Ward's pages" },
+  { input: "/console/accounts", path: "/console/accounts", why: "and so is a page inside it" },
+  { input: "/verify?token=abc", path: "/verify?token=abc", why: "the confirmation page" },
 ];
 
 const REJECTED: ReadonlyArray<{ input: string | null | undefined; reason: NextRejection }> = [
@@ -60,25 +61,25 @@ const REJECTED: ReadonlyArray<{ input: string | null | undefined; reason: NextRe
 
   // ---- absolute URLs, the obvious attack ----------------------------------
   { input: "https://evil.example", reason: "not_absolute_path" },
-  { input: "https://evil.example/ward/", reason: "not_absolute_path" },
+  { input: "https://evil.example/account", reason: "not_absolute_path" },
   { input: "http://evil.example", reason: "not_absolute_path" },
   { input: "HTTPS://EVIL.EXAMPLE", reason: "not_absolute_path" },
-  // The estate's own origin spelled absolutely is still refused: this UI has no
+  // Ward's own origin spelled absolutely is still refused: this UI has no
   // business knowing what the origin is, and accepting one absolute host is how
   // a later edit accepts two.
-  { input: "https://gandolh.ro/ward/", reason: "not_absolute_path" },
+  { input: "https://ward.gandolh.ro/account", reason: "not_absolute_path" },
   { input: "javascript:alert(1)", reason: "not_absolute_path" },
   { input: "data:text/html,<script>alert(1)</script>", reason: "not_absolute_path" },
   { input: "//evil.example", reason: "protocol_relative" },
   { input: "///evil.example", reason: "protocol_relative" },
-  { input: "//evil.example/ward/", reason: "protocol_relative" },
+  { input: "//evil.example/account", reason: "protocol_relative" },
 
   // ---- backslash tricks ---------------------------------------------------
   { input: "\\\\evil.example", reason: "backslash" },
   { input: "/\\evil.example", reason: "backslash" },
   { input: "/\\/evil.example", reason: "backslash" },
   { input: "\\/\\/evil.example", reason: "backslash" },
-  { input: "/ward\\..\\..\\evil", reason: "backslash" },
+  { input: "/account\\..\\..\\evil", reason: "backslash" },
   // Encoded, so the raw string is clean and the decoded one is not.
   { input: "/%5Cevil.example", reason: "backslash" },
   { input: "/%5c%5cevil.example", reason: "backslash" },
@@ -94,11 +95,11 @@ const REJECTED: ReadonlyArray<{ input: string | null | undefined; reason: NextRe
   { input: "/\r/evil.example", reason: "control_or_space" },
   { input: "\t//evil.example", reason: "control_or_space" },
   { input: " //evil.example", reason: "control_or_space" },
-  { input: " /ward/", reason: "control_or_space" },
-  { input: "/ward/ ", reason: "control_or_space" },
-  { input: "/ward/\u0000", reason: "control_or_space" },
-  { input: "/ward/\u007f", reason: "control_or_space" },
-  { input: "/ward/\u00a0evil", reason: "control_or_space" },
+  { input: " /account", reason: "control_or_space" },
+  { input: "/account ", reason: "control_or_space" },
+  { input: "/account\u0000", reason: "control_or_space" },
+  { input: "/account\u007f", reason: "control_or_space" },
+  { input: "/account\u00a0evil", reason: "control_or_space" },
   { input: "/\u2028/evil.example", reason: "control_or_space" },
   { input: "/\ufeff/evil.example", reason: "control_or_space" },
   // Encoded whitespace, which is the form that actually turns up in a link.
@@ -114,45 +115,51 @@ const REJECTED: ReadonlyArray<{ input: string | null | undefined; reason: NextRe
   { input: "/%252f%252fevil.example", reason: "protocol_relative" },
 
   // ---- malformed encoding -------------------------------------------------
-  { input: "/ward/%", reason: "undecodable" },
-  { input: "/ward/%zz", reason: "undecodable" },
-  { input: "/ward/%e0%a4%a", reason: "undecodable" },
+  { input: "/account/%", reason: "undecodable" },
+  { input: "/account/%zz", reason: "undecodable" },
+  { input: "/account/%e0%a4%a", reason: "undecodable" },
 
   // ---- a path on this origin, but not one of Ward's pages ------------------
+  // The root only leads to the sign-in page.
+  { input: "/", reason: "not_a_ward_page" },
+  // Ward's pages before 2026-10-22, at `/ward` on the shared origin. On its own
+  // host that prefix is not a page.
+  { input: "/ward", reason: "not_a_ward_page" },
+  { input: "/ward/account", reason: "not_a_ward_page" },
   // The apps' roots, which `next` named until the shared-cookie contract was
   // retired (brief 30). Apps now return through OpenID Connect, never `next`.
-  { input: "/", reason: "outside_ward" },
-  { input: "/atrium/", reason: "outside_ward" },
-  { input: "/prm/map?lat=45.7&lng=21.2", reason: "outside_ward" },
-  { input: "/ward/..", reason: "outside_ward" },
-  { input: "/wardX/", reason: "outside_ward" },
-  { input: "/Ward/account", reason: "outside_ward" },
-  { input: "/evil", reason: "outside_ward" },
-  { input: "/ward.evil.example/", reason: "outside_ward" },
-  // Fullwidth Latin `w`. Renders like `ward` and is not `ward`.
-  { input: "/ｗard/account", reason: "outside_ward" },
-  { input: "/@evil.example", reason: "outside_ward" },
-  // Traversal out of Ward, plain and percent-encoded. The encoded
+  { input: "/atrium/", reason: "not_a_ward_page" },
+  { input: "/prm/map?lat=45.7&lng=21.2", reason: "not_a_ward_page" },
+  { input: "/account/..", reason: "not_a_ward_page" },
+  { input: "/accountX", reason: "not_a_ward_page" },
+  { input: "/Account", reason: "not_a_ward_page" },
+  { input: "/evil", reason: "not_a_ward_page" },
+  { input: "/account.evil.example/", reason: "not_a_ward_page" },
+  // Fullwidth Latin `a`. Renders like `account` and is not `account`.
+  { input: "/ａccount", reason: "not_a_ward_page" },
+  { input: "/@evil.example", reason: "not_a_ward_page" },
+  // Traversal out of Ward's pages, plain and percent-encoded. The encoded
   // form is the interesting one: the URL parser does not treat `%2e%2e` as a
   // dot segment, so only the decoded resolution catches it.
-  { input: "/ward/../../evil", reason: "outside_ward" },
-  { input: "/ward/%2e%2e/%2e%2e/evil", reason: "outside_ward" },
-  { input: "/ward/../evil", reason: "outside_ward" },
-  // The API root is deliberately not a page: nobody was reading an API
-  // endpoint, so `?next=` never legitimately names one.
-  { input: "/ward-api/session", reason: "outside_ward" },
+  { input: "/account/../../evil", reason: "not_a_ward_page" },
+  { input: "/account/%2e%2e/%2e%2e/evil", reason: "not_a_ward_page" },
+  { input: "/account/../evil", reason: "not_a_ward_page" },
+  // The API is deliberately not a page: it shares the host with the pages, but
+  // nobody was reading an API endpoint, so `?next=` never legitimately names one.
+  { input: "/ward-api/session", reason: "not_a_ward_page" },
+  { input: "/ward-api/console/accounts", reason: "not_a_ward_page" },
 
   // ---- the loop -----------------------------------------------------------
-  { input: "/ward/login", reason: "sign_in_loop" },
-  { input: "/ward/login?next=/ward/account", reason: "sign_in_loop" },
-  { input: "/ward/account/../login", reason: "sign_in_loop" },
+  { input: "/login", reason: "sign_in_loop" },
+  { input: "/login?next=/account", reason: "sign_in_loop" },
+  { input: "/account/../login", reason: "sign_in_loop" },
 
   // ---- size ---------------------------------------------------------------
-  { input: `/ward/${"a".repeat(MAX_NEXT_LENGTH)}`, reason: "too_long" },
+  { input: `/account/${"a".repeat(MAX_NEXT_LENGTH)}`, reason: "too_long" },
 ];
 
 describe("resolveNext", () => {
-  describe("accepts a path inside Ward's own pages", () => {
+  describe("accepts a path that names one of Ward's own pages", () => {
     for (const row of ACCEPTED) {
       it(`${JSON.stringify(row.input)} — ${row.why}`, () => {
         const decision = resolveNext(row.input);
@@ -197,8 +204,8 @@ describe("resolveNext", () => {
   });
 
   it("accepts a value of exactly the maximum length", () => {
-    const filler = "a".repeat(MAX_NEXT_LENGTH - "/ward/".length);
-    const value = `/ward/${filler}`;
+    const filler = "a".repeat(MAX_NEXT_LENGTH - "/account/".length);
+    const value = `/account/${filler}`;
     expect(value.length).toBe(MAX_NEXT_LENGTH);
     expect(resolveNext(value).accepted).toBe(true);
   });
@@ -209,12 +216,12 @@ describe("loginUrlFor", () => {
     // The mistake this exists to prevent: an unencoded `&` truncates `next` at
     // the first parameter, and the person lands somewhere other than the
     // thing they clicked.
-    const url = loginUrlFor("/ward/register?app=prm&from=mail");
-    expect(url).toBe("/ward/login?next=%2Fward%2Fregister%3Fapp%3Dprm%26from%3Dmail");
+    const url = loginUrlFor("/register?app=prm&from=mail");
+    expect(url).toBe("/login?next=%2Fregister%3Fapp%3Dprm%26from%3Dmail");
     const round = new URL(url, "https://ward.invalid").searchParams.get("next");
     expect(resolveNext(round)).toMatchObject({
       accepted: true,
-      path: "/ward/register?app=prm&from=mail",
+      path: "/register?app=prm&from=mail",
     });
   });
 });

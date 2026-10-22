@@ -1,8 +1,8 @@
 # Ward, locally
 
 Ward in Docker, for working on the apps without running Ward by hand: the API
-plus a small Caddy gateway that serves the UI at `/ward` and the API at
-`/ward-api` on one origin, the way the VPS does. It answers on
+plus a small Caddy gateway that serves the UI at the root and the API at
+`/ward-api` on one origin, the way the VPS does on `ward.<domain>`. It answers on
 http://localhost:8792, from this machine only.
 
 The images are built from your working tree, so rebuild after changing or
@@ -67,8 +67,7 @@ Each app's own `.env.example` has the other dev values that layout needs (the
 base path and API URL).
 
 Sessions last 15 minutes and no app renews one yet. When an app starts treating
-you as signed out, open `/ward/account` on its dev server, or
-http://localhost:8792/: the account page renews the session from the 30-day
+you as signed out, open http://localhost:8792/: the account page renews the session from the 30-day
 refresh cookie.
 
 ## Sign in with Ward (OpenID Connect)
@@ -113,5 +112,5 @@ docker compose down -v            # also delete ward.db and the signing key,
 docker compose exec ward-api ls /data/mail   # verification mail (file transport)
 ```
 
-The admin console is at http://localhost:8792/ward/console. It takes the
+The admin console is at http://localhost:8792/console. It takes the
 break-glass login from `~/.config/ward/local.env` and no other account.

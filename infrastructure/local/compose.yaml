@@ -1,5 +1,5 @@
 # Ward on this machine: the API plus a small Caddy gateway that serves the UI at
-# /ward and the API at /ward-api on one origin, http://localhost:8792.
+# the root and the API at /ward-api on one origin, http://localhost:8792.
 #
 #   cd infrastructure/local && docker compose up -d --build
 #
@@ -32,7 +32,7 @@ services:
       # sees it, behind the gateway's /ward-api, and Ward's UI on the same
       # origin. An app's WARD_OIDC_ISSUER has to be exactly this string.
       WARD_OIDC_ISSUER: http://localhost:8792/ward-api/oidc
-      WARD_UI_URL: http://localhost:8792/ward
+      WARD_UI_URL: http://localhost:8792
       WARD_MAIL_TRANSPORT: file
       WARD_MAIL_FROM: ward@localhost
       # The login lockout believes X-Forwarded-For only from these peers (brief

@@ -30,12 +30,13 @@ import "./ward.css";
  *
  * ## The basename
  *
- * `/ward`, matching Vite's `base`. So `<Link to="/login">` navigates to
- * `/ward/login`. Two consequences that cost time when forgotten:
+ * Empty since 2026-10-22: the SPA is at the root of Ward's own host, matching
+ * Vite's `base`, so `<Link to="/login">` navigates to `/login`. Under the old
+ * `/ward` basename two consequences cost time, and the second still holds:
  *
- * - Router paths in this app are written **without** the `/ward` prefix. See
- *   `loginRouteFor` versus `loginUrlFor` in `lib/next.ts`; the two exist
- *   because mixing them produces `/ward/ward/login`.
+ * - Router paths are written **without** the basename. See `loginRouteFor`
+ *   versus `loginUrlFor` in `lib/next.ts`; the two existed because mixing them
+ *   produced `/ward/ward/login`.
  * - A redirect to somewhere *outside* this SPA — an OIDC interaction's resume
  *   URL on Ward's API, say — must be `window.location.assign`, not a router
  *   navigation. React Router would render a 404 inside Ward instead of
@@ -43,11 +44,11 @@ import "./ward.css";
  *
  * ## Why the entry route is the login page
  *
- * `/ward` alone lands on `/ward/login`. The alternative — read the session, then
+ * `/` alone lands on `/login`. The alternative — read the session, then
  * choose between the account page and the login form — costs a request on the
  * one path that has to be fast, and gets it wrong for the overwhelmingly
  * common case, which is somebody arriving here because an app sent them.
- * `/ward/account` handles a signed-out visitor perfectly well on its own.
+ * `/account` handles a signed-out visitor perfectly well on its own.
  */
 export function App(): React.JSX.Element {
   return (

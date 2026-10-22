@@ -2,19 +2,17 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 /**
- * Ward's SPA, served at `/ward` on the estate's single origin.
+ * Ward's SPA, served at the root of its own host, `ward.<domain>`, since
+ * 2026-10-22 (brief 32). It was at `/ward` on the estate's shared origin.
  *
- * `base` is not cosmetic. Caddy serves this build under `/ward/*`, so every
- * asset URL Vite emits has to carry that prefix or the page loads and its
- * JavaScript 404s — the failure that looks like "the login page is blank".
- * Atrium learned the same lesson the other way round: it baked an absolute
- * origin into its bundle, which is one of the reasons the estate is stuck on
- * sub-paths (see wiki/decisions.md). A relative base keeps this build portable
- * if that ever changes.
+ * `base` is not cosmetic. Every asset URL Vite emits carries it, and a build
+ * whose base disagrees with where Caddy serves it loads a page whose JavaScript
+ * 404s — the failure that looks like "the login page is blank". The deploy
+ * checks that `index.html` loads from `/assets/`.
  */
 export default defineConfig({
   plugins: [react()],
-  base: "/ward/",
+  base: "/",
   server: {
     /**
      * `/ward-api` is proxied in development so the browser sees one origin,

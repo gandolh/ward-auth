@@ -1,7 +1,7 @@
 /**
  * The self-service gap, as it stood after brief 09, and closed.
  *
- * Brief 09 asked for three things on `/ward/account` and Ward's API supported
+ * Brief 09 asked for three things on `/account` and Ward's API supported
  * one of them; the other two needed endpoints that did not exist, and this
  * file recorded that so the UI could say so honestly instead of either
  * pretending or quietly dropping the feature. Those endpoints have since

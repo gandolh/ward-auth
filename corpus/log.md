@@ -419,3 +419,11 @@ probed (routes, redirects, discovery, an authorization landing on
 [decisions.md](wiki/decisions.md); the todo `ward-on-a-subdomain.md` is gone,
 promoted to the brief. brief-board is down (since 2026-10-13), so the progress
 is recorded here only. Owner steps in [status.md](wiki/status.md).
+
+## [2026-10-23] todo | Brief 33 filed: Base UI in the console
+
+The owner asked for Base UI in the apps that still hand-build their widgets.
+[Brief 33](briefs/todo/33-base-ui-in-the-console.md) moves the console's
+`Confirm` to Base UI `AlertDialog`, keeping the busy-can't-dismiss rule, and
+the New account/app disclosures to `Collapsible`. The public sign-in pages
+stay free of it.

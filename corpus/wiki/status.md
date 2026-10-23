@@ -1,6 +1,6 @@
 ---
 summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed. Brief 32 (built 2026-10-22, not deployed) moves Ward to its own host, ward.<domain>; the apps need a redeploy for the new issuer.
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 # Status
@@ -87,7 +87,7 @@ docs stack's asset check to `assets`.
 | Open questions | **None** — [open-questions.md](./open-questions.md) |
 | Name | **Ward** (repo still `wzd_auth`; rename deferred by the owner) |
 | Briefs done | 00–10, 13–30 in [briefs/done/](../briefs/done/); 11 superseded |
-| Briefs open | None |
+| Briefs open | [33](../briefs/todo/33-base-ui-in-the-console.md), Base UI in the console (filed 2026-10-23) |
 | Shared library | `shared-library/` 0.3.1, vendored into atrium, newspapper, prm, sports-app and satchel |
 | Deploy entry in `vps-deploy` | The OIDC contract deployed 2026-10-13. Ward redeployed with brief 30 the same day; no app stack passes the old variables |
 

@@ -1,11 +1,11 @@
 ---
-summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed. Brief 32 (built 2026-10-22, not deployed) moves Ward to its own host, ward.<domain>; the apps need a redeploy for the new issuer.
+summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed. Brief 32 (built 2026-10-22, not deployed) moves Ward to its own host, ward.<domain>; the apps need a redeploy for the new issuer. Brief 33 (built 2026-10-23, not deployed) puts Base UI under the console's confirmation and create forms.
 updated: 2026-10-23
 ---
 
 # Status
 
-_2026-10-22._
+_2026-10-23._
 
 ## Where things stand
 
@@ -47,6 +47,13 @@ first live session among duplicate cookies. The local seed writes only the
 client assertion ([integrating.md](./integrating.md)). imbatranimOS stays
 out.
 
+**Built 2026-10-23, not deployed:** [brief 33](../briefs/done/33-base-ui-in-the-console.md)
+puts Base UI under the console: `Confirm` is an `AlertDialog` and the New
+account / Register an app forms are `Collapsible`s. Nothing changes for the
+owner beyond the next UI deploy. The sign-in pages share the console's chunk,
+so they download Base UI too; [a todo](../todos/split-the-console-chunk.md)
+covers splitting it out.
+
 **Built 2026-10-22, not deployed:** [brief 32](../briefs/done/32-ward-on-its-own-host.md)
 moves Ward to `ward.<domain>`: the UI at the root, the API at `/ward-api` on the
 same host, the issuer `https://ward.<domain>/ward-api/oidc`. `vps-deploy` brief 16
@@ -80,14 +87,16 @@ docs stack's asset check to `assets`.
 - **2026-10-13:** the OIDC redesign, briefs 18–29 (above); the owner's
   cutover; brief 30 retired the shared-cookie contract.
 - **2026-10-19:** brief 31, the docs site on Docusaurus (built, not deployed).
+- **2026-10-22:** brief 32, Ward on its own host (built, not deployed).
+- **2026-10-23:** brief 33, Base UI in the console (built, not deployed).
 
 | Thread | State |
 |---|---|
 | Decisions | Five design pages plus [decisions-oidc.md](./decisions-oidc.md) and its build calls in [decisions-oidc-build.md](./decisions-oidc-build.md); engineering calls in [decisions-implementation.md](./decisions-implementation.md) |
 | Open questions | **None** — [open-questions.md](./open-questions.md) |
 | Name | **Ward** (repo still `wzd_auth`; rename deferred by the owner) |
-| Briefs done | 00–10, 13–30 in [briefs/done/](../briefs/done/); 11 superseded |
-| Briefs open | [33](../briefs/todo/33-base-ui-in-the-console.md), Base UI in the console (filed 2026-10-23) |
+| Briefs done | 00–10, 13–33 in [briefs/done/](../briefs/done/); 11 superseded |
+| Briefs open | None |
 | Shared library | `shared-library/` 0.3.1, vendored into atrium, newspapper, prm, sports-app and satchel |
 | Deploy entry in `vps-deploy` | The OIDC contract deployed 2026-10-13. Ward redeployed with brief 30 the same day; no app stack passes the old variables |
 

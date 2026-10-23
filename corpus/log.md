@@ -423,7 +423,21 @@ is recorded here only. Owner steps in [status.md](wiki/status.md).
 ## [2026-10-23] todo | Brief 33 filed: Base UI in the console
 
 The owner asked for Base UI in the apps that still hand-build their widgets.
-[Brief 33](briefs/todo/33-base-ui-in-the-console.md) moves the console's
+[Brief 33](briefs/done/33-base-ui-in-the-console.md) moves the console's
 `Confirm` to Base UI `AlertDialog`, keeping the busy-can't-dismiss rule, and
 the New account/app disclosures to `Collapsible`. The public sign-in pages
 stay free of it.
+
+## [2026-10-23] done | Brief 33: Base UI in the console
+
+[Brief 33](briefs/done/33-base-ui-in-the-console.md) is built. `Confirm` is a
+Base UI `AlertDialog` that can't be dismissed while busy, and the New account
+and Register an app forms are `Collapsible`s. The portalled popup carries
+`data-ward-surface="console"` to keep the console's dark tokens. Checked:
+typecheck, lint, 1175 tests, the build, and the console in Chromium against a
+scratch API at 1440 and 390 px. The decision is in
+[decisions.md](wiki/decisions.md). Two todos came out of it:
+[split-the-console-chunk.md](todos/split-the-console-chunk.md) (the sign-in
+pages download Base UI too) and
+[focus-after-a-confirmed-write.md](todos/focus-after-a-confirmed-write.md), an
+existing gap. brief-board is down, so nothing was posted there.

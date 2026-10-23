@@ -75,3 +75,37 @@ corpus/wiki/{decisions,status}.md
   - **New account** opens and closes the form.
   Take before/after screenshots at 1440 px and 390 px.
 - `bash corpus/lint.sh` passes.
+
+## Outcome (2026-10-23)
+
+Done. `@base-ui/react` 1.9.0 is pinned in `ui/package.json`. `Confirm` is an
+`AlertDialog`: `onOpenChange(false)` calls `onCancel` only when not busy, and
+`ConfirmProps` and every call site are unchanged. The popup is portalled to
+`<body>`, outside the console wrapper, so it carries
+`data-ward-surface="console"` itself, or it renders with the light sign-in
+tokens. The New account and Register an app forms are `Collapsible`s driven by
+`creating`, keeping the changing label. `.wc-dialog` is now positioned by
+`console.css`, and `::backdrop` became `.wc-dialog-backdrop`.
+
+Checked: typecheck, lint, all 1175 tests and the build. In Chromium against a
+scratch API (Docker wasn't reachable from WSL, so not the local container),
+the check used "Disable account" rather than a grant revoke, because the same
+`Confirm` serves both. The dialog takes focus on Cancel, Tab stays inside,
+Escape cancels and focus returns to the button. With the write held, Escape,
+Cancel and a backdrop press all do nothing. Both create forms open and close
+with `aria-expanded` and `aria-controls`. Before/after screenshots at 1440 and
+390 px match.
+
+Two findings:
+
+- **The console isn't code-split.** Only `ui/src/pages/console/` imports Base
+  UI, but the UI builds to one chunk, so the sign-in pages download it too:
+  324.75 kB (97.94 kB gzip) before, 387.64 kB (119.67 kB gzip) after. Filed as
+  [split-the-console-chunk.md](../../todos/split-the-console-chunk.md).
+- **Focus after a confirmed write drops to `<body>`.** The pressed button is
+  disabled while busy, and the page reloads, so there is nothing to return
+  focus to. The old native `<dialog>` did the same (checked against HEAD), so
+  this is not a regression. Filed as
+  [focus-after-a-confirmed-write.md](../../todos/focus-after-a-confirmed-write.md).
+
+brief-board is down, so nothing was posted there.

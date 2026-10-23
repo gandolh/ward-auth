@@ -1,6 +1,6 @@
 ---
-summary: The foundational calls for Ward — the one-origin topology and the isolation it costs, Ward's own host since 2026-10-22, what the service owns versus what apps keep, the single central login page, what the UI carries, newspapper's move off loopback, the name, and the two inherited atrium decisions.
-updated: 2026-10-22
+summary: The foundational calls for Ward — the one-origin topology and the isolation it costs, Ward's own host since 2026-10-22, what the service owns versus what apps keep, the single central login page, what the UI carries, Base UI in the console only, newspapper's move off loopback, the name, and the two inherited atrium decisions.
+updated: 2026-10-23
 ---
 
 # Decisions
@@ -170,6 +170,14 @@ carry **no verified email** and therefore **no recovery channel**, so
 "sign out my other devices" is the only self-serve response available to someone
 who suspects their session was stolen. Password rotation has to live somewhere
 too, and putting it in six apps contradicts the decision above.
+
+## The console's widgets are Base UI; the public pages import none
+_2026-10-23, owner (brief 33)_ — The console's confirmation is a Base UI
+`AlertDialog` and its create forms are `Collapsible`s, styled by `console.css`,
+to match the owner's other apps. Rejected: keeping the native `<dialog>` with
+its own wiring, and shadcn, which brings Tailwind. Only `ui/src/pages/console/`
+imports it. The UI builds to one chunk, so the sign-in pages still download
+it (+22 kB gzip) until the console is split out.
 
 ## Inherited — not ours to break quietly
 

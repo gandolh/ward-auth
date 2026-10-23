@@ -1,5 +1,8 @@
 # Split the console into its own chunk
 
+**Promoted 2026-10-23** into [brief 34](../briefs/todo/34-console-in-its-own-chunk.md).
+Delete this todo when 34 lands.
+
 Captured 2026-10-23 from brief 33.
 
 The UI builds to a single JS chunk, so the public sign-in, registration,

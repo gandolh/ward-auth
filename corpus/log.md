@@ -441,3 +441,16 @@ scratch API at 1440 and 390 px. The decision is in
 pages download Base UI too) and
 [focus-after-a-confirmed-write.md](todos/focus-after-a-confirmed-write.md), an
 existing gap. brief-board is down, so nothing was posted there.
+
+## [2026-10-23] todo | Briefs 34–38 from the three open todos
+
+[34](briefs/todo/34-console-in-its-own-chunk.md) lazy-loads the console so the public
+pages stop downloading Base UI. [35](briefs/todo/35-focus-after-a-confirmed-write.md)
+fixes focus falling to `<body>` after a confirmed write, at all ten `Confirm` call
+sites; checking `finalFocus` is its first step. The library todo split into one brief
+per bullet: [36](briefs/todo/36-library-username-for-a-new-ward-user.md) a
+`usernameFor` hook beside `roleFor`, [37](briefs/todo/37-library-rename-a-user.md)
+`renameUser` plus a self-service `POST /username`, and
+[38](briefs/todo/38-library-disable-a-user.md) `disableUser` with a new migration and
+one answer for every refusal. 36–38 share the CHANGELOG and version, so they run in
+order. Adoption in each app is left to that app's corpus.

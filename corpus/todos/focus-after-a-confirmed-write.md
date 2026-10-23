@@ -1,5 +1,8 @@
 # Focus after a confirmed write lands on the page body
 
+**Promoted 2026-10-23** into [brief 35](../briefs/todo/35-focus-after-a-confirmed-write.md).
+Delete this todo when 35 lands.
+
 Captured 2026-10-23 from brief 33.
 
 When a console `Confirm` is confirmed, the confirm button disables itself

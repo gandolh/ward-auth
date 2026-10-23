@@ -51,8 +51,16 @@ out.
 puts Base UI under the console: `Confirm` is an `AlertDialog` and the New
 account / Register an app forms are `Collapsible`s. Nothing changes for the
 owner beyond the next UI deploy. The sign-in pages share the console's chunk,
-so they download Base UI too; [a todo](../todos/split-the-console-chunk.md)
-covers splitting it out.
+so they download Base UI too; [brief 34](../briefs/todo/34-console-in-its-own-chunk.md)
+splits it out.
+
+**Open (filed 2026-10-23):** [34](../briefs/todo/34-console-in-its-own-chunk.md)
+the console in its own chunk; [35](../briefs/todo/35-focus-after-a-confirmed-write.md)
+focus after a confirmed write; and three library briefs, built in order:
+[36](../briefs/todo/36-library-username-for-a-new-ward-user.md) a `usernameFor`
+hook for a new Ward user, [37](../briefs/todo/37-library-rename-a-user.md) rename a
+user, [38](../briefs/todo/38-library-disable-a-user.md) switch off a local user.
+Each app adopts the new library version in its own brief.
 
 **Built 2026-10-22, not deployed:** [brief 32](../briefs/done/32-ward-on-its-own-host.md)
 moves Ward to `ward.<domain>`: the UI at the root, the API at `/ward-api` on the

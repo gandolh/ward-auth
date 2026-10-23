@@ -675,7 +675,16 @@
  * Confirmation. A native <dialog>: focus trap and Escape for free.
  * ----------------------------------------------------------------------- */
 
+/* Base UI's AlertDialog popup: a fixed box in the middle of the window, which
+   a native <dialog> got from the browser. */
 .wc-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 11;
+  transform: translate(-50%, -50%);
+  max-height: calc(100dvh - 2 * var(--ward-space-6));
+  overflow-y: auto;
   border: 1px solid var(--ward-border-strong);
   border-radius: var(--ward-radius-lg);
   background: var(--ward-surface);
@@ -687,7 +696,10 @@
   font-family: var(--ward-font);
 }
 
-.wc-dialog::backdrop {
+.wc-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
   background: rgb(0 0 0 / 60%);
 }
 

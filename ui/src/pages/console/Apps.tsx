@@ -21,6 +21,7 @@
  * on the app's own page for a later flip.
  */
 
+import { Collapsible } from "@base-ui/react/collapsible";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -37,37 +38,31 @@ export function AppsScreen(): React.JSX.Element {
 
   return (
     <>
-      <div className="wc-head">
-        <h1>Apps</h1>
-        <div className="wc-head-actions">
-          <button
-            type="button"
-            className="wc-btn"
-            data-tone="primary"
-            aria-expanded={creating}
-            onClick={() => {
-              setCreating((open) => !open);
-            }}
-          >
-            {creating ? "Close the new-app form" : "Register an app"}
-          </button>
+      <Collapsible.Root open={creating} onOpenChange={setCreating}>
+        <div className="wc-head">
+          <h1>Apps</h1>
+          <div className="wc-head-actions">
+            <Collapsible.Trigger className="wc-btn" data-tone="primary">
+              {creating ? "Close the new-app form" : "Register an app"}
+            </Collapsible.Trigger>
+          </div>
         </div>
-      </div>
 
-      <p className="wc-lede">
-        An app has to be registered here before a grant can name it. Registering one takes no
-        deploy, and a new app arrives closed to strangers and reachable by nobody — including the
-        owner account — until grants are issued for it.
-      </p>
+        <p className="wc-lede">
+          An app has to be registered here before a grant can name it. Registering one takes no
+          deploy, and a new app arrives closed to strangers and reachable by nobody — including the
+          owner account — until grants are issued for it.
+        </p>
 
-      {creating ? (
-        <NewAppForm
-          onCreated={() => {
-            setCreating(false);
-            reload();
-          }}
-        />
-      ) : null}
+        <Collapsible.Panel>
+          <NewAppForm
+            onCreated={() => {
+              setCreating(false);
+              reload();
+            }}
+          />
+        </Collapsible.Panel>
+      </Collapsible.Root>
 
       {result.state === "loading" ? <p className="wc-lede">Loading the registry…</p> : null}
 

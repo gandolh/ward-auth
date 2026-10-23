@@ -15,6 +15,7 @@
  * forgotten password is fixed by the operator rotating it.
  */
 
+import { Collapsible } from "@base-ui/react/collapsible";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -33,37 +34,31 @@ export function AccountsScreen(): React.JSX.Element {
 
   return (
     <>
-      <div className="wc-head">
-        <h1>Accounts</h1>
-        <div className="wc-head-actions">
-          <button
-            type="button"
-            className="wc-btn"
-            data-tone="primary"
-            onClick={() => {
-              setCreating((open) => !open);
-            }}
-            aria-expanded={creating}
-          >
-            {creating ? "Close the new-account form" : "New account"}
-          </button>
+      <Collapsible.Root open={creating} onOpenChange={setCreating}>
+        <div className="wc-head">
+          <h1>Accounts</h1>
+          <div className="wc-head-actions">
+            <Collapsible.Trigger className="wc-btn" data-tone="primary">
+              {creating ? "Close the new-account form" : "New account"}
+            </Collapsible.Trigger>
+          </div>
         </div>
-      </div>
 
-      <p className="wc-lede">
-        Every person who uses the estate is a row here, including the owner account. An account on
-        its own confers nothing: it can sign in to Ward and reach no app at all until a grant is
-        issued for one.
-      </p>
+        <p className="wc-lede">
+          Every person who uses the estate is a row here, including the owner account. An account on
+          its own confers nothing: it can sign in to Ward and reach no app at all until a grant is
+          issued for one.
+        </p>
 
-      {creating ? (
-        <NewAccountForm
-          onCreated={() => {
-            setCreating(false);
-            reload();
-          }}
-        />
-      ) : null}
+        <Collapsible.Panel>
+          <NewAccountForm
+            onCreated={() => {
+              setCreating(false);
+              reload();
+            }}
+          />
+        </Collapsible.Panel>
+      </Collapsible.Root>
 
       {result.state === "loading" ? <p className="wc-lede">Loading the account list…</p> : null}
 

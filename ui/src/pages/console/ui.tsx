@@ -12,12 +12,13 @@
  *   operator under pressure; a message that appears below the fold, silently, is
  *   a message that was not delivered.
  * - **A destructive confirmation names what will happen**, in the same words as
- *   the result, and is a native `<dialog>` so Escape and the focus trap are the
- *   browser's problem rather than ours.
+ *   the result, and is a Base UI alert dialog, so the focus trap, Escape and the
+ *   inert page behind it are a maintained library's problem rather than ours.
  * - **Every write announces its outcome** into a polite live region, including
  *   the outcome "nothing changed".
  */
 
+import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -205,11 +206,12 @@ export interface ConfirmProps {
 /**
  * A modal confirmation for an action that changes authority.
  *
- * Native `<dialog>` with `showModal()`, which gives the focus trap, the
- * inertness of the page behind it and Escape-to-cancel from the platform
- * instead of from three hundred lines of our own. `onCancel` is intercepted so
- * Escape routes through the same path as the Cancel button, and so a busy
- * dialog cannot be dismissed out from under a request in flight.
+ * Base UI's `AlertDialog`, which gives the focus trap (Cancel first), the
+ * inertness of the page behind it and Escape-to-cancel from a maintained
+ * library instead of from three hundred lines of our own. An alert dialog
+ * never closes on a press outside it. Escape arrives as `onOpenChange(false)`,
+ * which routes through the same path as the Cancel button and is ignored while
+ * busy, so a dialog cannot be dismissed out from under a request in flight.
  */
 export function Confirm({
   open,
@@ -221,41 +223,38 @@ export function Confirm({
   onConfirm,
   onCancel,
 }: ConfirmProps): React.JSX.Element | null {
-  const ref = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const dialog = ref.current;
-    if (dialog === null) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
-
   return (
-    <dialog
-      className="wc-dialog"
-      ref={ref}
-      onCancel={(event) => {
-        event.preventDefault();
-        if (busy !== true) onCancel();
+    <AlertDialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && busy !== true) onCancel();
       }}
     >
-      <h2>{title}</h2>
-      {children}
-      <div className="wc-dialog-actions">
-        <button type="button" className="wc-btn" onClick={onCancel} disabled={busy}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="wc-btn"
-          data-tone={tone}
-          onClick={onConfirm}
-          disabled={busy}
-        >
-          {busy === true ? "Working…" : confirmLabel}
-        </button>
-      </div>
-    </dialog>
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop className="wc-dialog-backdrop" />
+        {/* Portalled to <body>, outside the console wrapper, so the popup
+            carries the console surface itself or it renders with the light
+            sign-in tokens. */}
+        <AlertDialog.Popup className="wc-dialog" data-ward-surface="console">
+          <AlertDialog.Title>{title}</AlertDialog.Title>
+          {children}
+          <div className="wc-dialog-actions">
+            <button type="button" className="wc-btn" onClick={onCancel} disabled={busy}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="wc-btn"
+              data-tone={tone}
+              onClick={onConfirm}
+              disabled={busy}
+            >
+              {busy === true ? "Working…" : confirmLabel}
+            </button>
+          </div>
+        </AlertDialog.Popup>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
   );
 }
 

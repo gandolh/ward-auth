@@ -1,5 +1,5 @@
 ---
-summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed. Brief 32 (built 2026-10-22, not deployed) moves Ward to its own host, ward.<domain>; the apps need a redeploy for the new issuer. Brief 33 (built 2026-10-23, not deployed) puts Base UI under the console's confirmation and create forms. Brief 37 (built 2026-10-24) is ward-auth 0.4.0, a self-service rename.
+summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed. Brief 32 (built 2026-10-22, not deployed) moves Ward to its own host, ward.<domain>; the apps need a redeploy for the new issuer. Brief 33 (built 2026-10-23, not deployed) puts Base UI under the console's confirmation and create forms. Brief 37 (built 2026-10-24) is ward-auth 0.4.0, a self-service rename. Briefs 39-40 (built 2026-10-24, not deployed) let the console rename and delete an account.
 updated: 2026-10-24
 ---
 
@@ -55,9 +55,12 @@ so they download Base UI too; [brief 34](../briefs/todo/34-console-in-its-own-ch
 splits it out.
 
 **Built 2026-10-24:** [brief 37](../briefs/done/37-library-rename-a-user.md),
-ward-auth 0.4.0: `renameUser`, a self-service `POST /username` (on by default,
-`allowRename: false` to remove it) and `useRenameUser`. Shelfmark adopts it
-first. Nothing to deploy here; each app takes it by re-vendoring.
+ward-auth 0.4.0, a self-service rename (`POST /username`, `useRenameUser`), which
+apps take by re-vendoring (Shelfmark first). Briefs
+[39](../briefs/done/39-console-rename-an-account.md) and
+[40](../briefs/done/40-console-delete-an-account.md), not deployed: the console
+renames an account and deletes one, stopping at Ward's edge
+([decisions-admin.md](decisions-admin.md)). A Ward deploy ships them with 32 and 33.
 
 **Open (filed 2026-10-23):** [34](../briefs/todo/34-console-in-its-own-chunk.md)
 the console in its own chunk; [35](../briefs/todo/35-focus-after-a-confirmed-write.md)

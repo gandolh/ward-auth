@@ -464,3 +464,18 @@ the library rather than have Shelfmark write `auth_users` itself. It ran ahead o
 0.4.0. Beyond the brief, `POST /username` has its own `rename` lockout surface
 that counts taken names. Checked: typecheck, lint, 1187 tests and the bundle
 build. brief-board is down, so nothing was posted there.
+
+## [2026-10-24] done | Briefs 39–40: the console renames and deletes an account
+
+The owner asked for a username rename in the console, then for deleting a user.
+Both sat on database functions written early and never called: `setUsername` and
+`deleteUser`, with the schema's cascades and an audit log without foreign keys.
+[39](briefs/done/39-console-rename-an-account.md) adds
+`POST /console/accounts/:subject/username` and a Username panel.
+[40](briefs/done/40-console-delete-an-account.md) adds
+`DELETE /console/accounts/:subject` and a danger panel. Both are audited and stop at
+Ward's edge, since the apps keep their own users
+([decisions-admin.md](wiki/decisions-admin.md)). On the way, the app page's removal
+line had read "Removed undefined" because the client mistyped `deleteApp`'s answer.
+Checked: typecheck, lint, 1196 tests, and the console in Chromium on a scratch
+database. brief-board is down, so nothing was posted there.

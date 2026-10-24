@@ -1,6 +1,6 @@
 ---
-summary: The locked calls about administration and privilege — the environment-only break-glass superuser that can reach nothing but the console, the ordinary owner account that actually runs the apps, and the deliberate absence of any way to delegate console access.
-updated: 2026-10-07
+summary: The locked calls about administration and privilege — the environment-only break-glass superuser that can reach nothing but the console, the ordinary owner account that actually runs the apps, the deliberate absence of any way to delegate console access, and the console's rename and delete (2026-10-24), which stop at Ward's edge.
+updated: 2026-10-24
 ---
 
 # Decisions — administration and privilege
@@ -84,3 +84,18 @@ given the ability to issue grants without sharing the `.env` credential. That is
 correct for an estate with one operator and would be wrong the moment there are
 two — at which point this is the decision to revisit, and `ward:admin` with a
 refuse-to-remove-the-last-one guard is the design that was set aside.
+
+## The console can rename and delete an account
+_2026-10-24_, the owner's call ([brief 39](../briefs/done/39-console-rename-an-account.md),
+[brief 40](../briefs/done/40-console-delete-an-account.md)). A rename keeps the
+subject, the grants and every session, and changes only the name typed at Ward's
+login. A delete removes the account, and the schema's cascades take its grants,
+sessions and authorizations. The subject is retired, and the username is free for
+a new account, which is a new subject. Neither reaches into the apps: each keeps
+the name its user took at the first "Sign in with Ward", and its own user and data
+after a delete. Apps end the deleted account's Ward sessions within 30 seconds
+through `/session-status`. Both are audited (`user.rename` with `{ from, to }`,
+`user.delete` with the counts). Rejected: disable as the only way to remove someone,
+which leaves the name taken forever; making delete wait for a disable first, which
+app removal doesn't do either; and telling the apps to delete their users, which
+would let one console click destroy data held in another system.

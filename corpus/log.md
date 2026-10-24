@@ -449,8 +449,18 @@ pages stop downloading Base UI. [35](briefs/todo/35-focus-after-a-confirmed-writ
 fixes focus falling to `<body>` after a confirmed write, at all ten `Confirm` call
 sites; checking `finalFocus` is its first step. The library todo split into one brief
 per bullet: [36](briefs/todo/36-library-username-for-a-new-ward-user.md) a
-`usernameFor` hook beside `roleFor`, [37](briefs/todo/37-library-rename-a-user.md)
+`usernameFor` hook beside `roleFor`, [37](briefs/done/37-library-rename-a-user.md)
 `renameUser` plus a self-service `POST /username`, and
 [38](briefs/todo/38-library-disable-a-user.md) `disableUser` with a new migration and
 one answer for every refusal. 36–38 share the CHANGELOG and version, so they run in
 order. Adoption in each app is left to that app's corpus.
+
+## [2026-10-24] done | Brief 37: the library renames a user
+
+[Brief 37](briefs/done/37-library-rename-a-user.md) is built as ward-auth 0.4.0.
+Shelfmark's owner asked to change their username, and chose to put the rename in
+the library rather than have Shelfmark write `auth_users` itself. It ran ahead of
+36, since the two only share the CHANGELOG and version; 36 and 38 now build on
+0.4.0. Beyond the brief, `POST /username` has its own `rename` lockout surface
+that counts taken names. Checked: typecheck, lint, 1187 tests and the bundle
+build. brief-board is down, so nothing was posted there.

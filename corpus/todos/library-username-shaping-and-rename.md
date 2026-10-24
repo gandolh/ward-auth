@@ -2,7 +2,7 @@
 
 **Promoted 2026-10-23**, one brief per bullet:
 [36](../briefs/todo/36-library-username-for-a-new-ward-user.md) (`usernameFor`),
-[37](../briefs/todo/37-library-rename-a-user.md) (rename) and
+[37](../briefs/done/37-library-rename-a-user.md) (rename) and
 [38](../briefs/todo/38-library-disable-a-user.md) (disable). Delete this todo when all three land.
 
 Captured 2026-10-13 from the Wave C adoptions (briefs 22, 24, 25).

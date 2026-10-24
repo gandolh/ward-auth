@@ -502,6 +502,89 @@ describe("password change", () => {
   });
 });
 
+describe("rename", () => {
+  it("renames the signed-in user, answering the session under the new name", async () => {
+    const h = await build();
+    const signedIn = await login(h, "alice", "correct horse");
+    const cookie = cookieFrom(signedIn)!;
+    const id = (signedIn.json() as { user: { id: string } }).user.id;
+
+    const response = await h.app.inject({
+      method: "POST",
+      url: "/auth/username",
+      headers: { cookie },
+      payload: { username: "Alicia" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ user: { id, username: "Alicia" } });
+
+    // The same session, now under the new name; the old name no longer signs in.
+    const me = await h.app.inject({ method: "GET", url: "/me", headers: { cookie } });
+    expect(me.json()).toMatchObject({ user: { id, username: "Alicia" } });
+    expect((await login(h, "alicia", "correct horse")).statusCode).toBe(200);
+    expect((await login(h, "alice", "correct horse")).statusCode).toBe(401);
+  });
+
+  it("answers a taken name and a bad name with their codes, and throttles taken names", async () => {
+    const h = await build();
+    const cookie = cookieFrom(await login(h, "alice", "correct horse"))!;
+    const rename = (username: unknown) =>
+      h.app.inject({
+        method: "POST",
+        url: "/auth/username",
+        headers: { cookie },
+        payload: { username },
+      });
+
+    const taken = await rename("BOB");
+    expect(taken.statusCode).toBe(409);
+    expect(taken.json()).toEqual({ error: "username_taken" });
+    expect((await rename("   ")).json()).toEqual({ error: "invalid_username" });
+    expect((await rename(42)).json()).toEqual({ error: "invalid_request" });
+    // A new case of one's own name is not taken, and is not counted.
+    expect((await rename("ALICE")).statusCode).toBe(200);
+    expect(await h.accounts.findUserByUsername("bob")).toMatchObject({ username: "bob" });
+
+    for (let i = 1; i < LOCKOUT_MAX_FAILURES; i++) await rename("bob");
+    // Five taken names from this address: the sixth attempt is refused, whatever it asks.
+    expect((await rename("carol")).statusCode).toBe(429);
+  });
+
+  it("is guarded, refuses a cross-site request, and is off when the app says so", async () => {
+    const h = await build();
+    const cookie = cookieFrom(await login(h, "alice", "correct horse"))!;
+
+    const anonymous = await h.app.inject({
+      method: "POST",
+      url: "/auth/username",
+      payload: { username: "mallory" },
+    });
+    expect(anonymous.statusCode).toBe(401);
+
+    const crossSite = await h.app.inject({
+      method: "POST",
+      url: "/auth/username",
+      headers: { cookie, origin: "https://evil.example", "sec-fetch-site": "cross-site" },
+      payload: { username: "mallory" },
+    });
+    expect(crossSite.statusCode).toBe(403);
+    expect(crossSite.json()).toEqual({ error: "cross_site" });
+    expect(await h.accounts.findUserByUsername("mallory")).toBeUndefined();
+    await h.app.close();
+
+    const off = await build({ allowRename: false });
+    const offCookie = cookieFrom(await login(off, "alice", "correct horse"))!;
+    const refused = await off.app.inject({
+      method: "POST",
+      url: "/auth/username",
+      headers: { cookie: offCookie },
+      payload: { username: "mallory" },
+    });
+    expect(refused.statusCode).toBe(404);
+    expect(await off.accounts.findUserByUsername("alice")).toBeDefined();
+  });
+});
+
 describe("registration", () => {
   it("does not exist unless the app turns it on", async () => {
     const h = await build();

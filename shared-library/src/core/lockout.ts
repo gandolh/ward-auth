@@ -29,10 +29,10 @@
  *
  * ## Per-surface budgets
  *
- * Login, registration and password change hold **independent** budgets.
- * Spending the password-change budget (which needs a session first) must never
- * lock the same address out of login, which is how the person would recover,
- * and a registration flood must not stop existing users signing in.
+ * Login, registration, password change and rename hold **independent**
+ * budgets. Spending the password-change budget (which needs a session first)
+ * must never lock the same address out of login, which is how the person would
+ * recover, and a registration flood must not stop existing users signing in.
  *
  * ## No artificial delay
  *
@@ -90,7 +90,7 @@ export const LOCKOUT_AMBIGUOUS_ADDRESS_WARN_INTERVAL_SECONDS = 5 * 60;
  * one. The union is closed so that borrowing is a compile error rather than a
  * quiet coupling nobody notices until the two interfere.
  */
-export type LockoutSurface = "login" | "register" | "change_password";
+export type LockoutSurface = "login" | "register" | "change_password" | "rename";
 
 /** Who is attempting what, from where. */
 export interface LockoutTarget {

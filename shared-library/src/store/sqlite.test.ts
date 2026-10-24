@@ -215,6 +215,31 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     });
   });
 
+  it("renames a user, and allows a new case of the user's own name", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user());
+
+    store.setUsername("u-alice", "Alicia", "alicia", 2_000);
+    expect(store.findUserByFoldedUsername("alice")).toBeUndefined();
+    expect(store.findUserByFoldedUsername("alicia")).toMatchObject({
+      id: "u-alice",
+      username: "Alicia",
+      updatedAt: 2_000,
+    });
+
+    store.setUsername("u-alice", "ALICIA", "alicia", 3_000);
+    expect(store.findUserById("u-alice")).toMatchObject({ username: "ALICIA", updatedAt: 3_000 });
+  });
+
+  it("refuses a name another user holds, and changes nothing", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user());
+    store.createUser(user({ id: "u-bob", username: "Bob" }));
+
+    expect(() => store.setUsername("u-bob", "ALICE", "alice", 2_000)).toThrow(UsernameTakenError);
+    expect(store.findUserById("u-bob")).toMatchObject({ username: "Bob", updatedAt: 1_000 });
+  });
+
   it("creates, renews, finds and deletes sessions", () => {
     const store = createSqliteStore(open());
     store.createUser(user());

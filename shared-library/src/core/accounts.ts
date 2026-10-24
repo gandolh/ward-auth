@@ -90,6 +90,14 @@ export interface Accounts {
   findUserByUsername(username: string): Promise<AuthUser | undefined>;
   setRole(userId: string, role: string): Promise<void>;
   /**
+   * Rename a user (0.4.0). The name is trimmed and checked as a new one is
+   * (`UsernamePolicyError`) and must be free once folded (`UsernameTakenError`;
+   * the user's own name in another case is free). The id stays, and so does
+   * every session: a rename is not a credential change. `undefined` when there
+   * is no such user.
+   */
+  renameUser(userId: string, username: string): Promise<AuthUser | undefined>;
+  /**
    * The password check. `undefined` for an unknown username, a user with no
    * local password, or a wrong password — **one answer, one cost**: every path
    * runs scrypt once, so timing does not reveal which accounts exist.
@@ -313,6 +321,13 @@ export function createAccounts(options: AccountsOptions): Accounts {
     async setRole(userId, role) {
       if (role.length === 0) throw new TypeError("setRole: role must be a non-empty string");
       await store.setRole(userId, role, now());
+    },
+    async renameUser(userId, username) {
+      const name = normaliseUsername(username);
+      const user = await store.findUserById(userId);
+      if (user === undefined) return undefined;
+      await store.setUsername(userId, name, foldUsername(name), now());
+      return toAuthUser({ ...user, username: name });
     },
     verifyCredentials,
     changePassword,

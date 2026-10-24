@@ -7,6 +7,44 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 0.4.0 — 2026-10-24
+
+A signed-in user can rename themselves (Ward's brief 37).
+
+- `Accounts.renameUser(userId, username)` trims and checks the name as
+  `createUser` does (`UsernamePolicyError`), refuses one another user holds once
+  folded (`UsernameTakenError`; the user's own name in another case is fine),
+  and answers the updated `AuthUser`, or `undefined` for no such user. The id
+  stays and no session ends: a rename is not a credential change. An admin
+  screen that renames someone else calls this itself; the library adds no
+  admin route.
+- `POST <routePrefix>/username`, guarded, body `{ username }`: `200` with the
+  session body under the new name, `400 invalid_username` or
+  `409 username_taken`. Each `409` counts against a new `rename` lockout surface,
+  so five taken names from one address in 15 minutes earn a `429`. On by
+  default; `allowRename: false` removes the route.
+- `AuthStore` gains `setUsername(userId, username, usernameFolded, now)`, which
+  throws `UsernameTakenError` when another user holds the folded name.
+  `LockoutSurface` gains `"rename"`.
+- The browser bundle gains `client.renameUser(username)` and the
+  `useRenameUser()` hook, shaped like `useChangePassword`. On success the
+  session state already carries the new name.
+
+Upgrade notes from 0.3.1:
+
+- Re-vendor (`npm run vendor -- <app>/vendor/ward`). No migration: the
+  columns exist.
+- **The route is on as soon as you upgrade.** Nothing calls it until the
+  settings page does, but an app that keys anything on the username rather
+  than the user id, or that names its users itself, should pass
+  `allowRename: false` to `wardAuth`.
+- To offer it, put `useRenameUser()` on the settings page: a field holding
+  `user.username`, `renameUser(next)` on submit, and messages for
+  `invalid_username`, `username_taken` and `too_many_attempts`.
+- A seed that runs again with the old name creates a second user, because a
+  seed matches by name. Change the name the seed is given too.
+- A custom store (not `createSqliteStore`) must implement `setUsername`.
+
 ## 0.3.1 — 2026-10-13
 
 Review fixes. One is a security fix, so every app should take this.

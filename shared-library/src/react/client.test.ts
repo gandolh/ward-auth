@@ -140,6 +140,41 @@ describe("createAuthClient", () => {
     expect(client.getState()).toEqual({ status: "signed_out", ward: noWard });
   });
 
+  it("renames, taking the new name from the answer without asking again", async () => {
+    const fetch = vi.fn(async () =>
+      json(200, { user: { ...alice, username: "Alicia" }, session, ward: noWard }),
+    );
+    const client = createAuthClient({ basePath: "/a", fetch });
+    expect(await client.renameUser("Alicia")).toEqual({ ok: true });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0]).toMatchObject([
+      "/a/username",
+      { method: "POST", body: JSON.stringify({ username: "Alicia" }) },
+    ]);
+    expect(client.getState()).toMatchObject({
+      status: "signed_in",
+      user: { username: "Alicia" },
+    });
+  });
+
+  it("passes a rename's refusal through, and signs out on unauthorized", async () => {
+    const taken = createAuthClient({
+      basePath: "/a",
+      fetch: async () => json(409, { error: "username_taken" }),
+    });
+    expect(await taken.renameUser("bob")).toEqual({
+      ok: false,
+      error: { code: "username_taken", status: 409 },
+    });
+
+    const gone = createAuthClient({
+      basePath: "/a",
+      fetch: async () => json(401, { error: "unauthorized" }),
+    });
+    expect(await gone.renameUser("bob")).toMatchObject({ ok: false });
+    expect(gone.getState()).toEqual({ status: "signed_out", ward: noWard });
+  });
+
   it("registers, and signs the new user in", async () => {
     const client = createAuthClient({
       basePath: "/a",

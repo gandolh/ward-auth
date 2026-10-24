@@ -24,6 +24,7 @@ export {
   useLogin,
   useLogout,
   useRegister,
+  useRenameUser,
   useSession,
   useSetLocalPassword,
   useWardLink,

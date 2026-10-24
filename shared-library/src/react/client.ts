@@ -154,6 +154,12 @@ export interface AuthClient {
   login(username: string, password: string): Promise<ActionResult>;
   logout(): Promise<ActionResult>;
   changePassword(currentPassword: string, newPassword: string): Promise<ActionResult>;
+  /**
+   * Rename the signed-in user (0.4.0). On success the state already carries
+   * the new name. Errors: `invalid_username`, `username_taken`,
+   * `too_many_attempts`, `unauthorized`.
+   */
+  renameUser(username: string): Promise<ActionResult>;
   register(username: string, password: string): Promise<ActionResult>;
   /**
    * "Sign in with Ward": ask the server for Ward's URL and go there. On
@@ -417,6 +423,13 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
         if (response.status === 401 && error.code === "unauthorized") setState(signedOut());
         return { ok: false, error };
       }
+      return { ok: true };
+    },
+    async renameUser(username) {
+      const result = await act("/username", { username });
+      if (!result.ok) return result;
+      // The answer is the session under the new name: no second request.
+      setState(stateFromBody((await result.response!.json()) as SessionBody));
       return { ok: true };
     },
     startWardSignIn: (startOptions = {}) =>

@@ -33,6 +33,7 @@ import {
   publicSession,
   sameOrigin,
   tooManyAttempts,
+  usernameBody,
 } from "./http.js";
 import { createWardIdentities, type WardIdentities } from "../ward/identities.js";
 import {
@@ -87,11 +88,11 @@ import {
  * | status | `error` | when |
  * |---|---|---|
  * | 400 | `invalid_request` | the body is not the expected shape |
- * | 400 | `invalid_username`, `password_too_short`, `password_too_long` | registration or a new password fails the policy |
+ * | 400 | `invalid_username`, `password_too_short`, `password_too_long` | registration, a rename or a new password fails the policy |
  * | 401 | `unauthorized` (+ `reason` when a session check rejected it) | the guard found no live session |
  * | 401 | `invalid_credentials` | wrong username or password, or wrong current password |
  * | 403 | `cross_site` | a browser said the request came from another origin |
- * | 409 | `username_taken` | registration |
+ * | 409 | `username_taken` | registration, a rename |
  * | 429 | `too_many_attempts` (+ `retryAfterSeconds`, and `Retry-After`) | lockout |
  *
  * The session `reason`s the library itself sets: `ward_unavailable` (Ward
@@ -179,6 +180,12 @@ export interface WardAuthOptions {
    * Off by default: most apps create their users with the seed helper.
    */
   registration?: { role: string };
+  /**
+   * `POST <routePrefix>/username`, where a signed-in user renames themselves.
+   * On by default (0.4.0); `false` turns it off for an app that keys anything
+   * on the name rather than the id, or names its users itself.
+   */
+  allowRename?: boolean;
   /**
    * Routes reachable with no session, as `"METHOD /pattern"` or `"/pattern"`
    * (any method), matched against the **route pattern** Fastify resolved —
@@ -501,6 +508,44 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
         lockout.clearFailures(target);
         return reply.code(204).send();
       });
+
+      if (options.allowRename !== false) {
+        /**
+         * Rename oneself. Guarded, so `request.auth` is set. The id and every
+         * session stay. A taken name is the one answer that says something
+         * about other accounts, so each `409` counts against the address's
+         * rename budget; a policy failure or a success does not.
+         */
+        routes.post("/username", async (request, reply) => {
+          if (!sameOrigin(request, publicOrigin)) return crossSite(reply);
+          const auth = request.auth;
+          if (auth === null) return reply.code(401).send({ error: "unauthorized" });
+
+          const address = lockoutKey(request);
+          const gate = lockout.check({ surface: "rename", address });
+          if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds ?? 1);
+
+          const body = usernameBody(request.body);
+          if (body === undefined) return reply.code(400).send({ error: "invalid_request" });
+
+          let user: AuthUser | undefined;
+          try {
+            user = await accounts.renameUser(auth.user.id, body.username);
+          } catch (error) {
+            if (error instanceof UsernamePolicyError) {
+              return reply.code(400).send({ error: error.code });
+            }
+            if (error instanceof UsernameTakenError) {
+              lockout.recordFailure({ surface: "rename", address });
+              return reply.code(409).send({ error: "username_taken" });
+            }
+            throw error;
+          }
+          // The guard found the user a moment ago; gone now means signed out.
+          if (user === undefined) return reply.code(401).send({ error: "unauthorized" });
+          return reply.code(200).send(await sessionBody(user, auth.session));
+        });
+      }
 
       if (options.registration !== undefined) {
         const { role } = options.registration;

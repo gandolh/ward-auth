@@ -243,6 +243,9 @@ export function createSqliteStore(
       "UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE id = ?",
     ),
     setRole: db.prepare("UPDATE auth_users SET role = ?, updated_at = ? WHERE id = ?"),
+    setUsername: db.prepare(
+      "UPDATE auth_users SET username = ?, username_folded = ?, updated_at = ? WHERE id = ?",
+    ),
     insertSession: db.prepare(
       `INSERT INTO auth_sessions (id_hash, user_id, origin, ward_sid, created_at, renewed_at, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -320,6 +323,15 @@ export function createSqliteStore(
 
     setRole(userId: string, role: string, now: number): void {
       s.setRole.run(role, now, userId);
+    },
+
+    setUsername(userId: string, username: string, usernameFolded: string, now: number): void {
+      inSavepoint(db, () => {
+        // Checked rather than caught, for the reason `insertUser` gives.
+        const holder = s.userByFolded.get(usernameFolded) as UserRow | undefined;
+        if (holder !== undefined && holder.id !== userId) throw new UsernameTakenError();
+        s.setUsername.run(username, usernameFolded, now, userId);
+      });
     },
 
     createSession(session: SessionRecord): void {

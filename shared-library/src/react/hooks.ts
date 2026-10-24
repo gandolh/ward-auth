@@ -130,6 +130,30 @@ export function useChangePassword(options?: HookOptions): ActionState & {
 }
 
 /**
+ * `renameUser(username)` (0.4.0). On success every `useSession` shows the new
+ * name and no session ends. Errors: `invalid_username`, `username_taken`,
+ * `too_many_attempts`, `unauthorized`.
+ */
+export function useRenameUser(options?: HookOptions): ActionState & {
+  renameUser: (username: string) => Promise<boolean>;
+  done: boolean;
+} {
+  const client = useClient(options);
+  const [done, setDone] = useState(false);
+  const run = useCallback(
+    async (username: string) => {
+      setDone(false);
+      const result = await client.renameUser(username);
+      if (result.ok) setDone(true);
+      return result;
+    },
+    [client],
+  );
+  const { perform, ...state } = useAction(run);
+  return { ...state, renameUser: perform, done };
+}
+
+/**
  * `register(username, password)`, for the app that enables registration.
  * Signs the new user in on success. Errors: `username_taken`,
  * `invalid_username`, `password_too_short`, `password_too_long`,

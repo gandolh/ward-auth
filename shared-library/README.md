@@ -156,6 +156,7 @@ await app.register(wardAuth, {
   publicRoutes: ["GET /health"], // the allowlist; see below
   // trustedProxies: ["172.16.0.0/12"], // omit to read AUTH_TRUSTED_PROXIES; see below
   // registration: { role: "member" },  // only an app with a Register page
+  // allowRename: false,                 // POST /auth/username is on by default (0.4.0)
   ...(wardClient && {
     ward: {
       client: wardClient,
@@ -222,6 +223,7 @@ the hooks are configured with.
 | `POST /auth/logout`              | public         | → `204`                                                             |
 | `GET /auth/session`              | public         | → `{ user, session, ward, reason? }` (`user: null` when signed out) |
 | `POST /auth/password`            | session        | `{ currentPassword, newPassword }` → `204`                          |
+| `POST /auth/username`            | session        | `{ username }` → `200 { user, session, ward }` under the new name   |
 | `POST /auth/register`            | public, opt-in | `{ username, password }` → `201 { user, session, ward }`            |
 | `POST /auth/ward/start`          | public         | `{ returnTo? }` → `{ url }` to send the browser to                  |
 | `GET /auth/ward/callback`        | public         | the redirect URI; a `303` to one of the app's pages                 |
@@ -419,6 +421,7 @@ function Settings() {
   const unlink = useWardUnlink(); // unlink(); error no_local_password | not_linked
   const local = useSetLocalPassword(); // setPassword(next, current?); reauthenticate()
   const change = useChangePassword(); // for users who have a password
+  const rename = useRenameUser(); // renameUser(next); rename.done; error username_taken
   const out = useWardSignOut(); // signOut(): here and at Ward
 }
 ```
@@ -437,6 +440,12 @@ function Settings() {
   is true; then show the new-password form. A failed reauthentication lands
   with `?ward_error=` instead (`useWardResult` reads it). For a user who has a
   password, `setPassword(next, current)` is a password change.
+- **Rename**: `renameUser(next)` checks the name as registration does and
+  keeps the id and every session. The session state carries the new name as
+  soon as it resolves. A name another user holds, in any case, is
+  `username_taken`, and five of those from one address in 15 minutes earn a
+  `429`. An app that keys anything on the username rather than the id, or
+  names its users itself, passes `allowRename: false`, and the route is gone.
 - **Unlink Ward**: refused with `no_local_password` until the user has one.
   If the current session began with Ward, it ends too (the answer says
   `signedOut`). Every other Ward-originated session of that user ends as well.
@@ -454,10 +463,10 @@ Every error body is `{ "error": <code> }`. The hooks expose the code as
 | Code                                                          | Where                                          | Meaning                                                            |
 | ------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
 | `invalid_credentials`                                         | login, password change                         | wrong username or password (one answer for both)                   |
-| `too_many_attempts`                                           | login, register, password routes               | lockout; `retryAfterSeconds` says how long                         |
+| `too_many_attempts`                                           | login, register, password routes, rename       | lockout; `retryAfterSeconds` says how long                         |
 | `invalid_request`                                             | any `POST`                                     | a malformed body                                                   |
-| `invalid_username`, `password_too_short`, `password_too_long` | register, new passwords                        | the policy                                                         |
-| `username_taken`                                              | register                                       |                                                                    |
+| `invalid_username`, `password_too_short`, `password_too_long` | register, rename, new passwords                | the policy                                                         |
+| `username_taken`                                              | register, rename                               |                                                                    |
 | `unauthorized`                                                | guarded routes                                 | no live session; may carry a `reason`                              |
 | `forbidden`                                                   | `requireRole`                                  |                                                                    |
 | `cross_site`                                                  | any `POST`                                     | a browser said the request came from another origin                |

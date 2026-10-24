@@ -273,6 +273,52 @@ describe("changePassword", () => {
   });
 });
 
+describe("renameUser", () => {
+  let userId: string;
+
+  beforeEach(async () => {
+    userId = (
+      await accounts.createUser({
+        username: "user-1a2b3c4d",
+        password: "correct horse",
+        role: "member",
+      })
+    ).id;
+  });
+
+  it("signs in under the new name only, keeping the id and every session", async () => {
+    const here = await accounts.startSession(userId);
+    const phone = await accounts.startSession(userId);
+
+    expect(await accounts.renameUser(userId, "  Alice ")).toEqual({
+      id: userId,
+      username: "Alice",
+      role: "member",
+      hasPassword: true,
+    });
+
+    expect(await accounts.verifyCredentials("alice", "correct horse")).toMatchObject({
+      id: userId,
+    });
+    expect(await accounts.verifyCredentials("user-1a2b3c4d", "correct horse")).toBeUndefined();
+    expect(await accounts.resolveSession(here.token)).toBeDefined();
+    expect(await accounts.resolveSession(phone.token)).toBeDefined();
+  });
+
+  it("refuses a name another user holds in any case, and a name the policy refuses", async () => {
+    await accounts.createUser({ username: "bob", password: "bob's password", role: "member" });
+
+    await expect(accounts.renameUser(userId, "BOB")).rejects.toBeInstanceOf(UsernameTakenError);
+    await expect(accounts.renameUser(userId, "   ")).rejects.toBeInstanceOf(UsernamePolicyError);
+    expect(await accounts.findUserById(userId)).toMatchObject({ username: "user-1a2b3c4d" });
+  });
+
+  it("answers undefined for a user that does not exist", async () => {
+    expect(await accounts.renameUser("nobody", "carol")).toBeUndefined();
+    expect(await accounts.findUserByUsername("carol")).toBeUndefined();
+  });
+});
+
 describe("seedUsers", () => {
   it("creates missing users and leaves existing ones exactly as they were", async () => {
     await accounts.createUser({ username: "alice", password: "alice's own", role: "admin" });

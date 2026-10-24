@@ -99,6 +99,16 @@ export interface AuthStore {
   /** `null` removes the local password (brief 21 never does; it is here for symmetry). */
   setPasswordHash(userId: string, passwordHash: string | null, now: number): Awaitable<void>;
   setRole(userId: string, role: string, now: number): Awaitable<void>;
+  /**
+   * Rename a user (0.4.0). Throws `UsernameTakenError` when another user holds
+   * the folded name; the user's own name in another case is not taken.
+   */
+  setUsername(
+    userId: string,
+    username: string,
+    usernameFolded: string,
+    now: number,
+  ): Awaitable<void>;
 
   createSession(session: SessionRecord): Awaitable<void>;
   findSession(idHash: string): Awaitable<SessionRecord | undefined>;

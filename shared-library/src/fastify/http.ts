@@ -43,6 +43,14 @@ export function passwordChangeBody(
   return { currentPassword, newPassword };
 }
 
+/** A rename's body. The name's rules are the policy's, answered with its code. */
+export function usernameBody(body: unknown): { username: string } | undefined {
+  if (typeof body !== "object" || body === null) return undefined;
+  const { username } = body as Record<string, unknown>;
+  if (typeof username !== "string") return undefined;
+  return { username };
+}
+
 /**
  * Whether the request is same-origin enough to act on the session cookie.
  *

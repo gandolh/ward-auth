@@ -105,6 +105,8 @@ mounted anywhere else would simply never receive it.
 | `POST` | `/console/accounts/:subject/enable` | Re-enable a disabled account. |
 | `POST` | `/console/accounts/:subject/disable` | Disable. Existing sessions stop answering as active. |
 | `POST` | `/console/accounts/:subject/password` | Set a password on behalf of an account. |
+| `POST` | `/console/accounts/:subject/username` | Rename. The subject, grants and sessions stay. |
+| `DELETE` | `/console/accounts/:subject` | Delete outright: grants and sessions go with it, the subject is retired. |
 | `GET` | `/console/accounts/:subject/sessions` | Live refresh families for an account. |
 | `POST` | `/console/accounts/:subject/sessions/revoke` | Revoke all of them. |
 | `DELETE` | `/console/accounts/:subject/sessions/:familyId` | Revoke one. |

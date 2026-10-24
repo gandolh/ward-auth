@@ -99,7 +99,7 @@ describe("the base path", () => {
     {
       name: "deleteApp",
       run: (api) => api.deleteApp("prm"),
-      body: { slug: "prm", grantsRevoked: 0 },
+      body: { deleted: "prm", grantsRevoked: 0 },
     },
     {
       name: "setOidcClient",
@@ -144,6 +144,16 @@ describe("the base path", () => {
       name: "setPassword",
       run: (api) => api.setPassword("s", "p"),
       body: { subject: "s", sessionsRevoked: 0 },
+    },
+    {
+      name: "renameAccount",
+      run: (api) => api.renameAccount("s", "u"),
+      body: { account: {}, changed: true },
+    },
+    {
+      name: "deleteAccount",
+      run: (api) => api.deleteAccount("s"),
+      body: { deleted: "s", username: "u", grantsRevoked: 0, sessionsRevoked: 0 },
     },
     { name: "listSessions", run: (api) => api.listSessions("s"), body: { sessions: [], total: 0 } },
     {

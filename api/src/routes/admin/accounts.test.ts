@@ -83,6 +83,12 @@ it("answers 401 with no console session, on every route", async () => {
       url: "/console/accounts/deadbeef/password",
       payload: { password: PASSWORD },
     },
+    {
+      method: "POST" as const,
+      url: "/console/accounts/deadbeef/username",
+      payload: { username: "x" },
+    },
+    { method: "DELETE" as const, url: "/console/accounts/deadbeef" },
   ]) {
     const response = await app.inject(init);
     expect(response.statusCode, init.url).toBe(401);
@@ -408,6 +414,137 @@ describe("rotating a password", () => {
       url: "/console/accounts/deadbeef/password",
       payload: { password: PASSWORD },
     });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "account_not_found" });
+  });
+});
+
+describe("renaming an account", () => {
+  const rename = (subject: string, username: unknown): Promise<LightMyRequestResponse> =>
+    asConsole({
+      method: "POST",
+      url: `/console/accounts/${subject}/username`,
+      payload: { username },
+    });
+
+  it("keeps the subject, the grants and the sessions, and signs in under the new name", async () => {
+    const subject = await createAccount("cristian");
+    grantRole(db, { subject, appSlug: "prm", role: "admin", grantedBy: SUPERUSER_ACTOR });
+    issueRefreshToken(db, subject);
+    db.exec("DELETE FROM audit_log");
+
+    const response = await rename(subject, "  Cristian G ");
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      account: { subject, username: "Cristian G" },
+      changed: true,
+    });
+
+    expect(findUserByUsername(db, "cristian g")?.subject).toBe(subject);
+    expect(findUserByUsername(db, "cristian")).toBeUndefined();
+    expect(listGrantsForSubject(db, subject)).toHaveLength(1);
+    expect(listLiveTokensForSubject(db, subject)).toHaveLength(1);
+
+    const [row] = listAudit(db);
+    expect(row).toMatchObject({
+      action: "user.rename",
+      actor_label: "superuser",
+      target_id: subject,
+    });
+    expect(JSON.parse(row!.detail!)).toEqual({
+      session: sessionId,
+      from: "cristian",
+      to: "Cristian G",
+    });
+  });
+
+  it("refuses a name another account holds in any case, and changes nothing", async () => {
+    await createAccount("alice");
+    const bob = await createAccount("bob");
+    db.exec("DELETE FROM audit_log");
+
+    const response = await rename(bob, "ALICE");
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ error: "username_taken" });
+    expect(findUserBySubject(db, bob)?.username).toBe("bob");
+    expect(listAudit(db)).toHaveLength(0);
+  });
+
+  it("treats the same name as a no-op, and a new case of it as a change", async () => {
+    const subject = await createAccount("cristian");
+    db.exec("DELETE FROM audit_log");
+
+    const same = await rename(subject, "cristian");
+    expect(same.json()).toMatchObject({ changed: false });
+    expect(listAudit(db)).toHaveLength(0);
+
+    const cased = await rename(subject, "Cristian");
+    expect(cased.json()).toMatchObject({ account: { username: "Cristian" }, changed: true });
+  });
+
+  it("refuses a name that cannot be read back reliably, and a missing account", async () => {
+    const subject = await createAccount("cristian");
+    for (const username of ["", "double  space", "no\u00a0break", 42]) {
+      const response = await rename(subject, username);
+      expect(response.statusCode, JSON.stringify(username)).toBe(400);
+      expect(response.json()).toEqual({ error: "invalid_request" });
+    }
+
+    const missing = await rename("deadbeef", "someone");
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json()).toEqual({ error: "account_not_found" });
+  });
+});
+
+describe("deleting an account", () => {
+  it("removes the account, its grants and its sessions, and frees the name for a new subject", async () => {
+    const subject = await createAccount("cristian");
+    grantRole(db, { subject, appSlug: "prm", role: "admin", grantedBy: SUPERUSER_ACTOR });
+    grantRole(db, { subject, appSlug: "prm", role: "member", grantedBy: SUPERUSER_ACTOR });
+    issueRefreshToken(db, subject);
+
+    const response = await asConsole({ method: "DELETE", url: `/console/accounts/${subject}` });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      deleted: subject,
+      username: "cristian",
+      grantsRevoked: 2,
+      sessionsRevoked: 1,
+    });
+
+    expect(findUserBySubject(db, subject)).toBeUndefined();
+    expect(listGrantsForSubject(db, subject)).toEqual([]);
+    expect(listLiveTokensForSubject(db, subject)).toEqual([]);
+    expect(usableAccount(db, subject)).toBeUndefined();
+
+    // The name is free again, and whoever takes it is someone else.
+    const again = await createAccount("cristian");
+    expect(again).not.toBe(subject);
+    expect(listGrantsForSubject(db, again)).toEqual([]);
+  });
+
+  it("keeps the audit row that says who deleted what", async () => {
+    const subject = await createAccount("cristian");
+    db.exec("DELETE FROM audit_log");
+
+    await asConsole({ method: "DELETE", url: `/console/accounts/${subject}` });
+
+    const [row] = listAudit(db);
+    expect(row).toMatchObject({
+      action: "user.delete",
+      actor_label: "superuser",
+      target_id: subject,
+    });
+    expect(JSON.parse(row!.detail!)).toEqual({
+      session: sessionId,
+      username: "cristian",
+      grantsRevoked: 0,
+      sessionsRevoked: 0,
+    });
+  });
+
+  it("404s on a subject that does not exist", async () => {
+    const response = await asConsole({ method: "DELETE", url: "/console/accounts/deadbeef" });
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ error: "account_not_found" });
   });

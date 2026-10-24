@@ -9,10 +9,12 @@ import { listLiveTokensForSubject, revokeAllForSubject } from "../../db/refresh-
 import {
   countUsers,
   createUser,
+  deleteUser,
   findUserBySubject,
   listUsers,
   setDisabled,
   setPasswordHash,
+  setUsername,
   type UserRow,
 } from "../../db/users.js";
 import {
@@ -25,8 +27,8 @@ import {
 
 /**
  * Account management: `GET`, `POST /console/accounts`, `GET
- * /console/accounts/:subject`, and `POST .../disable`, `.../enable`,
- * `.../password`.
+ * /console/accounts/:subject`, `POST .../disable`, `.../enable`,
+ * `.../password`, `.../username`, and `DELETE /console/accounts/:subject`.
  *
  * **This is how the owner account comes into existence.** Ward's superuser is a
  * break-glass credential in `.env` with no account row, no subject and no
@@ -63,6 +65,16 @@ import {
  * being destroyed, so re-enabling restores exactly what was there. Re-enabling
  * does **not** bring the sessions back — a revoked refresh token stays revoked
  * and the person signs in again, which is the only safe direction.
+ *
+ * ## Deleting does destroy the identity
+ *
+ * `DELETE` removes the row, and the schema's cascades take its grants, refresh
+ * tokens, verification tokens and OIDC authorizations with it. Nothing comes
+ * back. The subject is retired, never re-minted, so no later account can
+ * inherit an app's rows. The username is freed: a new account under it is a
+ * new subject and a stranger to every app. The audit row survives, because
+ * `audit_log` has no foreign keys for exactly this reason. Disable is the
+ * reversible door; delete is for an account that should not exist.
  */
 
 /** The `:subject` path parameter. Opaque, bounded; existence is the real check. */
@@ -115,6 +127,7 @@ const password = z.string();
 
 const createAccountBody = z.object({ username, password });
 const passwordBody = z.object({ password });
+const usernameBody = z.object({ username });
 
 const listQuery = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(100),
@@ -385,5 +398,99 @@ export async function adminAccountsRoutes(
     })();
 
     return reply.code(200).send({ subject: account.subject, sessionsRevoked });
+  });
+  /**
+   * `POST /console/accounts/:subject/username` — rename an account.
+   *
+   * The subject does not move, and every token, grant and app row keys on the
+   * subject, so nothing else changes: no session ends (a rename is not a
+   * credential change), and no grant is touched. What does change is the name
+   * the person types at Ward's login and the one this console lists. An app's
+   * own user keeps the name it took at its first "Sign in with Ward", because
+   * `preferred_username` is only ever a suggestion there.
+   *
+   * The exact same name is a no-op: `200`, `changed: false`, no audit row. A new
+   * case of the account's own name is a change, and the constraint allows it,
+   * because the folded name still belongs to the same row. A name another
+   * account holds is caught by the `UNIQUE` constraint, as on create.
+   */
+  app.post("/console/accounts/:subject/username", async (request, reply) => {
+    const params = subjectParams.safeParse(request.params);
+    const body = usernameBody.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ error: "invalid_request" });
+    }
+
+    const db = await database();
+    const before = findUserBySubject(db, params.data.subject);
+    if (before === undefined) {
+      return reply.code(404).send({ error: "account_not_found" });
+    }
+
+    if (before.username === body.data.username) {
+      return reply.code(200).send({ account: accountView(before), changed: false });
+    }
+
+    let after: UserRow;
+    try {
+      after = db.transaction((): UserRow => {
+        const row = setUsername(db, before.subject, body.data.username)!;
+
+        recordConsoleAudit(db, request, {
+          action: "user.rename",
+          targetKind: "user",
+          targetId: before.subject,
+          detail: { from: before.username, to: row.username },
+        });
+
+        return row;
+      })();
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        return reply.code(409).send({ error: "username_taken" });
+      }
+      throw error;
+    }
+
+    return reply.code(200).send({ account: accountView(after), changed: true });
+  });
+  /**
+   * `DELETE /console/accounts/:subject` — delete an account outright.
+   *
+   * The counts are read before the delete, because the cascade takes the rows
+   * with it, and the audit row carrying them is the only trace they existed.
+   * The apps find out on their next `/session-status` check, which answers
+   * `active: false` for an account that is gone, so their Ward-originated
+   * sessions end within 30 seconds. Each app keeps its own user and that user's
+   * data; deleting those is the app's business.
+   */
+  app.delete("/console/accounts/:subject", async (request, reply) => {
+    const params = subjectParams.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: "invalid_request" });
+    }
+
+    const db = await database();
+    const row = findUserBySubject(db, params.data.subject);
+    if (row === undefined) {
+      return reply.code(404).send({ error: "account_not_found" });
+    }
+
+    const counts = db.transaction((): { grantsRevoked: number; sessionsRevoked: number } => {
+      const grantsRevoked = listGrantsForSubject(db, row.subject).length;
+      const sessionsRevoked = listLiveTokensForSubject(db, row.subject).length;
+      deleteUser(db, row.subject);
+
+      recordConsoleAudit(db, request, {
+        action: "user.delete",
+        targetKind: "user",
+        targetId: row.subject,
+        detail: { username: row.username, grantsRevoked, sessionsRevoked },
+      });
+
+      return { grantsRevoked, sessionsRevoked };
+    })();
+
+    return reply.code(200).send({ deleted: row.subject, username: row.username, ...counts });
   });
 }

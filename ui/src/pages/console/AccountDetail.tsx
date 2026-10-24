@@ -1,7 +1,7 @@
 /**
  * One account: what it can reach, what sessions it holds, and its state.
  *
- * This is the screen the console exists for. Four concerns, one panel each, and
+ * This is the screen the console exists for. Six concerns, one panel each, and
  * each panel says what its buttons will actually do:
  *
  *  - **Access.** Grants grouped by app, roles as a set. Adding a role and
@@ -9,18 +9,24 @@
  *  - **Sessions.** One row per live device, each with its own revoke, plus a
  *    single call that ends every one of them at once. Ward still records no
  *    device name and no address for a family — see the panel's own note.
+ *  - **Username.** What the person types at Ward's login. The subject, the
+ *    grants and the sessions stay through a rename.
  *  - **Password.** The only recovery channel an owner-issued account has.
  *  - **State.** Disable and re-enable, with what each one does and does not
  *    bring back written next to the button.
+ *  - **Delete.** The one action here nothing undoes: the account, its grants
+ *    and its sessions go, and the subject is retired.
  *
  * ## Where a confirmation is required and where it is in the way
  *
  * Removing one role is one click with no dialog. It is the brief's explicit
  * requirement, it is reversible by the click next to it, and the outcome line
  * names the role that went so it can be put back verbatim. Everything wider
- * than that — revoking an app entirely, ending sessions, rotating a password,
- * disabling an account — is behind a confirmation that names the consequence,
- * because none of those are undone by clicking again.
+ * than that — revoking an app entirely, ending sessions, renaming, rotating a
+ * password, disabling an account — is behind a confirmation that names the
+ * consequence, because none of those are undone by clicking again. (A rename
+ * can be renamed back, but the person can't sign in under the old name
+ * meanwhile, and only the operator can tell them.)
  */
 
 import { useState } from "react";
@@ -72,6 +78,8 @@ type Pending =
   | { kind: "none" }
   | { kind: "disable" }
   | { kind: "enable" }
+  | { kind: "rename"; to: string }
+  | { kind: "delete" }
   | { kind: "rotate" }
   | { kind: "revokeApp"; appSlug: string; roles: string[] };
 
@@ -85,9 +93,13 @@ function AccountBody({
   reload: () => void;
 }): React.JSX.Element {
   const { account, grants, liveSessions } = detail;
+  const { basePath } = useConsole();
   const writer = useWriter();
   const [pending, setPending] = useState<Pending>({ kind: "none" });
+  const [deleted, setDeleted] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [newUsername, setNewUsername] = useState(account.username);
+  const renameTo = newUsername.trim();
 
   const close = (): void => {
     setPending({ kind: "none" });
@@ -97,6 +109,15 @@ function AccountBody({
     const ok = await action();
     close();
     if (ok) reload();
+  }
+
+  if (deleted) {
+    return (
+      <Alert tone="done" title={`${account.username} was deleted`} takeFocus>
+        The account, its grants and its sessions are gone, and its subject is retired.{" "}
+        <Link to={consoleHref(basePath, { kind: "accounts" })}>Back to accounts</Link>.
+      </Alert>
+    );
   }
 
   return (
@@ -136,6 +157,43 @@ function AccountBody({
       />
 
       <SessionsPanel subject={account.subject} onChanged={reload} />
+
+      <Panel
+        title="Username"
+        note="What the person types at Ward's login. A rename keeps the subject, the grants and every live session. Apps keep the name they took at their first sign-in with Ward; each app renames its own."
+      >
+        <form
+          className="wc-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (renameTo !== "" && renameTo !== account.username) {
+              setPending({ kind: "rename", to: renameTo });
+            }
+          }}
+        >
+          <TextField
+            label="Username"
+            name="username"
+            value={newUsername}
+            onChange={setNewUsername}
+            autoComplete="off"
+            spellCheck={false}
+            opaque
+            required
+            disabled={writer.busy}
+            hint="Ward folds case and Unicode form before comparing, so Alice and alice are the same account."
+          />
+          <div className="wc-actions">
+            <button
+              type="submit"
+              className="wc-btn"
+              disabled={writer.busy || renameTo === "" || renameTo === account.username}
+            >
+              Rename
+            </button>
+          </div>
+        </form>
+      </Panel>
 
       <Panel
         title="Password"
@@ -205,6 +263,26 @@ function AccountBody({
         </div>
       </Panel>
 
+      <Panel
+        title="Delete this account"
+        tone="danger"
+        note="Deleting removes the account, its grants and its sessions in one write, and nothing brings them back. The subject is retired for good, so no later account inherits what apps hold for it; the username is freed. Disable instead if the person may return."
+      >
+        <div className="wc-actions">
+          <button
+            type="button"
+            className="wc-btn"
+            data-tone="danger"
+            disabled={writer.busy}
+            onClick={() => {
+              setPending({ kind: "delete" });
+            }}
+          >
+            Delete {account.username}
+          </button>
+        </div>
+      </Panel>
+
       <Confirm
         open={pending.kind === "disable"}
         title={`Disable ${account.username}?`}
@@ -257,6 +335,70 @@ function AccountBody({
           The account will be able to sign in again, with the{" "}
           {plural(grants.length, "grant", "grants")} shown above. The sessions revoked when it was
           disabled stay revoked.
+        </p>
+      </Confirm>
+
+      <Confirm
+        open={pending.kind === "rename"}
+        title={`Rename ${account.username} to ${pending.kind === "rename" ? pending.to : ""}?`}
+        confirmLabel="Rename"
+        tone="primary"
+        busy={writer.busy}
+        onCancel={close}
+        onConfirm={() => {
+          if (pending.kind !== "rename") return;
+          const to = pending.to;
+          void finish(() =>
+            writer.run(
+              () => consoleApi.renameAccount(account.subject, to),
+              (result) =>
+                result.changed
+                  ? `Renamed ${account.username} to ${result.account.username}. They sign in with the new name from now on.`
+                  : `${account.username} already has that name. Nothing changed and no audit row was written.`,
+            ),
+          );
+        }}
+      >
+        <p>
+          From now on the person signs in to Ward as{" "}
+          <strong>{pending.kind === "rename" ? pending.to : ""}</strong>, and the old name stops
+          working. Tell them: Ward has no way to.
+        </p>
+        <p>
+          The subject, the {plural(grants.length, "grant", "grants")} and the{" "}
+          {plural(liveSessions, "live session", "live sessions")} stay. Apps keep the name they
+          already have.
+        </p>
+      </Confirm>
+
+      <Confirm
+        open={pending.kind === "delete"}
+        title={`Delete ${account.username}?`}
+        confirmLabel={`Delete ${account.username}`}
+        busy={writer.busy}
+        onCancel={close}
+        onConfirm={() => {
+          void writer
+            .run(
+              () => consoleApi.deleteAccount(account.subject),
+              (result) =>
+                `Deleted ${result.username}, ${plural(result.grantsRevoked, "grant", "grants")} and ${plural(result.sessionsRevoked, "live session", "live sessions")}.`,
+            )
+            .then((ok) => {
+              close();
+              if (ok) setDeleted(true);
+            });
+        }}
+      >
+        <p>
+          The account, its {plural(grants.length, "grant", "grants")} and its{" "}
+          {plural(liveSessions, "live session", "live sessions")} will be removed for good. Apps end
+          its Ward sessions within 30 seconds.
+        </p>
+        <p>
+          Each app keeps its own user for this person, and that user&rsquo;s data; delete those in
+          the app. The name <strong>{account.username}</strong> becomes free, and a new account
+          under it is a stranger to every app.
         </p>
       </Confirm>
 

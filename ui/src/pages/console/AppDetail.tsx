@@ -401,7 +401,7 @@ function AppBody({
             .run(
               () => consoleApi.deleteApp(app.slug),
               (result) =>
-                `Removed ${result.slug} and ${plural(result.grantsRevoked, "grant", "grants")} with it.`,
+                `Removed ${result.deleted} and ${plural(result.grantsRevoked, "grant", "grants")} with it.`,
             )
             .then((ok) => {
               close();

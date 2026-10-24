@@ -144,6 +144,20 @@ export interface EnableResult {
   changed: boolean;
 }
 
+/** `POST /console/accounts/:subject/username`. `changed: false` for the same name. */
+export interface RenameResult {
+  account: AccountView;
+  changed: boolean;
+}
+
+/** `DELETE /console/accounts/:subject`. The counts are what the cascade took. */
+export interface AccountDeleteResult {
+  deleted: string;
+  username: string;
+  grantsRevoked: number;
+  sessionsRevoked: number;
+}
+
 /** `POST /console/accounts/:subject/password`. Never echoes the password. */
 export interface PasswordRotateResult {
   subject: string;
@@ -373,7 +387,7 @@ export interface ConsoleApi {
   getApp(slug: string): Promise<AppDetailResult>;
   createApp(input: NewApp): Promise<AppView>;
   patchApp(slug: string, patch: AppPatch): Promise<AppView>;
-  deleteApp(slug: string): Promise<{ slug: string; grantsRevoked: number }>;
+  deleteApp(slug: string): Promise<{ deleted: string; grantsRevoked: number }>;
   setOidcClient(slug: string, input: OidcClientInput): Promise<AppView>;
 
   grantsForSubject(subject: string): Promise<GrantView[]>;
@@ -391,6 +405,8 @@ export interface ConsoleApi {
   disableAccount(subject: string): Promise<DisableResult>;
   enableAccount(subject: string): Promise<EnableResult>;
   setPassword(subject: string, password: string): Promise<PasswordRotateResult>;
+  renameAccount(subject: string, username: string): Promise<RenameResult>;
+  deleteAccount(subject: string): Promise<AccountDeleteResult>;
 
   listSessions(subject: string): Promise<SessionListResult>;
   revokeSession(subject: string, familyId: string): Promise<SessionRevokeResult>;
@@ -547,7 +563,7 @@ export function createConsoleApi(fetchImpl?: FetchLike): ConsoleApi {
     },
 
     deleteApp(slug) {
-      return call<{ slug: string; grantsRevoked: number }>(`/apps/${encodeURIComponent(slug)}`, {
+      return call<{ deleted: string; grantsRevoked: number }>(`/apps/${encodeURIComponent(slug)}`, {
         method: "DELETE",
       });
     },
@@ -619,6 +635,19 @@ export function createConsoleApi(fetchImpl?: FetchLike): ConsoleApi {
       return call<PasswordRotateResult>(`/accounts/${encodeURIComponent(subject)}/password`, {
         method: "POST",
         body: { password },
+      });
+    },
+
+    renameAccount(subject, username) {
+      return call<RenameResult>(`/accounts/${encodeURIComponent(subject)}/username`, {
+        method: "POST",
+        body: { username },
+      });
+    },
+
+    deleteAccount(subject) {
+      return call<AccountDeleteResult>(`/accounts/${encodeURIComponent(subject)}`, {
+        method: "DELETE",
       });
     },
 

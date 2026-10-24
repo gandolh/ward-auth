@@ -130,6 +130,18 @@ const ACTIONS: Record<string, Omit<AuditActionPresentation, "isAlarm">> = {
     label: "Account re-enabled",
     explanation: "The grants came back with it. The revoked sessions did not.",
   },
+  "user.delete": {
+    severity: "authority",
+    label: "Account deleted",
+    explanation:
+      "The account, its grants and its sessions were removed for good. The subject is retired and never reused; the username is free for a new account, which is a different person to every app.",
+  },
+  "user.rename": {
+    severity: "authority",
+    label: "Account renamed",
+    explanation:
+      "The operator changed the name the account signs in with. The subject, the grants and the sessions stayed; apps keep the name they already had.",
+  },
   "user.password_rotate": {
     severity: "authority",
     label: "Password rotated",
@@ -201,6 +213,8 @@ export const AUDIT_ACTION_GROUPS: { group: string; actions: string[] }[] = [
       "user.create",
       "user.disable",
       "user.enable",
+      "user.rename",
+      "user.delete",
       "user.password_rotate",
       "user.password_change",
       "user.password_change_failed",

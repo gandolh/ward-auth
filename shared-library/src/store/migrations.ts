@@ -101,4 +101,15 @@ export const SQLITE_MIGRATIONS: readonly Migration[] = [
       ALTER TABLE auth_sessions ADD COLUMN reauthenticated_at INTEGER;
     `,
   },
+  {
+    version: 4,
+    name: "user_disabled_at",
+    sql: `
+      -- When the app switched this user off (0.6.0, Accounts.disableUser).
+      -- Epoch milliseconds on the app's clock; NULL for an active user, so
+      -- every existing row migrates active. A disabled user is refused
+      -- wherever a user gets in, with the answer an unknown one gets.
+      ALTER TABLE auth_users ADD COLUMN disabled_at INTEGER;
+    `,
+  },
 ];

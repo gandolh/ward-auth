@@ -47,6 +47,12 @@ export interface AuthUser {
   role: string;
   /** False for a user created by a Ward sign-in who has not set a local password. */
   hasPassword: boolean;
+  /**
+   * True once the app has switched the user off (`disableUser`, 0.6.0). Such a
+   * user never has a live session, so a signed-in user always reads false;
+   * it is for the app's own screens that list users.
+   */
+  disabled: boolean;
 }
 
 /** A live, resolved session. */
@@ -98,9 +104,25 @@ export interface Accounts {
    */
   renameUser(userId: string, username: string): Promise<AuthUser | undefined>;
   /**
+   * Switch a user off (0.6.0): stamp the time and end every session they
+   * hold. From then on the user is refused wherever a user gets in, with the
+   * answer an unknown user gets: the password check fails, a session stops
+   * resolving, `startSession` throws, and a Ward sign-in for the linked
+   * subject is refused. Disabling a disabled user keeps the first stamp.
+   * Nothing is deleted. `undefined` when there is no such user.
+   */
+  disableUser(userId: string): Promise<AuthUser | undefined>;
+  /**
+   * Switch a user back on (0.6.0). The old password, role and Ward link work
+   * again; the sessions `disableUser` ended stay ended. A no-op for an active
+   * user. `undefined` when there is no such user.
+   */
+  enableUser(userId: string): Promise<AuthUser | undefined>;
+  /**
    * The password check. `undefined` for an unknown username, a user with no
-   * local password, or a wrong password — **one answer, one cost**: every path
-   * runs scrypt once, so timing does not reveal which accounts exist.
+   * local password, a disabled user, or a wrong password — **one answer, one
+   * cost**: every path runs scrypt once, so timing does not reveal which
+   * accounts exist or which are switched off.
    */
   verifyCredentials(username: string, password: string): Promise<AuthUser | undefined>;
   /**
@@ -122,15 +144,18 @@ export interface Accounts {
    * route must establish who is asking before calling it.
    */
   setPassword(userId: string, newPassword: string, keepSessionIdHash?: string): Promise<void>;
-  /** Mint a session. The token is the cookie value and is not stored. */
+  /**
+   * Mint a session. The token is the cookie value and is not stored. Throws
+   * `UserDisabledError` for a disabled user; no caller should ask for one.
+   */
   startSession(
     userId: string,
     options?: StartSessionOptions,
   ): Promise<{ token: string; session: SessionRecord }>;
   /**
    * The session a cookie value names, renewing its sliding expiry when due.
-   * `undefined` when there is none, it expired, or its user is gone. An
-   * expired row is deleted on sight.
+   * `undefined` when there is none, it expired, or its user is gone or
+   * disabled. Such a row is deleted on sight.
    */
   resolveSession(token: string | undefined): Promise<ResolvedSession | undefined>;
   /** End one session by its cookie value. Unknown tokens are a no-op. */
@@ -156,12 +181,26 @@ export class InvalidUserIdError extends Error {
   }
 }
 
+/**
+ * Thrown by `startSession` for a disabled user, and by a Ward sign-in for a
+ * linked subject whose user is disabled (0.6.0). The HTTP layer answers it as
+ * it answers any refusal; it never names the reason to the browser.
+ */
+export class UserDisabledError extends Error {
+  readonly code = "user_disabled" as const;
+  constructor() {
+    super("this user is disabled");
+    this.name = "UserDisabledError";
+  }
+}
+
 export function toAuthUser(user: UserRecord): AuthUser {
   return {
     id: user.id,
     username: user.username,
     role: user.role,
     hasPassword: user.passwordHash !== null,
+    disabled: user.disabledAt !== null,
   };
 }
 
@@ -209,8 +248,10 @@ export function createAccounts(options: AccountsOptions): Accounts {
 
     // `user === undefined` is repeated rather than inferred from `ok`, so a
     // future edit that makes the dummy path succeed cannot type-check its way
-    // into a sign-in.
-    if (user === undefined || !ok) return undefined;
+    // into a sign-in. A disabled user is refused only here, after the hash
+    // ran: a right and a wrong password cost the same, and both answer as an
+    // unknown name does.
+    if (user === undefined || !ok || user.disabledAt !== null) return undefined;
     return toAuthUser(user);
   }
 
@@ -254,6 +295,9 @@ export function createAccounts(options: AccountsOptions): Accounts {
       throw new TypeError("startSession: wardSid is required for a Ward session and only for one");
     }
 
+    const user = await store.findUserById(userId);
+    if (user !== undefined && user.disabledAt !== null) throw new UserDisabledError();
+
     const token = generateSessionToken();
     const at = now();
     const session: SessionRecord = {
@@ -282,8 +326,10 @@ export function createAccounts(options: AccountsOptions): Accounts {
       return undefined;
     }
 
+    // A disabled user's sessions were ended by `disableUser`; one minted in a
+    // race with it is refused and removed here.
     const user = await store.findUserById(session.userId);
-    if (user === undefined) {
+    if (user === undefined || user.disabledAt !== null) {
       await store.deleteSession(idHash);
       return undefined;
     }
@@ -328,6 +374,22 @@ export function createAccounts(options: AccountsOptions): Accounts {
       if (user === undefined) return undefined;
       await store.setUsername(userId, name, foldUsername(name), now());
       return toAuthUser({ ...user, username: name });
+    },
+    async disableUser(userId) {
+      const user = await store.findUserById(userId);
+      if (user === undefined) return undefined;
+      const disabledAt = user.disabledAt ?? now();
+      if (user.disabledAt === null) await store.setDisabled(userId, disabledAt, now());
+      // Every time, not only the first: a session minted in a race with an
+      // earlier call ends here too.
+      await store.deleteUserSessions(userId);
+      return toAuthUser({ ...user, disabledAt });
+    },
+    async enableUser(userId) {
+      const user = await store.findUserById(userId);
+      if (user === undefined) return undefined;
+      if (user.disabledAt !== null) await store.setDisabled(userId, null, now());
+      return toAuthUser({ ...user, disabledAt: null });
     },
     verifyCredentials,
     changePassword,

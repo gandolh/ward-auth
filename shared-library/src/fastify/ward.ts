@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-import type { Accounts, AuthUser } from "../core/accounts.js";
+import { UserDisabledError, type Accounts, type AuthUser } from "../core/accounts.js";
 import { clearedCookie, readCookie, serializeCookie } from "../core/cookie.js";
 import { MAX_USERNAME_LENGTH, foldUsername } from "../core/identifiers.js";
 import type { Lockout, LockoutTarget } from "../core/lockout.js";
@@ -491,12 +491,23 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     identity: WardIdentity,
   ): Promise<FastifyReply> {
     if (flow.mode === "sign_in") {
-      const { user } = await identities.userForSignIn(
-        identity,
-        ward.roleFor,
-        ward.usernameFor,
-        ward.usernameMaxLength,
-      );
+      let user: AuthUser;
+      try {
+        ({ user } = await identities.userForSignIn(
+          identity,
+          ward.roleFor,
+          ward.usernameFor,
+          ward.usernameMaxLength,
+        ));
+      } catch (error) {
+        // The app disabled the linked user (0.6.0). The answer Ward gives when
+        // it refuses a sign-in itself, so a switched-off user and one with no
+        // grant look the same, and no error is logged for a deliberate no.
+        if (error instanceof UserDisabledError) {
+          return land(reply, ward.loginPath, { ward_error: "access_denied" });
+        }
+        throw error;
+      }
       // Signing in on top of an old session replaces it, as a password sign-in does.
       const previous = readCookie(request.headers.cookie, context.cookieName);
       if (previous !== undefined) await accounts.endSession(previous);

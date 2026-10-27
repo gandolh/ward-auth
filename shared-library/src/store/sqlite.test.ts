@@ -87,7 +87,23 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
       { version: 1, name: "local_accounts" },
       { version: 2, name: "ward_links" },
       { version: 3, name: "session_reauthenticated_at" },
+      { version: 4, name: "user_disabled_at" },
     ]);
+  });
+
+  it("upgrades a 0.3/0.4 database in place, with every user active", () => {
+    const db = open();
+    expect(migrateSqlite(db, SQLITE_MIGRATIONS.slice(0, 3))).toEqual([1, 2, 3]);
+    db.exec(
+      `INSERT INTO auth_users (id, username, username_folded, password_hash, role, created_at, updated_at)
+       VALUES ('u-alice', 'Alice', 'alice', 'salt:hash', 'member', 1, 1);
+       INSERT INTO auth_sessions (id_hash, user_id, origin, ward_sid, created_at, renewed_at, expires_at)
+       VALUES ('kept', 'u-alice', 'local', NULL, 1, 1, 9999999999999);`,
+    );
+
+    const store = createSqliteStore(db);
+    expect(store.findUserById("u-alice")).toMatchObject({ username: "Alice", disabledAt: null });
+    expect(store.findSession("kept")).toBeDefined();
   });
 
   it("upgrades a 0.2/0.3.0 database in place, keeping its sessions", () => {
@@ -167,6 +183,7 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
       role: "member",
       createdAt: 1_000,
       updatedAt: 1_000,
+      disabledAt: null,
     });
     expect(store.findUserById("u-alice")).toEqual(created);
     expect(store.findUserByFoldedUsername("alice")).toEqual(created);
@@ -229,6 +246,22 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
 
     store.setUsername("u-alice", "ALICIA", "alicia", 3_000);
     expect(store.findUserById("u-alice")).toMatchObject({ username: "ALICIA", updatedAt: 3_000 });
+  });
+
+  it("disables a user and enables them again, touching nothing else", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user());
+
+    store.setDisabled("u-alice", 2_000, 2_000);
+    expect(store.findUserById("u-alice")).toMatchObject({
+      disabledAt: 2_000,
+      updatedAt: 2_000,
+      passwordHash: "salt:hash",
+      role: "member",
+    });
+
+    store.setDisabled("u-alice", null, 3_000);
+    expect(store.findUserById("u-alice")).toMatchObject({ disabledAt: null, updatedAt: 3_000 });
   });
 
   it("refuses a name another user holds, and changes nothing", () => {

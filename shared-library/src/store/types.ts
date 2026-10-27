@@ -43,6 +43,11 @@ export interface UserRecord {
   role: string;
   createdAt: number;
   updatedAt: number;
+  /**
+   * When the app switched the user off (0.6.0), or `null` for an active user.
+   * A disabled user is refused everywhere a user gets in.
+   */
+  disabledAt: number | null;
 }
 
 /** A session row. The token itself is never stored, only its hash. */
@@ -109,6 +114,11 @@ export interface AuthStore {
     usernameFolded: string,
     now: number,
   ): Awaitable<void>;
+  /**
+   * Switch a user off (`disabledAt`, epoch ms) or back on (`null`) (0.6.0).
+   * Only the column; ending the user's sessions is the core's job.
+   */
+  setDisabled(userId: string, disabledAt: number | null, now: number): Awaitable<void>;
 
   createSession(session: SessionRecord): Awaitable<void>;
   findSession(idHash: string): Awaitable<SessionRecord | undefined>;

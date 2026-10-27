@@ -338,6 +338,40 @@ describe("Ward's refusals", () => {
     }
   });
 
+  it("refuses a user the app disabled, as Ward refuses one, until the app enables them", async () => {
+    const subject = await ward.createAccount("della", "myapp", ["editor"]);
+    const b = browser();
+    await wardRoundTrip(b, "della");
+    const user = (await t.identities.findUserBySubject(subject))!;
+    await t.accounts.setPassword(user.id, LOCAL_PASSWORD);
+    const login = (password: string) =>
+      browser().request("POST", api("/auth/login"), { json: { username: "della", password } });
+    expect((await login(LOCAL_PASSWORD)).statusCode).toBe(200);
+
+    await t.accounts.disableUser(user.id);
+
+    // The open session stops on its next request.
+    expect((await me(b)).statusCode).toBe(401);
+    // A password sign-in fails like a wrong password.
+    const refused = await login(LOCAL_PASSWORD);
+    expect(refused.statusCode).toBe(401);
+    expect(refused.json()).toEqual((await login("not the password")).json());
+    // "Sign in with Ward" lands where a Ward refusal does, with no second user.
+    const again = browser();
+    const { landed } = await wardRoundTrip(again, "della");
+    expect(landed.pathname).toBe("/myapp/login");
+    expect(landed.searchParams.get("ward_error")).toBe("access_denied");
+    expect(again.cookie(APP_ORIGIN, COOKIE)).toBeUndefined();
+    expect((await t.identities.findUserBySubject(subject))?.id).toBe(user.id);
+    expect(await t.accounts.findUserByUsername("della-2")).toBeUndefined();
+
+    await t.accounts.enableUser(user.id);
+    expect((await login(LOCAL_PASSWORD)).statusCode).toBe(200);
+    const back = browser();
+    await wardRoundTrip(back, "della");
+    expect((await me(back)).json()).toMatchObject({ user: { id: user.id, disabled: false } });
+  });
+
   it("refuses a callback with no flow cookie as invalid_callback", async () => {
     const response = await browser().request("GET", api("/auth/ward/callback?code=x&state=y"));
     expect(response.statusCode).toBe(303);

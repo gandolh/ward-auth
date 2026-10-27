@@ -6,12 +6,13 @@ import {
   SESSION_ABSOLUTE_SECONDS,
   SESSION_IDLE_SECONDS,
   SESSION_RENEW_INTERVAL_SECONDS,
+  UserDisabledError,
   createAccounts,
   seedUsers,
   type Accounts,
 } from "./accounts.js";
 import { UsernamePolicyError, hashSessionToken } from "./identifiers.js";
-import { PasswordPolicyError, spendDummyHash } from "./password.js";
+import { PasswordPolicyError, spendDummyHash, verifyPassword } from "./password.js";
 import { createSqliteStore, type SqliteAuthStore } from "../store/sqlite.js";
 import { UserIdTakenError, UsernameTakenError } from "../store/types.js";
 
@@ -20,10 +21,14 @@ import { UserIdTakenError, UsernameTakenError } from "../store/types.js";
  * expiry and renewal are tested by moving time rather than by waiting.
  */
 
-// Pass-through spy: the real dummy hash runs, and the test can see that it did.
+// Pass-through spies: the real hashes run, and the test can see that they did.
 vi.mock("./password.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./password.js")>();
-  return { ...actual, spendDummyHash: vi.fn(actual.spendDummyHash) };
+  return {
+    ...actual,
+    spendDummyHash: vi.fn(actual.spendDummyHash),
+    verifyPassword: vi.fn(actual.verifyPassword),
+  };
 });
 
 const HOUR = 60 * 60 * 1000;
@@ -39,6 +44,7 @@ beforeEach(() => {
   store = createSqliteStore(new Database(":memory:"));
   accounts = createAccounts({ store, now: () => clock });
   vi.mocked(spendDummyHash).mockClear();
+  vi.mocked(verifyPassword).mockClear();
 });
 
 describe("createUser", () => {
@@ -54,6 +60,7 @@ describe("createUser", () => {
       username: "Alice",
       role: "member",
       hasPassword: true,
+      disabled: false,
     });
     const row = store.findUserById(user.id);
     expect(row?.passwordHash).toMatch(/^[0-9a-f]{32}:[0-9a-f]{128}$/);
@@ -295,6 +302,7 @@ describe("renameUser", () => {
       username: "Alice",
       role: "member",
       hasPassword: true,
+      disabled: false,
     });
 
     expect(await accounts.verifyCredentials("alice", "correct horse")).toMatchObject({
@@ -316,6 +324,94 @@ describe("renameUser", () => {
   it("answers undefined for a user that does not exist", async () => {
     expect(await accounts.renameUser("nobody", "carol")).toBeUndefined();
     expect(await accounts.findUserByUsername("carol")).toBeUndefined();
+  });
+});
+
+describe("disableUser and enableUser", () => {
+  let userId: string;
+
+  beforeEach(async () => {
+    userId = (
+      await accounts.createUser({ username: "alice", password: "correct horse", role: "member" })
+    ).id;
+  });
+
+  it("ends the user's sessions and refuses every way in, as for an unknown user", async () => {
+    const { token } = await accounts.startSession(userId);
+    const other = await accounts.startSession(userId);
+    clock += HOUR;
+
+    const disabled = await accounts.disableUser(userId);
+    expect(disabled).toMatchObject({ id: userId, disabled: true });
+    expect(store.findUserById(userId)?.disabledAt).toBe(clock);
+
+    // The open session stops on its next request, and its row is gone.
+    expect(await accounts.resolveSession(token)).toBeUndefined();
+    expect(store.findSession(other.session.idHash)).toBeUndefined();
+    // Password sign-in fails exactly as a wrong password does.
+    expect(await accounts.verifyCredentials("alice", "correct horse")).toBeUndefined();
+    await expect(accounts.startSession(userId)).rejects.toThrow(UserDisabledError);
+    // The row stays, and says so to the app.
+    expect(await accounts.findUserById(userId)).toMatchObject({ disabled: true });
+  });
+
+  it("costs a disabled user's right and wrong password the same: one real hash each", async () => {
+    await accounts.disableUser(userId);
+
+    expect(await accounts.verifyCredentials("alice", "correct horse")).toBeUndefined();
+    expect(await accounts.verifyCredentials("alice", "wrong horse")).toBeUndefined();
+    expect(verifyPassword).toHaveBeenCalledTimes(2);
+    expect(spendDummyHash).not.toHaveBeenCalled();
+  });
+
+  it("refuses a session minted in a race with the disable, and deletes it", async () => {
+    // As if startSession read the user just before the stamp landed.
+    store.setDisabled(userId, clock, clock);
+    const idHash = hashSessionToken("raced");
+    store.createSession({
+      idHash,
+      userId,
+      origin: "local",
+      wardSid: null,
+      createdAt: clock,
+      renewedAt: clock,
+      expiresAt: clock + DAY,
+    });
+
+    expect(await accounts.resolveSession("raced")).toBeUndefined();
+    expect(store.findSession(idHash)).toBeUndefined();
+  });
+
+  it("restores access with the old password, but not the sessions it ended", async () => {
+    const { token } = await accounts.startSession(userId);
+    await accounts.disableUser(userId);
+
+    const enabled = await accounts.enableUser(userId);
+    expect(enabled).toMatchObject({ id: userId, disabled: false });
+    expect(store.findUserById(userId)?.disabledAt).toBeNull();
+    expect((await accounts.verifyCredentials("alice", "correct horse"))?.id).toBe(userId);
+    const fresh = await accounts.startSession(userId);
+    expect((await accounts.resolveSession(fresh.token))?.user.id).toBe(userId);
+    expect(await accounts.resolveSession(token)).toBeUndefined();
+  });
+
+  it("keeps the first stamp when disabled twice, and leaves an active user alone", async () => {
+    await accounts.disableUser(userId);
+    const first = store.findUserById(userId)?.disabledAt;
+    clock += DAY;
+    await accounts.disableUser(userId);
+    expect(store.findUserById(userId)?.disabledAt).toBe(first);
+
+    await accounts.enableUser(userId);
+    const updatedAt = store.findUserById(userId)?.updatedAt;
+    clock += DAY;
+    expect(await accounts.enableUser(userId)).toMatchObject({ disabled: false });
+    expect(store.findUserById(userId)?.updatedAt).toBe(updatedAt);
+  });
+
+  it("answers undefined for a user that does not exist", async () => {
+    expect(await accounts.disableUser("nobody")).toBeUndefined();
+    expect(await accounts.enableUser("nobody")).toBeUndefined();
   });
 });
 

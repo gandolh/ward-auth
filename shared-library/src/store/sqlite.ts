@@ -172,6 +172,7 @@ interface UserRow {
   role: string;
   created_at: number | bigint;
   updated_at: number | bigint;
+  disabled_at: number | bigint | null;
 }
 
 interface WardLinkRow {
@@ -203,6 +204,7 @@ function toUser(row: UserRow): UserRecord {
     role: row.role,
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at),
+    disabledAt: row.disabled_at === null ? null : Number(row.disabled_at),
   };
 }
 
@@ -246,6 +248,7 @@ export function createSqliteStore(
     setUsername: db.prepare(
       "UPDATE auth_users SET username = ?, username_folded = ?, updated_at = ? WHERE id = ?",
     ),
+    setDisabled: db.prepare("UPDATE auth_users SET disabled_at = ?, updated_at = ? WHERE id = ?"),
     insertSession: db.prepare(
       `INSERT INTO auth_sessions (id_hash, user_id, origin, ward_sid, created_at, renewed_at, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -332,6 +335,10 @@ export function createSqliteStore(
         if (holder !== undefined && holder.id !== userId) throw new UsernameTakenError();
         s.setUsername.run(username, usernameFolded, now, userId);
       });
+    },
+
+    setDisabled(userId: string, disabledAt: number | null, now: number): void {
+      s.setDisabled.run(disabledAt, now, userId);
     },
 
     createSession(session: SessionRecord): void {

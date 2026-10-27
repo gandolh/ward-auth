@@ -7,6 +7,39 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 0.6.0 — 2026-10-27
+
+An app can switch a local user off (Ward's brief 38).
+
+- `Accounts.disableUser(userId)` stamps the user disabled and ends every
+  session they hold; `Accounts.enableUser(userId)` clears it. Both answer the
+  updated `AuthUser`, or `undefined` for no such user. Disabling twice keeps
+  the first stamp. Nothing is deleted.
+- A disabled user is refused everywhere a user gets in, with the answer an
+  unknown one gets. `verifyCredentials` returns `undefined`, still at one
+  scrypt cost, so a right and a wrong password cost the same. `resolveSession`
+  refuses (and deletes) a session whose user is disabled. `startSession`
+  throws `UserDisabledError` (`code: "user_disabled"`). A Ward sign-in for the
+  linked subject lands on `loginPath?ward_error=access_denied`, the code a Ward
+  refusal gets, and never creates a second user for the subject.
+- `AuthUser` gains `disabled: boolean`, so the session body's `user` carries
+  `disabled: false` too. The browser bundle's `SessionUser` does not declare
+  it.
+- **Migration 4**, `user_disabled_at`: a nullable `auth_users.disabled_at`.
+  `createSqliteStore` applies it on open, and every existing user stays active.
+  `UserRecord` gains `disabledAt`.
+- `AuthStore` gains `setDisabled(userId, disabledAt | null, now)`.
+
+Upgrade notes from 0.5.0:
+
+- Re-vendor. The migration runs on the next boot. Nothing changes until the
+  app calls `disableUser`.
+- **A custom store (not `createSqliteStore`) must implement `setDisabled`**
+  and return `disabledAt` on its user records (`null` for active).
+- A test that compares an `AuthUser` with `toEqual` needs `disabled: false`.
+- There is no route for it. An app calls `disableUser` from its own code; for
+  satchel, that is getting back its "lost grant locks you out" rule.
+
 ## 0.5.0 — 2026-10-27
 
 An app shapes a new Ward user's username (Ward's brief 36).

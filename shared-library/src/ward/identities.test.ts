@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 
-import { createAccounts } from "../core/accounts.js";
+import { UserDisabledError, createAccounts } from "../core/accounts.js";
 import { createSqliteStore } from "../store/sqlite.js";
 import { AlreadyLinkedError, WardSubjectTakenError, type AuthStore } from "../store/types.js";
 import type { WardIdentity } from "./client.js";
@@ -48,7 +48,13 @@ describe("createWardIdentities", () => {
       username: "alice",
       role: "admin",
     });
-    expect(user).toEqual({ id: "0f3a9c", username: "alice", role: "admin", hasPassword: false });
+    expect(user).toEqual({
+      id: "0f3a9c",
+      username: "alice",
+      role: "admin",
+      hasPassword: false,
+      disabled: false,
+    });
     expect((await identities.findUserBySubject("0f3a9c"))?.id).toBe("0f3a9c");
 
     // A first Ward sign-in for that subject is that user.
@@ -170,6 +176,22 @@ describe("createWardIdentities", () => {
         TypeError,
       );
     }
+  });
+
+  it("refuses a Ward sign-in for a disabled linked user without creating another", async () => {
+    const { accounts, identities } = setup();
+    const { user } = await identities.userForSignIn(identity());
+    await accounts.disableUser(user.id);
+
+    await expect(identities.userForSignIn(identity())).rejects.toThrow(UserDisabledError);
+    expect((await identities.findUserBySubject("s-1"))?.id).toBe(user.id);
+    expect(await accounts.findUserByUsername("alice-2")).toBeUndefined();
+
+    await accounts.enableUser(user.id);
+    expect(await identities.userForSignIn(identity())).toMatchObject({
+      user: { id: user.id, disabled: false },
+      created: false,
+    });
   });
 
   it("links once, idempotently for the same pair, and refuses either side twice", async () => {

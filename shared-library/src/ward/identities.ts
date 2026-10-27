@@ -1,4 +1,10 @@
-import { InvalidUserIdError, toAuthUser, type Accounts, type AuthUser } from "../core/accounts.js";
+import {
+  InvalidUserIdError,
+  UserDisabledError,
+  toAuthUser,
+  type Accounts,
+  type AuthUser,
+} from "../core/accounts.js";
 import {
   MAX_USERNAME_LENGTH,
   UsernamePolicyError,
@@ -37,6 +43,10 @@ import type { WardClient, WardIdentity } from "./client.js";
  *
  * After creation the local row owns the role. Ward's grant decides whether a
  * Ward account may get in at all; what it may do inside is the app's.
+ *
+ * A linked user the app has disabled (0.6.0) is refused at rule 1, and the
+ * sign-in stops there: it never falls through to rule 3, which would hand the
+ * same Ward account a fresh user the app never switched off.
  */
 
 /** Thrown by `unlink` for a user with no local password: unlinking would lock them out. */
@@ -93,7 +103,8 @@ export interface WardIdentities {
    * default to identity. `usernameMaxLength` caps every name tried, suffixes
    * included (see `candidateUsernames`). A hook that throws throws here, and
    * no user is created. Throws a `TypeError` for a `usernameMaxLength` that
-   * `isUsernameMaxLength` refuses.
+   * `isUsernameMaxLength` refuses, and `UserDisabledError` when the subject's
+   * linked user is disabled.
    */
   userForSignIn(
     identity: WardIdentity,
@@ -216,7 +227,10 @@ export function createWardIdentities(options: WardIdentitiesOptions): WardIdenti
       );
     }
     const linked = await findUserBySubject(identity.subject);
-    if (linked !== undefined) return { user: linked, created: false };
+    if (linked !== undefined) {
+      if (linked.disabled) throw new UserDisabledError();
+      return { user: linked, created: false };
+    }
 
     const role = roleFor(identity.role);
     const preferred =
@@ -235,6 +249,7 @@ export function createWardIdentities(options: WardIdentitiesOptions): WardIdenti
         if (error instanceof WardSubjectTakenError) {
           // Two first sign-ins for one subject raced; the other one won.
           const winner = await findUserBySubject(identity.subject);
+          if (winner?.disabled === true) throw new UserDisabledError();
           if (winner !== undefined) return { user: winner, created: false };
         }
         throw error;

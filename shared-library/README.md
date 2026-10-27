@@ -324,6 +324,19 @@ Passwords come from the environment or a prompt, **never from a file in the
 repository**. A person who only ever signs in with Ward needs no seeding: their
 first Ward sign-in creates their user, if Ward holds a grant for them.
 
+### Switch a user off
+
+`accounts.disableUser(userId)` (0.6.0) marks the user disabled and ends every
+session they hold. From then on they are refused wherever a user gets in, with
+the answer an unknown user gets. A password sign-in is `invalid_credentials`,
+at the cost of a wrong password. An open session is `401 unauthorized` on its
+next request. "Sign in with Ward" for their linked Ward account lands on
+`ward_error=access_denied`, as a Ward refusal does, and creates no second user.
+`accounts.enableUser(userId)` switches them back on with the same password,
+role and link; the ended sessions stay ended. Nothing is deleted, and
+`AuthUser.disabled` marks who is off in the app's own user lists. There is no
+HTTP route: the app calls these from its own code.
+
 ## 7. Migrate rows keyed by a Ward subject
 
 An app that used Ward as its only identity keyed its own rows (owners,
@@ -481,7 +494,7 @@ Every error body is `{ "error": <code> }`. The hooks expose the code as
 | `unauthorized`                                                | guarded routes                                 | no live session; may carry a `reason`                              |
 | `forbidden`                                                   | `requireRole`                                  |                                                                    |
 | `cross_site`                                                  | any `POST`                                     | a browser said the request came from another origin                |
-| `access_denied`                                               | Ward round trip                                | Ward said no: no grant, a disabled account, or "Back to the app"   |
+| `access_denied`                                               | Ward round trip                                | Ward or the app said no: no grant, disabled, or "Back to the app"  |
 | `ward_unavailable`                                            | Ward round trip, Ward starts, session `reason` | Ward could not be reached; sign in with the local password         |
 | `ward_misconfigured`                                          | same places                                    | Ward refused this app's client credential: an operator problem     |
 | `ward_session_ended`                                          | session `reason`                               | the Ward session this one began with was signed out or revoked     |

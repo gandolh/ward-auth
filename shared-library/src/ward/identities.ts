@@ -27,8 +27,8 @@ import type { WardClient, WardIdentity } from "./client.js";
  * 2. otherwise, in link mode, the signed-in user who started the flow from
  *    their settings gets linked (the plugin does this, with `link`);
  * 3. otherwise a **new** local user is created, linked to the subject, named
- *    from `preferred_username` (suffixed if the name is taken) and holding the
- *    role the grant names.
+ *    from `preferred_username` (shaped by the app's `usernameFor`, suffixed if
+ *    the name is taken) and holding the role the grant names.
  *
  * **Never by username.** A local `alice` and a Ward `alice` are strangers
  * until alice links them herself. On a shared origin anything else is account
@@ -87,10 +87,19 @@ export interface WardIdentities {
   /**
    * The user a verified Ward sign-in is: the linked one, or a new one (rule
    * 3). Never matches by username.
+   *
+   * For a new user, `roleFor` turns the grant's role into the first local
+   * role, and `usernameFor` shapes the name before it is suffixed. Both
+   * default to identity. `usernameMaxLength` caps every name tried, suffixes
+   * included (see `candidateUsernames`). A hook that throws throws here, and
+   * no user is created. Throws a `TypeError` for a `usernameMaxLength` that
+   * `isUsernameMaxLength` refuses.
    */
   userForSignIn(
     identity: WardIdentity,
     roleFor?: (wardRole: string) => string,
+    usernameFor?: UsernameFor,
+    usernameMaxLength?: number,
   ): Promise<{ user: AuthUser; created: boolean }>;
   /**
    * Link a Ward subject to an existing user. Only ever called for the user
@@ -126,6 +135,30 @@ export interface WardIdentitiesOptions {
 
 /** The highest numeric suffix tried before falling back to a random one. */
 const MAX_NAME_SUFFIX = 99;
+
+/**
+ * An app's own shape for a new Ward user's username, from Ward's
+ * `preferred_username` (`username`) and the subject. The result is the base
+ * that gets suffixed when taken.
+ */
+export type UsernameFor = (claims: { username: string; subject: string }) => string;
+
+/**
+ * The shortest `usernameMaxLength` accepted. The last-resort name is a letter,
+ * `-` and eight hex digits, so this is the least that still starts with a
+ * letter.
+ */
+export const MIN_USERNAME_MAX_LENGTH = 10;
+
+/** Whether `value` can be a `usernameMaxLength`: a whole number from 10 to 256. */
+export function isUsernameMaxLength(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= MIN_USERNAME_MAX_LENGTH &&
+    value <= MAX_USERNAME_LENGTH
+  );
+}
 
 export function createWardIdentities(options: WardIdentitiesOptions): WardIdentities {
   const { accounts } = options;
@@ -174,12 +207,26 @@ export function createWardIdentities(options: WardIdentitiesOptions): WardIdenti
   async function userForSignIn(
     identity: WardIdentity,
     roleFor: (wardRole: string) => string = (role) => role,
+    usernameFor?: UsernameFor,
+    usernameMaxLength: number = MAX_USERNAME_LENGTH,
   ): Promise<{ user: AuthUser; created: boolean }> {
+    if (!isUsernameMaxLength(usernameMaxLength)) {
+      throw new TypeError(
+        `userForSignIn: usernameMaxLength must be a whole number from ${MIN_USERNAME_MAX_LENGTH} to ${MAX_USERNAME_LENGTH}`,
+      );
+    }
     const linked = await findUserBySubject(identity.subject);
     if (linked !== undefined) return { user: linked, created: false };
 
     const role = roleFor(identity.role);
-    for (const username of candidateUsernames(identity.username)) {
+    const preferred =
+      usernameFor === undefined
+        ? identity.username
+        : usernameFor({ username: identity.username, subject: identity.subject });
+    if (typeof preferred !== "string") {
+      throw new TypeError("userForSignIn: usernameFor must return a string");
+    }
+    for (const username of candidateUsernames(preferred, usernameMaxLength)) {
       try {
         const user = await createLinkedUser({ subject: identity.subject, username, role });
         return { user, created: true };
@@ -236,16 +283,28 @@ export function createWardIdentities(options: WardIdentitiesOptions): WardIdenti
 const FALLBACK_USERNAME = "ward-user";
 
 /**
- * Names to try for a new Ward user: `preferred_username` as Ward has it, then
- * `name-2`, `name-3`, …, then a random suffix, then `ward-user-<random>`. A
- * name that fails the local policy (Ward's rules are not this library's)
- * falls back to `ward-user`. Every name yielded passes the policy, so a
- * strange `preferred_username` can cost a person their preferred name, never
- * their sign-in.
+ * Names to try for a new Ward user: `preferred_username` as Ward has it (or
+ * as the app's `usernameFor` shaped it), then `name-2`, `name-3`, …, then a
+ * random suffix, then `ward-user-<random>`. A name that fails the local policy
+ * (Ward's rules are not this library's) falls back to `ward-user`. Every name
+ * yielded passes the policy, so a strange `preferred_username` can cost a
+ * person their preferred name, never their sign-in.
+ *
+ * ## `maxLength`, and why the hook is not run again on each candidate
+ *
+ * Every name yielded is at most `maxLength` UTF-16 units: the base is cut to
+ * it, and a suffix takes its room from the base, so an app that stores 16
+ * characters gets `alice.smith-wi-2`, not `alice.smith-with-2`. The
+ * alternative, running `usernameFor` again on each suffixed name, fails for
+ * the hook most apps write: one that cuts to a length cuts the suffix off
+ * again, every `-2` folds back into the taken base, and the person ends up as
+ * `ward-user-…`. A hook can't tell the base from the suffix; the library can.
+ * The suffixes are `-`, digits and lowercase hex, which survive a hook that
+ * lowercases, so they keep that shape too.
  */
-function* candidateUsernames(preferred: string): Generator<string> {
+function* candidateUsernames(preferred: string, maxLength: number): Generator<string> {
   const seen = new Set<string>();
-  for (const name of rawCandidates(preferred)) {
+  for (const name of rawCandidates(preferred, maxLength)) {
     const valid = validUsername(name);
     if (valid === undefined || seen.has(valid)) continue;
     seen.add(valid);
@@ -253,16 +312,17 @@ function* candidateUsernames(preferred: string): Generator<string> {
   }
 }
 
-function* rawCandidates(preferred: string): Generator<string> {
-  const base = validUsername(preferred) ?? FALLBACK_USERNAME;
+function* rawCandidates(preferred: string, maxLength: number): Generator<string> {
+  const valid = validUsername(preferred);
+  const base = valid === undefined ? FALLBACK_USERNAME : withSuffix(valid, "", maxLength);
   yield base;
-  for (let n = 2; n <= MAX_NAME_SUFFIX; n += 1) yield withSuffix(base, `-${n}`);
+  for (let n = 2; n <= MAX_NAME_SUFFIX; n += 1) yield withSuffix(base, `-${n}`, maxLength);
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    yield withSuffix(base, `-${generateUserId().slice(0, 8)}`);
+    yield withSuffix(base, `-${generateUserId().slice(0, 8)}`, maxLength);
   }
   // Whatever the base was, these always fit the policy.
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    yield `${FALLBACK_USERNAME}-${generateUserId().slice(0, 8)}`;
+    yield withSuffix(FALLBACK_USERNAME, `-${generateUserId().slice(0, 8)}`, maxLength);
   }
 }
 
@@ -276,13 +336,13 @@ function validUsername(name: string): string | undefined {
 }
 
 /**
- * `base` cut to leave room for `suffix` within `MAX_USERNAME_LENGTH` UTF-16
- * units, then the suffix. Cut by code point, never through a surrogate pair,
- * and with any trailing space dropped (a cut can land just after one, and
- * `name -2` is not the name with a suffix).
+ * `base` cut to leave room for `suffix` within `maxLength` UTF-16 units, then
+ * the suffix. Cut by code point, never through a surrogate pair, and with any
+ * trailing space dropped (a cut can land just after one, and `name -2` is not
+ * the name with a suffix).
  */
-function withSuffix(base: string, suffix: string): string {
-  const room = MAX_USERNAME_LENGTH - suffix.length;
+function withSuffix(base: string, suffix: string, maxLength: number): string {
+  const room = maxLength - suffix.length;
   let kept = "";
   for (const codePoint of base) {
     if (kept.length + codePoint.length > room) break;

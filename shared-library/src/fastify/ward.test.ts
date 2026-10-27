@@ -17,7 +17,11 @@ import { createWardClient, type WardClient } from "../ward/client.js";
 import { WardConfigurationError, WardUnavailableError } from "../ward/errors.js";
 import { createWardIdentities, type WardIdentities } from "../ward/identities.js";
 import { wardAuth } from "./plugin.js";
-import { REAUTHENTICATION_MAX_AGE_SECONDS, isFreshReauthentication } from "./ward.js";
+import {
+  REAUTHENTICATION_MAX_AGE_SECONDS,
+  isFreshReauthentication,
+  type WardSignInOptions,
+} from "./ward.js";
 
 /**
  * "Sign in with Ward" end to end: the library's plugin in a test app, against
@@ -53,7 +57,7 @@ let t: TestApp;
 
 async function buildTestApp(
   key = clientKey,
-  extra: { roleFor?: (wardRole: string) => string } = {},
+  extra: Pick<WardSignInOptions, "roleFor" | "usernameFor" | "usernameMaxLength"> = {},
 ): Promise<TestApp> {
   const accounts = createAccounts({ store: createSqliteStore(new Database(":memory:")), now });
   const identities = createWardIdentities({ accounts, now });
@@ -230,6 +234,53 @@ describe("a first Ward sign-in", () => {
     expect(signedIn.role).toBe("viewer");
     expect(await t.identities.subjectOf(local.id)).toBeUndefined();
     expect((await t.identities.findUserBySubject(subject))?.id).toBe(signedIn.id);
+  });
+
+  it("shapes a new user's name with usernameFor, suffixes included, within usernameMaxLength", async () => {
+    const shaped = await buildTestApp(clientKey, {
+      usernameFor: ({ username }) => username.toLowerCase().slice(0, 16),
+      usernameMaxLength: 16,
+    });
+    try {
+      const first = await ward.createAccount("Alice.Smith-With-A-Very-Long-Name", "myapp", ["x"]);
+      const second = await ward.createAccount("ALICE.SMITH-WITH-Another-Name", "myapp", ["x"]);
+      await wardRoundTrip(browser(shaped), "Alice.Smith-With-A-Very-Long-Name");
+      await wardRoundTrip(browser(shaped), "ALICE.SMITH-WITH-Another-Name");
+
+      expect((await shaped.identities.findUserBySubject(first))?.username).toBe("alice.smith-with");
+      expect((await shaped.identities.findUserBySubject(second))?.username).toBe(
+        "alice.smith-wi-2",
+      );
+    } finally {
+      await shaped.app.close();
+    }
+  });
+
+  it("lands a usernameFor that throws on the login page as sign_in_failed, creating no one", async () => {
+    const subject = await ward.createAccount("walt", "myapp", ["viewer"]);
+    const broken = await buildTestApp(clientKey, {
+      usernameFor: () => {
+        throw new Error("the app's usernameFor has a bug");
+      },
+    });
+    try {
+      const b = browser(broken);
+      const { landed } = await wardRoundTrip(b, "walt");
+      expect(landed.pathname).toBe("/myapp/login");
+      expect(landed.searchParams.get("ward_error")).toBe("sign_in_failed");
+      expect(b.cookie(APP_ORIGIN, COOKIE)).toBeUndefined();
+      expect(await broken.identities.findUserBySubject(subject)).toBeUndefined();
+    } finally {
+      await broken.app.close();
+    }
+  });
+
+  it("refuses a usernameMaxLength it could not honour at registration", async () => {
+    for (const usernameMaxLength of [9, 257, 12.5]) {
+      await expect(buildTestApp(clientKey, { usernameMaxLength })).rejects.toThrow(
+        /usernameMaxLength/,
+      );
+    }
   });
 
   it("lands on the returnTo path the start named, and refuses one that leaves the origin", async () => {

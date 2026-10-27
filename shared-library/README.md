@@ -164,6 +164,8 @@ await app.register(wardAuth, {
       settingsPath: "/myapp/settings",
       afterSignInPath: "/myapp/",
       // roleFor: (wardRole) => wardRole, // a new Ward user's first role; identity by default
+      // usernameFor: ({ username }) => username.toLowerCase(), // their first name (0.5.0)
+      // usernameMaxLength: 32,            // the longest name the app stores, suffixes included
     },
   }),
 });
@@ -191,6 +193,15 @@ origin: "local" | "ward", ... } }`, or `null` on an allowlisted route.
 "forbidden" }`. The role lives in the app's own row. Ward's grant only
   decides whether a Ward account may get in, and gives a **new** user their
   first role.
+- **A new Ward user's username** is Ward's `preferred_username`, suffixed
+  `-2`, `-3`, … when taken. `ward.usernameFor({ username, subject })` shapes it
+  first, for an app with its own rule for names (lower case, a shorter cap).
+  With a hook that cuts to a length, pass that length as
+  `ward.usernameMaxLength` (10 to 256) too, or a suffixed name comes out longer:
+  the library cuts the base to make room for the suffix. The suffixes are `-`,
+  digits and lowercase hex. A result the library's own policy refuses becomes
+  `ward-user`, and a hook that throws fails the sign-in as `sign_in_failed`.
+  Neither runs for a user already linked.
 - `validateSession` (one function or an array) adds the app's own session
   checks. They run after the library's Ward check.
 - Lockout keys on the client address. It reads the **last** `X-Forwarded-For`

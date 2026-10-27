@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import type { Accounts, AuthUser } from "../core/accounts.js";
 import { clearedCookie, readCookie, serializeCookie } from "../core/cookie.js";
-import { foldUsername } from "../core/identifiers.js";
+import { MAX_USERNAME_LENGTH, foldUsername } from "../core/identifiers.js";
 import type { Lockout, LockoutTarget } from "../core/lockout.js";
 import { MAX_PASSWORD_LENGTH, PasswordPolicyError } from "../core/password.js";
 import { AlreadyLinkedError, WardSubjectTakenError, isWardAuthStore } from "../store/types.js";
@@ -14,7 +14,14 @@ import {
   type WardIdentity,
 } from "../ward/client.js";
 import { WardConfigurationError, WardUnavailableError } from "../ward/errors.js";
-import { NoLocalPasswordError, NotLinkedError, type WardIdentities } from "../ward/identities.js";
+import {
+  MIN_USERNAME_MAX_LENGTH,
+  NoLocalPasswordError,
+  NotLinkedError,
+  isUsernameMaxLength,
+  type UsernameFor,
+  type WardIdentities,
+} from "../ward/identities.js";
 import { crossSite, sameOrigin, tooManyAttempts } from "./http.js";
 import type { SessionValidator } from "./plugin.js";
 
@@ -64,7 +71,7 @@ import type { SessionValidator } from "./plugin.js";
  * - reauthenticate: `settingsPath?ward=reauthenticated`, or the error.
  *
  * Anything unexpected after the code exchange (the store failing, an app's
- * `roleFor` throwing) is logged and lands on the same error page with
+ * `roleFor` or `usernameFor` throwing) is logged and lands on the same error page with
  * `ward_error=sign_in_failed`, never a raw `500` on a top-level navigation.
  *
  * The codes are stable and the React hooks expose them; the app writes the
@@ -109,6 +116,22 @@ export interface WardSignInOptions {
    * row is the only truth; Ward's role is never written back.
    */
   roleFor?: (wardRole: string) => string;
+  /**
+   * The username a user created by a first Ward sign-in starts with, shaped
+   * by the app from Ward's `preferred_username` (`username`) and the subject:
+   * lower-cased, say, for an app that stores names in lower case. Identity by
+   * default. A taken result is suffixed (`-2`, `-3`, …); one that fails the
+   * library's own username policy becomes `ward-user`. A hook that throws
+   * lands the sign-in on `loginPath?ward_error=sign_in_failed`. Runs only when
+   * a user is created, never for one already linked.
+   */
+  usernameFor?: UsernameFor;
+  /**
+   * The longest username the app stores, 10 to 256 (the default). Every name
+   * a first Ward sign-in tries fits it, suffixes included: a hook that cuts
+   * to 16 needs `usernameMaxLength: 16`, or `name-2` comes out 18 long.
+   */
+  usernameMaxLength?: number;
   /** Defaults to `createWardIdentities({ accounts })`. */
   identities?: WardIdentities;
 }
@@ -166,7 +189,7 @@ export interface WardRoutesContext {
   ward: Required<
     Pick<WardSignInOptions, "client" | "loginPath" | "settingsPath" | "afterSignInPath">
   > &
-    Pick<WardSignInOptions, "roleFor">;
+    Pick<WardSignInOptions, "roleFor" | "usernameFor" | "usernameMaxLength">;
   publicOrigin: string;
   cookieName: string;
   secure: boolean;
@@ -191,6 +214,14 @@ export function validateWardOptions(
         `wardAuth: ward.${name} must be a path on the app's origin, like "/myapp/login"`,
       );
     }
+  }
+  if (ward.usernameFor !== undefined && typeof ward.usernameFor !== "function") {
+    throw new TypeError("wardAuth: ward.usernameFor must be a function");
+  }
+  if (ward.usernameMaxLength !== undefined && !isUsernameMaxLength(ward.usernameMaxLength)) {
+    throw new TypeError(
+      `wardAuth: ward.usernameMaxLength must be a whole number from ${MIN_USERNAME_MAX_LENGTH} to ${MAX_USERNAME_LENGTH}`,
+    );
   }
   const callback = new URL(ward.client.redirectUri).pathname;
   const expectedTail = `${routePrefix}/ward/callback`;
@@ -460,7 +491,12 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     identity: WardIdentity,
   ): Promise<FastifyReply> {
     if (flow.mode === "sign_in") {
-      const { user } = await identities.userForSignIn(identity, ward.roleFor);
+      const { user } = await identities.userForSignIn(
+        identity,
+        ward.roleFor,
+        ward.usernameFor,
+        ward.usernameMaxLength,
+      );
       // Signing in on top of an old session replaces it, as a password sign-in does.
       const previous = readCookie(request.headers.cookie, context.cookieName);
       if (previous !== undefined) await accounts.endSession(previous);

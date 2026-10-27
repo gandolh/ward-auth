@@ -7,6 +7,31 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 0.5.0 — 2026-10-27
+
+An app shapes a new Ward user's username (Ward's brief 36).
+
+- `ward.usernameFor({ username, subject })`, beside `roleFor`: the name a user
+  created by a first Ward sign-in starts with, from `preferred_username`. The
+  result is the base that gets suffixed when taken, and one that fails the
+  library's username policy becomes `ward-user`, as a bad `preferred_username`
+  does. A hook that throws is logged and lands on
+  `loginPath?ward_error=sign_in_failed`, with no user created. It runs only
+  when a user is created.
+- `ward.usernameMaxLength` (10 to 256, default 256): every name a first Ward
+  sign-in tries fits it, suffixes included. The library cuts the base to make
+  room for `-2` or `-<8 hex>`, so a hook that cuts to 16 and
+  `usernameMaxLength: 16` give `alice.smith-wi-2`. Out of range throws at
+  registration.
+- `WardIdentities.userForSignIn` takes the same two, after `roleFor`:
+  `(identity, roleFor?, usernameFor?, usernameMaxLength?)`.
+
+Upgrade notes from 0.4.0:
+
+- Re-vendor. Nothing changes until an app passes `usernameFor`. No migration.
+- An app that refuses names its own rule can't store (sports-app) can shape
+  them with `usernameFor` instead, and pass its cap as `usernameMaxLength`.
+
 ## 0.4.0 — 2026-10-24
 
 A signed-in user can rename themselves (Ward's brief 37).

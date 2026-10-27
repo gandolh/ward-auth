@@ -5,7 +5,12 @@ import { createAccounts } from "../core/accounts.js";
 import { createSqliteStore } from "../store/sqlite.js";
 import { AlreadyLinkedError, WardSubjectTakenError, type AuthStore } from "../store/types.js";
 import type { WardIdentity } from "./client.js";
-import { NoLocalPasswordError, NotLinkedError, createWardIdentities } from "./identities.js";
+import {
+  NoLocalPasswordError,
+  NotLinkedError,
+  createWardIdentities,
+  type UsernameFor,
+} from "./identities.js";
 
 /** The linking rules without a Ward; the flow itself is `fastify/ward.test.ts`. */
 
@@ -89,6 +94,82 @@ describe("createWardIdentities", () => {
     await accounts.createUser({ username: spaced, password: "a long local password", role: "x" });
     const second = await identities.userForSignIn(identity({ subject: "s-2", username: spaced }));
     expect(second.user.username).toBe(`${"b".repeat(253)}-2`);
+  });
+
+  it("shapes a new user's name with usernameFor and suffixes it within the app's length", async () => {
+    const { identities } = setup();
+    const seen: unknown[] = [];
+    const shape: UsernameFor = (claims) => {
+      seen.push(claims);
+      return claims.username.toLowerCase().slice(0, 16);
+    };
+    const name = "Alice.Smith-With-A-Very-Long-Name";
+
+    const first = await identities.userForSignIn(
+      identity({ username: name }),
+      undefined,
+      shape,
+      16,
+    );
+    expect(first.user.username).toBe("alice.smith-with");
+    expect(seen).toEqual([{ username: name, subject: "s-1" }]);
+
+    const second = await identities.userForSignIn(
+      identity({ subject: "s-2", username: name }),
+      undefined,
+      shape,
+      16,
+    );
+    expect(second.user.username).toBe("alice.smith-wi-2");
+    expect(second.user.username.length).toBeLessThanOrEqual(16);
+
+    // Already linked: the hook is not asked again, and the name stays.
+    const again = await identities.userForSignIn(
+      identity({ username: name }),
+      undefined,
+      () => {
+        throw new Error("not for a linked user");
+      },
+      16,
+    );
+    expect(again).toEqual({ user: first.user, created: false });
+  });
+
+  it("cuts the name to usernameMaxLength even without a hook", async () => {
+    const { identities } = setup();
+    const { user } = await identities.userForSignIn(
+      identity({ username: "A Name Longer Than Twelve" }),
+      undefined,
+      undefined,
+      12,
+    );
+    // Cut to 12, then the trailing space the cut left is dropped.
+    expect(user.username).toBe("A Name Longe");
+  });
+
+  it("falls back to ward-user when the shaped name fails the policy", async () => {
+    const { identities } = setup();
+    const { user } = await identities.userForSignIn(identity(), undefined, () => "  ");
+    expect(user.username).toBe("ward-user");
+  });
+
+  it("creates no user when usernameFor throws", async () => {
+    const { identities } = setup();
+    await expect(
+      identities.userForSignIn(identity(), undefined, () => {
+        throw new Error("the app's hook has a bug");
+      }),
+    ).rejects.toThrow(/has a bug/);
+    expect(await identities.findUserBySubject("s-1")).toBeUndefined();
+  });
+
+  it("refuses a usernameMaxLength outside 10 to 256", async () => {
+    const { identities } = setup();
+    for (const max of [9, 257, 10.5]) {
+      await expect(identities.userForSignIn(identity(), undefined, undefined, max)).rejects.toThrow(
+        TypeError,
+      );
+    }
   });
 
   it("links once, idempotently for the same pair, and refuses either side twice", async () => {

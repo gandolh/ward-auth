@@ -448,7 +448,7 @@ existing gap (closed by [brief 35](briefs/done/35-focus-after-a-confirmed-write.
 pages stop downloading Base UI. [35](briefs/done/35-focus-after-a-confirmed-write.md)
 fixes focus falling to `<body>` after a confirmed write, at all ten `Confirm` call
 sites; checking `finalFocus` is its first step. The library todo split into one brief
-per bullet: [36](briefs/todo/36-library-username-for-a-new-ward-user.md) a
+per bullet: [36](briefs/done/36-library-username-for-a-new-ward-user.md) a
 `usernameFor` hook beside `roleFor`, [37](briefs/done/37-library-rename-a-user.md)
 `renameUser` plus a self-service `POST /username`, and
 [38](briefs/todo/38-library-disable-a-user.md) `disableUser` with a new migration and
@@ -511,3 +511,16 @@ lose focus the same way: filed as
 [focus-after-an-unconfirmed-write.md](todos/focus-after-an-unconfirmed-write.md).
 The todo `focus-after-a-confirmed-write.md` is deleted. brief-board is down, so
 nothing was posted there.
+
+## [2026-10-27] done | Brief 36: an app shapes a new Ward user's username
+
+[Brief 36](briefs/done/36-library-username-for-a-new-ward-user.md) is built as
+ward-auth 0.5.0. `ward.usernameFor({ username, subject })` sits beside `roleFor`
+and shapes a new Ward user's name before it is suffixed. For the suffix to keep
+an app's cap, the app passes `ward.usernameMaxLength` too, and the library cuts
+the base to make room: running the hook again on `name-2` would cut the suffix
+off for any hook that truncates. A hook that throws lands on `sign_in_failed`
+with no user created. Checked: typecheck, lint, 1211 tests (8 new, one end to end
+against the harness's Ward) and the bundle build. sports-app can now shape names
+instead of refusing them, in its own brief. brief-board is down, so nothing was
+posted there.

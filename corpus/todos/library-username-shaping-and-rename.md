@@ -1,7 +1,7 @@
 # Library: shape a new Ward user's username, and rename users
 
 **Promoted 2026-10-23**, one brief per bullet:
-[36](../briefs/todo/36-library-username-for-a-new-ward-user.md) (`usernameFor`),
+[36](../briefs/done/36-library-username-for-a-new-ward-user.md) (`usernameFor`),
 [37](../briefs/done/37-library-rename-a-user.md) (rename) and
 [38](../briefs/todo/38-library-disable-a-user.md) (disable). Delete this todo when all three land.
 

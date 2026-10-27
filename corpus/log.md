@@ -437,14 +437,14 @@ and Register an app forms are `Collapsible`s. The portalled popup carries
 typecheck, lint, 1175 tests, the build, and the console in Chromium against a
 scratch API at 1440 and 390 px. The decision is in
 [decisions.md](wiki/decisions.md). Two todos came out of it:
-[split-the-console-chunk.md](todos/split-the-console-chunk.md) (the sign-in
-pages download Base UI too) and
+`split-the-console-chunk.md` (the sign-in
+pages download Base UI too; closed by [brief 34](briefs/done/34-console-in-its-own-chunk.md)) and
 [focus-after-a-confirmed-write.md](todos/focus-after-a-confirmed-write.md), an
 existing gap. brief-board is down, so nothing was posted there.
 
 ## [2026-10-23] todo | Briefs 34–38 from the three open todos
 
-[34](briefs/todo/34-console-in-its-own-chunk.md) lazy-loads the console so the public
+[34](briefs/done/34-console-in-its-own-chunk.md) lazy-loads the console so the public
 pages stop downloading Base UI. [35](briefs/todo/35-focus-after-a-confirmed-write.md)
 fixes focus falling to `<body>` after a confirmed write, at all ten `Confirm` call
 sites; checking `finalFocus` is its first step. The library todo split into one brief
@@ -479,3 +479,17 @@ Ward's edge, since the apps keep their own users
 line had read "Removed undefined" because the client mistyped `deleteApp`'s answer.
 Checked: typecheck, lint, 1196 tests, and the console in Chromium on a scratch
 database. brief-board is down, so nothing was posted there.
+
+## [2026-10-27] done | Brief 34: the console in its own chunk
+
+[Brief 34](briefs/done/34-console-in-its-own-chunk.md) is built. `app.tsx` loads
+`ConsoleRoutes` with `React.lazy`, so Base UI and `console.css` ride in a chunk that
+only `/console` fetches. The entry JS went from 120.07 kB to 81.45 kB gzip and the
+entry CSS from 3.99 kB to 2.14 kB; the console chunk is 40.30 kB gzip. While it
+loads, `/console` shows "Loading the console…" in `ward.css` styles, since the
+console's own classes arrive with the chunk. Checked: the `base-ui` grep matches
+only the console chunk; in Chromium against a scratch API, the four public pages
+fetch only the entry, and a deep link to an account fetches the chunk and renders
+the account; typecheck, lint, the build and 1196 tests. The todo
+`split-the-console-chunk.md` is deleted. brief-board is down, so nothing was posted
+there.

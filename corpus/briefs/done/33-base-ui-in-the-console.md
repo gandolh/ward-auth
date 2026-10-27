@@ -101,7 +101,8 @@ Two findings:
 - **The console isn't code-split.** Only `ui/src/pages/console/` imports Base
   UI, but the UI builds to one chunk, so the sign-in pages download it too:
   324.75 kB (97.94 kB gzip) before, 387.64 kB (119.67 kB gzip) after. Filed as
-  [split-the-console-chunk.md](../../todos/split-the-console-chunk.md).
+  `split-the-console-chunk.md`, closed by
+  [brief 34](34-console-in-its-own-chunk.md).
 - **Focus after a confirmed write drops to `<body>`.** The pressed button is
   disabled while busy, and the page reloads, so there is nothing to return
   focus to. The old native `<dialog>` did the same (checked against HEAD), so

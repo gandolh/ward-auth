@@ -1,11 +1,11 @@
 ---
-summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed. Brief 32 (built and deployed 2026-10-22) moved Ward to its own host, ward.<domain>. Brief 33 (built 2026-10-23, not deployed) puts Base UI under the console's confirmation and create forms. Brief 37 (built 2026-10-24) is ward-auth 0.4.0, a self-service rename. Briefs 39-40 (built 2026-10-24, not deployed) let the console rename and delete an account.
-updated: 2026-10-24
+summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed. Brief 32 (built and deployed 2026-10-22) moved Ward to its own host, ward.<domain>. Brief 33 (built 2026-10-23, not deployed) puts Base UI under the console's confirmation and create forms. Brief 37 (built 2026-10-24) is ward-auth 0.4.0, a self-service rename. Briefs 39-40 (built 2026-10-24, not deployed) let the console rename and delete an account. Brief 34 (built 2026-10-27, not deployed) puts the console in its own chunk.
+updated: 2026-10-27
 ---
 
 # Status
 
-_2026-10-24._
+_2026-10-27._
 
 ## Where things stand
 
@@ -50,9 +50,9 @@ out.
 **Built 2026-10-23, not deployed:** [brief 33](../briefs/done/33-base-ui-in-the-console.md)
 puts Base UI under the console: `Confirm` is an `AlertDialog` and the New
 account / Register an app forms are `Collapsible`s. Nothing changes for the
-owner beyond the next UI deploy. The sign-in pages share the console's chunk,
-so they download Base UI too; [brief 34](../briefs/todo/34-console-in-its-own-chunk.md)
-splits it out.
+owner beyond the next UI deploy. [Brief 34](../briefs/done/34-console-in-its-own-chunk.md)
+(built 2026-10-27, not deployed) made the console a lazy chunk, so the sign-in
+pages no longer download Base UI (120.07 → 81.45 kB gzip).
 
 **Built 2026-10-24:** [brief 37](../briefs/done/37-library-rename-a-user.md),
 ward-auth 0.4.0, a self-service rename (`POST /username`, `useRenameUser`), which
@@ -60,10 +60,9 @@ apps take by re-vendoring (Shelfmark first). Briefs
 [39](../briefs/done/39-console-rename-an-account.md) and
 [40](../briefs/done/40-console-delete-an-account.md), not deployed: the console
 renames an account and deletes one, stopping at Ward's edge
-([decisions-admin.md](decisions-admin.md)). The next Ward deploy ships them with 33.
+([decisions-admin.md](decisions-admin.md)). The next Ward deploy ships them with 33 and 34.
 
-**Open (filed 2026-10-23):** [34](../briefs/todo/34-console-in-its-own-chunk.md)
-the console in its own chunk; [35](../briefs/todo/35-focus-after-a-confirmed-write.md)
+**Open (filed 2026-10-23):** [35](../briefs/todo/35-focus-after-a-confirmed-write.md)
 focus after a confirmed write; and two library briefs, built in order on top of
 0.4.0: [36](../briefs/todo/36-library-username-for-a-new-ward-user.md) a
 `usernameFor` hook for a new Ward user, and
@@ -105,14 +104,16 @@ docs stack's asset check to `assets`.
 - **2026-10-19:** brief 31, the docs site on Docusaurus (built, not deployed).
 - **2026-10-22:** brief 32, Ward on its own host (built, not deployed).
 - **2026-10-23:** brief 33, Base UI in the console (built, not deployed).
+- **2026-10-24:** briefs 37 (library rename), 39–40 (console rename, delete).
+- **2026-10-27:** brief 34, the console in its own chunk (built, not deployed).
 
 | Thread | State |
 |---|---|
 | Decisions | Five design pages plus [decisions-oidc.md](./decisions-oidc.md) and its build calls in [decisions-oidc-build.md](./decisions-oidc-build.md); engineering calls in [decisions-implementation.md](./decisions-implementation.md) |
 | Open questions | **None** — [open-questions.md](./open-questions.md) |
 | Name | **Ward** (repo still `wzd_auth`; rename deferred by the owner) |
-| Briefs done | 00–10, 13–33 in [briefs/done/](../briefs/done/); 11 superseded |
-| Briefs open | None |
+| Briefs done | 00–10, 13–34, 37, 39–40 in [briefs/done/](../briefs/done/); 11 superseded |
+| Briefs open | 35, 36, 38 in [briefs/todo/](../briefs/todo/) |
 | Shared library | `shared-library/` 0.3.1, vendored into atrium, newspapper, prm, sports-app and satchel |
 | Deploy entry in `vps-deploy` | The OIDC contract deployed 2026-10-13. Ward redeployed with brief 30 the same day; no app stack passes the old variables |
 

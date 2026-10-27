@@ -1,5 +1,5 @@
 ---
-summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), the shared library's build calls (brief 20), and its Ward half — callback path, link binding, fail-closed check, reauthentication for a first password (brief 21, revised in 0.3.1), and the library's calls since 0.4.0 — a shaped username suffixed within an app-given max length (brief 36), and a disabled local user answered as an unknown one, access_denied on the Ward callback (brief 38).
+summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), the shared library's build calls (brief 20), and its Ward half — callback path, link binding, fail-closed check, reauthentication for a first password (brief 21, revised in 0.3.1), and the library's calls since 0.4.0 — a shaped username suffixed within an app-given max length (brief 36), and a disabled local user answered as an unknown one, access_denied on the Ward callback (brief 38), and a refused sign-in's return path carried back as ward_return_to on the login page (brief 42).
 updated: 2026-10-27
 ---
 
@@ -161,9 +161,9 @@ _2026-10-13, brief 21_ — Settled while adding "Sign in with Ward" to
   that no bundle reaches.
 
 
-## The library after 0.4.0: shaping names and switching users off
+## The library after 0.4.0: shaping names, switching users off, the return path
 
-_2026-10-27, briefs 36 and 38._
+_2026-10-27, briefs 36, 38 and 42._
 
 - **A shaped name is suffixed by the library, within a max length the app
   passes** (`usernameFor` with `usernameMaxLength`, 0.5.0). Rejected: running the
@@ -174,3 +174,8 @@ _2026-10-27, briefs 36 and 38._
   Ward callback `access_denied`, the code Ward's own refusals get.
   `sign_in_failed` was rejected: it says "try again" and logs an error for a
   deliberate no.
+- **A refused sign-in carries its `returnTo` back as `ward_return_to` on
+  `loginPath`** (0.7.0), checked with `isLocalPath` on the way out and again in
+  the browser, and kept when the error is dismissed. Rejected: landing the error
+  on `returnTo` itself. For most apps that is a guarded screen, whose guard would
+  hide the error. `signIn()` doesn't reuse the path by itself: the app passes it.

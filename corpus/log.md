@@ -550,3 +550,21 @@ TypeScript consumer and `.mjs` server both use them, and fail against the old
 bundle answers `isUsernameMaxLength(32)` and `new UserDisabledError().code`.
 `fmt:check` still flags the two files brief 43 formats. brief-board is down, so
 nothing was posted there.
+
+## [2026-10-27] done | Brief 42: a refused Ward sign-in keeps its return path
+
+The owner asked for the gap sports-app's brief 32 left: after a refused "Sign in
+with Ward" the app lost the `returnTo` it had passed, so a retry landed on `/`.
+[Brief 42](briefs/done/42-library-return-path-through-a-refused-sign-in.md) is
+built as ward-auth 0.7.0. Every sign-in failure now lands on
+`loginPath?ward_error=<code>&ward_return_to=<returnTo>`, checked with
+`isLocalPath` when written and again when the browser client reads it, and
+`useWardSignIn().returnTo` hands it to the login page; dismissing the error keeps
+it. The failure stays on `loginPath`, because most apps' `returnTo` is a guarded
+screen (recorded in [decisions-oidc-build.md](wiki/decisions-oidc-build.md)).
+`isLocalPath` moved, unchanged, to `core/paths.ts` so both bundles share it.
+Checked: typecheck, lint, 1231 tests (8 new: four refusals end to end against the
+harness's Ward, which fail on the old code, and the client's reading and
+dropping), and the bundle build; the browser bundle still imports only `react`.
+sports-app adopts it in its own brief. brief-board is down, so nothing was posted
+there.

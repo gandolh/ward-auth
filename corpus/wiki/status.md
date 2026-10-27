@@ -102,17 +102,17 @@ docs stack's asset check to `assets`.
 - **2026-10-13:** the OIDC redesign, briefs 18–29 (above); the owner's
   cutover; brief 30 retired the shared-cookie contract.
 - **2026-10-19:** brief 31, the docs site on Docusaurus (built, not deployed).
-- **2026-10-22:** brief 32, Ward on its own host (built, not deployed).
+- **2026-10-22:** brief 32, Ward on its own host (built and deployed; found live 2026-10-24).
 - **2026-10-23:** brief 33, Base UI in the console (built, not deployed).
 - **2026-10-24:** briefs 37 (library rename), 39–40 (console rename, delete).
-- **2026-10-27:** briefs 34 (console chunk), 35 (focus), 36, 38, 41 and 42 (library 0.7.0).
+- **2026-10-27:** briefs 34 (console chunk), 35 (focus), 36, 38, 41 and 42 (library 0.7.0), 43 (docs tidy).
 
 | Thread | State |
 |---|---|
 | Decisions | Five design pages plus [decisions-oidc.md](./decisions-oidc.md) and its build calls in [decisions-oidc-build.md](./decisions-oidc-build.md); engineering calls in [decisions-implementation.md](./decisions-implementation.md) |
 | Open questions | **None** — [open-questions.md](./open-questions.md) |
 | Name | **Ward** (repo still `wzd_auth`; rename deferred by the owner) |
-| Briefs done | 00–10, 13–42 in [briefs/done/](../briefs/done/); 11 superseded |
+| Briefs done | 00–10, 13–43 in [briefs/done/](../briefs/done/); 11 superseded |
 | Briefs open | None |
 | Shared library | `shared-library/` 0.7.0. Vendored 0.3.1 in atrium, newspapper, prm, sports-app and satchel; 0.4.0 in shelfmark (read 2026-10-27) |
 | Deploy entry in `vps-deploy` | The OIDC contract deployed 2026-10-13. Ward redeployed with brief 30 the same day; no app stack passes the old variables |

@@ -568,3 +568,16 @@ harness's Ward, which fail on the old code, and the client's reading and
 dropping), and the bundle build; the browser bundle still imports only `react`.
 sports-app adopts it in its own brief. brief-board is down, so nothing was posted
 there.
+
+## [2026-10-27] done | Brief 43: docs tidy
+
+[Brief 43](briefs/done/43-docs-tidy.md) is done in one docs commit. The README's
+status says Ward is on `ward.<domain>` since the release of 2026-10-22, not "with
+its next deploy". The cutover runbook gives Satchel the URIs of its own host, as
+satchel's setup guide registers them. Prettier on `README.md` and
+`ui/src/lib/next.test.ts` makes `fmt:check` pass again, after briefs 34 to 42
+each noted it failing. The console screenshot is retaken against a scratch API
+and database with made-up credentials and the seven apps the local seed lists, and
+`docs/images/shots.md` says how. The local Ward container wasn't touched. Checked:
+fmt:check, typecheck, lint, 1231 tests. status.md's history no longer calls brief
+32 undeployed. brief-board is down, so nothing was posted there.

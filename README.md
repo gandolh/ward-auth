@@ -9,8 +9,9 @@ Connect provider behind that button, and a grant per app decides who may use it.
 </p>
 
 **Status:** Personal project, in production since 2026-10-04 at `/ward/` on the production site. Brief 32 (2026-10-22) moves it to a host of its own, `ward.<domain>`, with its next deploy. Since
-2026-10-13 it is an OIDC provider: atrium, newspapper, public-resource-map and sports-app offer
-"Sign in with Ward" beside their own login, and satchel is registered for local development. The GitHub repo is `gandolh/ward-auth` and the folder is still
+2026-10-13 it is an OIDC provider: atrium, newspapper, public-resource-map, sports-app and
+shelfmark offer "Sign in with Ward" beside their own login, and satchel and almanac are registered
+for local development. The GitHub repo is `gandolh/ward-auth` and the folder is still
 called `wzd_auth`; the service is Ward ([why](corpus/wiki/overview.md#naming)).
 
 ## What it does
@@ -40,7 +41,7 @@ The account page shows a signed-in person who they are and which apps they can r
 The admin console's app list, on a local copy of Ward. The console only accepts a break-glass login
 set in Ward's environment; no account, not even the owner's, can reach it.
 
-![Ward console on the Apps page: six registered apps, atrium, imbatranim-os, newspapper, prm, satchel and sports-app, all closed to public registration](docs/images/console-apps.webp)
+![Ward console on the Apps page of a local copy, captured on 2026-10-09: atrium, imbatranim-os, newspapper, prm, satchel and sports-app, all closed to public registration](docs/images/console-apps.webp)
 
 ## How it works
 

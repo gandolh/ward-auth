@@ -203,10 +203,13 @@ and save:
 | `prm` | `<origin>/prm-api/auth/ward/callback` | `<origin>/prm/` |
 | `sports-app` | `<origin>/sports-app-api/api/auth/ward/callback` | `<origin>/sports-app/` |
 | `satchel` | `<origin>/satchel-api/auth/ward/callback` | `<origin>/satchel/` |
+| `shelfmark` | `<origin>/shelfmark-api/auth/ward/callback` | `<origin>/shelfmark/` |
+| `almanac` | `<origin>/almanac-api/auth/ward/callback` | `<origin>/almanac/` |
 
-The public key is that app's JWK line from step 0. sports-app's double `api`
-is correct: its server routes everything under `/api`. If satchel has no app
-row yet, create it under Apps first.
+The public key is that app's JWK line from step 0; shelfmark's and almanac's come
+from their own `docs/owner-setup.md`. sports-app's double `api`
+is correct: its server routes everything under `/api`. If satchel or almanac
+has no app row yet, create it under Apps first.
 
 The redirect URIs must match the deployed ones character for character. The
 deploy builds them from the same prefixes (`useWard` in vps-deploy). An app

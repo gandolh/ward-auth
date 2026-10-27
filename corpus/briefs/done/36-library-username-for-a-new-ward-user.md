@@ -96,7 +96,8 @@ Typecheck, lint, the 1211 tests (8 new) and the bundle build pass.
 
 `index.ts` isn't on the brief's list, so the new `UsernameFor` type and
 `isUsernameMaxLength` aren't exported from the bundle; an app types its hook
-through `WardSignInOptions["usernameFor"]`. The root `package-lock.json` still
+through `WardSignInOptions["usernameFor"]`. Both are exported since 0.6.1
+([brief 41](41-library-export-the-new-names.md)). The root `package-lock.json` still
 says 0.3.1 for the workspace, as it did at 0.4.0.
 
 sports-app adopting it (shaping instead of refusing) is that repo's brief.

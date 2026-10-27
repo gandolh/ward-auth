@@ -538,3 +538,15 @@ file list. Checked: typecheck, lint, 1223 tests (12 new, one end to end against 
 harness's Ward) and the bundle build. The todo `library-username-shaping-and-rename.md`
 is deleted, all three of its briefs done. satchel's rule comes back in a satchel
 brief. brief-board is down, so nothing was posted there.
+
+## [2026-10-27] done | Brief 41: the bundle exports 0.5.0's and 0.6.0's new names
+
+The owner asked for the three names briefs 36 and 38 left out of `index.ts`.
+[Brief 41](briefs/done/41-library-export-the-new-names.md) is built as ward-auth
+0.6.1, a patch: the bundle exports `UsernameFor`, `isUsernameMaxLength` and
+`UserDisabledError`, and nothing changes at runtime. The vendor smoke test's
+TypeScript consumer and `.mjs` server both use them, and fail against the old
+`index.ts`. Checked: typecheck, lint, 1223 tests and the bundle build; the built
+bundle answers `isUsernameMaxLength(32)` and `new UserDisabledError().code`.
+`fmt:check` still flags the two files brief 43 formats. brief-board is down, so
+nothing was posted there.

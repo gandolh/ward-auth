@@ -93,7 +93,8 @@ Built as ward-auth 0.6.0, on top of 0.5.0 (brief 36).
   OWN list** (the must-NOT-touch covers `plugin.ts` routes, and none was
   added). The end-to-end test went into `fastify/ward.test.ts` with it.
 - `UserDisabledError` isn't exported from the bundle (`index.ts` isn't on the
-  list); an app matches `error.code`. The browser bundle's `SessionUser`
+  list; exported since 0.6.1, [brief 41](41-library-export-the-new-names.md));
+  an app matches `error.code`. The browser bundle's `SessionUser`
   doesn't declare the new `disabled` field the session body now carries. The
   CHANGELOG says both.
 

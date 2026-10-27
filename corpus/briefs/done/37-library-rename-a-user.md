@@ -3,7 +3,7 @@
 ## Context
 
 Promoted 2026-10-23 from the todo
-[library-username-shaping-and-rename](../../todos/library-username-shaping-and-rename.md),
+`library-username-shaping-and-rename` (deleted when brief 38 landed),
 second bullet. Briefs 36 and 38 take the other two.
 
 There is no rename. Migrated users in atrium, prm and sports-app carry placeholder

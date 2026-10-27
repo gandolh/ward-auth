@@ -451,7 +451,7 @@ sites; checking `finalFocus` is its first step. The library todo split into one 
 per bullet: [36](briefs/done/36-library-username-for-a-new-ward-user.md) a
 `usernameFor` hook beside `roleFor`, [37](briefs/done/37-library-rename-a-user.md)
 `renameUser` plus a self-service `POST /username`, and
-[38](briefs/todo/38-library-disable-a-user.md) `disableUser` with a new migration and
+[38](briefs/done/38-library-disable-a-user.md) `disableUser` with a new migration and
 one answer for every refusal. 36–38 share the CHANGELOG and version, so they run in
 order. Adoption in each app is left to that app's corpus.
 
@@ -524,3 +524,17 @@ with no user created. Checked: typecheck, lint, 1211 tests (8 new, one end to en
 against the harness's Ward) and the bundle build. sports-app can now shape names
 instead of refusing them, in its own brief. brief-board is down, so nothing was
 posted there.
+
+## [2026-10-27] done | Brief 38: an app switches a local user off
+
+[Brief 38](briefs/done/38-library-disable-a-user.md) is built as ward-auth 0.6.0.
+`Accounts.disableUser` stamps `auth_users.disabled_at` (migration 4, every existing
+user active) and ends the user's sessions; `enableUser` clears it. A disabled user
+gets the answer an unknown one gets: the password check fails at one scrypt cost,
+an open session stops on its next request, and "Sign in with Ward" for the linked
+subject lands on `access_denied`, the code a Ward refusal gets, with no second user
+created. That last mapping is one `catch` in `fastify/ward.ts`, outside the brief's
+file list. Checked: typecheck, lint, 1223 tests (12 new, one end to end against the
+harness's Ward) and the bundle build. The todo `library-username-shaping-and-rename.md`
+is deleted, all three of its briefs done. satchel's rule comes back in a satchel
+brief. brief-board is down, so nothing was posted there.

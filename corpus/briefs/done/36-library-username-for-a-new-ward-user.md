@@ -3,7 +3,7 @@
 ## Context
 
 Promoted 2026-10-23 from the todo
-[library-username-shaping-and-rename](../../todos/library-username-shaping-and-rename.md),
+`library-username-shaping-and-rename` (deleted when brief 38 landed),
 first bullet. Captured from the Wave C adoptions (briefs 22, 24, 25). Briefs 37 and
 38 take the other two bullets.
 

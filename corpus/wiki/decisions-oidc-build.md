@@ -1,6 +1,6 @@
 ---
-summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), the shared library's build calls (brief 20), and its Ward half — callback path, link binding, fail-closed check, reauthentication for a first password (brief 21, revised in 0.3.1).
-updated: 2026-10-13
+summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), the shared library's build calls (brief 20), and its Ward half — callback path, link binding, fail-closed check, reauthentication for a first password (brief 21, revised in 0.3.1), and the library's calls since 0.4.0 — a shaped username suffixed within an app-given max length (brief 36), and a disabled local user answered as an unknown one, access_denied on the Ward callback (brief 38).
+updated: 2026-10-27
 ---
 
 # Decisions — building the OIDC redesign
@@ -160,3 +160,17 @@ _2026-10-13, brief 21_ — Settled while adding "Sign in with Ward" to
   strips the prefix. They import `api/` by computed path, as dev-only code
   that no bundle reaches.
 
+
+## The library after 0.4.0: shaping names and switching users off
+
+_2026-10-27, briefs 36 and 38._
+
+- **A shaped name is suffixed by the library, within a max length the app
+  passes** (`usernameFor` with `usernameMaxLength`, 0.5.0). Rejected: running the
+  app's hook again on each suffixed name. A hook that cuts to a length cuts the
+  `-2` off again, so every suffix folds back into the taken base.
+- **A disabled local user gets an unknown user's answer** (0.6.0):
+  `invalid_credentials` at one scrypt cost, `401` on the open session, and on the
+  Ward callback `access_denied`, the code Ward's own refusals get.
+  `sign_in_failed` was rejected: it says "try again" and logs an error for a
+  deliberate no.

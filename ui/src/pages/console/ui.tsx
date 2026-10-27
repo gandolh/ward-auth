@@ -212,6 +212,15 @@ export interface ConfirmProps {
  * never closes on a press outside it. Escape arrives as `onOpenChange(false)`,
  * which routes through the same path as the Cancel button and is ignored while
  * busy, so a dialog cannot be dismissed out from under a request in flight.
+ *
+ * ## Focus (brief 35)
+ *
+ * Cancel and Escape return focus to the button that opened the dialog, which is
+ * Base UI's default. A confirm is different. The confirm button disables itself
+ * while busy, so it first moves focus to the popup, or the browser would drop
+ * it to `<body>` mid-request. When the write lands the screen reloads, which
+ * removes the opener, so `finalFocus` is `false` after a confirm and the screen
+ * places focus itself once the reload is on screen (`focus-after-write.ts`).
  */
 export function Confirm({
   open,
@@ -223,6 +232,13 @@ export function Confirm({
   onConfirm,
   onCancel,
 }: ConfirmProps): React.JSX.Element | null {
+  const popupRef = useRef<HTMLDivElement>(null);
+  /** Set by the confirm button, cleared each time the dialog opens. */
+  const confirmed = useRef(false);
+  useEffect(() => {
+    if (open) confirmed.current = false;
+  }, [open]);
+
   return (
     <AlertDialog.Root
       open={open}
@@ -235,7 +251,12 @@ export function Confirm({
         {/* Portalled to <body>, outside the console wrapper, so the popup
             carries the console surface itself or it renders with the light
             sign-in tokens. */}
-        <AlertDialog.Popup className="wc-dialog" data-ward-surface="console">
+        <AlertDialog.Popup
+          ref={popupRef}
+          className="wc-dialog"
+          data-ward-surface="console"
+          finalFocus={() => !confirmed.current}
+        >
           <AlertDialog.Title>{title}</AlertDialog.Title>
           {children}
           <div className="wc-dialog-actions">
@@ -246,7 +267,11 @@ export function Confirm({
               type="button"
               className="wc-btn"
               data-tone={tone}
-              onClick={onConfirm}
+              onClick={() => {
+                confirmed.current = true;
+                popupRef.current?.focus();
+                onConfirm();
+              }}
               disabled={busy}
             >
               {busy === true ? "Working…" : confirmLabel}

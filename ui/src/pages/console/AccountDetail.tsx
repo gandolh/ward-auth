@@ -27,9 +27,17 @@
  * consequence, because none of those are undone by clicking again. (A rename
  * can be renamed back, but the person can't sign in under the old name
  * meanwhile, and only the operator can tell them.)
+ *
+ * ## Focus after a confirmed write
+ *
+ * The reload after a write remounts the whole body, so the screen asks for
+ * focus by the opener's `data-wc-focus` key before it reloads and settles it
+ * once the account is back (`focus-after-write.ts`). Disable and Re-enable share
+ * a key; everything else lands on the heading, because its button is gone or
+ * disabled after the reload.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -40,6 +48,7 @@ import {
 } from "../../console-api.js";
 import { consoleHref } from "./nav.js";
 import { formatWhen, plural } from "./format.js";
+import { useFocusAfterWrite } from "./focus-after-write.js";
 import { describeGrantRevoke, describeGrantWrite, groupGrantsByApp } from "./grant-set.js";
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
 import { Alert, Confirm, Empty, Panel, TextField } from "./ui.js";
@@ -48,6 +57,11 @@ export function AccountDetailScreen({ subject }: { subject: string }): React.JSX
   const { basePath } = useConsole();
   const account = useConsoleLoad(`account:${subject}`, () => consoleApi.getAccount(subject));
   const apps = useConsoleLoad("apps", () => consoleApi.listApps());
+  const { request: requestFocus, settle: settleFocus } = useFocusAfterWrite();
+
+  useEffect(() => {
+    if (account.result.state === "ready") settleFocus();
+  }, [account.result, settleFocus]);
 
   return (
     <>
@@ -68,6 +82,7 @@ export function AccountDetailScreen({ subject }: { subject: string }): React.JSX
           detail={account.result.data}
           apps={apps.result.state === "ready" ? apps.result.data : []}
           reload={account.reload}
+          requestFocus={requestFocus}
         />
       ) : null}
     </>
@@ -83,14 +98,27 @@ type Pending =
   | { kind: "rotate" }
   | { kind: "revokeApp"; appSlug: string; roles: string[] };
 
+/** The `data-wc-focus` keys of the buttons on this screen that open a `Confirm`. */
+const FOCUS = {
+  state: "account-state",
+  rename: "rename",
+  rotate: "rotate-password",
+  revokeApp: (appSlug: string) => `revoke-app:${appSlug}`,
+  endSession: (familyId: string) => `end-session:${familyId}`,
+  endAll: "end-all-sessions",
+} as const;
+
 function AccountBody({
   detail,
   apps,
   reload,
+  requestFocus,
 }: {
   detail: AccountDetailResult;
   apps: AppView[];
   reload: () => void;
+  /** Where focus goes once the reload after a write is on screen. */
+  requestFocus: (key: string) => void;
 }): React.JSX.Element {
   const { account, grants, liveSessions } = detail;
   const { basePath } = useConsole();
@@ -105,8 +133,9 @@ function AccountBody({
     setPending({ kind: "none" });
   };
 
-  async function finish(action: () => Promise<boolean>): Promise<void> {
+  async function finish(action: () => Promise<boolean>, focusKey: string): Promise<void> {
     const ok = await action();
+    if (ok) requestFocus(focusKey);
     close();
     if (ok) reload();
   }
@@ -123,7 +152,7 @@ function AccountBody({
   return (
     <>
       <div className="wc-head">
-        <h1>{account.username}</h1>
+        <h1 tabIndex={-1}>{account.username}</h1>
         <span className="wc-state" data-state={account.disabled ? "disabled" : undefined}>
           {account.disabled
             ? `Disabled${account.disabledAt === null ? "" : ` since ${formatWhen(account.disabledAt)}`}`
@@ -156,7 +185,7 @@ function AccountBody({
         reload={reload}
       />
 
-      <SessionsPanel subject={account.subject} onChanged={reload} />
+      <SessionsPanel subject={account.subject} onChanged={reload} requestFocus={requestFocus} />
 
       <Panel
         title="Username"
@@ -187,6 +216,7 @@ function AccountBody({
             <button
               type="submit"
               className="wc-btn"
+              data-wc-focus={FOCUS.rename}
               disabled={writer.busy || renameTo === "" || renameTo === account.username}
             >
               Rename
@@ -218,7 +248,12 @@ function AccountBody({
             hint="At least 8 characters. Every live session for this account ends when it is set."
           />
           <div className="wc-actions">
-            <button type="submit" className="wc-btn" disabled={writer.busy || newPassword === ""}>
+            <button
+              type="submit"
+              className="wc-btn"
+              data-wc-focus={FOCUS.rotate}
+              disabled={writer.busy || newPassword === ""}
+            >
               Rotate password
             </button>
           </div>
@@ -240,6 +275,7 @@ function AccountBody({
               type="button"
               className="wc-btn"
               data-tone="primary"
+              data-wc-focus={FOCUS.state}
               disabled={writer.busy}
               onClick={() => {
                 setPending({ kind: "enable" });
@@ -252,6 +288,7 @@ function AccountBody({
               type="button"
               className="wc-btn"
               data-tone="danger"
+              data-wc-focus={FOCUS.state}
               disabled={writer.busy}
               onClick={() => {
                 setPending({ kind: "disable" });
@@ -290,14 +327,16 @@ function AccountBody({
         busy={writer.busy}
         onCancel={close}
         onConfirm={() => {
-          void finish(() =>
-            writer.run(
-              () => consoleApi.disableAccount(account.subject),
-              (result) =>
-                result.sessionsRevoked === 0
-                  ? `Disabled ${account.username}. It held no live sessions.`
-                  : `Disabled ${account.username} and revoked ${plural(result.sessionsRevoked, "session", "sessions")}.`,
-            ),
+          void finish(
+            () =>
+              writer.run(
+                () => consoleApi.disableAccount(account.subject),
+                (result) =>
+                  result.sessionsRevoked === 0
+                    ? `Disabled ${account.username}. It held no live sessions.`
+                    : `Disabled ${account.username} and revoked ${plural(result.sessionsRevoked, "session", "sessions")}.`,
+              ),
+            FOCUS.state,
           );
         }}
       >
@@ -320,14 +359,16 @@ function AccountBody({
         busy={writer.busy}
         onCancel={close}
         onConfirm={() => {
-          void finish(() =>
-            writer.run(
-              () => consoleApi.enableAccount(account.subject),
-              (result) =>
-                result.changed
-                  ? `Re-enabled ${account.username}. Its grants came back with it; its old sessions did not.`
-                  : `${account.username} was already enabled. Nothing changed and no audit row was written.`,
-            ),
+          void finish(
+            () =>
+              writer.run(
+                () => consoleApi.enableAccount(account.subject),
+                (result) =>
+                  result.changed
+                    ? `Re-enabled ${account.username}. Its grants came back with it; its old sessions did not.`
+                    : `${account.username} was already enabled. Nothing changed and no audit row was written.`,
+              ),
+            FOCUS.state,
           );
         }}
       >
@@ -348,14 +389,16 @@ function AccountBody({
         onConfirm={() => {
           if (pending.kind !== "rename") return;
           const to = pending.to;
-          void finish(() =>
-            writer.run(
-              () => consoleApi.renameAccount(account.subject, to),
-              (result) =>
-                result.changed
-                  ? `Renamed ${account.username} to ${result.account.username}. They sign in with the new name from now on.`
-                  : `${account.username} already has that name. Nothing changed and no audit row was written.`,
-            ),
+          void finish(
+            () =>
+              writer.run(
+                () => consoleApi.renameAccount(account.subject, to),
+                (result) =>
+                  result.changed
+                    ? `Renamed ${account.username} to ${result.account.username}. They sign in with the new name from now on.`
+                    : `${account.username} already has that name. Nothing changed and no audit row was written.`,
+              ),
+            FOCUS.rename,
           );
         }}
       >
@@ -423,7 +466,7 @@ function AccountBody({
             // after the request that carried it.
             setNewPassword("");
             return ok;
-          });
+          }, FOCUS.rotate);
         }}
       >
         <p>
@@ -450,11 +493,13 @@ function AccountBody({
         onConfirm={() => {
           if (pending.kind !== "revokeApp") return;
           const appSlug = pending.appSlug;
-          void finish(() =>
-            writer.run(
-              () => consoleApi.revokeGrant({ subject: account.subject, appSlug }),
-              (result) => describeGrantRevoke(appSlug, result.removed, result.roles),
-            ),
+          void finish(
+            () =>
+              writer.run(
+                () => consoleApi.revokeGrant({ subject: account.subject, appSlug }),
+                (result) => describeGrantRevoke(appSlug, result.removed, result.roles),
+              ),
+            FOCUS.revokeApp(appSlug),
           );
         }}
       >
@@ -490,9 +535,11 @@ function AccountBody({
 function SessionsPanel({
   subject,
   onChanged,
+  requestFocus,
 }: {
   subject: string;
   onChanged: () => void;
+  requestFocus: (key: string) => void;
 }): React.JSX.Element {
   const sessions = useConsoleLoad(`sessions:${subject}`, () => consoleApi.listSessions(subject));
   const writer = useWriter();
@@ -507,6 +554,7 @@ function SessionsPanel({
           ? "That session was ended. The device signs out the next time it tries to refresh."
           : "That session had already ended.",
     );
+    if (ok) requestFocus(FOCUS.endSession(familyId));
     setRevoking(undefined);
     if (ok) {
       sessions.reload();
@@ -522,6 +570,7 @@ function SessionsPanel({
           ? "No live sessions to end."
           : `Ended ${plural(result.revoked, "session", "sessions")}. The account itself was untouched.`,
     );
+    if (ok) requestFocus(FOCUS.endAll);
     setEndingAll(false);
     if (ok) {
       sessions.reload();
@@ -582,6 +631,7 @@ function SessionsPanel({
                         <button
                           type="button"
                           className="wc-btn-link"
+                          data-wc-focus={FOCUS.endSession(session.familyId)}
                           disabled={writer.busy}
                           onClick={() => {
                             setRevoking(session.familyId);
@@ -600,6 +650,7 @@ function SessionsPanel({
                 type="button"
                 className="wc-btn"
                 data-tone="danger"
+                data-wc-focus={FOCUS.endAll}
                 disabled={writer.busy}
                 onClick={() => {
                   setEndingAll(true);
@@ -778,6 +829,7 @@ function AccessPanel({
                   <button
                     type="button"
                     className="wc-btn-link"
+                    data-wc-focus={FOCUS.revokeApp(entry.appSlug)}
                     disabled={writer.busy}
                     onClick={() => {
                       onRevokeApp(entry.appSlug, entry.roles);

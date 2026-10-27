@@ -20,13 +20,21 @@
  * The audit log asks "who renamed this" and "who opened this to the public"
  * separately, so they are separate forms here — submitting one never quietly
  * carries the other.
+ *
+ * ## Focus after a confirmed write
+ *
+ * As on the account page (`focus-after-write.ts`): Open and Close registration
+ * share a key, so opening lands on Close. Closing lands on the heading, since
+ * the reopen button stays disabled until a baseline role is typed. A removed app
+ * becomes its outcome alert, which takes focus itself.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { consoleApi, type AppView, type GrantView } from "../../console-api.js";
 import { consoleHref } from "./nav.js";
+import { useFocusAfterWrite } from "./focus-after-write.js";
 import { formatWhen, plural } from "./format.js";
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
 import { OidcClientPanel } from "./OidcClient.js";
@@ -36,6 +44,11 @@ export function AppDetailScreen({ slug }: { slug: string }): React.JSX.Element {
   const { basePath } = useConsole();
   const app = useConsoleLoad(`app:${slug}`, () => consoleApi.getApp(slug));
   const grants = useConsoleLoad(`app-grants:${slug}`, () => consoleApi.grantsForApp(slug));
+  const { request: requestFocus, settle: settleFocus } = useFocusAfterWrite();
+
+  useEffect(() => {
+    if (app.result.state === "ready") settleFocus();
+  }, [app.result, settleFocus]);
 
   return (
     <>
@@ -61,6 +74,7 @@ export function AppDetailScreen({ slug }: { slug: string }): React.JSX.Element {
             app.reload();
             grants.reload();
           }}
+          requestFocus={requestFocus}
         />
       ) : null}
     </>
@@ -69,18 +83,24 @@ export function AppDetailScreen({ slug }: { slug: string }): React.JSX.Element {
 
 type Pending = { kind: "none" } | { kind: "open" } | { kind: "close" } | { kind: "delete" };
 
+/** The `data-wc-focus` key of the registration slot's button, open or closed. */
+const REGISTRATION_FOCUS = "registration";
+
 function AppBody({
   app,
   grantCount,
   grants,
   basePath,
   reload,
+  requestFocus,
 }: {
   app: AppView;
   grantCount: number;
   grants: GrantView[];
   basePath: string;
   reload: () => void;
+  /** Where focus goes once the reload after a write is on screen. */
+  requestFocus: (key: string) => void;
 }): React.JSX.Element {
   const writer = useWriter();
   const [name, setName] = useState(app.name);
@@ -104,7 +124,7 @@ function AppBody({
   return (
     <>
       <div className="wc-head">
-        <h1>{app.name}</h1>
+        <h1 tabIndex={-1}>{app.name}</h1>
         <span className="wc-id">{app.slug}</span>
         {app.publicRegistration ? (
           <span className="wc-state" data-state="open">
@@ -193,6 +213,7 @@ function AppBody({
               type="button"
               className="wc-btn"
               data-tone="primary"
+              data-wc-focus={REGISTRATION_FOCUS}
               disabled={writer.busy}
               onClick={() => {
                 setPending({ kind: "close" });
@@ -230,6 +251,7 @@ function AppBody({
                 type="submit"
                 className="wc-btn"
                 data-tone="danger"
+                data-wc-focus={REGISTRATION_FOCUS}
                 disabled={writer.busy || baselineRole === ""}
               >
                 Open registration…
@@ -338,6 +360,7 @@ function AppBody({
                 `Registration opened for ${updated.slug}. Strangers who sign up get ${String(updated.baselineRole)}.`,
             )
             .then((ok) => {
+              if (ok) requestFocus(REGISTRATION_FOCUS);
               close();
               if (ok) reload();
             });
@@ -371,6 +394,7 @@ function AppBody({
                 `Registration closed for ${updated.slug}. The baseline role was cleared with it.`,
             )
             .then((ok) => {
+              if (ok) requestFocus(REGISTRATION_FOCUS);
               close();
               if (ok) {
                 setBaselineRole("");

@@ -19,14 +19,18 @@
  * That must not be a stray click, so it is behind a confirmation that names the
  * app, the role, and what a stranger will be able to do — here on creation, and
  * on the app's own page for a later flip.
+ *
+ * After a registration the form closes, so focus goes to the heading once the
+ * list has reloaded (`focus-after-write.ts`), whether or not it was confirmed.
  */
 
 import { Collapsible } from "@base-ui/react/collapsible";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { consoleApi, type AppView } from "../../console-api.js";
 import { consoleHref } from "./nav.js";
+import { useFocusAfterWrite } from "./focus-after-write.js";
 import { formatWhen, plural } from "./format.js";
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
 import { Alert, Confirm, Empty, TextField } from "./ui.js";
@@ -35,12 +39,17 @@ export function AppsScreen(): React.JSX.Element {
   const { basePath } = useConsole();
   const { result, reload } = useConsoleLoad("apps-list", () => consoleApi.listApps());
   const [creating, setCreating] = useState(false);
+  const { request: requestFocus, settle: settleFocus } = useFocusAfterWrite();
+
+  useEffect(() => {
+    if (result.state === "ready") settleFocus();
+  }, [result, settleFocus]);
 
   return (
     <>
       <Collapsible.Root open={creating} onOpenChange={setCreating}>
         <div className="wc-head">
-          <h1>Apps</h1>
+          <h1 tabIndex={-1}>Apps</h1>
           <div className="wc-head-actions">
             <Collapsible.Trigger className="wc-btn" data-tone="primary">
               {creating ? "Close the new-app form" : "Register an app"}
@@ -57,6 +66,7 @@ export function AppsScreen(): React.JSX.Element {
         <Collapsible.Panel>
           <NewAppForm
             onCreated={() => {
+              requestFocus(REGISTER_FOCUS);
               setCreating(false);
               reload();
             }}
@@ -146,6 +156,9 @@ function AppTable({ apps, basePath }: { apps: AppView[]; basePath: string }): Re
     </div>
   );
 }
+
+/** The `data-wc-focus` key of the form's submit, gone once the form closes. */
+const REGISTER_FOCUS = "register-app";
 
 function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element {
   const [slug, setSlug] = useState("");
@@ -270,6 +283,7 @@ function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element
             type="submit"
             className="wc-btn"
             data-tone="primary"
+            data-wc-focus={REGISTER_FOCUS}
             disabled={writer.busy || slug === "" || name === "" || (open && baselineRole === "")}
           >
             {open ? "Register and review" : "Register app"}

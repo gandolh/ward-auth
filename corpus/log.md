@@ -439,13 +439,13 @@ scratch API at 1440 and 390 px. The decision is in
 [decisions.md](wiki/decisions.md). Two todos came out of it:
 `split-the-console-chunk.md` (the sign-in
 pages download Base UI too; closed by [brief 34](briefs/done/34-console-in-its-own-chunk.md)) and
-[focus-after-a-confirmed-write.md](todos/focus-after-a-confirmed-write.md), an
-existing gap. brief-board is down, so nothing was posted there.
+`focus-after-a-confirmed-write.md`, an
+existing gap (closed by [brief 35](briefs/done/35-focus-after-a-confirmed-write.md)). brief-board is down, so nothing was posted there.
 
 ## [2026-10-23] todo | Briefs 34–38 from the three open todos
 
 [34](briefs/done/34-console-in-its-own-chunk.md) lazy-loads the console so the public
-pages stop downloading Base UI. [35](briefs/todo/35-focus-after-a-confirmed-write.md)
+pages stop downloading Base UI. [35](briefs/done/35-focus-after-a-confirmed-write.md)
 fixes focus falling to `<body>` after a confirmed write, at all ten `Confirm` call
 sites; checking `finalFocus` is its first step. The library todo split into one brief
 per bullet: [36](briefs/todo/36-library-username-for-a-new-ward-user.md) a
@@ -493,3 +493,21 @@ fetch only the entry, and a deep link to an account fetches the chunk and render
 the account; typecheck, lint, the build and 1196 tests. The todo
 `split-the-console-chunk.md` is deleted. brief-board is down, so nothing was posted
 there.
+
+## [2026-10-27] done | Brief 35: focus after a confirmed write
+
+[Brief 35](briefs/done/35-focus-after-a-confirmed-write.md) is built. Base UI's
+`finalFocus` can't do it alone: it runs in the commit that closes the dialog,
+and the reload in the same batch has already unmounted the opener (checked in
+Chromium: `isConnected: false`, focus on `<body>`). So each screen asks for focus
+by the opener's `data-wc-focus` key before it reloads and settles it once the
+data is back: the opener if it is there and enabled, else the screen's `h1`.
+`Confirm` focuses its popup before the confirm button disables and passes
+`finalFocus` false after a confirm; Cancel and Escape still return to the opener.
+All twelve call sites follow the rule (the brief counted ten, before 39-40).
+Checked keyboard-only in Chromium against a scratch API, one write of each kind,
+plus typecheck, lint, the build and 1203 tests. The writes without a confirmation
+lose focus the same way: filed as
+[focus-after-an-unconfirmed-write.md](todos/focus-after-an-unconfirmed-write.md).
+The todo `focus-after-a-confirmed-write.md` is deleted. brief-board is down, so
+nothing was posted there.

@@ -107,6 +107,7 @@ Two findings:
   disabled while busy, and the page reloads, so there is nothing to return
   focus to. The old native `<dialog>` did the same (checked against HEAD), so
   this is not a regression. Filed as
-  [focus-after-a-confirmed-write.md](../../todos/focus-after-a-confirmed-write.md).
+  `focus-after-a-confirmed-write.md`, closed by
+  [brief 35](35-focus-after-a-confirmed-write.md).
 
 brief-board is down, so nothing was posted there.

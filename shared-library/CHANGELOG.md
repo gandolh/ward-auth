@@ -7,6 +7,25 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 0.6.1 — 2026-10-27
+
+Three names 0.5.0 and 0.6.0 added are now exported (Ward's brief 41).
+
+- `UsernameFor`, the type of `ward.usernameFor`.
+- `isUsernameMaxLength(value)`, the check `wardAuth` runs on
+  `ward.usernameMaxLength`: a whole number from 10 to 256.
+- `UserDisabledError`, which `startSession` and `userForSignIn` throw for a
+  disabled user.
+
+Upgrade notes from 0.6.0:
+
+- Re-vendor. Nothing changes at runtime, and there is no migration.
+- A hook typed as `WardSignInOptions["usernameFor"]` can be typed as
+  `UsernameFor`. A cap read from the environment can be checked with
+  `isUsernameMaxLength` before `wardAuth` throws on it. A `catch` that matches
+  `error.code === "user_disabled"` can use `instanceof UserDisabledError`; the
+  code is unchanged, so the old check still works.
+
 ## 0.6.0 — 2026-10-27
 
 An app can switch a local user off (Ward's brief 38).

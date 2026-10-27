@@ -124,7 +124,15 @@ describe("the vendored copy", () => {
 
     await writeFile(
       join(scratch, "consumer.ts"),
-      `import { createAccounts, createSqliteStore, wardAuth, type AuthContext } from "./vendor/ward/ward-auth.js";
+      `import {
+  UserDisabledError,
+  createAccounts,
+  createSqliteStore,
+  isUsernameMaxLength,
+  wardAuth,
+  type AuthContext,
+  type UsernameFor,
+} from "./vendor/ward/ward-auth.js";
 import { configureAuth, useSession, type SessionState } from "./vendor/ward/ward-auth-react.js";
 import Database from "better-sqlite3";
 import { DatabaseSync } from "node:sqlite";
@@ -140,6 +148,11 @@ app.get("/me", async (request) => {
 });
 configureAuth({ basePath: "/api/auth" });
 export type Probe = [SessionState, typeof useSession];
+// The names 0.5.0 and 0.6.0 added, exported since 0.6.1.
+export const usernameFor: UsernameFor = ({ username }) => username.toLowerCase().slice(0, 32);
+export const usernameMaxLength: number | undefined = isUsernameMaxLength(32) ? 32 : undefined;
+export const isDisabled = (error: unknown): boolean =>
+  error instanceof UserDisabledError && error.code === "user_disabled";
 `,
     );
     await run(
@@ -174,7 +187,14 @@ export type Probe = [SessionState, typeof useSession];
       join(scratch, "server.mjs"),
       `import Fastify from "fastify";
 import { DatabaseSync } from "node:sqlite";
-import { createAccounts, createSqliteStore, seedUsers, wardAuth } from "./vendor/ward/ward-auth.js";
+import {
+  UserDisabledError,
+  createAccounts,
+  createSqliteStore,
+  isUsernameMaxLength,
+  seedUsers,
+  wardAuth,
+} from "./vendor/ward/ward-auth.js";
 
 const accounts = createAccounts({ store: createSqliteStore(new DatabaseSync(":memory:")) });
 await seedUsers(accounts, [{ username: "smoke", password: "smoke test password", role: "member" }]);
@@ -199,7 +219,13 @@ const login = await fetch(base + "/api/auth/login", {
 });
 const cookie = login.headers.get("set-cookie").split(";")[0];
 const secret = await fetch(base + "/api/secret", { headers: { cookie } });
-console.log(JSON.stringify({ denied: denied.status, login: login.status, secret: await secret.json() }));
+const exported = {
+  maxLength: [isUsernameMaxLength(32), isUsernameMaxLength(9)],
+  disabled: new UserDisabledError().code,
+};
+console.log(
+  JSON.stringify({ denied: denied.status, login: login.status, secret: await secret.json(), exported }),
+);
 await app.close();
 `,
     );
@@ -211,6 +237,7 @@ await app.close();
       denied: 401,
       login: 200,
       secret: { user: "smoke" },
+      exported: { maxLength: [true, false], disabled: "user_disabled" },
     });
   }, 60_000);
 

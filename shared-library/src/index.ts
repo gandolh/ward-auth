@@ -13,6 +13,7 @@ export {
   SESSION_IDLE_SECONDS,
   SESSION_RENEW_INTERVAL_SECONDS,
   InvalidUserIdError,
+  UserDisabledError,
   createAccounts,
   seedUsers,
   toAuthUser,
@@ -108,7 +109,9 @@ export {
   NoLocalPasswordError,
   NotLinkedError,
   createWardIdentities,
+  isUsernameMaxLength,
   type NewLinkedUserInput,
+  type UsernameFor,
   type WardIdentities,
   type WardIdentitiesOptions,
 } from "./ward/identities.js";

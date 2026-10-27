@@ -13,7 +13,9 @@ next Ward deploy (step 9).
 below as `https://ward.<domain>` and `<origin>/ward-api` as
 `https://ward.<domain>/ward-api`: the console is at `https://ward.<domain>/console`,
 and every app's `WARD_OIDC_ISSUER` is `https://ward.<domain>/ward-api/oidc`.
-The apps' own redirect URIs did not change.
+Ward's move changed no app's redirect URIs. Satchel's changed with its own move
+to the root of `satchel.<domain>` (satchel's brief 15, the same day), so its row
+in step 4 is written out in full.
 
 Every step here is yours to run. The deploy configuration is already in
 vps-deploy: `stacks/ward.ts`, the five app stacks, and the `useWard` lines in
@@ -202,7 +204,7 @@ and save:
 | `newspapper` | `<origin>/newspapper/api/auth/ward/callback` | `<origin>/newspapper/` |
 | `prm` | `<origin>/prm-api/auth/ward/callback` | `<origin>/prm/` |
 | `sports-app` | `<origin>/sports-app-api/api/auth/ward/callback` | `<origin>/sports-app/` |
-| `satchel` | `<origin>/satchel-api/auth/ward/callback` | `<origin>/satchel/` |
+| `satchel` | `https://satchel.<domain>/satchel-api/auth/ward/callback` | `https://satchel.<domain>/` |
 | `shelfmark` | `<origin>/shelfmark-api/auth/ward/callback` | `<origin>/shelfmark/` |
 | `almanac` | `<origin>/almanac-api/auth/ward/callback` | `<origin>/almanac/` |
 

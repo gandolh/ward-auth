@@ -42,7 +42,11 @@ const ACCEPTED: ReadonlyArray<{ input: string; path: string; why: string }> = [
     path: "/register?app=prm&from=mail",
     why: "an ampersand is not a delimiter once the value is decoded",
   },
-  { input: "/account/a%20b", path: "/account/a%20b", why: "an encoded space is fine; a raw one is not" },
+  {
+    input: "/account/a%20b",
+    path: "/account/a%20b",
+    why: "an encoded space is fine; a raw one is not",
+  },
   {
     input: "/console/x/../../account",
     path: "/account",

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 
 import { Threshold } from "./components/Threshold.js";
@@ -6,8 +7,18 @@ import { Account } from "./pages/Account.js";
 import { Login } from "./pages/Login.js";
 import { Register } from "./pages/Register.js";
 import { Verify } from "./pages/Verify.js";
-import { ConsoleRoutes } from "./pages/console/routes.js";
 import "./ward.css";
+
+/**
+ * The console, in a chunk of its own (brief 34). Only the console imports Base
+ * UI and `console.css`, so loading it lazily keeps both off the sign-in,
+ * registration, verification and account pages. `routes.tsx` exports a named
+ * `ConsoleRoutes`, and its contract is not changed for this, so the wrapper
+ * here gives `lazy` the default export it wants.
+ */
+const ConsoleRoutes = lazy(() =>
+  import("./pages/console/routes.js").then((m) => ({ default: m.ConsoleRoutes })),
+);
 
 /**
  * Ward's router. Brief 09 owns this file.
@@ -18,7 +29,8 @@ import "./ward.css";
  * `<ConsoleRoutes />`**; this file mounts it under `/console/*` and wraps that
  * subtree in `data-ward-surface="console"` so the console tokens apply. Neither
  * brief edits a file the other owns to add a screen, and nothing here reaches
- * into the console's pages.
+ * into the console's pages. Since brief 34 the mount is lazy, and the import
+ * above is the only reference to the console from outside it.
  *
  * The wrapper is a `<div>` rather than an attribute on something the console
  * renders, because the token re-pointing has to be an **ancestor** of every
@@ -63,13 +75,35 @@ export function App(): React.JSX.Element {
           path="/console/*"
           element={
             <div data-ward-surface="console">
-              <ConsoleRoutes />
+              <Suspense fallback={<ConsoleLoading />}>
+                <ConsoleRoutes />
+              </Suspense>
             </div>
           }
         />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+/**
+ * What `/console` shows while its chunk loads.
+ *
+ * `console.css` arrives with that chunk, so none of the console's `wc-*`
+ * classes are styled yet. This uses `ward.css`, which is in the entry and reads
+ * the `--ward-*` tokens: inside the console wrapper they are the dark palette,
+ * and `tokens.css` paints the body to match.
+ */
+function ConsoleLoading(): React.JSX.Element {
+  return (
+    <p
+      className="ward-lede"
+      role="status"
+      style={{ margin: 0, padding: "var(--ward-space-8) var(--ward-space-6)" }}
+    >
+      Loading the console…
+    </p>
   );
 }
 

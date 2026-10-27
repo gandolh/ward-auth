@@ -424,6 +424,8 @@ function LoginPage() {
   // ward.error: from the button (ward_unavailable) or from the redirect back
   // (access_denied, invalid_callback, ward_unavailable, ward_misconfigured).
   // ward.reset() dismisses it.
+  // ward.returnTo: the returnTo a refused attempt was started with, or null (0.7.0).
+  // Try again with ward.signIn({ returnTo: ward.returnTo ?? undefined }).
 }
 ```
 
@@ -435,6 +437,17 @@ removes it from the address bar, and `useWardSignIn().error` starts as it.
 `access_denied` means no grant, a disabled Ward account, or the person
 pressed "Back to the app" at Ward. A good message is "Ward did not let you
 in here; ask the operator for access".
+
+A failed attempt keeps its `returnTo` (0.7.0). The failure lands on
+`loginPath?ward_error=<code>&ward_return_to=<returnTo>`, and
+`useWardSignIn().returnTo` holds the path, or `null` when the attempt named
+none. Pass it back to `signIn({ returnTo })` so that trying again goes to the
+same place. `signIn()` without it still lands on `afterSignInPath`. The path
+passes `isLocalPath` twice, once when the server writes it and once when the
+client reads it, and anything else is dropped. `reset()` dismisses the error
+and keeps the path. A login page whose own query says where to go next (a
+`?next=`) can read it out of `returnTo` too, so a password sign-in after the
+refusal also goes there.
 
 ### Settings page
 

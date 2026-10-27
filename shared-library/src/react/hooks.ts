@@ -175,7 +175,10 @@ export function useRegister(
 // Sign in with Ward
 // ---------------------------------------------------------------------------
 
-/** The Ward result the page was loaded with (`?ward_error=` / `?ward=`), and a way to dismiss it. */
+/**
+ * The Ward result the page was loaded with (`?ward_error=` / `?ward=`), and a
+ * way to dismiss it. `returnTo` survives `clear()`.
+ */
 export function useWardResult(options?: HookOptions): WardResult & { clear: () => void } {
   const client = useClient(options);
   const result = useSyncExternalStore(client.subscribe, client.getWardResult, client.getWardResult);
@@ -194,9 +197,14 @@ export function useWardResult(options?: HookOptions): WardResult & { clear: () =
  * a disabled account, or they pressed "Back to the app"), `invalid_callback`,
  * `ward_unavailable`, `sign_in_failed`. `reset()` dismisses it. Show the button only when
  * `useSession().ward.enabled`.
+ *
+ * `returnTo` (0.7.0) is the `returnTo` that failed attempt was started with,
+ * or `null`. `signIn({ returnTo })` with it tries again to the same place;
+ * `signIn()` without one still goes to `afterSignInPath`. `reset()` keeps it.
  */
 export function useWardSignIn(options?: HookOptions): ActionState & {
   signIn: (signInOptions?: { returnTo?: string }) => Promise<boolean>;
+  returnTo: string | null;
 } {
   const client = useClient(options);
   const landed = useWardResult(options);
@@ -210,7 +218,13 @@ export function useWardSignIn(options?: HookOptions): ActionState & {
     reset();
     clear();
   }, [reset, clear]);
-  return { pending, error: error ?? landed.error ?? null, reset: resetAll, signIn: perform };
+  return {
+    pending,
+    error: error ?? landed.error ?? null,
+    reset: resetAll,
+    signIn: perform,
+    returnTo: landed.returnTo ?? null,
+  };
 }
 
 /**

@@ -7,6 +7,37 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 0.7.0 — 2026-10-27
+
+A refused "Sign in with Ward" keeps the path it was started with (Ward's
+brief 42).
+
+- When a sign-in started with `signIn({ returnTo })` fails, the callback lands
+  on `loginPath?ward_error=<code>&ward_return_to=<returnTo>`. That covers every
+  sign-in failure: Ward's refusals (`access_denied`), a failed or expired code
+  exchange (`invalid_callback`, `ward_unavailable`, `ward_misconfigured`),
+  `sign_in_failed`, and a user the app disabled. A callback with no readable
+  flow cookie has no path to carry and lands as before. Link and
+  reauthentication failures on `settingsPath` are unchanged.
+- The path is checked with `isLocalPath` when it is written, as `returnTo` was
+  at the start. The browser client checks it again when it reads it, and only
+  beside a `ward_error`; anything else is dropped. Either way the parameter is
+  taken out of the address bar with `ward_error`.
+- `WardResult` gains `returnTo?: string`, and `useWardSignIn()` returns
+  `returnTo` (`null` when there is none). `clearWardResult()` and `reset()`
+  dismiss the error but keep `returnTo`.
+- `isLocalPath` moved from `fastify/ward.ts` to `core/paths.ts`, unchanged, so
+  both bundles use one rule. It is not exported.
+
+Upgrade notes from 0.6.1:
+
+- Re-vendor, into both the server and the web package. No migration.
+- Nothing changes on the login page until it uses `returnTo`. To retry to
+  the same place, pass `useWardSignIn().returnTo` to `signIn({ returnTo })`.
+  `signIn()` without a `returnTo` still goes to `afterSignInPath`.
+- sports-app's brief 32 gap (a retry after a refusal lands on `/`) closes when
+  its login page reads `next` back out of `returnTo`.
+
 ## 0.6.1 — 2026-10-27
 
 Three names 0.5.0 and 0.6.0 added are now exported (Ward's brief 41).

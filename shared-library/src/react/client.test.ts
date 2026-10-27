@@ -239,6 +239,50 @@ describe("Sign in with Ward, in the browser", () => {
     expect(readWardResult("https://example.com/?ward_error=%3Cscript%3E").result).toEqual({});
   });
 
+  it("reads ?ward_return_to= beside ?ward_error=, and keeps it when the error is dismissed", () => {
+    const replace = vi.fn();
+    const client = createAuthClient({
+      basePath: "/a",
+      fetch: async () => json(200, {}),
+      location: {
+        href: "https://example.com/myapp/login?next=%2Fx&ward_error=access_denied&ward_return_to=%2Fmyapp%2Flogin%3Fnext%3D%252Fplan",
+        replace,
+      },
+    });
+    expect(client.getWardResult()).toEqual({
+      error: { code: "access_denied" },
+      returnTo: "/myapp/login?next=%2Fplan",
+    });
+    expect(replace).toHaveBeenCalledWith("https://example.com/myapp/login?next=%2Fx");
+
+    const listener = vi.fn();
+    client.subscribe(listener);
+    client.clearWardResult();
+    expect(client.getWardResult()).toEqual({ returnTo: "/myapp/login?next=%2Fplan" });
+    expect(listener).toHaveBeenCalledTimes(1);
+    client.clearWardResult(); // nothing left to dismiss
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a ward_return_to that leaves the origin or comes without an error, and strips it anyway", () => {
+    for (const unsafe of ["//evil.example", "/\\evil", "https://evil.example/", "evil", "/a\nb"]) {
+      const href = `https://example.com/myapp/login?ward_error=access_denied&ward_return_to=${encodeURIComponent(unsafe)}`;
+      expect(readWardResult(href), unsafe).toEqual({
+        result: { error: { code: "access_denied" } },
+        cleaned: "https://example.com/myapp/login",
+      });
+    }
+    expect(readWardResult("https://example.com/myapp/login?ward_return_to=%2Fmyapp%2F")).toEqual({
+      result: {},
+      cleaned: "https://example.com/myapp/login",
+    });
+    // An error that is not code-shaped carries no path either.
+    expect(
+      readWardResult("https://example.com/?ward_error=%3Cscript%3E&ward_return_to=%2Fmyapp%2F")
+        .result,
+    ).toEqual({});
+  });
+
   it("unlinks, and is signed out when the session began with Ward", async () => {
     const responses = [
       json(200, {

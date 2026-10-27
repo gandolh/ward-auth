@@ -5,6 +5,7 @@ import { clearedCookie, readCookie, serializeCookie } from "../core/cookie.js";
 import { MAX_USERNAME_LENGTH, foldUsername } from "../core/identifiers.js";
 import type { Lockout, LockoutTarget } from "../core/lockout.js";
 import { MAX_PASSWORD_LENGTH, PasswordPolicyError } from "../core/password.js";
+import { isLocalPath } from "../core/paths.js";
 import { AlreadyLinkedError, WardSubjectTakenError, isWardAuthStore } from "../store/types.js";
 import type { SessionRecord, WardAuthStore } from "../store/types.js";
 import {
@@ -66,7 +67,11 @@ import type { SessionValidator } from "./plugin.js";
  * ## Where the callback sends the browser
  *
  * - sign-in: `returnTo` (a same-origin path the start named) or
- *   `afterSignInPath`; on failure `loginPath?ward_error=<code>`;
+ *   `afterSignInPath`; on failure `loginPath?ward_error=<code>`, plus
+ *   `&ward_return_to=<returnTo>` when the start named one (0.7.0), so the
+ *   login page can try again to the same place. The path is checked with
+ *   `isLocalPath` again on the way out, and a callback without a readable flow
+ *   cookie has none to carry;
  * - link: `settingsPath?ward=linked`, or `settingsPath?ward_error=<code>`;
  * - reauthenticate: `settingsPath?ward=reauthenticated`, or the error.
  *
@@ -373,6 +378,20 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     throw error;
   }
 
+  /**
+   * Where a failed round trip lands: a sign-in on the login page, carrying
+   * the start's `returnTo` as `ward_return_to`; a link or reauthentication on
+   * settings.
+   */
+  function landFailure(reply: FastifyReply, flow: Flow, code: string): FastifyReply {
+    if (flow.mode !== "sign_in") return land(reply, ward.settingsPath, { ward_error: code });
+    const query: Record<string, string> = { ward_error: code };
+    if (flow.returnTo !== undefined && isLocalPath(flow.returnTo)) {
+      query["ward_return_to"] = flow.returnTo;
+    }
+    return land(reply, ward.loginPath, query);
+  }
+
   /** A `303` to an app page, on the app's own origin. */
   function land(reply: FastifyReply, path: string, query: Record<string, string>): FastifyReply {
     const target = new URL(path, publicOrigin);
@@ -456,7 +475,6 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     const flow = readFlow(request);
     if (flow === undefined) return land(reply, ward.loginPath, { ward_error: "invalid_callback" });
 
-    const errorPage = flow.mode === "sign_in" ? ward.loginPath : ward.settingsPath;
     const rawUrl = request.raw.url ?? "";
     const search = rawUrl.includes("?") ? rawUrl.slice(rawUrl.indexOf("?")) : "";
 
@@ -470,7 +488,7 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
       else if (failure.code === "ward_unavailable" || failure.code === "ward_error") {
         request.log.warn({ err: failure }, failure.message);
       }
-      return land(reply, errorPage, { ward_error: failure.code });
+      return landFailure(reply, flow, failure.code);
     }
 
     try {
@@ -479,7 +497,7 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
       // A top-level navigation: a raw 500 JSON page helps nobody. Log it and
       // send the person back where they can try again.
       request.log.error({ err: error }, "Ward callback failed after the code exchange");
-      return land(reply, errorPage, { ward_error: "sign_in_failed" });
+      return landFailure(reply, flow, "sign_in_failed");
     }
   });
 
@@ -503,9 +521,7 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
         // The app disabled the linked user (0.6.0). The answer Ward gives when
         // it refuses a sign-in itself, so a switched-off user and one with no
         // grant look the same, and no error is logged for a deliberate no.
-        if (error instanceof UserDisabledError) {
-          return land(reply, ward.loginPath, { ward_error: "access_denied" });
-        }
+        if (error instanceof UserDisabledError) return landFailure(reply, flow, "access_denied");
         throw error;
       }
       // Signing in on top of an old session replaces it, as a password sign-in does.
@@ -676,22 +692,4 @@ function setPasswordBody(
   if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH)
     return undefined;
   return { newPassword, currentPassword };
-}
-
-/**
- * A path on the app's own origin: starts with one `/`, no `//` or `/\`
- * (which browsers read as another host), no control characters, short.
- * What `returnTo` and the configured pages must be — never an open redirect.
- */
-export function isLocalPath(value: string): boolean {
-  return (
-    value.length > 0 &&
-    value.length <= 512 &&
-    value.startsWith("/") &&
-    !value.startsWith("//") &&
-    !value.startsWith("/\\") &&
-    !value.includes("\\") &&
-    // eslint-disable-next-line no-control-regex
-    !/[\u0000-\u001f\u007f]/.test(value)
-  );
 }

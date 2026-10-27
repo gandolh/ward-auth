@@ -379,6 +379,91 @@ describe("Ward's refusals", () => {
   });
 });
 
+describe("a refused sign-in keeps the path it was started with (0.7.0)", () => {
+  const RETURN_TO = "/myapp/items/7?tab=notes";
+
+  it("carries returnTo back as ward_return_to, encoded, beside the code", async () => {
+    await ward.createAccount("ned", "other-app", []);
+    const b = browser();
+    const { landed } = await wardRoundTrip(b, "ned", "/auth/ward/start", { returnTo: RETURN_TO });
+    expect(landed.href).toBe(
+      `${APP_ORIGIN}/myapp/login?ward_error=access_denied&ward_return_to=%2Fmyapp%2Fitems%2F7%3Ftab%3Dnotes`,
+    );
+    expect(landed.searchParams.get("ward_return_to")).toBe(RETURN_TO);
+    expect(b.cookie(APP_ORIGIN, COOKIE)).toBeUndefined();
+  });
+
+  it("carries it when the person pressed 'Back to the app'", async () => {
+    const b = browser();
+    const started = await b.request("POST", api("/auth/ward/start"), {
+      json: { returnTo: RETURN_TO },
+    });
+    const authorize = await b.request("GET", started.json<{ url: string }>().url);
+    const interaction = new URL(String(authorize.headers.location), WARD_ORIGIN).href;
+    const { landed } = await b.follow(`${interaction}/abort`);
+    expect(landed.pathname).toBe("/myapp/login");
+    expect(landed.searchParams.get("ward_error")).toBe("access_denied");
+    expect(landed.searchParams.get("ward_return_to")).toBe(RETURN_TO);
+  });
+
+  it("carries it on sign_in_failed", async () => {
+    await ward.createAccount("rhea", "myapp", ["viewer"]);
+    const broken = await buildTestApp(clientKey, {
+      roleFor: () => {
+        throw new Error("the app's roleFor has a bug");
+      },
+    });
+    try {
+      const { landed } = await wardRoundTrip(browser(broken), "rhea", "/auth/ward/start", {
+        returnTo: RETURN_TO,
+      });
+      expect(landed.searchParams.get("ward_error")).toBe("sign_in_failed");
+      expect(landed.searchParams.get("ward_return_to")).toBe(RETURN_TO);
+    } finally {
+      await broken.app.close();
+    }
+  });
+
+  it("carries it for a user the app disabled", async () => {
+    const subject = await ward.createAccount("dana", "myapp", ["viewer"]);
+    await wardRoundTrip(browser(), "dana");
+    await t.accounts.disableUser((await t.identities.findUserBySubject(subject))!.id);
+
+    const { landed } = await wardRoundTrip(browser(), "dana", "/auth/ward/start", {
+      returnTo: RETURN_TO,
+    });
+    expect(landed.searchParams.get("ward_error")).toBe("access_denied");
+    expect(landed.searchParams.get("ward_return_to")).toBe(RETURN_TO);
+  });
+
+  it("adds nothing when the start named no returnTo, or the flow cookie is gone", async () => {
+    await ward.createAccount("omar", "other-app", []);
+    const { landed } = await wardRoundTrip(browser(), "omar");
+    expect(landed.href).toBe(`${APP_ORIGIN}/myapp/login?ward_error=access_denied`);
+
+    // The path lives in the flow cookie: a callback without one has nothing to carry.
+    const b = browser();
+    const started = await b.request("POST", api("/auth/ward/start"), {
+      json: { returnTo: RETURN_TO },
+    });
+    const callback = await walkToCallback(b, started.json<{ url: string }>().url, "omar");
+    const response = await browser().request("GET", callback);
+    expect(response.headers.location).toBe(`${APP_ORIGIN}/myapp/login?ward_error=invalid_callback`);
+  });
+
+  it("never carries a path to the settings page, where a link fails", async () => {
+    await ward.createAccount("lena", "myapp", ["viewer"]);
+    await wardRoundTrip(browser(), "lena"); // creates and links a user "lena"
+    await seedUsers(t.accounts, [{ username: "lena-local", password: LOCAL_PASSWORD, role: "a" }]);
+    const b = browser();
+    await b.request("POST", api("/auth/login"), {
+      json: { username: "lena-local", password: LOCAL_PASSWORD },
+    });
+    const { landed } = await wardRoundTrip(b, "lena", "/auth/ward/link", { returnTo: RETURN_TO });
+    expect(landed.href).toBe(`${APP_ORIGIN}/myapp/settings?ward_error=ward_account_in_use`);
+  });
+});
+
 describe("the 30-second check", () => {
   it("ends the app session on the first request after the cache expires once Ward revokes", async () => {
     const subject = await ward.createAccount("carol", "myapp", ["editor"]);

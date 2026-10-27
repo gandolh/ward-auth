@@ -4,8 +4,11 @@
  *
  * Kept free of React so it can be tested in Node with a fake `fetch`, and so
  * the hooks stay thin enough to read at a glance. Nothing here imports the
- * server bundle: `ward-auth-react.js` must load in a browser.
+ * server bundle: `ward-auth-react.js` must load in a browser. `core/paths.ts`
+ * is framework-free, so the rule it holds is bundled in here too.
  */
+
+import { isLocalPath } from "../core/paths.js";
 
 /** The user the server reports. Mirrors the server's `AuthUser`. */
 export interface SessionUser {
@@ -111,13 +114,19 @@ export type SessionState =
 
 /**
  * What the last Ward round trip came back with, read once from the page's URL
- * (`?ward_error=` or `?ward=`) when the client is created, and removed from
- * the address bar so a reload does not show it again.
+ * (`?ward_error=`, `?ward=`, `?ward_return_to=`) when the client is created,
+ * and removed from the address bar so a reload does not show it again.
  */
 export interface WardResult {
   /** `linked` after a link, `reauthenticated` after a verified reauthentication. */
   result?: "linked" | "reauthenticated";
   error?: AuthError;
+  /**
+   * The `returnTo` a refused sign-in was started with (0.7.0): pass it to
+   * `startWardSignIn({ returnTo })` to try again to the same place. Only with
+   * an `error`, and only a path on this origin. `clearWardResult()` keeps it.
+   */
+  returnTo?: string;
 }
 
 export type ActionResult = { ok: true } | { ok: false; error: AuthError };
@@ -183,7 +192,10 @@ export interface AuthClient {
   signOutOfWard(): Promise<ActionResult>;
   /** The Ward result the page was loaded with, if any. */
   getWardResult(): WardResult;
-  /** Forget it (after the app has shown it). */
+  /**
+   * Forget the outcome (after the app has shown it). A carried `returnTo`
+   * stays: dismissing the message does not change where a retry should go.
+   */
   clearWardResult(): void;
 }
 
@@ -197,8 +209,11 @@ interface SessionBody {
 const NO_WARD: WardStatus = { enabled: false, linked: false };
 
 /**
- * Read `?ward_error=` / `?ward=` from a URL. Returns the result and the URL
- * without those parameters (or `undefined` when there was nothing to remove).
+ * Read `?ward_error=` / `?ward=` / `?ward_return_to=` from a URL. Returns the
+ * result and the URL without those parameters (or `undefined` when there was
+ * nothing to remove). `ward_return_to` is believed only beside a `ward_error`
+ * and only when it passes `isLocalPath`, the rule the server's `returnTo`
+ * passed: the address bar is anyone's to write.
  */
 export function readWardResult(href: string): { result: WardResult; cleaned?: string } {
   let url: URL;
@@ -209,12 +224,17 @@ export function readWardResult(href: string): { result: WardResult; cleaned?: st
   }
   const error = url.searchParams.get("ward_error");
   const outcome = url.searchParams.get("ward");
+  const returnTo = url.searchParams.get("ward_return_to");
   const result: WardResult = {};
   if (error !== null && /^[a-z_]{1,64}$/.test(error)) result.error = { code: error };
   if (outcome === "linked" || outcome === "reauthenticated") result.result = outcome;
-  if (error === null && outcome === null) return { result };
+  if (result.error !== undefined && returnTo !== null && isLocalPath(returnTo)) {
+    result.returnTo = returnTo;
+  }
+  if (error === null && outcome === null && returnTo === null) return { result };
   url.searchParams.delete("ward_error");
   url.searchParams.delete("ward");
+  url.searchParams.delete("ward_return_to");
   return { result, cleaned: url.href };
 }
 
@@ -468,7 +488,7 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
     getWardResult: () => wardResult,
     clearWardResult() {
       if (wardResult.error === undefined && wardResult.result === undefined) return;
-      wardResult = {};
+      wardResult = wardResult.returnTo === undefined ? {} : { returnTo: wardResult.returnTo };
       for (const listener of listeners) listener();
     },
   };

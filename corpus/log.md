@@ -581,3 +581,7 @@ and database with made-up credentials and the seven apps the local seed lists, a
 `docs/images/shots.md` says how. The local Ward container wasn't touched. Checked:
 fmt:check, typecheck, lint, 1231 tests. status.md's history no longer calls brief
 32 undeployed. brief-board is down, so nothing was posted there.
+
+## [2026-10-31] maintenance | README checked; the shots record names today's paths
+
+A README refresh pass with the readme-docs standard. The README already met it after brief 43 and still matches the code. `npm install`, `npm test` (69 files, 1231 tests), `npm run typecheck`, `npm run lint` and `npm run build` all pass, and every relative link in the README and `docs/` resolves. The sign-in and account shots still show their pages as they render today: brief 32's changes to those pages were paths, not looks. `docs/images/shots.md` said to open `/ward/login` and `/ward/account`; since brief 32 those are `/login` and `/account` on Ward's own host, and it says so now. Ward itself was not started: it runs in Docker from images this workspace cannot pull.

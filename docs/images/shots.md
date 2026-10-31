@@ -5,8 +5,8 @@ changes.
 
 | File | Shows | How to reach that state | Viewport | Data | Taken |
 | --- | --- | --- | --- | --- | --- |
-| sign-in.webp | The login page as an app's visitor sees it | press "Sign in with Ward" on a local atrium's login page, which lands on `/ward/login?oidc=<uid>` headed "Continue to Atrium"; then blur the focused field | 840×620 @2x | none, empty form | 2026-10-09 |
-| account.webp | The account page: who you are, what you can reach | sign in as the atrium tester account, open `/ward/account` | 1000×560 @2x | local tester account | 2026-10-09 |
+| sign-in.webp | The login page as an app's visitor sees it | press "Sign in with Ward" on a local atrium's login page, which lands on `/login?oidc=<uid>` (on `/ward/login` before Ward moved to its own host on 2026-10-22) headed "Continue to Atrium"; then blur the focused field | 840×620 @2x | none, empty form | 2026-10-09 |
+| account.webp | The account page: who you are, what you can reach | sign in as the atrium tester account, open `/account` | 1000×560 @2x | local tester account | 2026-10-09 |
 | console-apps.webp | The admin console's app list | on a scratch copy (below), sign in at `/console` with its break-glass login, open Apps, then blur the focused link | 1200×720 @2x | the seven apps `infrastructure/local/seed.mjs` lists, registered closed | 2026-10-27 |
 
 sign-in.webp and account.webp come from the local Ward in Docker

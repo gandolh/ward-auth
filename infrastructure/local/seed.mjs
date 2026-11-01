@@ -28,11 +28,10 @@
  */
 import { createHash, generateKeyPairSync } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { fileURLToPath } from "node:url";
 
 /** Must match WARD_PUBLIC_ORIGIN in compose.yaml: Ward's own public origin. */
 const ORIGIN = "http://localhost:8792";
@@ -55,12 +54,17 @@ const OLD_OIDC_CALLBACK_PATH = "auth/ward/callback";
 
 const ENV_FILE = process.env.WARD_LOCAL_ENV_FILE ?? join(homedir(), ".config/ward/local.env");
 
-/** The directory holding the estate's repos, i.e. wzd_auth's parent. */
-const PROJECTS = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+/**
+ * The folder holding the estate's checkouts: `PROJECTS_DIR`, else ~/projects.
+ * An app's checkout is found by name, directly in it or one group folder down.
+ */
+const PROJECTS = resolve(
+  (process.env.PROJECTS_DIR?.trim() || "~/projects").replace(/^~(?=\/|$)/, homedir()),
+);
 
 /**
  * The apps that authenticate against Ward. `slug` is Ward's `apps.slug`, `repo`
- * the checkout under PROJECTS, and `envFiles` the gitignored files holding that
+ * the checkout's directory name under PROJECTS, and `envFiles` the gitignored files holding that
  * app's local Ward settings, relative to the repo. `dev` is the app's dev
  * server URL with its base path, where Ward returns after "sign out of Ward
  * too"; `api` is the API prefix that dev server proxies to the app's server,
@@ -160,13 +164,28 @@ async function ensureGrants(cookie, subject) {
   console.log(`✓ grants: ${OWNER_ROLE} on all ${APPS.length} apps`);
 }
 
+/** Checkouts named `name`, at `<PROJECTS>/<name>` or `<PROJECTS>/<group>/<name>`. */
+function findCheckouts(name) {
+  const spots = [join(PROJECTS, name)];
+  try {
+    for (const entry of readdirSync(PROJECTS, { withFileTypes: true })) {
+      if (entry.isDirectory() && entry.name !== name) spots.push(join(PROJECTS, entry.name, name));
+    }
+  } catch {
+    // No projects folder: every app is skipped.
+  }
+  return spots.filter((dir) => existsSync(join(dir, ".git")));
+}
+
 /** The app's env files that are safe to write a secret into, or [] to skip it. */
 function envFilesFor(app) {
-  const repoDir = join(PROJECTS, app.repo);
-  if (!existsSync(repoDir)) {
-    console.log(`- ${app.slug}: no ${app.repo}/ next to wzd_auth, skipped`);
+  const found = findCheckouts(app.repo);
+  if (found.length !== 1) {
+    const why = found.length ? `${found.length} checkouts (${found.join(", ")})` : "no checkout";
+    console.log(`- ${app.slug}: ${why} named ${app.repo} in ${PROJECTS}, skipped`);
     return [];
   }
+  const repoDir = found[0];
 
   const files = [];
   for (const file of app.envFiles.map((path) => join(repoDir, path))) {

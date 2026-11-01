@@ -27,9 +27,6 @@ import { fileURLToPath } from "node:url";
 
 import { DIST, LIBRARY_ROOT, build, readVersion } from "./build.mjs";
 
-export const SOURCE_REPOSITORY = "https://github.com/gandolh/ward-auth";
-export const CHANGELOG_URL = `${SOURCE_REPOSITORY}/blob/main/shared-library/CHANGELOG.md`;
-
 /** The whole of a vendored copy. */
 export const VENDORED_FILES = [
   "LICENSE",
@@ -48,8 +45,8 @@ estate's apps: local accounts, and "Sign in with Ward". It is generated: do not 
 build a newer version and copy it over this one, then follow the upgrade notes.
 
 - **Version:** ${version}
-- **Source:** ${SOURCE_REPOSITORY}, folder \`shared-library/\`
-- **Upgrade notes:** ${CHANGELOG_URL}
+- **Source:** the \`ward-auth\` repository, folder \`shared-library/\`
+- **Upgrade notes:** \`shared-library/CHANGELOG.md\` in the same repository
 
 | File | What it is |
 |---|---|
@@ -96,7 +93,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const target = process.argv[2];
   if (target === undefined || target.length === 0) {
     console.error(
-      "usage: npm run vendor -- <target dir>   (for example ../atrium/apps/api/vendor/ward)",
+      "usage: npm run vendor -- <target dir>   (for example path/to/atrium/apps/api/vendor/ward)",
     );
     process.exit(2);
   }

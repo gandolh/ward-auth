@@ -8,7 +8,7 @@ one of them.
 
 The recipe is written and verified. The `corpus-docs-site` skill
 (personal-skills v0.31.0, source in
-`~/projects/my-personal-skills/skills/corpus-docs-site/`) now scaffolds
+`my-personal-skills/skills/corpus-docs-site`) now scaffolds
 Docusaurus 3.10, and `references/migrating-from-starlight.md` beside it holds
 the file, config and content maps plus ten gotchas, each hit during a real
 port. **Read that guide first.** The files this brief tells you to copy are in
@@ -74,7 +74,7 @@ anchors. In MDX mode the corpus does not compile.
    it. Where the OIDC page names `decisions-oidc.md` as plain text, make it a
    link (`/wiki/decisions-oidc/`).
 5. **Sync.** Use the skill's `sync-corpus.mjs` with `GITHUB_REPO` set to this
-   repo's GitHub URL (`github.com/gandolh/ward-auth`). The corpus has no
+   repo's GitHub URL (`github.com/<owner>/ward-auth`). The corpus has no
    cross-repo links.
 6. **Theme.** Port `theme.css` to `src/css/custom.css` with the guide's token
    and selector maps (the skill's `references/custom.css` header). Ward's

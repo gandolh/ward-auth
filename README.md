@@ -12,7 +12,7 @@ Connect provider behind that button, and a grant per app decides who may use it.
 (brief 32) it runs on a host of its own, `ward.<domain>`; before that it was at `/ward/` on the
 production site. Since 2026-10-13 it is an OIDC provider: atrium, newspapper, public-resource-map,
 sports-app and shelfmark offer "Sign in with Ward" beside their own login, and satchel and almanac
-are registered for local development. The GitHub repo is `gandolh/ward-auth` and the folder is
+are registered for local development. The GitHub repo is `<owner>/ward-auth` and the folder is
 still called `wzd_auth`; the service is Ward ([why](corpus/wiki/overview.md#naming)).
 
 ## What it does

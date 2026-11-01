@@ -76,7 +76,7 @@ Every one of them can hand over a synchronous SQLite handle.
    - Bundle the third-party dependencies in. Do not minify. No source maps and
      no `package.json`; apps import the bundle by relative path.
    - `npm run vendor -- <target dir>` writes the build plus the README. The
-     README gives the version, the source (`https://github.com/gandolh/ward-auth`,
+     README gives the version, the source (`https://github.com/<owner>/ward-auth`,
      folder `shared-library/`), and the CHANGELOG link for upgrade notes. No
      local paths, no domain.
    - Keep a `CHANGELOG.md` in `shared-library/`. Every breaking change gets an

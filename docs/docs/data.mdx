@@ -17,7 +17,7 @@ handler.
 |---|---|
 | `subject` | **PK.** The opaque identifier every app keys its own rows on. Never derived from anything. |
 | `username` | As typed, for display. |
-| `username_folded` | **UNIQUE.** What login looks up. Folding is what stops `Gandolh` and `gandolh` being two accounts. |
+| `username_folded` | **UNIQUE.** What login looks up. Folding is what stops `Alice` and `alice` being two accounts. |
 | `password_hash` | scrypt, per-password salt. |
 | `email` | Nullable — an account need not have one. |
 | `email_verified` | `0`/`1`. |

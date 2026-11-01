@@ -145,7 +145,7 @@ taken from the app, never bundled.
   for the hooks. The server bundle must not import React.
 - `ward-auth.d.ts` and `ward-auth-react.d.ts` beside them.
 - The README gives the version and the source, linking the remote repository
-  (`https://github.com/gandolh/ward-auth`, folder `shared-library/`), plus where
+  (`https://github.com/<owner>/ward-auth`, folder `shared-library/`), plus where
   the upgrade notes are.
 - The LICENSE is MIT, as Ward's `package.json` declares.
 - No source maps, which would carry build paths, and no `package.json`. An app

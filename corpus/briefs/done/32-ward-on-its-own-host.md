@@ -3,14 +3,14 @@
 ## Context
 
 On 2026-10-21 the owner asked for subdomains for the apps that hold a shell or
-a mailbox (`../vps-deploy` brief 14), and on 2026-10-22 added Ward. On the shared
+a mailbox (`vps-deploy` brief 14), and on 2026-10-22 added Ward. On the shared
 origin a script injected into any app can call Ward's console API with the
 owner's console cookie attached, so Ward is the strongest case of all. The
 OIDC design (decisions-oidc.md, 2026-10-13) already made the issuer, the UI URL
 and the UI's base path configuration; this brief is the move. It promotes the
 todo `ward-on-a-subdomain.md`.
 
-The routes and the deploy configuration are `../vps-deploy` brief 16: the UI at
+The routes and the deploy configuration are `vps-deploy` brief 16: the UI at
 the root of `ward.<domain>`, the API at `/ward-api` on the same host, the issuer
 `https://ward.<domain>/ward-api/oidc`, `WARD_UI_URL` and `WARD_PUBLIC_ORIGIN`
 the new origin, and `/ward/*` on the apex redirected to the same page there.

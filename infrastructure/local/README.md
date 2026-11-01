@@ -37,7 +37,9 @@ Run everything below from this directory, `infrastructure/local/`.
    This registers the seven apps that use Ward, creates an owner account with
    `admin` on each, and registers each app as an OpenID Connect client (see
    "Sign in with Ward" below). It writes each app's `WARD_OIDC_*` values into
-   that app's local env file (table below), and nothing else. (It used to
+   that app's local env file (table below), and nothing else. It finds each
+   app's checkout by name in `~/projects` (or `PROJECTS_DIR`), directly or one
+   folder down, and skips an app with no checkout there, or with two. (It used to
    write `WARD_APP_KEY`, `WARD_PUBLIC_ORIGIN` and `WARD_API_BASE_PATH` too, for
    the shared-cookie contract brief 30 retired; an env file that still has
    them can drop the three lines.) It asks

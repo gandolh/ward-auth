@@ -24,7 +24,7 @@ import { adminSessionsRoutes } from "./sessions.js";
  * The three assertions worth reading are: `token_hash` never leaves the
  * database; a family id from the URL cannot revoke a session belonging to
  * somebody else; and revoking all of them leaves the account enabled, which is
- * the whole difference from the disable → re-enable dance brief 10 had to use.
+ * the whole difference from the disable → re-enable dance the console used to need.
  */
 
 let db: Database.Database;
@@ -270,7 +270,7 @@ describe("DELETE .../sessions/:familyId", () => {
     expect(response.json()).toEqual({ error: "account_not_found" });
   });
 
-  /** A no-op writes no audit row — brief 05's rule, and `changed` still tells. */
+  /** A no-op writes no audit row — the admin routes' rule, and `changed` still tells. */
   it("is idempotent, and the repeat leaves no second audit row", async () => {
     const { familyId } = signIn();
     const url = `/console/accounts/${subject}/sessions/${familyId}`;
@@ -286,7 +286,7 @@ describe("DELETE .../sessions/:familyId", () => {
 
 describe("POST .../sessions/revoke", () => {
   /**
-   * The point of the route. Brief 10 had to compose this out of disable →
+   * The point of the route. The console had to compose this out of disable →
    * re-enable: two audit rows, a window where the account cannot sign in, and a
    * failure between the calls leaving it disabled.
    */

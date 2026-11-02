@@ -14,7 +14,7 @@
  * - **`SameSite=Lax`**, unconditional, and it is also the CSRF defence. The
  *   browser withholds the cookie from any cross-site `POST`, so a form on
  *   another site cannot act with it. `Strict` would also withhold it on the
- *   top-level navigation back from Ward's login page (brief 21), which breaks
+ *   top-level navigation back from Ward's login page, which breaks
  *   the return hop.
  * - **`Secure`** unless the app's public origin is plain HTTP on loopback —
  *   see `secureCookiesFor`.

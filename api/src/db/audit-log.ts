@@ -4,7 +4,7 @@ import { prepareOnce } from "./prepared.js";
 /**
  * The `audit_log` table — who did what to whom, and when. Append-only.
  *
- * The console (brief 10) renders it, and the question it exists to answer is
+ * The console renders it, and the question it exists to answer is
  * "who granted this, and when". Nothing in this module updates or deletes a
  * row, and nothing should: an audit trail that can be edited by the code it
  * audits is decoration.

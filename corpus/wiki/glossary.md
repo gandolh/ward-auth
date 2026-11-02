@@ -1,6 +1,6 @@
 ---
 summary: The vocabulary — one canonical definition per term wzd_auth uses in a particular way, and the synonyms each displaces. Terms whose meaning is still being grilled are marked provisional.
-updated: 2026-10-13
+updated: 2026-11-02
 ---
 
 # Glossary
@@ -90,7 +90,7 @@ holds a lot of grants.
 
 ## Access token
 The short-lived signed JWT in Ward's session cookie. Proves *who*. Verified
-locally with Ward's public key (by each app until 2026-10-13; since brief 30
+locally with Ward's public key (by each app until 2026-10-13; since then
 only Ward reads it, at `Path=/ward-api`); never checked against a denylist, and
 deliberately carries **no permissions** — a token minted before a grant changed
 would otherwise carry stale authority for its whole lifetime.
@@ -105,7 +105,7 @@ _Avoid_: "session id" — it is not presented on ordinary requests, only at the
 refresh endpoint.
 
 ## Introspection
-**Retired 2026-10-13 (brief 30)** with `POST /introspect`. An app asked Ward
+**Retired 2026-10-13** with `POST /introspect`. An app asked Ward
 "is this session still live, and what are its grants?", cached briefly per
 session. It established **liveness and authorization**, where local signature
 checking establishes only authentication. Its successor for a

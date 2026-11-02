@@ -10,7 +10,7 @@ runbook. The site build ignores this file, `images/` and `cutover-oidc.md`.
 | [diagrams/](diagrams/) | archify JSON sources for the site's three diagrams, compiled into `static/diagrams/` |
 | [scripts/](scripts/) | `sync-corpus.mjs` copies the corpus wiki into the site; `build-diagrams.mjs` compiles the diagrams |
 | [images/](images/shots.md) | Screenshots used in the main README, and how each was made |
-| [cutover-oidc.md](cutover-oidc.md) | The owner's runbook for moving production to local accounts and "Sign in with Ward" (brief 27; done 2026-10-13) |
+| [cutover-oidc.md](cutover-oidc.md) | The owner's runbook for moving production to local accounts and "Sign in with Ward" (done 2026-10-13) |
 
 The rest (`docusaurus.config.ts`, `sidebars.ts`, `src/components/`, `src/css/`, `static/`) is the
 Docusaurus site's own setup and build output.

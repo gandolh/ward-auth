@@ -1,6 +1,6 @@
 ---
-summary: The locked calls about sessions and tokens — the short-lived signed access token, the opaque rotating refresh token, introspection-with-cache as the revocation mechanism, why there is no JWT denylist, EdDSA signing held by Ward alone, the two lifetimes that define the logout delay, and the calls settled once these were built: the absolute family lifetime, logout revoking rather than deleting, and the sid claim that makes revocation per-session. Since 2026-10-13 (brief 30) apps no longer read the access token or introspect; the 30 seconds lives on in POST /session-status.
-updated: 2026-10-13
+summary: The locked calls about sessions and tokens — the short-lived signed access token, the opaque rotating refresh token, introspection-with-cache as the revocation mechanism, why there is no JWT denylist, EdDSA signing held by Ward alone, the two lifetimes that define the logout delay, and the calls settled once these were built: the absolute family lifetime, logout revoking rather than deleting, and the sid claim that makes revocation per-session. Since 2026-10-13 apps no longer read the access token or introspect; the 30 seconds lives on in POST /session-status.
+updated: 2026-11-02
 ---
 
 # Decisions — tokens and sessions
@@ -16,7 +16,7 @@ _2026-09-01, grilled Q6/Q10_ — Three parts, and each one exists for a reason:
 
 - **Access token** — a short-lived JWT in the `Path=/` cookie, signed by Ward.
   Carries `sub`, `jti`, `exp`. Apps verify the signature locally.
-  _(2026-10-13, brief 30: the cookie is now `Path=/ward-api` and only Ward's
+  _(2026-10-13: the cookie is now `Path=/ward-api` and only Ward's
   own UI reads it. Apps hold their own sessions.)_
 - **Refresh token** — long-lived, **opaque, and a row in Ward's database**.
   Rotated on every use: presenting `R1` returns `R2` and invalidates `R1`.
@@ -95,7 +95,7 @@ ordinary.
 
 ## 15-minute access tokens, 30-second introspection cache
 
-> _2026-10-13, brief 30:_ `/introspect` is gone. The 30-second bound now holds
+> _2026-10-13:_ `/introspect` is gone. The 30-second bound now holds
 > for Ward-originated app sessions through `POST /session-status`
 > ([decisions-oidc.md](./decisions-oidc.md)); the lifetimes are unchanged.
 
@@ -117,7 +117,7 @@ threat it exists for, and 30 seconds is a reasonable answer to it.
 anything over 60 minutes said to need explicit justification.
 
 ## A refresh family's 30 days is absolute, not sliding
-_2026-09-04, brief 03_ — `R2` inherits `R1`'s `expires_at`. The 30 days runs
+_2026-09-04, login and refresh_ — `R2` inherits `R1`'s `expires_at`. The 30 days runs
 from **login**, not from the most recent rotation, so a family dies 30 days
 after it was born however often it is used.
 
@@ -138,14 +138,14 @@ about once a month. Reversing it is one argument at one call site
 deliberately, not discovered.
 
 ## Logout revokes the family; it does not delete rows
-_2026-09-04, brief 03_ — `POST /logout` marks the family
+_2026-09-04, login and refresh_ — `POST /logout` marks the family
 `revoked_reason = 'logout'` rather than deleting it. Nothing usable remains —
 `claimRefreshToken` cannot match a revoked row — and the natural-expiry sweep
 removes it later.
 
-This is a **deliberate departure from brief 03's literal wording**, which said
-"deletes the refresh row". Recorded because the brief's text and the code
-disagree and a future reader will otherwise think one of them is a mistake.
+This is a **deliberate departure from the spec's literal wording**, which said
+"deletes the refresh row". Recorded because the spec's text and the code
+disagreed and a future reader will otherwise think one of them is a mistake.
 
 **Rejected: `DELETE`.** The `revoked_reason` column exists precisely so the
 console can tell an ordinary logout from a rotation from a theft signal, and
@@ -154,11 +154,11 @@ needs to see. "Leaves no refresh row" was read as "leaves no *usable* row",
 which is the property the acceptance criterion was actually after.
 
 ## The access token carries a `sid` claim, so revocation is per-session
-_2026-09-04, after brief 04_ — The access token carries the **refresh family's
+_2026-09-04, after introspection was built_ — The access token carries the **refresh family's
 id** as `sid`, and introspection asks whether *that family* is live rather than
 whether the account holds any live family at all.
 
-Brief 04 found the gap and documented it instead of overclaiming: `jti` is a
+Building introspection found the gap and documented it instead of overclaiming: `jti` is a
 fresh UUID that is **never persisted**, and no other claim named the family, so
 a revoked family could not be linked to a still-valid access token. The
 strongest sound statement available then was *an account with no live refresh
@@ -187,14 +187,14 @@ then has to decide what an absent `sid` means — where the only safe answer is
 compile error. Nothing is deployed, so requiring it costs nothing.
 
 **Rejected: an `iat`-ordering heuristic** — refusing any token issued later than
-the newest live refresh row. Brief 04 considered and declined it, and the
-reasoning is worth keeping: it catches roughly half the two-family orderings, it
-rests on an invariant in a file that brief did not own, and its failure mode is
+the newest live refresh row. It was considered and declined while building
+introspection, and the reasoning is worth keeping: it catches roughly half the
+two-family orderings, it rests on an invariant held in another file, and its failure mode is
 **spuriously signing a legitimate person out of six apps**. Half a fix presented
 as a whole one, at the cost of a possible owner lockout.
 
 `hasLiveFamily` also requires the family's row to **belong to the subject**.
 That pairing cannot be forged through `/introspect`, which reads `sub` and `sid`
 off the same verified token — but the safety was living in the caller, and
-brief 09's "sign out my other devices" is precisely the shape that pairs a
+the account page's "sign out my other devices" is precisely the shape that pairs a
 subject from a session with a family id from a request.

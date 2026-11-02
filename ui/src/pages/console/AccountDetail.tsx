@@ -5,7 +5,7 @@
  * each panel says what its buttons will actually do:
  *
  *  - **Access.** Grants grouped by app, roles as a set. Adding a role and
- *    removing one are a single click each, which the brief asks for by name.
+ *    removing one are a single click each, which the console's spec asks for by name.
  *  - **Sessions.** One row per live device, each with its own revoke, plus a
  *    single call that ends every one of them at once. Ward still records no
  *    device name and no address for a family — see the panel's own note.
@@ -19,7 +19,7 @@
  *
  * ## Where a confirmation is required and where it is in the way
  *
- * Removing one role is one click with no dialog. It is the brief's explicit
+ * Removing one role is one click with no dialog. It is the spec's explicit
  * requirement, it is reversible by the click next to it, and the outcome line
  * names the role that went so it can be put back verbatim. Everything wider
  * than that — revoking an app entirely, ending sessions, renaming, rotating a

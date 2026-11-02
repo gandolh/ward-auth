@@ -17,7 +17,7 @@ import { adminAppsRoutes } from "./apps.js";
 import { adminGrantsRoutes } from "./grants.js";
 
 /**
- * **The single most important test in this brief.**
+ * **The single most important test of the admin surface.**
  *
  * No route on the admin surface is reachable with an ordinary account's access
  * token, however many grants it holds. There is no `ward:admin` grant and
@@ -54,7 +54,7 @@ beforeAll(async () => {
   process.env["WARD_ADMIN_PASSWORD"] = "a-long-random-break-glass-password";
   process.env["WARD_SIGNING_KEY_PATH"] = join(dir, "signing-key.pem");
   process.env["WARD_PUBLIC_ORIGIN"] = "https://gandolh.ro";
-  // Mail is part of the required environment contract (brief 07). `file`
+  // Mail is part of the required environment contract. `file`
   // transport needs no SMTP credentials, which is the point of having a mode.
   process.env["WARD_MAIL_TRANSPORT"] = "file";
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";

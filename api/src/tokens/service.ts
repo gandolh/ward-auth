@@ -7,7 +7,7 @@ import type { AccessTokenClaims } from "./claims.js";
 /**
  * The Ward-bound token surface: the same mint and verify as `mint.ts` and
  * `verify.ts`, with the signing key and `iss` already filled in from
- * configuration. This is what the rest of the API imports; briefs 03 and 04
+ * configuration. This is what the rest of the API imports; the routes
  * should never need to hold a key or an issuer themselves.
  *
  * **This is the only module in `tokens/` that knows `config.js` exists**, and it
@@ -62,7 +62,7 @@ export async function getPublicJwks(): Promise<JSONWebKeySet> {
  * cannot travel in a token.
  *
  * Always signs with the *current* key, never the previous one, even mid
- * rotation. Brief 03 calls this on login and on refresh.
+ * rotation. Login and refresh call this.
  */
 export async function mintAccessToken(
   subject: string,

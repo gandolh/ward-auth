@@ -1,7 +1,7 @@
 /**
- * The self-service gap, as it stood after brief 09, and closed.
+ * The self-service gap, as it stood on 2026-09-04, and closed.
  *
- * Brief 09 asked for three things on `/account` and Ward's API supported
+ * The login UI's spec asked for three things on `/account` and Ward's API supported
  * one of them; the other two needed endpoints that did not exist, and this
  * file recorded that so the UI could say so honestly instead of either
  * pretending or quietly dropping the feature. Those endpoints have since
@@ -61,7 +61,7 @@ export const CAN_CHANGE_OWN_PASSWORD: boolean = true;
 export const CAN_REVOKE_OTHER_SESSIONS: boolean = true;
 
 /**
- * **Missing: no resend-verification endpoint, by decision in brief 07.**
+ * **Missing: no resend-verification endpoint, by decision when registration was built.**
  *
  * Recorded here rather than as a flag because there is nothing to turn on and
  * no control to hide: an expired verification link has no self-service
@@ -107,7 +107,7 @@ export const CAN_READ_OWN_EMAIL: boolean = true;
  * answers it to everything until the console creates an app — but the fetched
  * list lets the page know that up front. (`Login` once used it for a
  * destination-aware "create an account" link; that link needed the retired
- * `?next=` app list and went with it in brief 30.)
+ * `?next=` app list and went with it on 2026-10-13.)
  *
  * The query behind the route is `listOpenApps` in `api/src/db/apps.ts`, and
  * the response exposes nothing an anonymous caller cannot already discover by

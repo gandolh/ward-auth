@@ -9,8 +9,8 @@
  * precisely to surface effects that are not safe to run twice — so the naive
  * `Verify` page reports "this link is not valid" for a link that worked
  * perfectly one millisecond earlier. The same shape threatens `/refresh`,
- * where two concurrent rotations are the multi-tab race that cost brief 03 two
- * review rounds.
+ * where two concurrent rotations are the multi-tab race that cost the login and
+ * refresh work two review rounds.
  *
  * The memo is **per key and permanent for the page's lifetime**, which is the
  * opposite of the de-duplication in `session.ts`: there, the in-flight promise

@@ -11,19 +11,19 @@ import { getPublicJwks } from "../tokens/service.js";
  * `tokens/keys.ts`). It has no reference to a `WardSigningKey`, no reference to
  * a `KeyObject`, and nothing to filter — there is no code path from this file to
  * private key material to get wrong later. That is deliberate: serving Ward's
- * private key is the single worst outcome available in this brief, and "we are
+ * private key is the single worst outcome available here, and "we are
  * careful about which fields we pick" is not a control, it is an intention.
  *
  * ## Loading at registration is what makes a missing key a boot failure
  *
- * `getPublicJwks()` is awaited here, during `buildApp()`, which brief 00 places
- * after migrations and before `listen()` — the outcome note names "loading the
+ * `getPublicJwks()` is awaited here, during `buildApp()`, which `index.ts` runs
+ * after migrations and before `listen()` — the scaffold named "loading the
  * signing key, warming JWKS" as exactly what belongs at that point. So a
  * missing, unreadable or wrong-type key file rejects here, `buildApp()` rejects,
  * `index.ts` never binds a port, and pm2 logs a message that names
  * `npm run keygen`. Ward does not start without a key, and it never invents one.
  *
- * Note the consequence for other briefs: a test that calls `buildApp()` needs a
+ * Note the consequence for tests: a test that calls `buildApp()` needs a
  * signing key on disk. Two lines — `generateSigningKeyFile()` from
  * `tokens/keygen.ts` into a temp directory, with `WARD_SIGNING_KEY_PATH` set
  * before `config.js` is first imported. Cheaper than the alternative, which is

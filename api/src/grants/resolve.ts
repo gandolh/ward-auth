@@ -13,7 +13,7 @@ import { findUserBySubject } from "../db/users.js";
  * token layer, which is what makes it directly testable against an in-memory
  * database.
  *
- * Deliberately free of Fastify so brief 05's console can ask the same question
+ * Deliberately free of Fastify so the console can ask the same question
  * of the same code rather than reimplementing the liveness rule next door.
  *
  * ## Why authority is resolved here and not carried in the token
@@ -31,8 +31,7 @@ import { findUserBySubject } from "../db/users.js";
  * **not a family id**. `jti` is a fresh `randomUUID()` that is never persisted
  * anywhere (confirmed: no column in the schema holds one), so there is no
  * stored mapping from an access token to the refresh family it was minted
- * alongside. Nothing in this brief can create one — `tokens/**` and `db/**`
- * belong to briefs 02 and 01.
+ * alongside, and nothing here can create one.
  *
  * So the strongest **correct** statement available is the account-level one:
  *
@@ -58,14 +57,14 @@ import { findUserBySubject } from "../db/users.js";
  * afterwards. That is the same threat model `decisions-tokens.md` accepts for
  * the cache window, but the window here is longer and that difference is real.
  * Closing it needs a `jti`-to-family link written at mint time, which is a
- * schema change and a change to `tokens/**`: brief 01 and 02 territory.
+ * schema change and a change to `tokens/**`.
  *
  * A partial strengthening was considered and **rejected**: refusing any token
  * whose `iat` is later than the newest live refresh row's `issued_at`, since a
  * token minted after every live family's last rotation cannot belong to one of
  * them. It is sound today and catches roughly half of the two-family orderings,
  * but it rests on `routes/auth.ts` minting the access token strictly *before*
- * inserting the refresh row — an invariant in a file this brief does not own,
+ * inserting the refresh row — an invariant held in another file,
  * whose failure mode is spuriously signing a legitimate person out of six apps.
  * A rule that can log the owner out to close half of a stolen-token window is
  * the wrong trade, and a half-measure documented as a whole one is worse than
@@ -154,7 +153,7 @@ export const INACTIVE: InactiveSession = Object.freeze({ active: false });
  * `listLiveTokensForSubject` materialises the rows rather than counting them.
  * That is fine and deliberate: the row count per account is the number of
  * devices signed in — single digits — and rotation revokes the predecessor, so
- * a family contributes exactly one live row. Reusing brief 01's query module
+ * a family contributes exactly one live row. Reusing `db/refresh-tokens.ts`'s query module
  * keeps a second copy of this table's liveness rule from existing, which is
  * worth more here than one avoided allocation.
  */
@@ -202,7 +201,7 @@ export function hasLiveFamily(
    * `sub` and `sid` off the *same* verified token, so mismatching them means
    * forging a signature. But that safety lives in the caller, not here, and a
    * later caller assembling the pair from two sources would get an unsound
-   * answer with no signal at all. Brief 09's "sign out my other devices" is
+   * answer with no signal at all. The account page's "sign out my other devices" is
    * exactly that shape — a subject from a session, a family id from a request.
    *
    * One comparison on rows already fetched makes this safe to hold wrong,

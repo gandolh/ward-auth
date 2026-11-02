@@ -11,9 +11,8 @@ import { newFamilyId } from "../db/refresh-tokens.js";
  * The console gate, both directions.
  *
  * The Fastify instance here is built by hand rather than through `buildApp()`,
- * deliberately: brief 03 is writing `routes/auth.ts` in parallel and
- * `buildApp()` will grow to register it, so going through it would couple this
- * suite to half-landed work. A bare instance with one guarded route is also a
+ * deliberately: going through it would couple this suite to every route
+ * `buildApp()` registers. A bare instance with one guarded route is also a
  * more honest test of the guard — nothing else in the request lifecycle can be
  * doing the rejecting.
  */
@@ -36,7 +35,7 @@ beforeAll(async () => {
   process.env["WARD_ADMIN_PASSWORD"] = "a-long-random-break-glass-password";
   process.env["WARD_SIGNING_KEY_PATH"] = join(dir, "signing-key.pem");
   process.env["WARD_PUBLIC_ORIGIN"] = ORIGIN;
-  // Mail is part of the required environment contract (brief 07). `file`
+  // Mail is part of the required environment contract. `file`
   // transport needs no SMTP credentials, which is the point of having a mode.
   process.env["WARD_MAIL_TRANSPORT"] = "file";
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";
@@ -50,8 +49,7 @@ beforeAll(async () => {
   ({ mintAccessToken } = await import("../tokens/service.js"));
 
   app = Fastify({ logger: false });
-  // Stands in for brief 05's admin routes, attached exactly the way brief 05
-  // will attach them.
+  // Stands in for the admin routes, attached exactly the way they attach.
   app.get("/console/probe", { preHandler: guard.requireConsoleSession }, async (request, reply) => {
     const session = guard.getConsoleSession(request);
     return reply.code(200).send({ reached: true, sessionId: session?.id ?? null });
@@ -148,7 +146,7 @@ describe("the console guard rejects everything else with one opaque 401", () => 
 
   it("rejects an ordinary account's access token, in either cookie", async () => {
     /**
-     * The first of the two directions the brief requires. An ordinary account's
+     * The first of the two directions the gate must hold. An ordinary account's
      * access token is a real, currently-valid, Ward-signed JWT — and it opens
      * nothing on the console. The superuser gate is not "any authenticated
      * caller"; there is no `ward:admin` grant and no token that substitutes for

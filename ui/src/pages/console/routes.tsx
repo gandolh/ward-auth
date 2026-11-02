@@ -1,13 +1,14 @@
 /**
  * The whole admin console, as one element.
  *
- * ## The contract with brief 09
+ * ## The contract with the router
  *
- * This file is the only thing the two UI briefs share. Brief 09 owns the router
- * and the design tokens; brief 10 owns everything under `pages/console/` and
- * exports it here as a single `<ConsoleRoutes />`, which brief 09 mounts under
- * `/console` inside a wrapper carrying `data-ward-surface="console"`. Neither
- * brief edits a file the other owns.
+ * This file is the only thing the console shares with the rest of the UI. The
+ * sign-in side owns the router and the design tokens; the console owns
+ * everything under `pages/console/` and exports it here as a single
+ * `<ConsoleRoutes />`, which `app.tsx` mounts under `/console` inside a
+ * wrapper carrying `data-ward-surface="console"`. Neither side edits a file
+ * the other owns.
  *
  * **This component does not declare nested `<Route>`s.** A descendant `<Routes>`
  * with relative paths only matches deeper URLs when the parent route was
@@ -163,7 +164,7 @@ export function ConsoleRoutes(): React.JSX.Element {
   }
 
   return (
-    // The attribute is also on brief 09's wrapper. It is set here too because it
+    // The attribute is also on `app.tsx`'s wrapper. It is set here too because it
     // is what re-points the token palette, and a console that silently rendered
     // in the login page's light livery would be exactly the confusion the
     // separate identity exists to prevent.

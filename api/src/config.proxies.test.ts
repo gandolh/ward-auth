@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
- * `WARD_TRUSTED_PROXIES` (brief 28), in a child process for the reason
+ * `WARD_TRUSTED_PROXIES`, in a child process for the reason
  * `config.mail.test.ts` gives: `config.ts` validates at import and exits. Unset
  * is a valid Ward that trusts loopback only; a malformed entry stops the boot
  * and names both the variable and the entry, because a typo here silently

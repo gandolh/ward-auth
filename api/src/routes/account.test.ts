@@ -248,7 +248,7 @@ describe("GET /account", () => {
   });
 
   /**
-   * A browser that signed in before brief 30 sends the legacy `Path=/`
+   * A browser that signed in before 2026-10-13 sends the legacy `Path=/`
    * `ward_session` beside the current one, in an order nobody controls.
    */
   it("finds the live session among duplicate ward_session cookies, in either order", async () => {

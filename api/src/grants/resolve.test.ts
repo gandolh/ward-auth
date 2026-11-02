@@ -87,8 +87,8 @@ describe("a live session", () => {
   });
 
   /**
-   * The acceptance criterion about permission changes. Brief 05 owns the console
-   * route that issues a grant and is landing in parallel, so this asserts
+   * The acceptance criterion about permission changes. The console route
+   * that issues a grant lives elsewhere, so this asserts
    * against the database write it performs; the integration chunk asserts it
    * through the route later.
    *
@@ -342,7 +342,7 @@ describe("hasLiveFamily — the per-family check `sid` makes possible", () => {
     // The binding this asserts is not reachable through `GET /session` — Ward
     // reads `sub` and `sid` off the same verified token, so mismatching them
     // means forging a signature. It is asserted because the *function* must be
-    // safe to hold wrong: brief 09's "sign out my other devices" pairs a
+    // safe to hold wrong: the account page's "sign out my other devices" pairs a
     // subject from a session with a family id from a request.
     const other = seedUser(db, "Bob", "bob@example.test").subject;
     const mine = login();

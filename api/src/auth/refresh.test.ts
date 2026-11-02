@@ -147,7 +147,7 @@ describe("rotateRefreshToken — the happy path", () => {
 
 describe("rotateRefreshToken — reuse detection", () => {
   /**
-   * The most important test in the brief.
+   * The most important test in this file.
    */
   it("refreshing twice with the same token revokes the whole family", () => {
     const r1 = issueRefreshToken(db, subject);

@@ -17,10 +17,10 @@ import { generateSigningKeyFile } from "../tokens/keygen.js";
  *
  * ## Why this whole file is gated on a file existing
  *
- * `routes/console.ts` imports brief 03's `api/src/auth/lockout.ts` — the IP
- * lockout, which the brief requires this endpoint to apply. Brief 03 is writing
- * that module **in parallel with brief 06** and it is not on disk yet. The
- * contract was pinned by the controller and is written against exactly:
+ * `routes/console.ts` imports `api/src/auth/lockout.ts` — the IP lockout,
+ * which this endpoint must apply. The two were built in parallel, so the
+ * lockout module was not on disk when this suite was written. The contract was
+ * pinned up front and is written against exactly:
  *
  * ```ts
  * export interface LockoutDecision { allowed: boolean; retryAfterSeconds?: number }
@@ -32,8 +32,8 @@ import { generateSigningKeyFile } from "../tokens/keygen.js";
  *
  * Rather than stub it — a stub would be worse than a skip, because it can
  * survive into the merged tree and quietly replace the real lockout — this suite
- * skips itself while the file is absent and activates the moment brief 03 lands
- * it. Nothing here needs changing at that point.
+ * skips itself while the file is absent. It has been present since
+ * 2026-09-04, so the suite always runs.
  *
  * The properties that do not depend on the lockout are asserted today, without a
  * gate, in `../auth/superuser.test.ts` and `../auth/console-guard.test.ts` —
@@ -66,7 +66,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
     process.env["WARD_ADMIN_PASSWORD"] = ADMIN_PASSWORD;
     process.env["WARD_SIGNING_KEY_PATH"] = join(dir, "signing-key.pem");
     process.env["WARD_PUBLIC_ORIGIN"] = ORIGIN;
-    // Mail is part of the required environment contract (brief 07). `file`
+    // Mail is part of the required environment contract. `file`
     // transport needs no SMTP credentials, which is the point of having a mode.
     process.env["WARD_MAIL_TRANSPORT"] = "file";
     process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";

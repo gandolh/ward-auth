@@ -20,7 +20,7 @@ out before anyone proposes them.
 Ward's first design leaned on it: an access cookie at `Path=/` reached every
 app with no redirect dance, no CORS and no token relay, and each app asked Ward
 about it through `/introspect` with an app key. That contract was retired on
-2026-10-13 (brief 30). Apps now keep their own sessions and sign people in
+2026-10-13. Apps now keep their own sessions and sign people in
 through OpenID Connect ([Sign in with Ward](/oidc/)), and Ward's cookies stay
 under `/ward-api`. A code flow does not need one origin, which is what let Ward
 itself move to another host by changing the issuer each app is configured with.

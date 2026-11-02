@@ -3,8 +3,8 @@
  *
  * ## Every colour here is a token, and that is a safety property
  *
- * There is not one hex value in this file. `tokens.css` (brief 09's, values
- * theirs to change) re-points the whole `--ward-*` palette under
+ * There is not one hex value in this file. `tokens.css` (the sign-in side's,
+ * values theirs to change) re-points the whole `--ward-*` palette under
  * `[data-ward-surface="console"]`, so consuming the names is what gives the
  * console its own visual identity for free — and keeps it consistent when those
  * values change underneath. `main.tsx` imports `tokens.css` for the whole SPA,
@@ -170,7 +170,7 @@
 /* --------------------------------------------------------------------------
  * Links
  *
- * Stated rather than inherited. `ward.css` styles brief 09's own `.ward-link`
+ * Stated rather than inherited. `ward.css` styles the sign-in side's own `.ward-link`
  * class and leaves a bare `<a>` to the user agent, which on this surface means
  * a default blue on near-black — unreadable, and the one colour in the console
  * that comes from nowhere.

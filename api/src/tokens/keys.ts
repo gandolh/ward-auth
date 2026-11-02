@@ -22,7 +22,7 @@ import { ACCESS_TOKEN_ALG, ACCESS_TOKEN_TTL_SECONDS, SIGNING_KEY_CURVE } from ".
  * result gets backed up (see `keygen.ts`).
  *
  * Note there is no `NODE_ENV` branch here and there is not meant to be one.
- * `config.ts` deliberately has no notion of environment (brief 00), and a rule
+ * `config.ts` deliberately has no notion of environment, and a rule
  * that is the same everywhere cannot be got wrong by being deployed with the
  * wrong flag set.
  *
@@ -45,8 +45,8 @@ import { ACCESS_TOKEN_ALG, ACCESS_TOKEN_TTL_SECONDS, SIGNING_KEY_CURVE } from ".
  *
  * The previous key lives at a path *derived* from `WARD_SIGNING_KEY_PATH` —
  * `signing-key.pem` implies `signing-key.previous.pem` beside it — rather than
- * in a second environment variable. `config.ts` is brief 00's contract and this
- * brief does not get to add to it; a naming convention also means a rotation is
+ * in a second environment variable. `config.ts` is the environment contract
+ * and stays small; a naming convention also means a rotation is
  * three file operations on the server with no `.env` edit and no pm2 env
  * reload, which is one fewer thing to get wrong at the point of highest risk.
  *

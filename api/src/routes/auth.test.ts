@@ -10,10 +10,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
  *
  * ## Registered directly, not through `buildApp()`
  *
- * `app.ts` belongs to the controller and wires this brief's plugin in after it
- * lands, so these tests build their own Fastify instance and register
- * `authRoutes` into it. That also keeps them isolated from brief 06's routes,
- * which are landing in parallel.
+ * These tests build their own Fastify instance and register `authRoutes`
+ * into it, rather than going through `app.ts`. That also keeps them isolated
+ * from the console's routes.
  *
  * ## Every import of `../config.js` and its dependents is dynamic
  *
@@ -136,7 +135,7 @@ beforeAll(async () => {
   process.env["WARD_ADMIN_PASSWORD"] = "test-superuser-password";
   process.env["WARD_SIGNING_KEY_PATH"] = join(dir, "signing-key.pem");
   process.env["WARD_PUBLIC_ORIGIN"] = ORIGIN;
-  // Mail is part of the required environment contract (brief 07). `file`
+  // Mail is part of the required environment contract. `file`
   // transport needs no SMTP credentials, which is the point of having a mode.
   process.env["WARD_MAIL_TRANSPORT"] = "file";
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";
@@ -221,7 +220,7 @@ describe("POST /login", () => {
     expect(refresh.value).toMatch(/^[0-9a-f]{64}$/);
 
     // And the access cookie apps used to read, at Path=/, expired in the same
-    // response so a browser that signed in before brief 30 drops it.
+    // response so a browser that signed in before 2026-10-13 drops it.
     const legacy = cookies.get("legacy:ward_session")!;
     expect(legacy.value).toBe("");
     expect(legacy.maxAge).toBe("0");
@@ -537,7 +536,7 @@ describe("POST /refresh", () => {
   });
 
   /**
-   * The most important test in the brief, at the HTTP level.
+   * The most important test in this file, at the HTTP level.
    *
    * `R1 → R2 → R3`, then a replay of `R1`. Two rotations deep is what separates
    * theft from the same-token race the grace window now forgives: the family
@@ -709,7 +708,7 @@ describe("POST /logout", () => {
     expect(cleared.get("ward_session")!.value).toBe("");
     expect(cleared.get("ward_session")!.path).toBe("/ward-api");
     expect(cleared.get("ward_session")!.secure).toBe(true);
-    // The legacy Path=/ copy a pre-brief-30 browser may hold goes too.
+    // The legacy Path=/ copy a browser from before 2026-10-13 may hold goes too.
     expect(cleared.get("legacy:ward_session")!.value).toBe("");
     expect(cleared.get("legacy:ward_session")!.maxAge).toBe("0");
     expect(cleared.get("ward_session")!.maxAge).toBe("0");
@@ -1021,7 +1020,7 @@ describe("a success only forgives its own account's failures", () => {
    * accounts: four wrong guesses at a victim, one correct login as the
    * attacker's own account, counter back to zero, repeat — **40 wrong guesses
    * from one address with no `429` at all**, measured at ~35 a second. `prm` is
-   * seeded `publicRegistration: true`, so brief 07 makes obtaining that one
+   * seeded `publicRegistration: true`, so registration makes obtaining that one
    * valid account self-service.
    */
   it("does not let one valid account buy unlimited guessing at another", async () => {
@@ -1245,7 +1244,7 @@ describe("cross-site requests cannot touch the session cookies", () => {
   });
 });
 
-describe("the exported surface other briefs consume", () => {
+describe("the exported surface other modules consume", () => {
   it("registers with no options at all — the shape app.ts will use", async () => {
     // The controller pastes `await app.register(authRoutes)`. This asserts that
     // works, and that it does NOT open the database at registration time:

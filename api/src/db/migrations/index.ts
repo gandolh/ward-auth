@@ -52,9 +52,9 @@ import * as dropAppKeys from "./20261013120000-drop-app-keys.js";
  * destructive change is recoverable. Add one only when something actually needs
  * it, and say what.
  *
- * Brief 00 owns the runner mechanism; the baseline schema — `users`, `apps`,
- * `grants`, `refresh_tokens`, `verification_tokens`, `audit_log` — is brief
- * 01's and is the first entry below.
+ * The runner mechanism is above; the baseline schema — `users`, `apps`,
+ * `grants`, `refresh_tokens`, `verification_tokens`, `audit_log` — is the
+ * first entry below.
  */
 
 export interface Migration {

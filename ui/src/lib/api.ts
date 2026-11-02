@@ -200,7 +200,7 @@ function postJson<T>(path: string, body?: unknown): Promise<T> {
 }
 
 // ---------------------------------------------------------------------------
-// The routes, one function each. Shapes copied from the briefs that built them.
+// The routes, one function each. Shapes copied from the API's route files.
 // ---------------------------------------------------------------------------
 
 export interface LoginResult {

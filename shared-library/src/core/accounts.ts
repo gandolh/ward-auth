@@ -72,8 +72,8 @@ export interface NewUserInput {
   password?: string | null;
   role: string;
   /**
-   * Only when migrating rows that already have keys — briefs 22 and 24 pass
-   * each user's Ward subject. Ordinary creation omits it.
+   * Only when migrating rows that already have keys — atrium's and prm's
+   * migrations pass each user's Ward subject. Ordinary creation omits it.
    */
   id?: string;
 }
@@ -81,7 +81,7 @@ export interface NewUserInput {
 export interface StartSessionOptions {
   /** Defaults to `"local"`. */
   origin?: SessionOrigin;
-  /** Required exactly when `origin` is `"ward"`. Brief 21 passes it. */
+  /** Required exactly when `origin` is `"ward"`. The Ward sign-in passes it. */
   wardSid?: string | null;
 }
 
@@ -140,7 +140,7 @@ export interface Accounts {
   ): Promise<boolean>;
   /**
    * Set a password with no current-password check, ending every other
-   * session. For the seed script and brief 21's "set a local password"; a
+   * session. For the seed script and the Ward half's "set a local password"; a
    * route must establish who is asking before calling it.
    */
   setPassword(userId: string, newPassword: string, keepSessionIdHash?: string): Promise<void>;

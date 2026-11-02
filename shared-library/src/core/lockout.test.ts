@@ -456,9 +456,9 @@ describe("the shared-bucket fallback is loud", () => {
   });
 });
 
-describe("trusted proxies (brief 28)", () => {
+describe("trusted proxies", () => {
   /**
-   * Ward's brief 28, which 0.2.0 inherited: in a container the socket peer is
+   * Ward's lockout outage of 2026-10-13, which 0.2.0 inherited: in a container the socket peer is
    * a Docker bridge address, never loopback, so loopback-only trust ignored
    * `X-Forwarded-For` for every request and five bad passwords from anyone
    * locked everyone out for fifteen minutes.
@@ -549,7 +549,7 @@ describe("trusted proxies (brief 28)", () => {
   });
 
   it("warns, throttled, when a header from an untrusted peer is ignored", () => {
-    // The production symptom of brief 28 said nothing at all; this is the line
+    // The production symptom of that outage said nothing at all; this is the line
     // that would have named it.
     const warn = vi.fn();
 

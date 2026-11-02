@@ -23,7 +23,7 @@ import { adminAppsRoutes } from "./apps.js";
  * A bare Fastify instance registering only this plugin, so nothing else in the
  * request lifecycle can be doing the accepting or the rejecting. The console
  * session is minted directly through `openConsoleSession()` rather than by
- * posting to `/console/login`, which keeps this suite independent of brief 06's
+ * posting to `/console/login`, which keeps this suite independent of the console's
  * credential path — that path has its own tests.
  */
 
@@ -85,7 +85,7 @@ describe("the gate", () => {
 
 describe("creating an app", () => {
   /**
-   * **The headline assertion of this brief.**
+   * **The headline assertion of this file.**
    *
    * A new app is closed to strangers unless the request says otherwise, and it
    * confers nothing. This is the whole reason the flag exists: the rejected
@@ -383,7 +383,7 @@ describe("reading and deleting", () => {
   });
 });
 
-describe("the OIDC client registration (brief 18)", () => {
+describe("the OIDC client registration", () => {
   const PUBLIC_JWK = {
     kty: "OKP",
     crv: "Ed25519",

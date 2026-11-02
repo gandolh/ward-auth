@@ -25,7 +25,7 @@ import {
  *  - inventing a sentinel subject to fill that column would be the rejected
  *    sentinel arriving through the audit log rather than through a JWT.
  *
- * Every route in brief 05 writes several kinds of event, and each one getting
+ * Every admin route writes several kinds of event, and each one getting
  * those fields right independently is how a log ends up with two spellings of
  * the same actor. `consoleActor(request)` derives them once; `recordActorAudit`
  * applies them to an event.

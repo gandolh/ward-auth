@@ -2,7 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { readConsoleCookie, resolveConsoleSession, type ConsoleSession } from "./superuser.js";
 
 /**
- * The gate on Ward's console. Brief 05's admin routes — apps, grants, accounts —
+ * The gate on Ward's console. The admin routes — apps, grants, accounts —
  * import `requireConsoleSession` from here and nothing else opens that surface.
  *
  * ## What this is NOT
@@ -15,7 +15,7 @@ import { readConsoleCookie, resolveConsoleSession, type ConsoleSession } from ".
  * asking the same question it already asks — does this subject hold a grant —
  * and the superuser, having no subject, is simply never an answer to it.
  *
- * If a future brief finds itself wanting a branch here that hands the superuser
+ * If a future change finds itself wanting a branch here that hands the superuser
  * an implicit grant, a subject, or a bypass in `GET /session`, that is the design
  * failing rather than a missing feature. `decisions-admin.md` rejected the
  * bypass explicitly, on the grounds that it is extra code whose only effect is
@@ -41,8 +41,8 @@ import { readConsoleCookie, resolveConsoleSession, type ConsoleSession } from ".
  *
  * A `WeakMap` rather than `request.consoleSession`, on purpose. Decorating the
  * request would need a `declare module "fastify"` augmentation, which is global:
- * every file in the project would then see the property, including brief 03's
- * and brief 04's route handlers, where a console session has no business
+ * every file in the project would then see the property, including the login and
+ * session route handlers, where a console session has no business
  * existing and an `if (request.consoleSession)` would be one autocomplete away.
  * A `WeakMap` keyed on the request object gives the same lookup to whoever
  * imports this module and nothing at all to whoever does not, and it releases
@@ -52,7 +52,7 @@ const attached = new WeakMap<FastifyRequest, ConsoleSession>();
 
 /**
  * The console session for this request, or `undefined` if the guard did not run
- * or did not admit it. Brief 05 needs this only to name the session in an audit
+ * or did not admit it. The admin routes need this only to name the session in an audit
  * row — there is nothing else in it, by design (no subject, no grants).
  */
 export function getConsoleSession(request: FastifyRequest): ConsoleSession | undefined {

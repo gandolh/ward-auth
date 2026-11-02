@@ -29,8 +29,8 @@ import { getDb } from "../db/connection.js";
  * The console **session** routes: `POST /console/login`, `POST /console/logout`,
  * `GET /console/session`.
  *
- * Only the session lives here. Brief 05 owns the console's *admin* routes — apps,
- * grants, accounts — in its own file, and gates them by importing
+ * Only the session lives here. The console's *admin* routes — apps,
+ * grants, accounts — live in their own files, and gates them by importing
  * `requireConsoleSession` from `../auth/console-guard.js`. Keeping the two apart
  * matters more than it looks: this file is the one place in Ward that answers an
  * unauthenticated request with a credential comparison, and a reviewer should be
@@ -107,7 +107,7 @@ const loginBody = z.object({
 });
 
 /**
- * The lockout key: brief 03's own derivation, not `request.ip`.
+ * The lockout key: `/login`'s own derivation, not `request.ip`.
  *
  * `request.ip` would be wrong here for the reason `lockout.ts` documents at
  * length — Ward sits behind Caddy and `buildApp()` sets no `trustProxy`, so
@@ -117,7 +117,7 @@ const loginBody = z.object({
  * only when the peer is loopback or in `WARD_TRUSTED_PROXIES`, and reads its
  * **last** element, which is the address Caddy actually observed.
  *
- * Using brief 03's helper rather than a second derivation is deliberate:
+ * Using `/login`'s helper rather than a second derivation is deliberate:
  * `/login` and `/console/login` must agree on what an address is, or an attacker
  * gets two independent budgets from one machine.
  *
@@ -166,7 +166,7 @@ export async function consoleRoutes(
 
   // Encapsulated to this plugin. Everything on the console is administrative,
   // per-operator and stale immediately; a shared cache holding any of it has no
-  // upside. `console-guard.ts` sets the same header for brief 05's routes.
+  // upside. `console-guard.ts` sets the same header for the admin routes.
   app.addHook("onRequest", async (_request, reply) => {
     reply.header("cache-control", "no-store");
   });
@@ -178,7 +178,7 @@ export async function consoleRoutes(
    *
    *  1. **Lockout first.** A locked-out caller never reaches the comparison, so
    *     the endpoint costs nothing to refuse. No artificial delay is added
-   *     anywhere — brief 03's reasoning holds here too: holding a connection
+   *     anywhere — `/login`'s reasoning holds here too: holding a connection
    *     open *is* the denial of service the measure exists to prevent.
    *  2. **Shape next**, and a malformed body is a 400 that is audited but does
    *     **not** count toward the lockout. It carries no credential guess, and

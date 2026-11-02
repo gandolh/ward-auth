@@ -407,7 +407,7 @@ describe("login", () => {
 
 describe("trusted proxies (0.3.0)", () => {
   /**
-   * Ward's brief 28, which 0.2.0 inherited. In a container the peer is a Docker
+   * Ward's lockout outage of 2026-10-13, which 0.2.0 inherited. In a container the peer is a Docker
    * bridge address — Docker's proxy on the host, or a Caddy container — never
    * loopback, so the forwarded address was ignored and every caller shared the
    * proxy's one budget.

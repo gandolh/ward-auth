@@ -3,7 +3,7 @@ import { pathToFileURL } from "node:url";
 import { calculateJwkThumbprint } from "jose";
 
 /**
- * Generate an app's OIDC client key pair (brief 18).
+ * Generate an app's OIDC client key pair.
  *
  *   npm run oidc-client-key --workspace=api -- <app-slug>
  *

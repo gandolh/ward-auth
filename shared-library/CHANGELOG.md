@@ -9,8 +9,7 @@ Schema changes are migrations the library applies itself on
 
 ## 0.7.0 — 2026-10-27
 
-A refused "Sign in with Ward" keeps the path it was started with (Ward's
-brief 42).
+A refused "Sign in with Ward" keeps the path it was started with.
 
 - When a sign-in started with `signIn({ returnTo })` fails, the callback lands
   on `loginPath?ward_error=<code>&ward_return_to=<returnTo>`. That covers every
@@ -35,12 +34,12 @@ Upgrade notes from 0.6.1:
 - Nothing changes on the login page until it uses `returnTo`. To retry to
   the same place, pass `useWardSignIn().returnTo` to `signIn({ returnTo })`.
   `signIn()` without a `returnTo` still goes to `afterSignInPath`.
-- sports-app's brief 32 gap (a retry after a refusal lands on `/`) closes when
+- sports-app's gap (a retry after a refusal lands on `/`) closes when
   its login page reads `next` back out of `returnTo`.
 
 ## 0.6.1 — 2026-10-27
 
-Three names 0.5.0 and 0.6.0 added are now exported (Ward's brief 41).
+Three names 0.5.0 and 0.6.0 added are now exported.
 
 - `UsernameFor`, the type of `ward.usernameFor`.
 - `isUsernameMaxLength(value)`, the check `wardAuth` runs on
@@ -59,7 +58,7 @@ Upgrade notes from 0.6.0:
 
 ## 0.6.0 — 2026-10-27
 
-An app can switch a local user off (Ward's brief 38).
+An app can switch a local user off.
 
 - `Accounts.disableUser(userId)` stamps the user disabled and ends every
   session they hold; `Accounts.enableUser(userId)` clears it. Both answer the
@@ -92,7 +91,7 @@ Upgrade notes from 0.5.0:
 
 ## 0.5.0 — 2026-10-27
 
-An app shapes a new Ward user's username (Ward's brief 36).
+An app shapes a new Ward user's username.
 
 - `ward.usernameFor({ username, subject })`, beside `roleFor`: the name a user
   created by a first Ward sign-in starts with, from `preferred_username`. The
@@ -117,7 +116,7 @@ Upgrade notes from 0.4.0:
 
 ## 0.4.0 — 2026-10-24
 
-A signed-in user can rename themselves (Ward's brief 37).
+A signed-in user can rename themselves.
 
 - `Accounts.renameUser(userId, username)` trims and checks the name as
   `createUser` does (`UsernamePolicyError`), refuses one another user holds once
@@ -204,7 +203,7 @@ Upgrade notes from 0.3.0:
 
 ## 0.3.0 — 2026-10-13
 
-The login lockout sees the real client behind a container (Ward's brief 28).
+The login lockout sees the real client behind a container.
 
 - `wardAuth` takes `trustedProxies` (`readonly string[]`): socket peers,
   beyond loopback, whose `X-Forwarded-For` the lockout believes. Addresses or

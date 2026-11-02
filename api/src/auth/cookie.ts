@@ -4,7 +4,7 @@ import { ACCESS_TOKEN_TTL_SECONDS } from "../tokens/claims.js";
  * Ward's session cookies: their names, their scopes, and the serialisation.
  *
  * No `@fastify/cookie`. Two cookies with fixed attributes is about forty lines
- * of `Set-Cookie` assembly, and the brief forbids adding a dependency — but the
+ * of `Set-Cookie` assembly, not worth a dependency — and the
  * better reason is that the attributes here are the security boundary, and
  * having them written out where they can be read beats having them spread
  * across a plugin's option bag.
@@ -19,8 +19,8 @@ import { ACCESS_TOKEN_TTL_SECONDS } from "../tokens/claims.js";
  * The **access** cookie is read by Ward's own API and nothing else:
  * `GET /ward-api/session` and the `/ward-api/account` routes, which serve
  * Ward's sign-in and account pages. Until 2026-10-13 it sat at `Path=/` so the
- * estate's apps could read it; that shared-cookie contract is retired (brief
- * 30) and apps now sign people in through OpenID Connect with sessions of their
+ * estate's apps could read it; that shared-cookie contract is retired
+ * and apps now sign people in through OpenID Connect with sessions of their
  * own. So the cookie is scoped to the API prefix, and an app on the same origin
  * never receives it.
  *
@@ -282,7 +282,7 @@ export function readCookie(
  * genuinely dangerous case, a session cookie crossing a network in the clear —
  * still gets `Secure` and simply does not work. That is the correct direction
  * to fail in. There is no environment flag and no `NODE_ENV` branch, matching
- * brief 00's decision that the environment contract has no environment branch.
+ * the decision that the environment contract has no environment branch.
  */
 export function secureCookiesFor(publicOrigin: string): boolean {
   let url: URL;

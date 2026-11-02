@@ -47,7 +47,7 @@ import {
  *
  * The create route does not accept one. Username is the canonical identifier, so
  * an address identifies nobody; it is collected and verified on **public
- * registration** only (brief 07), where the strangers are. The cost is accepted
+ * registration** only, where the strangers are. The cost is accepted
  * and recorded: an owner-issued account has **no recovery channel**, and a
  * forgotten password is fixed by the operator rotating it below.
  *
@@ -160,7 +160,7 @@ export async function adminAccountsRoutes(
   /**
    * `GET /console/accounts/:subject` — one account with everything it holds.
    *
-   * `grants` is read straight from `db/grants.ts` rather than through brief 04's
+   * `grants` is read straight from `db/grants.ts` rather than through
    * `grants/resolve.ts`: that module answers the session check on a hot path,
    * and this is an operator looking at a page. Borrowing
    * it here would couple the console to a shape chosen for the session check.
@@ -215,8 +215,8 @@ export async function adminAccountsRoutes(
       passwordHash = await hashPassword(body.data.password);
     } catch (error) {
       if (error instanceof PasswordPolicyError) {
-        // The stable `code`, never the message: brief 09 and brief 10 render
-        // these, and a message is prose that can be reworded.
+        // The stable `code`, never the message: the login UI and the console
+        // render these, and a message is prose that can be reworded.
         return reply.code(400).send({ error: error.code });
       }
       throw error;

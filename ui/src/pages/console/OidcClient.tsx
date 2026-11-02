@@ -1,6 +1,6 @@
 /**
  * One app as an OpenID Connect client: where Ward may send people back to, and
- * the public key the app proves itself with (brief 18).
+ * the public key the app proves itself with.
  *
  * ## Ward holds the public half only
  *

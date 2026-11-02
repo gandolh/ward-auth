@@ -11,7 +11,7 @@ import {
 /**
  * The `?next=` allowlist, table-driven.
  *
- * This is the highest-value test in brief 09 and the table is meant to be
+ * This is the login UI's highest-value test and the table is meant to be
  * *added to* rather than admired: every string somebody thinks of that ought to
  * be refused belongs in the rejection table, and the cost of a new row is one
  * line. An open redirect here is a phishing primitive wearing Ward's own
@@ -131,7 +131,7 @@ const REJECTED: ReadonlyArray<{ input: string | null | undefined; reason: NextRe
   { input: "/ward", reason: "not_a_ward_page" },
   { input: "/ward/account", reason: "not_a_ward_page" },
   // The apps' roots, which `next` named until the shared-cookie contract was
-  // retired (brief 30). Apps now return through OpenID Connect, never `next`.
+  // retired. Apps now return through OpenID Connect, never `next`.
   { input: "/atrium/", reason: "not_a_ward_page" },
   { input: "/prm/map?lat=45.7&lng=21.2", reason: "not_a_ward_page" },
   { input: "/account/..", reason: "not_a_ward_page" },

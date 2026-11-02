@@ -15,7 +15,7 @@ import {
  * The **write** side of `(subject, app, role)` — issuing and removing grants,
  * each paired with its audit row in one transaction.
  *
- * `grants/resolve.ts` is the read side (brief 04): what an app asks about a
+ * `grants/resolve.ts` is the read side: what an app asks about a
  * subject on every request. The split is not tidiness. A read is a hot path that
  * may be cached; a write is rare, must be recorded, and is the only thing in
  * Ward that changes what anyone can reach. Nothing in this file answers a

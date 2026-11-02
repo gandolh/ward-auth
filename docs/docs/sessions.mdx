@@ -23,7 +23,7 @@ session behind it is still live from `POST /session-status`, which asks about
 the refresh family (`ward_sid`). See [Sign in with Ward](/oidc/).
 
 :::note[The access cookie moved on 2026-10-13]
-Until brief 30 the access cookie sat at `Path=/` so that every app received it.
+Until 2026-10-13 the access cookie sat at `Path=/` so that every app received it.
 It now sits at `Path=/ward-api`. Every response that sets or clears the session
 also expires any old `Path=/` copy, and Ward's readers try every `ward_session`
 value a browser sends and use the first that is a live session.

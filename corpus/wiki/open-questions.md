@@ -1,6 +1,6 @@
 ---
-summary: What is genuinely open (nothing, as of brief 18), work deferred to briefs, and items that belong to other repos.
-updated: 2026-10-13
+summary: What is genuinely open (nothing, as of 2026-10-13), work deferred until someone files it, and items that belong to other repos.
+updated: 2026-11-02
 ---
 
 # Open Questions
@@ -13,18 +13,18 @@ decisions pages.
 
 Nothing. An empty page here is the goal state, not a gap.
 
-## Not open — deferred to briefs
+## Not open — deferred
 
 Work, not decisions:
 
-- **The cutover.** Take a database copy first, then prune, then recreate.
-  Atrium's repo has the `backup-pre-brief35-*` precedent.
-- Rollout order; EdDSA key rotation procedure.
-- The repo rename `wzd_auth` → `ward`, the `vps-deploy` entry, the `/ward-api`
-  and `/ward` Caddy routes.
-- UI stack — Vite + React, as the estate's other SPAs. prm already ships
-  `reset_token` and `verification_token`; crib the email flow rather than
-  inventing it.
+- **The signing-key rotation procedure.** `api/src/tokens/keys.ts` already
+  verifies with a previous key beside the current one; no runbook says when
+  and how to rotate.
+- **The repo rename** `wzd_auth` → `ward`, deferred by the owner.
+
+Done since this list was written: the cutover (2026-10-04, through each app's
+own migration, after a database copy), the `vps-deploy` entry and its routes,
+and the Vite + React UI.
 
 ## Not ours
 

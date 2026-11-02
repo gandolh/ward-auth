@@ -76,7 +76,7 @@ export interface NewGrant {
    * when" survives even a pruned audit log. `grantedBy` used to be optional and
    * written as `?? null`, so the ordinary way to call this produced exactly the
    * row the schema comment promised could not exist. Break-glass callers pass
-   * `SUPERUSER_ACTOR`; brief 05 passes the acting account's subject.
+   * `SUPERUSER_ACTOR`; the admin routes pass the acting account's subject.
    */
   grantedBy: string;
 }

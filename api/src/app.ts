@@ -23,10 +23,9 @@ import { oidcRoutes } from "./oidc/routes.js";
  * `runMigrations()`, no reach into `db`. Two reasons. First, `index.ts` needs
  * migrations to finish (see there) strictly before the listener binds, and
  * that ordering is easiest to get right when this function cannot itself open
- * a socket. Second, brief 00's own acceptance test — and anything later briefs
- * write — wants to build an app in-process (e.g. with `app.inject()`) without
- * a live port or a real database on disk. Keep it that way: briefs 02–06
- * register their route plugins into the instance this returns, they do not
+ * a socket. Second, the tests want to build an app in-process (e.g. with
+ * `app.inject()`) without a live port or a real database on disk. Keep it
+ * that way: route modules register their plugins into the instance this returns, they do not
  * add their own `listen()` calls.
  */
 export async function buildApp(): Promise<FastifyInstance> {
@@ -36,11 +35,11 @@ export async function buildApp(): Promise<FastifyInstance> {
     // which logs only method, url, host, remoteAddress, remotePort and the
     // accept-version header. General request headers — a future
     // `Authorization`, say — are NOT logged, and neither is the body, which
-    // is what we want: later briefs carry credentials (passwords, refresh
+    // is what we want: routes carry credentials (passwords, refresh
     // tokens) in POST bodies, and those must never reach the log. But `url`
     // does carry the query string, so every info-level log line contains
-    // whatever query parameters the request had — brief 03 (login/refresh)
-    // needs to keep that in mind when deciding what is allowed to travel in
+    // whatever query parameters the request had — login and refresh
+    // need to keep that in mind when deciding what is allowed to travel in
     // a URL. Nothing here overrides the default; naming it so a future
     // change to `logger` doesn't casually turn body or header logging on.
   });
@@ -60,7 +59,7 @@ export async function buildApp(): Promise<FastifyInstance> {
    * handler at all; what does reach it with a `statusCode` set is Fastify's own
    * client-error machinery — a `415` on an unsupported content type, a `400` on
    * an unparseable body, a `404`. Those messages are about the request the
-   * caller sent, not about this server, and brief 09 renders some of them, so
+   * caller sent, not about this server, and the login UI renders some of them, so
    * they pass through unchanged. Only a throw with no client-error status — or
    * one claiming a 5xx — becomes `{"error":"internal"}`.
    *
@@ -154,16 +153,16 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(registerRoutes);
 
   /**
-   * The OpenID Connect provider (brief 18): `/oidc/*` and its login step at
+   * The OpenID Connect provider: `/oidc/*` and its login step at
    * `/refresh/oidc/:uid`. Mounted only when `WARD_OIDC_ISSUER` is set. It is
-   * how every app signs people in since the cutover (brief 27); the routes
+   * how every app signs people in since the cutover; the routes
    * above serve Ward's own pages. See the header of `oidc/routes.ts` for how
    * the stripped `/ward-api` prefix is put back into every URL it advertises.
    */
   await app.register(oidcRoutes);
 
   /**
-   * `POST /session-status` (brief 19): an app asks whether a Ward-originated
+   * `POST /session-status`: an app asks whether a Ward-originated
    * session is still live, authenticated with its client assertion. Registers
    * nothing when `WARD_OIDC_ISSUER` is unset, like the provider above. See
    * `routes/session-status.ts`.
@@ -171,8 +170,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(sessionStatusRoutes);
 
   // Registration order carries no meaning — these plugins share no state and
-  // no route prefix, and each declares its own paths. It is alphabetical-ish by
-  // brief number only so a reader can find the brief that owns a route.
+  // no route prefix, and each declares its own paths. It roughly follows the order
+  // the routes were built in.
   //
   // Both `authRoutes` and `consoleRoutes` accept an options object with a `db`
   // for tests; neither is given one here, so both resolve the process-wide

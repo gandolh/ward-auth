@@ -189,7 +189,7 @@ export function findUserByUsername(db: Database.Database, username: string): Use
  * optional attribute, so nothing has ever forbidden two accounts sharing one.
  *
  * A password-reset flow therefore has to decide what to do with more than one
- * hit; that policy is brief 07's, not this layer's.
+ * hit; that policy is registration's, not this layer's.
  */
 export function findUsersByEmail(db: Database.Database, email: string): UserRow[] {
   return stmts(db).byEmail.all(email);

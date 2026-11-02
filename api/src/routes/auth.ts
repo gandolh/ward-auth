@@ -35,7 +35,7 @@ import { newFamilyId } from "../db/refresh-tokens.js";
 /**
  * `POST /login`, `POST /refresh`, `POST /logout` — the account session surface.
  *
- * Registered by `app.ts` (which this brief does not touch) as
+ * Registered by `app.ts` as
  * `await app.register(authRoutes)`. The paths here are **Fastify-side**: Caddy
  * serves Ward with `handle_path /ward-api/*`, which strips the prefix, so
  * `/login` here is `POST /ward-api/login` in a browser. That distinction is why
@@ -80,7 +80,7 @@ import { newFamilyId } from "../db/refresh-tokens.js";
  *
  * Subjects, `jti`s, family ids and usernames appear in log lines and audit
  * rows. **Passwords, access tokens, refresh tokens and cookie values never
- * do.** Note the specific trap brief 02 recorded: `jose`'s `JWTExpired` and
+ * do.** Note the specific trap the token work recorded: `jose`'s `JWTExpired` and
  * `JWTClaimValidationFailed` carry a `payload` own-property holding decoded
  * claims, and pino's error serialiser copies own properties — so logging such
  * an error puts `sub` and `jti` in the log, which is acceptable, but the raw
@@ -146,7 +146,7 @@ export async function authRoutes(
   const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
 
   /**
-   * Which socket peers' `X-Forwarded-For` the lockout believes (brief 28).
+   * Which socket peers' `X-Forwarded-For` the lockout believes.
    * Resolved once, like the origin, and threaded into every `lockoutKey` call
    * so `/login` and `/refresh` cannot disagree about what an address is.
    */
@@ -246,7 +246,7 @@ export async function authRoutes(
         });
       }
       // One answer for "no such username" and "wrong password". The client is
-      // told which *half* was wrong by nothing at all — brief 09 renders this
+      // told which *half* was wrong by nothing at all — the login UI renders this
       // as "check your username and password".
       return reply.code(401).send({ error: "invalid_credentials" });
     }
@@ -524,7 +524,7 @@ export async function authRoutes(
 /**
  * The lockout key for a request.
  *
- * One line, but its own function so brief 06's console login can be read
+ * One line, but its own function so the console login can be read
  * side-by-side with this one and be seen to key identically. See
  * `lockoutKeyFor` for why the socket peer alone is not enough (Ward is behind
  * Caddy, so every peer is the proxy — loopback under pm2, a Docker bridge
@@ -596,7 +596,7 @@ function crossSite(reply: FastifyReply): FastifyReply {
  * **No artificial delay before it.** Holding the connection open is the denial
  * of service the lockout exists to prevent, and Ward is the runtime dependency
  * of all six apps — see the header of `auth/lockout.ts`. `retryAfterSeconds` is
- * repeated in the body because brief 09 renders the wait time and should not
+ * repeated in the body because the UI renders the wait time and should not
  * have to read a header to do it.
  */
 function lockedOut(reply: FastifyReply, retryAfterSeconds: number): FastifyReply {

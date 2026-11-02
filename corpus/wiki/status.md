@@ -1,126 +1,81 @@
 ---
-summary: Dated snapshot. The 2026-10-13 OIDC redesign is built and in production — Ward's provider, the shared library, five apps on local accounts (briefs 18–29) — and brief 30 retired the shared-cookie contract (app keys, /introspect, the Path=/ cookie, the reference client). Ward was redeployed with it on 2026-10-13. Brief 31 moved the docs site to Docusaurus on 2026-10-19; it waits on vps-deploy brief 11 to be deployed. Brief 32 (built and deployed 2026-10-22) moved Ward to its own host, ward.<domain>. Brief 33 (built 2026-10-23, not deployed) puts Base UI under the console's confirmation and create forms. Brief 37 (built 2026-10-24) is ward-auth 0.4.0, a self-service rename. Briefs 39-40 (built 2026-10-24, not deployed) let the console rename and delete an account. Briefs 34-35 (built 2026-10-27, not deployed) put the console in its own chunk and fix focus after a confirmed write. Briefs 36 and 38 (built 2026-10-27) are ward-auth 0.5.0, a usernameFor hook, and 0.6.0, disableUser; brief 41 (0.6.1) exports their new names; brief 42 (0.7.0) keeps a refused Ward sign-in's return path.
-updated: 2026-10-27
+summary: Dated snapshot (2026-11-02) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 10-27 (not deployed), ward-auth 0.7.0 and which version each app vendors; the owner's next steps and known gaps.
+updated: 2026-11-02
 ---
 
-# Status
+# Status — 2026-11-02
 
-_2026-10-27._
+`origin/main` is at `2450b49`; the local commits after it (`5de7c6b` and the
+briefs reset) are not pushed. Brief numbering restarted at 01 on 2026-11-02
+(see [../log.md](../log.md), "Briefs reset"); no brief is open. Ideas waiting
+to be specced are in [../todos/](../todos/).
 
-## Where things stand
+## By area
 
-**The redesign is in production, and the old contract is retired in the
-code.** Every app has its own users, its own login page and a "Sign in with
-Ward" button, and Ward is an OpenID Connect provider
-([decisions-oidc.md](./decisions-oidc.md)). It revises Q4, Q21 and the
-no-shared-package call. The owner cut production over on 2026-10-13: atrium,
-newspapper, prm and sports-app each serve their own `/auth/session` with Ward
-enabled, and Ward's OIDC discovery is live.
+- **The service** (2026-09-02 to 2026-09-04). Fastify + SQLite API, one login
+  page, registration with email verification, self-service, and the
+  break-glass console ([decisions-implementation.md](decisions-implementation.md),
+  [decisions-admin.md](decisions-admin.md)).
+- **Production** (since 2026-10-04). `vps-deploy`'s Ward stack deploys it; the
+  cutover pruned and recreated every account through each app's own migration.
+- **App mail** (2026-10-07). `POST /notify`: an app mails its own users through
+  Ward without reading an address ([decisions-app-keys.md](decisions-app-keys.md)).
+  imbatranimOS left Ward the same day; its app row is still in the deployed
+  database until the owner deletes it.
+- **The OIDC redesign** (2026-10-13, deployed). Every app keeps its own accounts
+  and login page; "Sign in with Ward" is a code flow with PKCE and
+  `private_key_jwt` against Ward's provider; a Ward-originated session is
+  checked through `POST /session-status` every 30 seconds. The shared library
+  carries both halves; atrium, newspapper, prm, sports-app and satchel moved to
+  local accounts; the lockout learned trusted proxies after a shared-bucket
+  outage behind containers; just-a-bot's Jukebox signs in to atrium itself
+  ([decisions-oidc.md](decisions-oidc.md),
+  [decisions-oidc-build.md](decisions-oidc-build.md)).
+- **The old contract retired** (2026-10-13, deployed the same day). App keys,
+  `POST /introspect`, the `Path=/` cookie (now `Path=/ward-api`, with the old
+  copy expired on every response), the `?next=` estate list and the reference
+  client are gone ([integrating.md](integrating.md)).
+- **Ward's own host** (2026-10-22, live; found 2026-10-24). The UI at the root
+  of `ward.<domain>`, the API at `/ward-api`, the issuer
+  `https://ward.<domain>/ward-api/oidc`; `/ward/*` redirects
+  ([decisions.md](decisions.md)).
+- **Docs site** (2026-10-19, not deployed). Docusaurus at `/ward/docs` with the
+  same URLs; every wiki page is published. `vps-deploy` flipped the docs stack
+  to Docusaurus the same day.
+- **The console** (2026-10-23 to 2026-10-27, not deployed). Base UI under
+  `Confirm` and the create forms; rename and delete an account, stopping at
+  Ward's edge; the console in a lazy chunk, so the sign-in pages no longer
+  download Base UI (entry JS 120.07 → 81.45 kB gzip); focus after a confirmed
+  write goes to the opener or the heading.
+- **ward-auth** (`shared-library/`, 0.7.0 on 2026-10-27). 0.4.0 renames a user,
+  0.5.0 shapes a new Ward user's name, 0.6.0 disables a local user, 0.6.1
+  exports the new names, 0.7.0 keeps a refused sign-in's return path. Vendored
+  (read 2026-11-02): 0.7.0 in sports-app, 0.4.0 in shelfmark, 0.3.1 in atrium,
+  newspapper, prm, satchel and almanac. Each app adopts a version itself.
 
-| Wave | Briefs | State |
-|---|---|---|
-| A | 18 OIDC provider · 20 library: local accounts | **Done** |
-| B | 19 session status for clients · 21 library: Sign in with Ward | **Done** |
-| C | 22 atrium · 23 newspapper · 24 prm · 25 sports-app · 26 satchel, plus 28 lockout behind containers and 29 the Jukebox | **Done**; library 0.3.1 vendored in all five |
-| D | 27 cutover config and runbook | **Done**; the owner deployed it 2026-10-13 |
-| E | 30 retire the cookie contract | **Done** and deployed 2026-10-13 |
+## Next (owner)
 
-**Brief 27** put the new contract into vps-deploy. Ward gets
-`WARD_OIDC_ISSUER`, `WARD_UI_URL` and `WARD_TRUSTED_PROXIES`. Each app gets its
-public origin, the `WARD_OIDC_*` client settings and `AUTH_TRUSTED_PROXIES`.
-Each app also loses `WARD_PUBLIC_ORIGIN`, `WARD_API_BASE_PATH` and
-`WARD_APP_KEY`. The client key is a required secret in each app's
-`secrets/<stack>.env`. The owner's command list, in order, is
-`docs/cutover-oidc.md`. Back up Ward and the apps, deploy Ward, register five
-clients in the console, deploy the apps, give the owner a local password in
-each, then the Jukebox.
+- **Deploy Ward** (`node cli.ts ward all` in `vps-deploy`): ships the console
+  work and the docs site.
+- **Re-vendor ward-auth** in the apps that want 0.4.0 to 0.7.0; the comment-only
+  source changes of 2026-11-02 reach them with the next vendor run.
+- **Delete imbatranimOS's app row** in the deployed database.
 
-**Brief 30** removed the shared-cookie contract from Ward: app keys and their
-console panel, `POST /introspect`, `x-ward-app-key` on `/notify`, the `?next=`
-estate list (`?next=` now accepts only Ward's own pages) and the reference
-client, whose `client/` workspace was deleted outright. <!-- lint-ok -->
-Migration `20261013120000-drop-app-keys` drops the table. Ward's access
-cookie `ward_session` moved from `Path=/` to `Path=/ward-api`. Every response that
-sets or clears it also expires the old `Path=/` copy, and its readers take the
-first live session among duplicate cookies. The local seed writes only the
-`WARD_OIDC_*` client settings. An app authenticates to Ward only with its
-client assertion ([integrating.md](./integrating.md)). imbatranimOS stays
-out.
+## Known issues
 
-**Built 2026-10-23, not deployed:** [brief 33](../briefs/done/33-base-ui-in-the-console.md)
-puts Base UI under the console: `Confirm` is an `AlertDialog` and the New
-account / Register an app forms are `Collapsible`s. Nothing changes for the
-owner beyond the next UI deploy. [Brief 34](../briefs/done/34-console-in-its-own-chunk.md)
-(built 2026-10-27, not deployed) made the console a lazy chunk, so the sign-in
-pages no longer download Base UI (120.07 → 81.45 kB gzip), and
-[brief 35](../briefs/done/35-focus-after-a-confirmed-write.md) puts focus on the
-opener or the heading after a confirmed write.
-
-**Built 2026-10-24:** [brief 37](../briefs/done/37-library-rename-a-user.md),
-ward-auth 0.4.0, a self-service rename (`POST /username`, `useRenameUser`), which
-apps take by re-vendoring (Shelfmark first). Briefs
-[39](../briefs/done/39-console-rename-an-account.md) and
-[40](../briefs/done/40-console-delete-an-account.md), not deployed: the console
-renames an account and deletes one, stopping at Ward's edge
-([decisions-admin.md](decisions-admin.md)). The next Ward deploy ships them with 33–35.
-
-**Built 2026-10-27:** ward-auth 0.5.0 to 0.7.0. [36](../briefs/done/36-library-username-for-a-new-ward-user.md) shapes a new Ward user's name;
-[38](../briefs/done/38-library-disable-a-user.md) `disableUser` switches a local user off (migration 4); [41](../briefs/done/41-library-export-the-new-names.md)
-(0.6.1) exports their new names; [42](../briefs/done/42-library-return-path-through-a-refused-sign-in.md) (0.7.0) keeps a refused
-sign-in's return path. Each app adopts a version in its own brief.
-
-**Built 2026-10-22, live (release of 2026-10-22, found 2026-10-24):** [brief 32](../briefs/done/32-ward-on-its-own-host.md)
-moves Ward to `ward.<domain>`: the UI at the root, the API at `/ward-api` on the
-same host, the issuer `https://ward.<domain>/ward-api/oidc`. `vps-deploy` brief 16
-carries the routes and the redirect from `/ward/*`. Owner steps, in order: deploy
-Ward (`node cli.ts ward all` in `vps-deploy`), then redeploy atrium, newspapper, prm,
-sports-app and shelfmark with `server` so each picks up the new issuer. Until
-an app is redeployed its "Sign in with Ward" fails; local passwords keep
-working. Everyone signs in to Ward again on the new host.
-
-**Built 2026-10-19, not deployed:** [brief 31](../briefs/done/31-docs-site-on-docusaurus.md)
-moved the docs site from Starlight to Docusaurus, with the same URLs and look.
-The authored pages' root-absolute links now carry the `/ward/docs/` base, and
-every wiki page is published, `decisions-oidc` and `decisions-oidc-build`
-included. The owner deploys it once vps-deploy brief 11 has flipped the Ward
-docs stack's asset check to `assets`.
-
-## History
-
-- **2026-09-01 → 09-04, waves 1–6:** the service. API, `@ward/client`, one
-  central login page with `?next=`, registration and verification,
-  self-service and the superuser console.
-- **2026-09-06:** app keys made `POST /introspect` non-anonymous
-  ([decisions-app-keys.md](./decisions-app-keys.md)). Wave 8: five apps
-  hand-wrote Ward clients against [integrating.md](./integrating.md) and
-  deleted their own credentials.
-- **2026-10-04:** the deploy and the cutover ran on production (owner). Brief
-  11 was superseded by vps-deploy's `stacks/ward.ts`.
-- **2026-10-07:** brief 17, `POST /notify`. imbatranimOS left Ward (its brief
-  157). The deployed database still holds its app row until the owner deletes
-  it.
-- **2026-10-13:** the OIDC redesign, briefs 18–29 (above); the owner's
-  cutover; brief 30 retired the shared-cookie contract.
-- **2026-10-19:** brief 31, the docs site on Docusaurus (built, not deployed).
-- **2026-10-22:** brief 32, Ward on its own host (built and deployed; found live 2026-10-24).
-- **2026-10-23:** brief 33, Base UI in the console (built, not deployed).
-- **2026-10-24:** briefs 37 (library rename), 39–40 (console rename, delete).
-- **2026-10-27:** briefs 34 (console chunk), 35 (focus), 36, 38, 41 and 42 (library 0.7.0), 43 (docs tidy).
-
-| Thread | State |
-|---|---|
-| Decisions | Five design pages plus [decisions-oidc.md](./decisions-oidc.md) and its build calls in [decisions-oidc-build.md](./decisions-oidc-build.md); engineering calls in [decisions-implementation.md](./decisions-implementation.md) |
-| Open questions | **None** — [open-questions.md](./open-questions.md) |
-| Name | **Ward** (repo still `wzd_auth`; rename deferred by the owner) |
-| Briefs done | 00–10, 13–43 in [briefs/done/](../briefs/done/); 11 superseded |
-| Briefs open | None |
-| Shared library | `shared-library/` 0.7.0. Vendored 0.3.1 in atrium, newspapper, prm, sports-app and satchel; 0.4.0 in shelfmark (read 2026-10-27) |
-| Deploy entry in `vps-deploy` | The OIDC contract deployed 2026-10-13. Ward redeployed with brief 30 the same day; no app stack passes the old variables |
+- **One test fails since 2026-11-01**: `shared-library/scripts/vendor.test.ts`
+  still expects the vendored README to name the GitHub URL, which `5de7c6b`
+  replaced with "the `ward-auth` repository" in `vendor.mjs`. The test needs
+  the new wording (1230 of 1231 pass).
+- No error boundary for a failed console chunk load; only a full page load of
+  `/console` fetches it, with a fresh `index.html`.
+- Writes in the console with no `Confirm` still drop focus to `<body>`
+  ([the todo](../todos/focus-after-an-unconfirmed-write.md)).
 
 ## What is actually known
 
 - The estate is **one origin**, sub-paths only (Ward and three other apps on
-  hosts of their own since 2026-10-22, brief 32). This
+  hosts of their own since 2026-10-22). This
   constrains every candidate design and is the single most load-bearing fact.
 - **Six apps** have or will have identity: atrium and newspapper (the two named
   in the request), plus public-resource-map, imbatranimOS, sports-app and
@@ -135,31 +90,15 @@ docs stack's asset check to `assets`.
   is what moved the estate's boundary from registration to authorization, and
   prm remains the only app with the flag on.
 
-## The next move
-
-The docs site deploy, once vps-deploy brief 11 lands (owner). Ward itself was
-redeployed with brief 30 on 2026-10-13, after vps-deploy's Ward stack stopped
-uploading the deleted reference client's manifest (the first attempt failed on
-it). Open ideas are in [../todos/](../todos/).
-
-## The old waves
-
-| Wave | Briefs | What landed |
-|---|---|---|
-| 1–6 | 00–10 | The service, 2026-09-02 → 09-04 |
-| 8 | 13 · 14 · 15 + 2 unbriefed | All five apps cut over, 2026-09-06, ahead of wave 7 |
-| 7 | 11 | Superseded by `stacks/ward.ts`; deployed |
-| 9 | 16 | The cutover, on production 2026-10-04 |
-
 ## The shape
 
-**Until 2026-10-13** (retired by brief 30): apps redirected to one central
+**Until 2026-10-13**: apps redirected to one central
 `/ward/login`, verified a 15-minute EdDSA access token in a `Path=/` cookie,
 and asked `/introspect` with their app key whether the session was live,
 caching the answer 30 seconds.
 
 **Now:** Ward is a Fastify + SQLite container at `/ward-api` with a Vite +
-React UI at `/ward`. It owns Ward accounts and **grants**; its own cookies are
+React UI at the root of its own host (at `/ward` until 2026-10-22). It owns Ward accounts and **grants**; its own cookies are
 scoped to `/ward-api`. Each app owns its accounts and sessions, and local
 sign-in never calls Ward. "Sign in with Ward" is a code flow with PKCE and `private_key_jwt`
 against Ward's provider at `/ward-api/oidc`. A Ward-originated session is
@@ -200,5 +139,6 @@ also the single largest source of remaining work.
   lint and a green suite all missed — the signing key being committable, the WAL
   checkpoint, the verify options bag, the multi-tab refresh. Budget for review as
   part of the work, not as a formality after it.
-- Two briefs change **other repos'** locked decisions and owe revision notes
-  there: 13 (atrium D30 and D35) and 14 (newspapper's three security calls).
+- The 2026-09-06 integrations changed **other repos'** locked decisions and owed
+  revision notes there: atrium's D30 and D35, and newspapper's three security
+  calls.

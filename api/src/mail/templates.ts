@@ -36,7 +36,7 @@ import type { OutgoingMail } from "./transport.js";
 export const WARD_API_PREFIX = "/ward-api";
 
 /**
- * Where a **person** lands when they click the link in their inbox: brief 09's
+ * Where a **person** lands when they click the link in their inbox: the
  * `/verify` screen, served by the UI bundle at the root of Ward's own host
  * (`/ward/verify` on the shared origin until 2026-10-22; those links redirect).
  *

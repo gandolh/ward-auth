@@ -19,7 +19,7 @@ import { INACTIVE, type SessionResolution } from "../grants/resolve.js";
  * whether a Ward session is still live with `POST /session-status`
  * (`routes/session-status.ts`). Until 2026-10-13 apps also asked about Ward's
  * cookie through a server-to-server endpoint with the same answer shape; that
- * contract is retired (brief 30).
+ * contract is retired.
  *
  * ## One answer for every dead session, always `200`
  *

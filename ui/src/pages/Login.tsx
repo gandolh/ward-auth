@@ -33,7 +33,7 @@ import { formatWait } from "../lib/wait.js";
  * 2. **Nothing is between the person and the form.** No illustration, no
  *    marketing line, no motion on load. The first Tab from a cold page lands in
  *    the username field.
- * 3. **The error states are the feature.** Brief 09 exists because six apps
+ * 3. **The error states are the feature.** The login UI exists because six apps
  *    each got these wrong differently. There are exactly four things the API
  *    can say, and this page says each of them once, correctly.
  *

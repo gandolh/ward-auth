@@ -10,8 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
  * `POST /register` and `GET /verify`, against a Fastify instance this file
  * builds itself.
  *
- * **Not via `buildApp()`**, deliberately: `app.ts` is not this brief's to edit
- * so registering the plugin directly is what keeps this suite from depending
+ * **Not via `buildApp()`**, deliberately: registering the plugin directly is what keeps this suite from depending
  * on it.
  *
  * The environment is set before anything imports `config.ts`, and
@@ -159,7 +158,7 @@ async function linkFromOutbox(): Promise<string> {
 /**
  * The Fastify path a mailed link ends up hitting.
  *
- * The mailed link is the **browser-visible** URL of brief 09's verification
+ * The mailed link is the **browser-visible** URL of the login UI's verification
  * screen, `/verify?token=…` — a static page, not a Ward route. That page
  * then spends the token by calling `GET /ward-api/verify?token=…`, and Caddy's
  * `handle_path /ward-api/*` strips the prefix, so the Fastify route is

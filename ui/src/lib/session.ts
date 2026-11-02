@@ -22,7 +22,7 @@ import { readSessionState, refresh, type SessionResult } from "./api.js";
  * `main.tsx` runs under `StrictMode`, which double-invokes effects in
  * development precisely to surface this class of bug — and the bug is real
  * here, not theoretical. Two `/refresh` calls firing at the same moment is the
- * multi-tab race that cost brief 03 two review rounds to get right: the loser
+ * multi-tab race that cost the refresh work two review rounds to get right: the loser
  * of the single-use `UPDATE` used to sweep the winner's brand-new token and
  * destroy a live session. The API now survives it (a used token with a live
  * successor inside a ten-second grace is a race, not a theft), but *relying* on

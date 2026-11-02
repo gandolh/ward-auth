@@ -1,5 +1,5 @@
 /**
- * Where keyboard focus goes after a confirmed write (brief 35).
+ * Where keyboard focus goes after a confirmed write.
  *
  * ## Why `Confirm` cannot do this on its own
  *

@@ -78,7 +78,7 @@ it("answers 401 with no console session, on every route", async () => {
 
 describe("issuing grants", () => {
   /**
-   * The brief's acceptance criterion. A grant carries a *set* of roles, so two
+   * The acceptance criterion for grants. A grant carries a *set* of roles, so two
    * roles in one app is not a special case to support — it is the shape.
    */
   it("grants two roles in one app and both are visible", async () => {

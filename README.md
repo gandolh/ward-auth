@@ -9,7 +9,7 @@ Connect provider behind that button, and a grant per app decides who may use it.
 </p>
 
 **Status:** Personal project, in production since 2026-10-04. Since the release of 2026-10-22
-(brief 32) it runs on a host of its own, `ward.<domain>`; before that it was at `/ward/` on the
+it runs on a host of its own, `ward.<domain>`; before that it was at `/ward/` on the
 production site. Since 2026-10-13 it is an OIDC provider: atrium, newspapper, public-resource-map,
 sports-app and shelfmark offer "Sign in with Ward" beside their own login, and satchel and almanac
 are registered for local development. The GitHub repo is `<owner>/ward-auth` and the folder is
@@ -96,7 +96,7 @@ listed in [.env.example](.env.example).
 | `shared-library/` | The auth library apps vendor: local accounts and "Sign in with Ward"                          |
 | `docs/`           | The docs site at `/ward/docs` (Docusaurus), plus the images in this README                    |
 | `infrastructure/` | The container image and compose file; `local/` runs Ward in Docker                            |
-| `corpus/`         | The project wiki: decisions, status and the briefs that built Ward                            |
+| `corpus/`         | The project wiki: decisions, status and the log of how Ward was built                         |
 
 ## Docs
 
@@ -105,7 +105,7 @@ listed in [.env.example](.env.example).
   configuration
 - [Adoption guide](shared-library/README.md): how an app vendors the library and wires the Ward
   button
-- [Project wiki](corpus/index.md): decisions, status and the briefs that built it
+- [Project wiki](corpus/index.md): decisions, status and the log of how it was built
 
 ## License
 

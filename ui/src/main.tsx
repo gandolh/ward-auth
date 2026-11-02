@@ -6,8 +6,8 @@ import { App } from "./app.js";
 /**
  * The Vite entry point, and deliberately the whole of it.
  *
- * Routing, layout and every page live in `app.tsx`, which brief 09 owns —
- * keeping this file to a mount means the two UI briefs never both need to edit
+ * Routing, layout and every page live in `app.tsx` —
+ * keeping this file to a mount means the sign-in side and the console never both need to edit
  * the same file to add a screen.
  *
  * `StrictMode` is on. It double-invokes effects in development, which is the

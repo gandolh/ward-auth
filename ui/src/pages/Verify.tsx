@@ -29,7 +29,7 @@ import { onceByKey } from "../lib/once.js";
  *
  * `expired_token` is its own code because it is the one a person can act on —
  * except that **they cannot**, because there is no resend endpoint, by
- * decision. Brief 07 wrote the honest sentence and this page uses it: the
+ * decision. Registration wrote the honest sentence and this page uses it: the
  * account works, the address is simply not confirmed. That is true rather than
  * consoling: `email_verified` gates no sign-in and no grant anywhere in Ward.
  * Presenting it as a dead end would be worse than the gap itself.

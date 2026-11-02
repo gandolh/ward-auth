@@ -383,7 +383,7 @@ function handleReuse(
   const revoked = revokeFamily(db, row.family_id, "reuse_detected", nowIso);
 
   /**
-   * The one audit row this brief is required to write.
+   * The one audit row rotation is required to write.
    *
    * `actorKind: "system"` rather than `"account"`: the actor is Ward's own
    * detection, and the schema's CHECK ties a non-null `actor_subject` to
@@ -500,11 +500,11 @@ export interface EndSessionResult {
  *
  * **The family, not the single token.** A family is one login's rotation chain,
  * so revoking it is exactly "sign this device out" — other devices have their
- * own families and keep working, which is the behaviour brief 09's "sign out my
+ * own families and keep working, which is the behaviour the account page's "sign out my
  * other devices" is defined against.
  *
- * Rows are marked `revoked_reason = 'logout'` rather than `DELETE`d. The brief
- * says "deletes the refresh row" and the acceptance criterion is that logout
+ * Rows are marked `revoked_reason = 'logout'` rather than `DELETE`d. The spec
+ * said "deletes the refresh row" and its acceptance criterion was that logout
  * "leaves no refresh row" — read as *no usable row*, which this satisfies:
  * `claimRefreshToken` cannot match a revoked row, and
  * `listLiveTokensForSubject` no longer returns it. Keeping the row is the

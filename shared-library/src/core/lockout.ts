@@ -373,7 +373,7 @@ export interface LockoutKeyOptions {
  * In a container that publishes `127.0.0.1:<port>`, host Caddy reaches the app
  * through Docker's proxy and the peer is a bridge address, never loopback.
  * Loopback-only trust (0.1.0 and 0.2.0) then ignored the header for every
- * request and the whole internet shared one counter — Ward's brief 28.
+ * request and the whole internet shared one counter — Ward's outage of 2026-10-13.
  * `trustedProxies` names the bridge ranges; loopback is trusted without being
  * listed.
  *
@@ -482,7 +482,7 @@ const LOOPBACK: TrustedProxies = parseTrustedProxies(["127.0.0.0/8", "::1"]);
 function isTrustedPeer(peer: string, trusted: TrustedProxies): boolean {
   const parsed = addressBytes(peer);
   // A peer that is not an address at all (a runtime oddity) is trusted by
-  // nobody; it becomes its own bucket, which is the pre-brief-28 behaviour.
+  // nobody; it becomes its own bucket, which is the behaviour from before trusted proxies.
   if (parsed === undefined) return false;
   // `normaliseAddress` already unwraps the dotted mapped form Node reports;
   // this catches the hex spelling (`::ffff:ac13:3`) of the same address.

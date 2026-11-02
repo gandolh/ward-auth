@@ -103,7 +103,7 @@ const patchAppBody = z
 /** One field that changed, as the audit row records it. */
 /**
  * `PUT /console/apps/:slug/oidc` — the app's whole OIDC client registration in
- * one write (brief 18). A PUT rather than fields on the PATCH above because
+ * one write. A PUT rather than fields on the PATCH above because
  * the three parts are one decision: redirect URIs without a key, or a key
  * without a redirect URI, is an app that is not a client yet.
  *

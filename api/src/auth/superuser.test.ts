@@ -49,7 +49,7 @@ beforeAll(async () => {
   process.env["WARD_ADMIN_PASSWORD"] = ADMIN_PASSWORD;
   process.env["WARD_SIGNING_KEY_PATH"] = join(dir, "signing-key.pem");
   process.env["WARD_PUBLIC_ORIGIN"] = ORIGIN;
-  // Mail is part of the required environment contract (brief 07). `file`
+  // Mail is part of the required environment contract. `file`
   // transport needs no SMTP credentials, which is the point of having a mode.
   process.env["WARD_MAIL_TRANSPORT"] = "file";
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";
@@ -356,7 +356,7 @@ describe("the audit shape for a console event", () => {
      * writes it, against a database the console has never otherwise touched.
      * This is the acceptance criterion "no row exists in `users` for the
      * superuser after a console login" asserted at the level that does not
-     * depend on brief 03's lockout module; `console.test.ts` asserts the same
+     * depend on the lockout module; `console.test.ts` asserts the same
      * thing end to end through the route.
      */
     const db = freshDb();
@@ -408,12 +408,12 @@ describe("the audit shape for a console event", () => {
 });
 
 /**
- * Point 5 of the brief: `WARD_ADMIN_USERNAME` and `WARD_ADMIN_PASSWORD` are
+ * `WARD_ADMIN_USERNAME` and `WARD_ADMIN_PASSWORD` are
  * required and Ward refuses to start without them.
  *
- * **Unconditionally, with no development exemption.** Brief 00 deliberately gave
- * `config.ts` no `NODE_ENV` and made both variables required outright, and brief
- * 02 resolved the same ambiguity the same way for the signing key. So this
+ * **Unconditionally, with no development exemption.** The scaffold deliberately
+ * gave `config.ts` no `NODE_ENV` and made both variables required outright, and
+ * the signing work resolved the same ambiguity the same way for the signing key. So this
  * asserts the unconditional behaviour rather than an environment-dependent one,
  * and nothing here adds an environment check.
  *
@@ -441,7 +441,7 @@ describe("the service refuses to start without the superuser credential", () => 
       WARD_ADMIN_PASSWORD: ADMIN_PASSWORD,
       WARD_SIGNING_KEY_PATH: join(dir, "signing-key.pem"),
       WARD_PUBLIC_ORIGIN: ORIGIN,
-      // Mail is part of the required contract (brief 07). `file` transport
+      // Mail is part of the required contract. `file` transport
       // needs no SMTP credentials, which is why the mode exists.
       WARD_MAIL_TRANSPORT: "file",
       WARD_MAIL_FILE_DIR: join(dir, "mail-outbox"),

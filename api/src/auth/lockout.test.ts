@@ -17,7 +17,7 @@ import {
 } from "./lockout.js";
 
 /**
- * The lockout counter. Brief 06 imports this exact surface for the console
+ * The lockout counter. The superuser code imports this exact surface for the console
  * login, so a rename here is a break in two places at once.
  *
  * The shape changed once, deliberately: the three counter functions take a
@@ -461,7 +461,7 @@ describe("the shared-bucket fallback is loud", () => {
   });
 });
 
-describe("trusted proxies (brief 28)", () => {
+describe("trusted proxies", () => {
   /**
    * The finding: in a container the socket peer is a Docker bridge address —
    * Docker's proxy on the host, or the Caddy container locally — never
@@ -554,7 +554,7 @@ describe("trusted proxies (brief 28)", () => {
   });
 
   it("warns, throttled, when a header from an untrusted peer is ignored", () => {
-    // The production symptom of brief 28 said nothing at all; this is the line
+    // The production symptom of the 2026-10-13 lockout outage said nothing at all; this is the line
     // that would have named it.
     const warn = vi.fn();
 

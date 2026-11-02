@@ -11,7 +11,7 @@ import { prepareOnce } from "./prepared.js";
  * entry on a denylist every app has to consult. Ward never stores the token
  * itself, only `sha256(token)`.
  *
- * The rotation protocol this table is shaped for (brief 03 implements it):
+ * The rotation protocol this table is shaped for (`auth/refresh.ts` implements it):
  *
  *  1. Login mints a token with a fresh `family_id` and inserts it.
  *  2. A refresh presents `R1`. `claimRefreshToken` stamps `used_at` **only if
@@ -291,7 +291,7 @@ export function listFamily(db: Database.Database, familyId: string): RefreshToke
  * A 30-day token that is never presented again is otherwise immortal, and this
  * table is the only one in the schema that grows with traffic rather than with
  * the number of people. Nothing calls this on a schedule yet; deployment
- * (brief 11) is where that belongs.
+ * is where that belongs.
  */
 export function deleteExpiredRefreshTokens(
   db: Database.Database,

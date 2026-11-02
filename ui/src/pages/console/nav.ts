@@ -4,17 +4,18 @@
  *
  * ## Why this exists at all
  *
- * The contract between the two UI briefs is that brief 10 exports one
- * `<ConsoleRoutes />` element and brief 09's router mounts it under `/console`.
+ * The contract between the console and the rest of the UI is that the console
+ * exports one `<ConsoleRoutes />` element and Ward's router mounts it under
+ * `/console`.
  * A descendant `<Routes>` with relative paths only matches deeper URLs when the
  * parent route was declared with a splat (`path="/console/*"`), and the
  * contract does not say that it was. Guessing wrong yields a console that
  * renders blank for every URL except its index — a failure that appears only
- * once the two briefs are integrated.
+ * once the two halves are integrated.
  *
  * Reading the pathname ourselves removes the guess. It works under
  * `path="/console/*"`, under `path="/console"` for the index, inside a layout
- * route, and even if brief 09 renders the element without a `Route` at all. The
+ * route, and even if the router renders the element without a `Route` at all. The
  * only thing it needs from the router is `useLocation`.
  *
  * ## The base

@@ -14,7 +14,7 @@ import { createUser, type UserRow } from "./users.js";
  * its config import dynamic, and it is worth not undoing here.
  *
  * This module is not test code itself — it has no `.test.ts` suffix — so that
- * later briefs can import it for their own fixtures without depending on a file
+ * other suites can import it for their own fixtures without depending on a file
  * the test runner owns.
  */
 

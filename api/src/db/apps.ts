@@ -24,7 +24,7 @@ export interface AppRow {
   created_at: string;
   updated_at: string;
   /**
-   * OpenID Connect client metadata (brief 18), JSON text. Decode with
+   * OpenID Connect client metadata, JSON text. Decode with
    * `oidcClientOf` rather than parsing at call sites. `[]` redirect URIs or a
    * NULL key set means the app is not an OIDC client.
    */

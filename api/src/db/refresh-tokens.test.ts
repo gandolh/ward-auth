@@ -32,7 +32,7 @@ afterEach(() => {
 const inThirtyDays = () => new Date(Date.now() + 30 * 86_400_000).toISOString();
 const yesterday = () => new Date(Date.now() - 86_400_000).toISOString();
 
-/** Mint a token the way brief 03 will: plaintext out, hash in. */
+/** Mint a token the way login does: plaintext out, hash in. */
 function mint(familyId: string, expiresAt = inThirtyDays()): { token: string; hash: string } {
   const token = generateRefreshToken();
   const hash = hashRefreshToken(token);

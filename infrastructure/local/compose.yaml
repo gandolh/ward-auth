@@ -28,15 +28,15 @@ services:
     environment:
       # The origin the browser uses, and the `iss` of Ward's own access tokens.
       WARD_PUBLIC_ORIGIN: http://localhost:8792
-      # Ward's OpenID Connect provider (brief 18): the issuer as the browser
+      # Ward's OpenID Connect provider: the issuer as the browser
       # sees it, behind the gateway's /ward-api, and Ward's UI on the same
       # origin. An app's WARD_OIDC_ISSUER has to be exactly this string.
       WARD_OIDC_ISSUER: http://localhost:8792/ward-api/oidc
       WARD_UI_URL: http://localhost:8792
       WARD_MAIL_TRANSPORT: file
       WARD_MAIL_FROM: ward@localhost
-      # The login lockout believes X-Forwarded-For only from these peers (brief
-      # 28). Ward's peer here is the gateway container on the network below, not
+      # The login lockout believes X-Forwarded-For only from these peers.
+      # Ward's peer here is the gateway container on the network below, not
       # loopback, so without this every caller shares one lockout bucket.
       WARD_TRUSTED_PROXIES: 10.87.92.0/24
       # HOST, PORT, WARD_DB_PATH, WARD_SIGNING_KEY_PATH and WARD_MAIL_FILE_DIR

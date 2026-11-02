@@ -122,7 +122,7 @@ const envSchema = z.object({
    * unset means loopback only — the safe direction, like `HOST`, because a
    * range listed here can choose its own lockout bucket by sending the header.
    *
-   * It exists because Ward runs in a container (brief 28). Host Caddy reaches
+   * It exists because Ward runs in a container. Host Caddy reaches
    * it through Docker's proxy, so the socket peer is a bridge address, never
    * loopback, and with nothing listed every request in the estate keyed on
    * that one address: five bad passwords from anyone locked everyone out.
@@ -164,7 +164,7 @@ const envSchema = z.object({
    * The estate's single public origin. Validated as a *bare* origin —
    * scheme + host + optional port, nothing else — for two reasons.
    *
-   * First, it becomes the `iss` claim on every access token (brief 02), and
+   * First, it becomes the `iss` claim on every access token, and
    * `iss` is compared as an exact string by six verifiers. Ward minting
    * `https://gandolh.ro/` while an app expects `https://gandolh.ro` rejects
    * every token in the estate, with a mismatch that reads as "auth is broken"
@@ -184,7 +184,7 @@ const envSchema = z.object({
    * How Ward sends verification mail: `smtp` or `file`.
    *
    * **Explicit, required, and deliberately not inferred from `NODE_ENV`.**
-   * Brief 07's acceptance says development must not need SMTP credentials, and
+   * Development must not need SMTP credentials, and
    * the obvious way to grant that — sniff the environment and fall back to
    * writing files — is the shape this whole file exists to refuse. An estate
    * whose mail silently stopped leaving the building because a variable was
@@ -218,9 +218,9 @@ const envSchema = z.object({
   WARD_MAIL_FROM: z.string().min(1),
 
   /**
-   * The OpenID Connect issuer (brief 18), as the **browser** sees it — e.g.
+   * The OpenID Connect issuer, as the **browser** sees it — e.g.
    * `https://example.com/ward-api/oidc`. Optional, and absent means the provider
-   * is not mounted at all: every route that existed before brief 18 behaves as
+   * is not mounted at all: every route that existed before the provider behaves as
    * it did, so a deploy that has not set it yet keeps the estate signing in.
    * That is the safe direction, the same reasoning as `HOST` above, and unlike a
    * derived default it cannot be wrong.
@@ -370,11 +370,11 @@ export const WARD_TRUSTED_PROXIES: TrustedProxies = env.WARD_TRUSTED_PROXIES;
  */
 /** Read today by `api/src/db/connection.ts` — `getDb()` opens the database at this path. */
 export const WARD_DB_PATH: string = resolve(REPO_ROOT, env.WARD_DB_PATH);
-/** Not read yet — reserved for `api/src/tokens/`, which brief 02 has not written. */
+/** Read by `api/src/tokens/keys.ts`: the signing key's file. */
 export const WARD_SIGNING_KEY_PATH: string = resolve(REPO_ROOT, env.WARD_SIGNING_KEY_PATH);
 
 /**
- * Read by the console session code (brief 06). Note what these are NOT: they
+ * Read by the console session code. Note what these are NOT: they
  * are not an account, and nothing in this process should look them up, mirror
  * them into a table, or grant them anything. "Console only" falls out of the
  * superuser having no grants, not out of a check somewhere.
@@ -382,11 +382,11 @@ export const WARD_SIGNING_KEY_PATH: string = resolve(REPO_ROOT, env.WARD_SIGNING
 export const WARD_ADMIN_USERNAME: string = env.WARD_ADMIN_USERNAME;
 export const WARD_ADMIN_PASSWORD: string = env.WARD_ADMIN_PASSWORD;
 
-/** Not read yet — reserved for token minting (brief 02), which will use it as the `iss` claim. */
+/** The `iss` claim on every access token, and the base of every browser-facing URL Ward builds. */
 export const WARD_PUBLIC_ORIGIN: string = env.WARD_PUBLIC_ORIGIN;
 
 /**
- * Mail configuration (brief 07 — public registration).
+ * Mail configuration (public registration).
  *
  * Exported as a discriminated union rather than seven loose strings, so the
  * sender cannot be written against a shape the environment did not actually
@@ -416,7 +416,7 @@ export const MAIL: MailTransport =
       };
 
 /**
- * OpenID Connect provider settings (brief 18), or `undefined` when
+ * OpenID Connect provider settings, or `undefined` when
  * `WARD_OIDC_ISSUER` is unset and the provider is not mounted. Read by
  * `oidc/routes.ts`. The refinement above guarantees `uiUrl` whenever there is
  * an issuer.

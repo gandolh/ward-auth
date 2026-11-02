@@ -25,7 +25,7 @@ import { databaseResolver, type AdminRoutesOptions } from "./support.js";
  *
  * `GET /console/accounts/:subject` already reports `liveSessions` as a
  * **count**, which is exactly enough to make "disabling ends live sessions"
- * visible and nothing like enough to act on. Brief 10 rendered the honest
+ * visible and nothing like enough to act on. The console rendered the honest
  * consequence: it could tell an operator *that* four devices were signed in and
  * not *which*, and it had to compose "end all sessions" out of **disable →
  * re-enable** — two audit rows for one intent, a window in which the account
@@ -160,7 +160,7 @@ export async function adminSessionsRoutes(
    * `DELETE /console/accounts/:subject/sessions/:familyId` — end one device.
    *
    * This is the call that makes an operator's answer to a suspected theft real,
-   * and it is what brief 10's unverifiable acceptance criterion needs: the
+   * and it is what the console's unverifiable acceptance criterion needed: the
    * family dies here, `GET /session` reports `active: false` for its access
    * token on the next check, and every app's `/session-status` check ends the
    * session it began from this one within 30 seconds.
@@ -182,7 +182,7 @@ export async function adminSessionsRoutes(
    * console has no use for the distinction.
    *
    * Idempotent: a family whose rows are all already revoked answers `200` with
-   * `revoked: 0` and writes no audit row, matching brief 05's rule that a no-op
+   * `revoked: 0` and writes no audit row, matching the admin routes' rule that a no-op
    * leaves no row (`changed: false` is how the UI still tells).
    */
   app.delete("/console/accounts/:subject/sessions/:familyId", async (request, reply) => {
@@ -243,8 +243,8 @@ export async function adminSessionsRoutes(
    * `POST /console/accounts/:subject/sessions/revoke` — end every session, with
    * no side effect.
    *
-   * `revokeAllForSubject` has existed since brief 01 and was reachable only
-   * through **disable** or **password rotation**, so brief 10 had to compose the
+   * `revokeAllForSubject` has existed since the schema and was reachable only
+   * through **disable** or **password rotation**, so the console had to compose the
    * intent out of disable → re-enable. It rendered that cost honestly, and it
    * should not have to: two audit rows for one intent, a window where the person
    * cannot sign in, and a failure between the two calls leaving the account

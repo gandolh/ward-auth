@@ -10,7 +10,7 @@ import { OIDC_INTERNAL_PREFIX, oidcLayout, type OidcLayout } from "./layout.js";
 import { createWardProvider } from "./provider.js";
 
 /**
- * Mount Ward's OpenID Connect provider (brief 18).
+ * Mount Ward's OpenID Connect provider.
  *
  * Registered by `app.ts`. When `WARD_OIDC_ISSUER` is unset this registers
  * nothing at all, so a Ward deployed before its issuer is configured serves

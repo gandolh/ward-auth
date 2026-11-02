@@ -9,8 +9,8 @@ import type { UserRow } from "../../db/users.js";
  * Shared plumbing for the console admin plugins — `apps.ts`, `grants.ts`,
  * `accounts.ts` and `sessions.ts`.
  *
- * Two things live here and nothing else should. The **response shapes** brief
- * 10's console UI builds against, so that "what does an app look like over the
+ * Two things live here and nothing else should. The **response shapes** the
+ * console UI builds against, so that "what does an app look like over the
  * wire" has one answer rather than three that drift; and the **constraint
  * translation** that turns a `SqliteError` into a status code, so that a schema
  * CHECK doing its job never reaches the caller as a `500` carrying a column
@@ -96,7 +96,7 @@ export interface AppView {
   createdAt: string;
   updatedAt: string;
   /**
-   * The app as an OpenID Connect client (brief 18). Public keys only, which is
+   * The app as an OpenID Connect client. Public keys only, which is
    * all Ward ever holds; the console shows their `kid`s and the full JWKS.
    */
   oidc: {
@@ -152,7 +152,7 @@ export function accountView(row: UserRow): AccountView {
  *
  * `grantedBy` is a subject **or** the string `superuser`, and is deliberately
  * not resolvable to an account: the identity that issues the estate's first
- * grants has no `users` row. Brief 10 renders it as-is.
+ * grants has no `users` row. The console renders it as-is.
  */
 export interface GrantView {
   subject: string;

@@ -32,7 +32,7 @@ import { formatWait } from "../lib/wait.js";
  *
  * To Ward's own sign-in, coming back to the account page. Apps no longer take
  * people back from Ward's login with `?next=` (that shared-cookie contract is
- * retired, brief 30): a person signs in to an app from the app, which sends
+ * retired since 2026-10-13): a person signs in to an app from the app, which sends
  * them through Ward with OpenID Connect.
  *
  * ## `registration_closed` is a state, not an error — and now often known early

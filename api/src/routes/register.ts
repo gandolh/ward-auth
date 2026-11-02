@@ -28,7 +28,7 @@ import { sendMail } from "../mail/transport.js";
  * `POST /register` and `GET /verify` — the estate's only anonymous **write**
  * surface.
  *
- * Registered by `app.ts` (which this brief does not touch) as
+ * Registered by `app.ts` as
  * `await app.register(registerRoutes)`. Both paths here are **Fastify-side**:
  * Caddy serves Ward with `handle_path /ward-api/*`, which strips the prefix, so
  * `/verify` here is `GET /ward-api/verify` in a browser — and that is the URL
@@ -206,7 +206,7 @@ export async function registerRoutes(
    */
   const { MAIL, WARD_ADMIN_USERNAME, WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } =
     await import("../config.js");
-  /** The lockout's trusted proxies (brief 28) — the same list `/login` uses. */
+  /** The lockout's trusted proxies — the same list `/login` uses. */
   const trustedProxies = options.trustedProxies ?? WARD_TRUSTED_PROXIES;
 
   /** The break-glass username, folded once. See `usernameIsReserved`. */
@@ -309,7 +309,7 @@ export async function registerRoutes(
       passwordHash = await hashPassword(body.password);
     } catch (error) {
       if (error instanceof PasswordPolicyError) {
-        // The stable `code`, never the message — brief 09 renders these.
+        // The stable `code`, never the message — the login UI renders these.
         return reply.code(400).send({ error: error.code });
       }
       throw error;
@@ -432,7 +432,7 @@ export async function registerRoutes(
      * of the three outcomes available: the account exists and the username is
      * taken, so the person retries, is told the name is unavailable, and
      * concludes somebody beat them to it. Registration succeeded; the side
-     * channel did not, and the answer says so in a field brief 09 can render
+     * channel did not, and the answer says so in a field the UI can render
      * ("we could not send the confirmation — you can still sign in").
      *
      * Nothing here logs the token or the link. In `file` mode the path is
@@ -648,7 +648,7 @@ function registrationClosed(reply: FastifyReply): FastifyReply {
  * **No artificial delay before it** — holding the connection open is the denial
  * of service the lockout exists to prevent, and Ward is the runtime dependency
  * of all six apps (see `auth/lockout.ts`). `retryAfterSeconds` is repeated in
- * the body so brief 09 can render the wait without reading a header.
+ * the body so the UI can render the wait without reading a header.
  */
 function lockedOut(reply: FastifyReply, retryAfterSeconds: number): FastifyReply {
   reply.header("retry-after", String(retryAfterSeconds));
@@ -794,7 +794,7 @@ function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): st
  * next time a migration renames anything. Duplicated here rather than imported
  * because `support.ts` belongs to the console admin plugins and this route is
  * not one of them — a two-line predicate is a better dependency than a shared
- * module reaching across brief boundaries.
+ * module reaching across plugin boundaries.
  */
 function isUniqueViolation(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;

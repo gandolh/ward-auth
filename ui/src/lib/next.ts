@@ -16,7 +16,7 @@
  *
  * Until 2026-10-13 apps sent people here with `?next=/atrium/...` and read
  * Ward's cookie when they came back, so the allowlist named every app on the
- * origin. That shared-cookie contract is retired (brief 30): apps sign people
+ * origin. That shared-cookie contract is retired: apps sign people
  * in through OpenID Connect, which carries its own return address
  * (`?oidc=<uid>`, handled by `lib/oidc.ts`) and never uses `next`. What is left
  * is Ward linking to itself — the account page sends a signed-out visitor to

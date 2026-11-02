@@ -1,6 +1,6 @@
 ---
-summary: Where an app's Ward integration is specified — the shared library's adoption guide and the docs site's OIDC page — plus the app-side rules for POST /session-status (30-second cache per Ward session, collapsed calls, fail closed, a 401 is a configuration error). The hand-written cookie, /introspect and app-key contract was retired 2026-10-13 (brief 30).
-updated: 2026-10-13
+summary: Where an app's Ward integration is specified — the shared library's adoption guide and the docs site's OIDC page — plus the app-side rules for POST /session-status (30-second cache per Ward session, collapsed calls, fail closed, a 401 is a configuration error). The hand-written cookie, /introspect and app-key contract was retired 2026-10-13.
+updated: 2026-11-02
 ---
 
 # Integrating an app with Ward
@@ -58,7 +58,7 @@ local sign-in never calls Ward, so an app keeps working while Ward is down.
 
 ## The retired contract
 
-_2026-10-13, brief 30:_ the hand-written contract this page used to hold (the
+_2026-10-13:_ the hand-written contract this page used to hold (the
 `ward_session` cookie at `Path=/`, `POST /introspect`, the `x-ward-app-key`
 app key and the reference client) was removed once production ran the new
 flow. Its reasoning is in [decisions-app-keys.md](./decisions-app-keys.md) and

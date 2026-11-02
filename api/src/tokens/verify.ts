@@ -110,7 +110,7 @@ export class AccessTokenVerificationError extends Error {
  *
  * What it does **not** establish is liveness: the signature stays valid for the
  * full 15 minutes after a session is revoked. That is introspection's job
- * (brief 04), and the distinction is the one the glossary's "Introspection"
+ *, and the distinction is the one the glossary's "Introspection"
  * entry exists to keep sharp.
  */
 export async function verifyAccessToken(

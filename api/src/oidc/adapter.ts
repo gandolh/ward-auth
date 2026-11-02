@@ -9,8 +9,8 @@ import { clientMetadataFor } from "./clients.js";
 /**
  * `oidc-provider`'s storage, on Ward's own better-sqlite3 handle.
  *
- * The library's default adapter is an in-process LRU map, and the brief's
- * acceptance names what that costs: a restart between "the provider issued a
+ * The library's default adapter is an in-process LRU map, and that
+ * costs this: a restart between "the provider issued a
  * code" and "the app exchanged it" loses the code. Everything the provider
  * persists — sessions, interactions, codes, grants, access tokens, the
  * replay markers that stop a client assertion being used twice — goes through

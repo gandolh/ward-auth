@@ -1,6 +1,6 @@
 ---
 summary: What Ward is — the estate's identity service and, since the 2026-10-13 redesign, the OpenID Connect provider behind every app's "Sign in with Ward" button, while each app owns its accounts — the shape in a paragraph, what the repo holds, and how to pick up the thread.
-updated: 2026-10-13
+updated: 2026-11-02
 ---
 
 # Overview
@@ -39,21 +39,21 @@ built, unminified library in `shared-library/`. Each app copies it into
 
 ## What the repo contains right now
 
-- `api/`: the service, including the provider (brief 18) and
+- `api/`: the service, including the provider and
   `POST /session-status`. Ward's own cookies are scoped to `/ward-api`; the
-  access cookie moved off `Path=/` in brief 30, which also removed app keys
-  and `/introspect`.
+  access cookie moved off `Path=/` on 2026-10-13, when app keys and
+  `/introspect` went too.
 - `ui/`: the login page, self-service and the console, with a "Sign in with
   Ward" panel per app for its redirect URIs and public key.
-- `shared-library/`: the library, at 0.3.1, vendored into atrium, newspapper,
-  prm, sports-app and satchel.
+- `shared-library/`: the library, at 0.7.0; each app vendors a version of its
+  own ([status.md](./status.md) lists them).
 - `docs/`: the Docusaurus site at `/ward/docs`, and `docs/cutover-oidc.md`, the
-  owner's runbook for taking the redesign to production (brief 27).
+  owner's runbook for taking the redesign to production (done 2026-10-13).
 
 The deploy lives in vps-deploy (`stacks/ward.ts` and each app's stack).
 Production has run the OIDC flow since the owner's cutover on 2026-10-13.
-The reference client for the retired shared-cookie contract was deleted in
-brief 30, and Ward's redeploy for that brief is the owner's.
+The reference client for the retired shared-cookie contract was deleted the
+same day, and Ward was redeployed with that change.
 [status.md](./status.md) has where things stand.
 
 ## Where the thread is
@@ -87,7 +87,7 @@ until 2026-10-13) and makes isolation between apps impossible — the browser
 treats `/atrium` and `/design-study` as the same security context. Most of the
 interesting design tension in this repo traces back to that one fact. The OIDC
 redesign stopped depending on it: nothing in the flow assumes Ward shares an
-app's origin, and since 2026-10-22 (brief 32) Ward is on a host of its own,
+app's origin, and since 2026-10-22 Ward is on a host of its own,
 `ward.<domain>`, with its UI at the root and its API at `/ward-api`.
 
 ## Naming

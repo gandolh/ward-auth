@@ -1,6 +1,6 @@
 ---
 summary: The locked engineering calls made while building — the raw better-sqlite3 driver and why Knex was rejected, static-import migrations, scrypt over argon2id, the loopback bind default, the WAL checkpoint that makes a database backup honest, why the lockout is not keyed on request.ip, and integration tests that drive the real service. Session mechanics settled during the build live in decisions-tokens.md.
-updated: 2026-10-13
+updated: 2026-11-02
 ---
 
 # Decisions — implementation
@@ -11,7 +11,7 @@ any code. Same bar as [decisions.md](./decisions.md): **hard to reverse**,
 that were rejected.
 
 This page exists because [decisions.md](./decisions.md) is a design record and
-was already near the corpus line cap when the first brief landed. Foundational
+was already near the corpus line cap when the first code landed. Foundational
 scope stays there; accounts in [decisions-accounts.md](./decisions-accounts.md),
 privilege in [decisions-admin.md](./decisions-admin.md).
 
@@ -22,7 +22,7 @@ are build-time calls, but a reader asking "how do sessions work" should find all
 of it on one page rather than having to know which half was decided when.
 
 ## Raw `better-sqlite3`, not Knex
-_2026-09-02, brief 00_ — Ward talks to SQLite through the driver directly.
+_2026-09-02, the scaffold_ — Ward talks to SQLite through the driver directly.
 Queries are written as SQL.
 
 **Rejected: Knex**, which atrium uses and which would have been the estate's
@@ -41,7 +41,7 @@ every schema change is a hand-written migration. At this schema's size — five
 tables — that is a smaller cost than the class of bug it removes.
 
 ## Migrations are a static import list, never a directory scan
-_2026-09-02, brief 00_ — `api/src/db/migrations/index.ts` holds a hand-maintained
+_2026-09-02, the scaffold_ — `api/src/db/migrations/index.ts` holds a hand-maintained
 array. Adding a migration means importing it and appending to that array.
 
 A directory-scanning migration source reads files off disk at runtime and picks
@@ -58,7 +58,7 @@ a rename re-runs a migration that has already been applied. This is enforced in
 both directions by the runner, not merely documented.
 
 ## `node:crypto` scrypt for passwords, not argon2id
-_2026-09-02, brief 00_ — Password hashing uses scrypt from Node's standard
+_2026-09-02, the scaffold_ — Password hashing uses scrypt from Node's standard
 library. No dependency is added for it.
 
 **Rejected: argon2id**, which is the current recommendation and would be the
@@ -77,7 +77,7 @@ Revisit if Ward ever holds accounts for strangers at volume — the prune means 
 rehash-on-next-login migration is always available.
 
 ## Ward binds loopback by default
-_2026-09-02, brief 00_ — `HOST` defaults to `127.0.0.1`. Caddy reverse-proxies
+_2026-09-02, the scaffold_ — `HOST` defaults to `127.0.0.1`. Caddy reverse-proxies
 to it over loopback on the same box.
 
 **Rejected: `0.0.0.0`**, which is what atrium does. Atrium's "Caddy is the only
@@ -87,7 +87,7 @@ true in the kernel rather than in a policy file. Widening it is still one
 explicit `HOST=` away for anyone who genuinely needs it.
 
 ## The database handle is closed on shutdown, and that is a backup decision
-_2026-09-02, brief 00, found in review_ — `shutdown()` closes the SQLite handle
+_2026-09-02, the scaffold, found in review_ — `shutdown()` closes the SQLite handle
 before exit. This looks like ordinary cleanup before `process.exit` and is not.
 
 SQLite in WAL mode runs its checkpoint **on close**. Without that close,
@@ -97,7 +97,7 @@ boot → serve → SIGTERM cycle, which is every pm2 restart and every deploy.
 
 This matters because the operator is told, correctly, that the database "is the
 only copy of who anybody is — back it up." A backup that copies `ward.db` alone
-would have captured nothing and reported success. **Brief 11 must back up all
+would have captured nothing and reported success. **A backup must take all
 three files together** — `ward.db`, `ward.db-wal`, `ward.db-shm` — and must not
 treat the sidecars as disposable while the process is running.
 
@@ -106,7 +106,7 @@ Recorded as a decision rather than a bug fix because the tempting cleanup —
 wrong for a reason nothing in the code makes visible.
 
 ## The lockout is keyed on the forwarded address, never `request.ip`
-_2026-09-04, brief 03_ — `lockoutKeyFor` uses the socket peer when it is not
+_2026-09-04, login and refresh_ — `lockoutKeyFor` uses the socket peer when it is not
 loopback, and otherwise the **last** `x-forwarded-for` element.
 
 **Rejected: `request.ip`**, the obvious choice, which is wrong here for a
@@ -126,7 +126,7 @@ cannot talk its way into a different bucket. Also rejected, upstream of all of
 this: keying on **username**, which lets a stranger lock a real person out of
 their own account indefinitely.
 
-> **Revised 2026-10-13, brief 28 — loopback is not the only proxy any more.**
+> **Revised 2026-10-13 — loopback is not the only proxy any more.**
 > "Only when the peer is loopback" assumed pm2 on the host. In a container that
 > publishes `127.0.0.1:<port>`, host Caddy reaches Ward through Docker's proxy,
 > so the peer is a bridge address; locally it is the Caddy container. The

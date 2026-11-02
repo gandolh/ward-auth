@@ -1,6 +1,6 @@
 ---
 summary: The foundational calls for Ward — the one-origin topology and the isolation it costs, Ward's own host since 2026-10-22, what the service owns versus what apps keep, the single central login page, what the UI carries, Base UI in the console only, newspapper's move off loopback, the name, and the two inherited atrium decisions.
-updated: 2026-10-27
+updated: 2026-11-02
 ---
 
 # Decisions
@@ -39,17 +39,17 @@ known mitigation is to keep the SSO cookie at `Path=/` but exchange it for
 app-scoped tokens at `Path=/atrium-api`, `Path=/prm-api` and so on. Not decided,
 recorded so it is not re-derived.
 
-> _2026-10-13, brief 30:_ there is no shared session cookie any more. Each app
+> _2026-10-13:_ there is no shared session cookie any more. Each app
 > keeps its own session cookie ([decisions-oidc.md](./decisions-oidc.md)), and
 > Ward's `ward_session` moved from `Path=/` to `Path=/ward-api`. The topology
 > call stands; the cookie it made cheap is retired.
 
-> _2026-10-21, owner; built 2026-10-22, brief 32:_ revisited for Ward itself,
+> _2026-10-21, owner; built 2026-10-22:_ revisited for Ward itself,
 > which now has a host of its own (next entry). The apps without a shell, a
 > mailbox or the keys to the others stay on the one origin.
 
 ## Ward has a host of its own, `ward.<domain>`
-_2026-10-21, owner; built 2026-10-22 (brief 32)_ — Ward's UI moves to the root
+_2026-10-21, owner; built 2026-10-22_ — Ward's UI moves to the root
 of `ward.<domain>` and its API to `/ward-api` on that host. The issuer becomes
 `https://ward.<domain>/ward-api/oidc`. On the shared origin, a script injected
 into any app could call Ward's console API with the owner's console cookie
@@ -172,13 +172,13 @@ who suspects their session was stolen. Password rotation has to live somewhere
 too, and putting it in six apps contradicts the decision above.
 
 ## The console's widgets are Base UI; the public pages import none
-_2026-10-23, owner (brief 33)_ — The console's confirmation is a Base UI
+_2026-10-23, owner_ — The console's confirmation is a Base UI
 `AlertDialog` and its create forms are `Collapsible`s, styled by `console.css`,
 to match the owner's other apps. Rejected: keeping the native `<dialog>` with
 its own wiring, and shadcn, which brings Tailwind. Only `ui/src/pages/console/`
-imports it, and since brief 34 the console is a lazy chunk, so the sign-in
+imports it, and since 2026-10-27 the console is a lazy chunk, so the sign-in
 pages download none of it. After a confirmed write focus goes to the opener,
-found again by its `data-wc-focus` key, or else to the heading (brief 35):
+found again by its `data-wc-focus` key, or else to the heading (2026-10-27):
 `finalFocus` can't do it, because the reload removes the opener.
 
 ## Inherited — not ours to break quietly

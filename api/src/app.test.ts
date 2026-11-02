@@ -35,7 +35,7 @@ beforeAll(async () => {
   process.env["WARD_ADMIN_PASSWORD"] = "test-superuser-password";
   process.env["WARD_SIGNING_KEY_PATH"] = join(dir, "signing-key.pem");
   process.env["WARD_PUBLIC_ORIGIN"] = "https://ward.test";
-  // Mail is part of the required environment contract (brief 07). `file`
+  // Mail is part of the required environment contract. `file`
   // transport needs no SMTP credentials, which is the point of having a mode.
   process.env["WARD_MAIL_TRANSPORT"] = "file";
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";
@@ -83,7 +83,7 @@ describe("the error handler", () => {
      * never reach an error handler at all. What does reach it with a
      * `statusCode` is Fastify's client-error machinery — a `415` here — and
      * those messages describe the request the caller sent rather than this
-     * server, so they pass through. Brief 09 renders some of them.
+     * server, so they pass through. The login UI renders some of them.
      */
     const response = await app.inject({
       method: "POST",
@@ -138,7 +138,7 @@ describe("the routes buildApp wires in", () => {
       { method: "GET" as const, url: "/console/apps" },
       { method: "GET" as const, url: "/console/grants" },
       { method: "GET" as const, url: "/console/accounts" },
-      // The five that brief 09 and brief 10 reported missing.
+      // The five that the login UI and the console reported missing.
       { method: "GET" as const, url: "/console/audit" },
       { method: "GET" as const, url: "/console/accounts/:subject/sessions" },
       { method: "DELETE" as const, url: "/console/accounts/:subject/sessions/:familyId" },
@@ -154,7 +154,7 @@ describe("the routes buildApp wires in", () => {
   });
 
   it("no longer registers the retired shared-cookie contract's routes", async () => {
-    // Retired with brief 30: apps now use OpenID Connect and /session-status.
+    // Retired on 2026-10-13: apps now use OpenID Connect and /session-status.
     for (const route of [
       { method: "POST" as const, url: "/introspect" },
       { method: "GET" as const, url: "/console/apps/:slug/keys" },

@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
  * `GET /session` — Ward's own "who am I", over a real login.
  *
  * Includes the duplicate-cookie case: a browser that signed in before the
- * shared-cookie contract was retired (brief 30) holds a `ward_session` at
+ * shared-cookie contract was retired holds a `ward_session` at
  * `Path=/` beside the current one at `Path=/ward-api`, and sends both.
  *
  * Every import of `../config.js` and its dependents is dynamic: `config.ts`

@@ -20,7 +20,7 @@ export type Awaitable<T> = T | Promise<T>;
 
 /**
  * Where a session began. `"local"` is a password sign-in in the app;
- * `"ward"` is a "Sign in with Ward" flow (brief 21), the only kind that is
+ * `"ward"` is a "Sign in with Ward" flow, the only kind that is
  * checked against Ward every 30 seconds.
  */
 export type SessionOrigin = "local" | "ward";
@@ -35,7 +35,7 @@ export interface UserRecord {
   usernameFolded: string;
   /**
    * scrypt `saltHex:hashHex`, or `null` for a user with no local password —
-   * one created by a first Ward sign-in (brief 21). Login against a `null`
+   * one created by a first Ward sign-in. Login against a `null`
    * hash spends the dummy hash and fails, exactly like an unknown username.
    */
   passwordHash: string | null;
@@ -58,7 +58,7 @@ export interface SessionRecord {
   origin: SessionOrigin;
   /**
    * Ward's session id (the refresh family `sid`) for a Ward-originated
-   * session; `null` for a local one. Written by brief 21.
+   * session; `null` for a local one. Written by the Ward sign-in.
    */
   wardSid: string | null;
   createdAt: number;
@@ -101,7 +101,7 @@ export interface AuthStore {
   findUserById(id: string): Awaitable<UserRecord | undefined>;
   /** Looks up by the **folded** name; the core folds before calling. */
   findUserByFoldedUsername(usernameFolded: string): Awaitable<UserRecord | undefined>;
-  /** `null` removes the local password (brief 21 never does; it is here for symmetry). */
+  /** `null` removes the local password (the Ward sign-in never does; it is here for symmetry). */
   setPasswordHash(userId: string, passwordHash: string | null, now: number): Awaitable<void>;
   setRole(userId: string, role: string, now: number): Awaitable<void>;
   /**

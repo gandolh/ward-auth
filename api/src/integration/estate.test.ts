@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  *
  * "Introspect" here is `GET /session`, Ward's own session check. Apps once
  * asked the same question through a server-to-server endpoint of their own;
- * that contract is retired (brief 30), and this suite drives the path that
+ * that contract is retired, and this suite drives the path that
  * remains.
  *
  * Every other test file in this repo either builds a bare Fastify instance
@@ -30,11 +30,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  *    disk rather than one handed to a test fixture;
  *  - a real `WARD_DB_PATH` file, migrated with `runMigrations`, exactly the
  *    way `index.ts` boots it — not `:memory:`;
- *  - the console's bring-up sequence end to end: brief 04's "a grant added
- *    through the console appears in the next session check" and brief 05's
- *    "disabling an account ends its live sessions... verified end to end"
- *    are acceptance criteria neither brief could satisfy alone, because each
- *    needed the other's endpoint. This is the first place both run together.
+ *  - the console's bring-up sequence end to end: "a grant added through the
+ *    console appears in the next session check" and "disabling an account
+ *    ends its live sessions... verified end to end" are acceptance criteria
+ *    neither the session check nor the console could satisfy alone, because
+ *    each needed the other's endpoint. This is the first place both run together.
  *
  * ## `app.inject()`, never a bound port
  *
@@ -99,7 +99,7 @@ beforeAll(async () => {
   process.env["WARD_ADMIN_PASSWORD"] = ADMIN_PASSWORD;
   process.env["WARD_SIGNING_KEY_PATH"] = join(dir, "signing-key.pem");
   process.env["WARD_PUBLIC_ORIGIN"] = ORIGIN;
-  // Mail is part of the required environment contract (brief 07). `file`
+  // Mail is part of the required environment contract. `file`
   // transport needs no SMTP credentials, which is the point of having a mode.
   process.env["WARD_MAIL_TRANSPORT"] = "file";
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";
@@ -364,9 +364,9 @@ describe("flow 1 — the console bootstraps the estate", () => {
   });
 
   /**
-   * Brief 04's owed acceptance criterion: "a grant added through the console
-   * appears in the next introspection response." Neither brief 04
-   * (introspection) nor brief 05 (the console) could assert this alone —
+   * An acceptance criterion owed since 2026-09-04: "a grant added through the
+   * console appears in the next introspection response." Neither
+   * introspection nor the console could assert this alone —
    * each needed the other's endpoint, which is exactly why it landed here and
    * nowhere else. Same cookie as the test above: no re-login.
    */
@@ -404,8 +404,8 @@ describe("flow 1 — the console bootstraps the estate", () => {
 
 // ---------------------------------------------------------------------------
 // Flow 4 — disabling an account ends its live session, verified through
-// /session and /refresh rather than by inspecting rows (brief 05's owed
-// criterion).
+// /session and /refresh rather than by inspecting rows (the admin routes'
+// owed criterion).
 // ---------------------------------------------------------------------------
 
 describe("flow 4 — disabling an account ends its live session end to end", () => {

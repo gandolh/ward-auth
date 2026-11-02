@@ -3,7 +3,7 @@
  *
  * `429 too_many_attempts` is the one error on the login page where a person can
  * do something concrete, and the concrete thing is *wait a specific length of
- * time*. Brief 09 exists partly because six apps each got this wrong in their
+ * time*. The login UI exists partly because six apps each got this wrong in their
  * own way, and the two wrong answers are worth naming: a generic "sign-in
  * failed" (which invites a seventh attempt, extending the lockout), and a bare
  * "try again later" (which makes an eighty-second wait feel like a ban).

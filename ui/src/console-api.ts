@@ -55,7 +55,7 @@ export interface AppView {
   baselineRole: string | null;
   createdAt: string;
   updatedAt: string;
-  /** The app as an OpenID Connect client (brief 18). Public keys only. */
+  /** The app as an OpenID Connect client. Public keys only. */
   oidc: OidcClientView;
 }
 

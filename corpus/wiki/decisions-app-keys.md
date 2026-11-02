@@ -1,11 +1,11 @@
 ---
-summary: Retired 2026-10-13 (brief 30) — app keys, /introspect and the key on /notify are gone, and apps authenticate with client assertions. Kept as history — the per-app key /introspect carried, why the endpoint stopped being anonymous, why a rejected key was a 401 rather than an inactive session, why the key authenticated without scoping, why Ward's own UI moved to GET /session, and why an app mails its own users through POST /notify but never reads an address (still live).
-updated: 2026-10-13
+summary: Retired 2026-10-13 — app keys, /introspect and the key on /notify are gone, and apps authenticate with client assertions. Kept as history — the per-app key /introspect carried, why the endpoint stopped being anonymous, why a rejected key was a 401 rather than an inactive session, why the key authenticated without scoping, why Ward's own UI moved to GET /session, and why an app mails its own users through POST /notify but never reads an address (still live).
+updated: 2026-11-02
 ---
 
 # Decisions — app keys
 
-> **Retired 2026-10-13 (brief 30).** App keys, `POST /introspect` and the
+> **Retired 2026-10-13.** App keys, `POST /introspect` and the
 > `x-ward-app-key` header on `/notify` were removed once production ran the
 > OpenID Connect flow. The `app_keys` table is dropped by migration
 > `20261013120000-drop-app-keys`; the `app_key.*` audit rows stay. An app now
@@ -74,7 +74,7 @@ would force a window with no working key, which is an outage on every rotation.
 stamped **at most hourly** so the estate's hot path is not also a write path.
 
 ## An app mails its own users through Ward and never reads an address
-_2026-10-06 decided by the owner, 2026-10-07 built (brief 17)._ `POST /notify`
+_2026-10-06 decided by the owner, 2026-10-07 built._ `POST /notify`
 takes the app key, a subject, a subject line and plain text. Ward sends to the
 verified address only when the account is active and holds a grant for the
 key's app. The app never learns the address.

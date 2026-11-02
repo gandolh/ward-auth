@@ -52,14 +52,14 @@ maintained and were grilled at the time.
 | | |
 |---|---|
 | **READ** | [index.md](index.md), then [wiki/estate.md](wiki/estate.md) — the topology finding there rules out several designs before they are proposed. |
-| **SKIP** | `briefs/` and `todos/` wholesale — [status.md](wiki/status.md) has the state in one table. |
+| **SKIP** | `briefs/` and `todos/` wholesale — [status.md](wiki/status.md) has a dated line per area. |
 | **NEVER** | Treat a `ward.db` copy as a backup — WAL mode means the sidecars carry committed data; see [wiki/decisions-implementation.md](wiki/decisions-implementation.md). Use "admin" unqualified — [wiki/decisions-admin.md](wiki/decisions-admin.md) defines two privileged identities and they are not interchangeable. Contradict an inherited atrium decision silently. Say so out loud and carry a revision note back to that repo. |
 
 ## Working a brief
 
-No brief is open. New work goes in [briefs/todo/](briefs/todo/); a backlog is
-grouped into dependency waves in [wiki/status.md](wiki/status.md). Briefs within a wave own disjoint
-files and can run in parallel.
+No brief is open. New work goes in [briefs/todo/](briefs/todo/), numbered from
+01 (restarted 2026-11-02) and run in number order. Briefs that own disjoint files
+can run in parallel.
 
 1. Read the brief in [briefs/todo/](briefs/todo/) — self-contained by design.
 2. Respect its **Files you OWN** / **must NOT touch** contract.

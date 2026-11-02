@@ -7,10 +7,10 @@ import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
- * The OIDC half of the environment contract (brief 18), in a child process for
+ * The OIDC half of the environment contract, in a child process for
  * the reason `config.mail.test.ts` gives: `config.ts` validates at import and
  * exits. The property under test is the file's own — a wrong value stops the
- * boot and names the variable — plus the one this brief adds: leaving the
+ * boot and names the variable — plus the OIDC one: leaving the
  * issuer unset is a valid Ward that simply does not mount the provider.
  */
 const HERE = resolve(fileURLToPath(import.meta.url), "..");

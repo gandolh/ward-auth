@@ -12,7 +12,7 @@ import { join } from "node:path";
  * environment at first import, and Vitest gives each test file its own worker
  * and module registry.
  *
- * The property under test is brief 02's last acceptance line, and the reason it
+ * The property under test is that Ward refuses to boot without a key, and the reason it
  * matters is in `tokens/keys.ts`: the alternative to refusing is generating a
  * key, and a key that appears on restart signs the whole estate out while
  * looking like an outage nobody caused.
@@ -31,7 +31,7 @@ beforeAll(async () => {
   // Deliberately absent. Nothing in this test creates it.
   process.env["WARD_SIGNING_KEY_PATH"] = join(dir, "signing-key.pem");
   process.env["WARD_PUBLIC_ORIGIN"] = "https://gandolh.ro";
-  // Mail is part of the required environment contract (brief 07). `file`
+  // Mail is part of the required environment contract. `file`
   // transport needs no SMTP credentials, which is the point of having a mode.
   process.env["WARD_MAIL_TRANSPORT"] = "file";
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";

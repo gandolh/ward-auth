@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The page shell for every screen brief 09 owns.
+ * The page shell for every screen on the sign-in side.
  *
  * Three rows: the wordmark, the crossing, one line of small print. See
  * `ward.css` for why the crossing hangs off a rule on the left instead of

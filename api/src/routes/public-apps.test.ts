@@ -97,7 +97,7 @@ it("follows the flag when an app is opened and closed again", async () => {
 
 /**
  * A fresh estate has no apps: `seedApps` is test support and production seeds
- * nothing. `[]` is a **state**, not a failure — brief 07 records the same trap
+ * nothing. `[]` is a **state**, not a failure — registration has the same trap
  * for `/register`, where it "looks like a bug".
  */
 it("answers an empty estate with an empty array and a 200", async () => {

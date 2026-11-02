@@ -1,28 +1,28 @@
 ---
-summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour (brief 18), the session-status endpoint and `/notify`'s client authentication (brief 19), the shared library's build calls (brief 20), and its Ward half — callback path, link binding, fail-closed check, reauthentication for a first password (brief 21, revised in 0.3.1), and the library's calls since 0.4.0 — a shaped username suffixed within an app-given max length (brief 36), and a disabled local user answered as an unknown one, access_denied on the Ward callback (brief 38), and a refused sign-in's return path carried back as ward_return_to on the login page (brief 42).
-updated: 2026-10-27
+summary: The engineering calls made while building the 2026-10-13 OIDC redesign — private_key_jwt client authentication, Ward's refresh family as the authority over oidc-provider's own session, the prefix, logout and unregistered-redirect behaviour, the session-status endpoint and `/notify`'s client authentication, the shared library's build calls, and its Ward half — callback path, link binding, fail-closed check, reauthentication for a first password (revised in 0.3.1) — and the library's calls of 2026-10-27 — a shaped username suffixed within an app-given max length (0.5.0), a disabled local user answered as an unknown one with access_denied on the Ward callback (0.6.0), and a refused sign-in's return path carried back as ward_return_to on the login page (0.7.0).
+updated: 2026-11-02
 ---
 
 # Decisions — building the OIDC redesign
 
 The design is [decisions-oidc.md](./decisions-oidc.md). These are the calls
-the briefs settled while building it.
+settled while building it.
 
 ## Apps authenticate as clients with `private_key_jwt`
-_2026-10-13, brief 18_ — Each app holds an Ed25519 private key in its own env
+_2026-10-13_ — Each app holds an Ed25519 private key in its own env
 (`WARD_OIDC_CLIENT_KEY`, made by `npm run oidc-client-key`) and signs a client
 assertion (`alg` `EdDSA` or `Ed25519`, since `openid-client` 6 sends the
 latter; `aud` the issuer; fresh `jti`). Ward stores only the
 public JWK on the app's row and refuses one carrying `d`. Ward holds no app
 secret at all. `api/src/oidc/client-auth.ts` checks the same assertion outside
-the provider, sharing its replay markers, for brief 19's endpoints.
+the provider, sharing its replay markers, for `/session-status` and `/notify`.
 
 **Rejected: `client_secret_basic`** (Ward needs the plaintext, which the app
 keys' sha256 design refused), and **a custom check of a hashed secret** (not a
 method `openid-client` speaks, so every app would carry custom code).
 
 ## Ward's refresh family decides; the provider's session only hands off
-_2026-10-13, brief 18_ — The provider asks for the login step on **every**
+_2026-10-13_ — The provider asks for the login step on **every**
 authorization. That step reads Ward's refresh cookie, so it lives under
 `/refresh` (`/ward-api/refresh/oidc/<uid>`), where the cookie already goes. It
 checks the account is active and holds a grant, and grants `openid` itself. A
@@ -39,7 +39,7 @@ provider's session lived. One cost is accepted: `prompt=none` always answers
 `login_required`.
 
 ## Built: the prefix, logout, and an unregistered redirect URI
-_2026-10-13, brief 18_ — `WARD_OIDC_ISSUER` is optional: unset, nothing is
+_2026-10-13_ — `WARD_OIDC_ISSUER` is optional: unset, nothing is
 mounted, so a deploy that lacks it keeps today's routes. The issuer must end in
 `/oidc`, and what precedes it is the stripped prefix. Each request's path, mount
 and forwarded host are rewritten from config before the provider sees it.
@@ -49,7 +49,7 @@ URI gets Ward's own error page, not `access_denied`. Redirecting an error to an
 unregistered URI is an open redirect, and the spec forbids it.
 
 ## Apps ask `POST /session-status`; `/notify` takes the same credential
-_2026-10-13, brief 19_ — The pull in decisions-oidc.md ("Ward-originated
+_2026-10-13_ — The pull in decisions-oidc.md ("Ward-originated
 sessions still end within 30 seconds") is `POST /ward-api/session-status`, the
 OIDC replacement for `/introspect`. The body carries the client assertion in
 the standard form for `private_key_jwt` (`client_assertion_type` and
@@ -76,15 +76,15 @@ judged by it alone. The assertion lives in the body, so it is checked after the
 body parses (a bad app key is still refused before). A bad assertion is the same
 `401 invalid_client`; no credential at all keeps `invalid_app_key`. Audit rows
 name the credential (`keyId`, or `auth: "client_assertion"`) and never hold it.
-The app key and `/introspect` retire in brief 27.
+The app key and `/introspect` were to retire with the cutover.
 
-> _2026-10-13, brief 30 (not 27):_ the app key and `/introspect` are gone.
+> _2026-10-13, after the cutover:_ the app key and `/introspect` are gone.
 > `/notify` takes only the client assertion; no credential, or only the old
 > header, is `401 {"error":"invalid_client"}`, and audit rows carry
 > `auth: "client_assertion"` with no `keyId`.
 
 ## The local half's build calls
-_2026-10-13, brief 20_ — Settled while building `shared-library/`:
+_2026-10-13_ — Settled while building `shared-library/`:
 - **Sessions:** the cookie holds 32 random bytes, the row holds their SHA-256.
   Idle expiry 14 days, sliding; absolute 30 days, Ward's refresh-family
   ceiling, so both kinds of session age out on one clock. The sliding expiry
@@ -94,14 +94,14 @@ _2026-10-13, brief 20_ — Settled while building `shared-library/`:
   library from an append-only migration list. Migration 1 already has a
   nullable `password_hash` and the session row's `origin` and `ward_sid`
   (tied by a CHECK), because SQLite cannot relax a column without a table
-  rebuild and brief 21 needs all three.
+  rebuild and the Ward half needs all three.
 - **One store for two drivers:** a structural handle type that better-sqlite3
   and `node:sqlite` both satisfy, positional parameters, and `SAVEPOINT`
   transactions, so the store also nests inside an app's own transaction.
 - **The guard** is the plugin's `onRequest` hook on the instance the app
   registers it on (it escapes encapsulation the way `fastify-plugin` does), so
   the app must register it before its own routes. Its extension hook,
-  `validateSession`, is where brief 21 puts the 30-second check; a validator
+  `validateSession`, is where the Ward half puts the 30-second check; a validator
   that throws fails closed.
 - **The bundler is Rollup with TypeScript's own transpiler**, plus
   rollup-plugin-dts for the two `.d.ts` files. **Rejected: esbuild**, which
@@ -109,10 +109,10 @@ _2026-10-13, brief 20_ — Settled while building `shared-library/`:
   code says why.
 
 ## The Ward half's build calls
-_2026-10-13, brief 21_ — Settled while adding "Sign in with Ward" to
+_2026-10-13_ — Settled while adding "Sign in with Ward" to
 `shared-library/` (0.2.0). The adoption guide is `shared-library/README.md`.
 - **The callback lives under the app's API prefix:**
-  `<api prefix>/auth/ward/callback`, not brief 18's `<ui base>auth/ward/callback`.
+  `<api prefix>/auth/ward/callback`, not the provider's first `<ui base>auth/ward/callback`.
   The session cookie is scoped to the API prefix and a link callback must see
   it. The dev server and Caddy already route that prefix, so no proxy gains a
   rule. The plugin refuses at boot a redirect URI that is not its route under
@@ -163,7 +163,7 @@ _2026-10-13, brief 21_ — Settled while adding "Sign in with Ward" to
 
 ## The library after 0.4.0: shaping names, switching users off, the return path
 
-_2026-10-27, briefs 36, 38 and 42._
+_2026-10-27, ward-auth 0.5.0 to 0.7.0._
 
 - **A shaped name is suffixed by the library, within a max length the app
   passes** (`usernameFor` with `usernameMaxLength`, 0.5.0). Rejected: running the

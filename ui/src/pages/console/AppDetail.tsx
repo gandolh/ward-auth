@@ -320,7 +320,7 @@ function AppBody({
       </Panel>
 
       {/*
-        The app as an OpenID Connect client (brief 18). Keyed on `updatedAt` so
+        The app as an OpenID Connect client. Keyed on `updatedAt` so
         a save that Ward normalised (a key given its alg, duplicates dropped)
         re-renders from what was stored rather than from what was typed.
       */}

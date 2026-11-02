@@ -4,7 +4,7 @@ import { formatWait } from "./wait.js";
 
 /**
  * The lockout is the one login failure with a concrete next step, and the step
- * is "wait this long". Brief 09 exists partly because six apps each rendered
+ * is "wait this long". The login UI exists partly because six apps each rendered
  * this differently, so the string is worth pinning.
  */
 describe("formatWait", () => {

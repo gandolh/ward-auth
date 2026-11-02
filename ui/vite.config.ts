@@ -3,7 +3,7 @@ import { defineConfig } from "vite";
 
 /**
  * Ward's SPA, served at the root of its own host, `ward.<domain>`, since
- * 2026-10-22 (brief 32). It was at `/ward` on the estate's shared origin.
+ * 2026-10-22. It was at `/ward` on the estate's shared origin.
  *
  * `base` is not cosmetic. Every asset URL Vite emits carries it, and a build
  * whose base disagrees with where Caddy serves it loads a page whose JavaScript

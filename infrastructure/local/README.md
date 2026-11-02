@@ -41,7 +41,7 @@ Run everything below from this directory, `infrastructure/local/`.
    app's checkout by name in `~/projects` (or `PROJECTS_DIR`), directly or one
    folder down, and skips an app with no checkout there, or with two. (It used to
    write `WARD_APP_KEY`, `WARD_PUBLIC_ORIGIN` and `WARD_API_BASE_PATH` too, for
-   the shared-cookie contract brief 30 retired; an env file that still has
+   the shared-cookie contract retired on 2026-10-13; an env file that still has
    them can drop the three lines.) It asks
    for the owner account's username and password, or reads
    `WARD_OWNER_USERNAME` and `WARD_OWNER_PASSWORD`, and stores neither. It is
@@ -75,7 +75,7 @@ refresh cookie.
 ## Sign in with Ward (OpenID Connect)
 
 The container also runs Ward's OpenID Connect provider, the way "Sign in with
-Ward" works once the apps move to their own accounts (briefs 18–27). Its
+Ward" works once the apps move to their own accounts. Its
 issuer is `http://localhost:8792/ward-api/oidc` (`WARD_OIDC_ISSUER` in
 `compose.yaml`), and discovery is at
 http://localhost:8792/ward-api/oidc/.well-known/openid-configuration.

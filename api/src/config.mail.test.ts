@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * The mode-dependent half of the mail contract, exercised the only way it can
  * be: in a child process, because `config.ts` validates at import and exits.
  *
- * These assert the property brief 00 set for the whole file — a misconfigured
+ * These assert the property the whole file holds — a misconfigured
  * Ward fails at boot **naming the variable** — for a rule zod cannot express
  * per-field, since "required because another field says so" is cross-field.
  */

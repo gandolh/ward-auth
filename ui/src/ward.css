@@ -1,12 +1,12 @@
 /*
  * Ward's own surface — the login page, registration, verification and
- * self-service. Brief 09.
+ * self-service.
  *
  * Imported by `app.tsx`, which means it loads for the console subtree too.
  * That is intentional and is the second half of the tokens contract: every
  * value below comes from a `--ward-*` token, so the same `.ward-input` and
  * `.ward-button` render dark on `data-ward-surface="console"` with no
- * console-specific code. Brief 10 may use these or ignore them; what it must
+ * console-specific code. The console may use these or ignore them; what it must
  * not need is a copy of them.
  *
  * ---------------------------------------------------------------------------

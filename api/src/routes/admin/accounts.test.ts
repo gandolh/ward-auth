@@ -158,7 +158,7 @@ describe("creating an account", () => {
     expect(again.json()).toEqual({ error: "username_taken" });
   });
 
-  /** The brief: surface `PasswordPolicyError.code`, not its message. */
+  /** Surface `PasswordPolicyError.code`, not its message. */
   it("surfaces the password policy code rather than a message", async () => {
     const short = await asConsole({
       method: "POST",

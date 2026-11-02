@@ -55,7 +55,7 @@ describe("baseline migration", () => {
   });
 
   it("drops app_keys, rows and index included, from a database that still has it", () => {
-    // A production database before brief 30: app_keys exists and holds a key.
+    // A production database before 2026-10-13: app_keys exists and holds a key.
     // Rebuild that state on a fresh one by re-creating the table and forgetting
     // that the drop ran, then migrate again as a deploy would.
     const db = freshDb();

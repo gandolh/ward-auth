@@ -7,8 +7,8 @@ import { createHash, randomBytes } from "node:crypto";
 
 /**
  * The longest username accepted, in UTF-16 code units. Ward's own limit, so
- * that every migrated Ward account fits (briefs 22 and 24 carry usernames
- * over).
+ * that every migrated Ward account fits (atrium's and prm's migrations
+ * carried usernames over).
  */
 export const MAX_USERNAME_LENGTH = 256;
 
@@ -78,8 +78,8 @@ export function generateUserId(): string {
 export const MAX_USER_ID_LENGTH = 128;
 
 /**
- * Validate an id an app supplied (briefs 22 and 24 reuse each migrated user's
- * Ward subject so existing rows keep their keys). Printable ASCII without
+ * Validate an id an app supplied (atrium's and prm's migrations reuse each
+ * migrated user's Ward subject so existing rows keep their keys). Printable ASCII without
  * spaces, so an id can sit in a URL, a log line or a foreign key without
  * escaping.
  */

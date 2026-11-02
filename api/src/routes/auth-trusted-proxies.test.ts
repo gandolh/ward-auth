@@ -6,10 +6,10 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 /**
- * Brief 28 through the routes: Ward behind a proxy that is **not** loopback.
+ * Trusted proxies through the routes: Ward behind a proxy that is **not** loopback.
  *
  * In a container the socket peer is a Docker bridge address — Docker's proxy
- * on the host, the Caddy container locally — and before this brief Ward
+ * on the host, the Caddy container locally — and before 2026-10-13 Ward
  * ignored `X-Forwarded-For` from it, so every request keyed on that one
  * address. Five bad passwords for five usernames then locked a sixth caller
  * with its own forwarded address out of `/login` for fifteen minutes.
@@ -148,7 +148,7 @@ describe("a proxy inside WARD_TRUSTED_PROXIES", () => {
 
 describe("a peer outside WARD_TRUSTED_PROXIES", () => {
   it("is keyed on itself, whatever it forwards", async () => {
-    // Exactly brief 28's outage, reproduced on purpose: an unlisted proxy puts
+    // Exactly the 2026-10-13 outage, reproduced on purpose: an unlisted proxy puts
     // everybody behind it in one bucket.
     for (let caller = 1; caller <= 5; caller += 1) {
       const response = await badLogin(STRANGER, `198.51.100.${caller}`, `user-${caller}`);

@@ -1,10 +1,10 @@
 /**
- * The focus rule after a confirmed write (brief 35), without a DOM.
+ * The focus rule after a confirmed write, without a DOM.
  *
  * The rule is pure: given what is on screen after the reload, pick the opener
  * by its key or fall back to the heading. A fake root stands in for the
  * document; the browser half (the reload, Base UI's dialog) was checked by hand
- * and is described in the brief's outcome.
+ * and is described in the log's 2026-10-27 entry.
  */
 
 import { describe, expect, it } from "vitest";

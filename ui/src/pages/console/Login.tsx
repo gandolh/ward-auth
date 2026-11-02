@@ -3,7 +3,7 @@
  *
  * ## It is deliberately not the ordinary login page
  *
- * The brief asks for this and calls it a safety property rather than a
+ * The console's spec asks for this and calls it a safety property rather than a
  * preference, and the reasoning is worth keeping next to the code: there is
  * exactly one console credential, it lives in Ward's environment, it cannot be
  * revoked or rotated without a redeploy, and every route behind this form
@@ -82,7 +82,7 @@ export function ConsoleLogin({
   }
 
   return (
-    // The attribute is set here as well as on brief 09's wrapper. It is what
+    // The attribute is set here as well as on `app.tsx`'s wrapper. It is what
     // re-points the token palette, and this screen must be unmistakable even if
     // it is ever rendered outside that wrapper.
     <div className="wc-gate" data-ward-surface="console">

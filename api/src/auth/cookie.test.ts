@@ -40,7 +40,7 @@ function parseSetCookie(header: string): {
 describe("the two cookie scopes", () => {
   it("names and paths are the ones the decisions record", () => {
     // `ward_session`, scoped to Ward's API since the shared-cookie contract
-    // was retired (brief 30). Its old `Path=/` is only ever written to expire.
+    // was retired. Its old `Path=/` is only ever written to expire.
     expect(ACCESS_COOKIE_NAME).toBe("ward_session");
     expect(ACCESS_COOKIE_PATH).toBe("/ward-api");
     expect(LEGACY_ACCESS_COOKIE_PATH).toBe("/");
@@ -90,7 +90,7 @@ describe("sessionCookies", () => {
   });
 
   it("expires the legacy Path=/ access cookie in the same response", () => {
-    // A browser that signed in before brief 30 holds a ward_session at
+    // A browser that signed in before 2026-10-13 holds a ward_session at
     // Path=/. Setting the new one does not replace it (different path, so a
     // different cookie); this third header does.
     const parsed = parseSetCookie(legacy);

@@ -1,13 +1,13 @@
 /*
  * Ward's design tokens.
  *
- * **Brief 09 owns these values and may change any of them.** What is fixed is
- * the set of *names*, because brief 10's console is built in parallel against
+ * **The sign-in side owns these values and may change any of them.** What is
+ * fixed is the set of *names*, because the console is built against
  * them — consume the names, and if you need a new one, add it here rather than
  * hard-coding a colour next to a component.
  *
  * ---------------------------------------------------------------------------
- * The intent, from brief 09: "a door, not a lobby."
+ * The intent, from the login UI's spec: "a door, not a lobby."
  *
  * Ward interrupts somebody who was on their way somewhere else. Atrium's
  * Reading Room and newspapper's Mechanical are strongly-designed and nothing
@@ -75,7 +75,7 @@
   --ward-text-base: 1rem;
   --ward-text-lg: 1.25rem;
   --ward-text-xl: 1.75rem;
-  /* Added by brief 09 for the destination line — the one piece of type on this
+  /* Added for the destination line — the one piece of type on this
      surface that is allowed to be large. */
   --ward-text-2xl: 2.375rem;
 
@@ -117,7 +117,7 @@
 /*
  * The console deliberately does NOT look like the login page.
  *
- * Brief 10: "Make it visibly *not* the ordinary login page; someone reaching
+ * The console's spec: "Make it visibly *not* the ordinary login page; someone reaching
  * for break-glass should know they have." That is a safety property, not a
  * style preference — the console is superuser-only, every route on it changes
  * authority, and there is exactly one credential for it that cannot be

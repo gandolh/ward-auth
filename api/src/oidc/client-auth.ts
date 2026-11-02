@@ -9,7 +9,7 @@ import { CLIENT_ASSERTION_ALGS, clientMetadataFor } from "./clients.js";
  * Verify an app's `private_key_jwt` client assertion **outside** the provider.
  *
  * The token endpoint does this itself, inside `oidc-provider`. Ward's own
- * endpoints that an app calls server-to-server — brief 19's
+ * endpoints that an app calls server-to-server —
  * `POST /session-status` and `POST /notify` — need the
  * same check without a Koa context, and this is it. It reads the same keys
  * (the `apps` row) and spends the same replay markers as the provider, so one

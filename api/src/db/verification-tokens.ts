@@ -4,7 +4,7 @@ import { prepareOnce } from "./prepared.js";
 
 /**
  * The `verification_tokens` table — single-use, expiring tokens mailed to an
- * address, for the public registration and recovery paths (brief 07).
+ * address, for the public registration and recovery paths.
  *
  * Shape cribbed from `public-resource-map`'s `verification_token` /
  * `reset_token` pair, which already ships this flow, with two deliberate

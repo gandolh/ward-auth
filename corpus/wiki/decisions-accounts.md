@@ -1,6 +1,6 @@
 ---
 summary: The locked calls about accounts themselves — who may register and what registration confers, the grant model that replaced signup as the security boundary, the canonical identifier, per-app signup flags, email, passwords-for-now, and the full-prune cutover. Administration and privilege are in decisions-admin.md.
-updated: 2026-09-01
+updated: 2026-11-02
 ---
 
 # Decisions — accounts, registration and grants
@@ -167,7 +167,7 @@ dependents go first — `favorite_event`, `favorite_place`, `notification`,
 `reset_token`, `session`, `verification_token`. All of it is derived data;
 there is no authored content in prm to lose.
 
-**Execution note for whoever writes the cutover brief:** take a database copy
-first. Atrium's repo already carries a `backup-pre-brief35-*` directory from the
+**Execution note (the cutover of 2026-10-04 followed it):** take a database
+copy first. Atrium's repo already carries a `backup-pre-brief35-*` directory from the
 last time a migration touched profile-scoped rows, so the precedent is the
 project's own.

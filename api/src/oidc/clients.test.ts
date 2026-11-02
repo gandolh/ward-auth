@@ -87,7 +87,7 @@ describe("client registration", () => {
   });
 });
 
-describe("verifyClientAssertion (for brief 19's endpoints)", () => {
+describe("verifyClientAssertion (for /session-status and /notify)", () => {
   let db: Database.Database;
   let key: JWK;
 

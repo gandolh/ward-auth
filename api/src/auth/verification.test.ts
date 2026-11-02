@@ -129,8 +129,8 @@ describe("consumeEmailVerification", () => {
   });
 
   /**
-   * `password_reset` is a purpose this brief deliberately does not build. If a
-   * later brief does, its tokens must not be spendable through the verification
+   * `password_reset` is a purpose Ward deliberately does not build. If a
+   * later change does, its tokens must not be spendable through the verification
    * path — so the purpose is asserted here rather than assumed from the fact
    * that nothing writes one today.
    */

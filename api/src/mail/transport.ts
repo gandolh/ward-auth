@@ -12,8 +12,8 @@ import type { MailTransport } from "../config.js";
  * ## Why the mode is a parameter and not an `if (NODE_ENV)`
  *
  * `config.ts` exports `MAIL` as a **discriminated union** and requires
- * `WARD_MAIL_TRANSPORT` explicitly, because the obvious way to satisfy brief
- * 07's "development needs no SMTP credentials" — sniff the environment and fall
+ * `WARD_MAIL_TRANSPORT` explicitly, because the obvious way to satisfy
+ * "development needs no SMTP credentials" — sniff the environment and fall
  * back to files — is the silent default that whole file exists to refuse. An
  * estate whose mail stopped leaving the building because a variable was unset
  * somewhere is a registration flow that appears to work and delivers nothing.

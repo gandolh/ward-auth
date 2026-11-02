@@ -31,7 +31,7 @@ import { getDb } from "../db/connection.js";
  *
  * ## What it buys the UI
  *
- * Two things brief 09 could not do without it. `Register` had to name an app
+ * Two things the login UI could not do without it. `Register` had to name an app
  * from a hard-coded display-name table, because the real `apps.name` was
  * readable only through the superuser-only console; and the estate's one login
  * page carried **no "create an account" link at all**, because most apps are
@@ -42,15 +42,14 @@ import { getDb } from "../db/connection.js";
  *
  * The console's list answers `{ apps: [...] }` because it also carries a total
  * and will grow filters. This one is the complete set — a handful of rows, no
- * pagination possible or wanted — and the contract brief 09 wrote its client
+ * pagination possible or wanted — and the contract the login UI wrote its client
  * against is `[{ slug, name }]`.
  *
  * ## The empty answer is a state, not an error
  *
  * A fresh estate has no apps at all: `seedApps` is test support and production
  * seeds nothing, so `[]` is the correct and expected answer until the console
- * creates an app with registration open. brief 07 records the same trap for
- * `/register` ("it looks like a bug"), and the UI must read `[]` as "nowhere is
+ * creates an app with registration open. `/register` has the same trap ("it looks like a bug"), and the UI must read `[]` as "nowhere is
  * open to strangers", never as a failure.
  */
 

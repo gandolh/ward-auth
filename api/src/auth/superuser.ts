@@ -15,14 +15,14 @@ import { wardSecureCookies } from "./cookie.js";
  *   broken.
  * - The **owner account** is an ordinary account holding explicit admin grants
  *   across the apps. It is what actually runs atrium, newspapper and the rest,
- *   it is created *through* the console (brief 05), and it is revocable,
+ *   it is created *through* the console, and it is revocable,
  *   rotatable and auditable — which is exactly what the superuser is not.
  *
  * ## Two properties this module exists to hold structurally
  *
  * **1. Nothing here reads or writes the database as an identity.** The
  * credential check is a comparison against two environment strings; there is no
- * lookup, no row, no mirror table, and this brief creates none. The only
+ * lookup, no row, no mirror table, and nothing here creates one. The only
  * database call anywhere on the console-login path is the `audit_log` insert the
  * route makes, and `audit_log` deliberately has no foreign keys precisely so the
  * superuser — which has nothing to reference — can appear in it.
@@ -157,7 +157,7 @@ interface StoredSession {
 /**
  * The store: in memory, keyed by `sha256(token)`.
  *
- * The brief allows in memory or a table, and in memory is the better answer
+ * In memory or a table would both do, and in memory is the better answer
  * here for a reason beyond convenience — a table would mean the superuser has
  * *rows*, which is the one thing `decisions-admin.md` says it must not have.
  * Keeping it out of SQLite keeps "no row anywhere" literally true and keeps the
@@ -232,7 +232,7 @@ export async function checkSuperuserCredentials(
  * Whether the console cookie should carry `Secure`, derived from
  * `WARD_PUBLIC_ORIGIN`.
  *
- * Same rule brief 03 applies to the session cookies — and now literally the
+ * Same rule the session cookies follow — and now literally the
  * same code. This function used to test `WARD_PUBLIC_ORIGIN.startsWith("https:")`
  * on its own, which dropped the loopback half of the rule the comment claimed to
  * implement and so **failed open** where its sibling fails closed: for
@@ -341,7 +341,7 @@ export function openConsoleSession(): OpenedConsoleSession {
  * someone pasted into the wrong cookie — with no distinction between them, so
  * the guard has one answer to give and no oracle to relay.
  *
- * There is no clock parameter, deliberately. Brief 02 shipped a verify path
+ * There is no clock parameter, deliberately. The token work once shipped a verify path
  * whose every claim check was caller-overridable, including the current time,
  * and the fix was to make the dangerous inputs *not expressible* rather than to
  * document them. The same reasoning applies to a session deadline: tests move
@@ -389,8 +389,8 @@ export function resetConsoleSessionsForTests(): void {
 /**
  * Read the console cookie out of a raw `Cookie` header.
  *
- * Hand-rolled because Ward has no cookie plugin and this brief may not add a
- * dependency — and because the job is genuinely this small. It reads **only**
+ * Hand-rolled because Ward has no cookie plugin and adds no dependency for
+ * one — and because the job is genuinely this small. It reads **only**
  * `ward_console` and ignores every other cookie on the header, which matters:
  * the access-token cookie (`Path=/ward-api`) reaches the console's paths too,
  * and the guard must never be able to see it, let alone act on it.
@@ -421,7 +421,7 @@ function attributes(secure: boolean): string {
     // anywhere, so nothing legitimate arrives cross-site — and every route
     // behind this cookie changes authority (creating accounts, issuing grants),
     // which is precisely the shape that wants CSRF closed at the cookie rather
-    // than mitigated by a token. Brief 03's session cookies are Lax because a
+    // than mitigated by a token. The session cookies are Lax because a
     // top-level navigation into an app must carry them; nothing navigates into
     // the console.
     "SameSite=Strict",

@@ -10,14 +10,14 @@ import type { WardSigningKey } from "./keys.js";
  * **There is no parameter for extra claims, and that is the point.** Permissions,
  * roles and grants are forbidden in the token by wiki/decisions-tokens.md: a
  * token minted before a grant changed would carry stale authority for its whole
- * 15 minutes, whereas authority carried in the introspection response (brief 04)
+ * 15 minutes, whereas authority carried in the introspection response
  * changes in the same 30-second window a revocation does. Making the signer take
  * only a subject means nobody can add a claim in a hurry from a call site — the
  * decision is enforced by the signature of this function rather than by a
  * comment somebody has to read first.
  */
 
-/** What a caller gets back. `jti` and `expiresAt` are here so brief 03 need not decode its own token. */
+/** What a caller gets back. `jti` and `expiresAt` are here so login need not decode its own token. */
 export interface MintedAccessToken {
   /** The compact JWS. This is what goes in the `ward_session` cookie. */
   readonly token: string;

@@ -391,11 +391,11 @@ The owner's first `node cli.ts ward all` failed: vps-deploy's Ward stack still l
 
 ## [2026-10-18] todo | Brief 31 filed: the docs site moves from Starlight to Docusaurus
 
-The owner's call (2026-10-18), one brief in every repo with a docs site. [31](briefs/done/31-docs-site-on-docusaurus.md) keeps the URLs and the light-only look. Docusaurus adds the base to root-absolute `.mdx` links and the new sync discovers `decisions-oidc` and `decisions-oidc-build`, which closes the todo about base-less links (marked promoted). The deploy waits on vps-deploy brief 11.
+The owner's call (2026-10-18), one brief in every repo with a docs site. 31 keeps the URLs and the light-only look. Docusaurus adds the base to root-absolute `.mdx` links and the new sync discovers `decisions-oidc` and `decisions-oidc-build`, which closes the todo about base-less links (marked promoted). The deploy waits on vps-deploy brief 11.
 
 ## [2026-10-19] done | Brief 31: the docs site on Docusaurus
 
-[31](briefs/done/31-docs-site-on-docusaurus.md) moved `docs/` from Astro Starlight to Docusaurus 3.10, following the corpus-docs-site skill's migration guide (v0.31.0). The base stays `/ward/docs/` (`DOCS_BASE` still overrides), the build still writes `docs/dist/`, and the site stays light only on Ward's limestone tokens, now on Infima's variables in `src/css/custom.css`. The nine authored pages moved to `docs/docs/`, the diagrams to `static/diagrams/`, and `Diagram` became a React component. Search is local (`@easyops-cn/docusaurus-search-local`), which adds `/search/`. `sync-corpus.mjs` is the skill's: it discovers every wiki page instead of reading a list, so `decisions-oidc` and `decisions-oidc-build` are published and in the sidebar, and the OIDC page links the former. Docusaurus puts the base on root-absolute links, so the `/oidc/`, `/api/` and `/data/` links that 404 on the live site now resolve; broken links fail the build. That closes the todo `docs-site-internal-links-miss-the-base.md`, deleted here. integrating.md's link to the OIDC page followed it to `docs/docs/oidc.mdx`.
+31 moved `docs/` from Astro Starlight to Docusaurus 3.10, following the corpus-docs-site skill's migration guide (v0.31.0). The base stays `/ward/docs/` (`DOCS_BASE` still overrides), the build still writes `docs/dist/`, and the site stays light only on Ward's limestone tokens, now on Infima's variables in `src/css/custom.css`. The nine authored pages moved to `docs/docs/`, the diagrams to `static/diagrams/`, and `Diagram` became a React component. Search is local (`@easyops-cn/docusaurus-search-local`), which adds `/search/`. `sync-corpus.mjs` is the skill's: it discovers every wiki page instead of reading a list, so `decisions-oidc` and `decisions-oidc-build` are published and in the sidebar, and the OIDC page links the former. Docusaurus puts the base on root-absolute links, so the `/oidc/`, `/api/` and `/data/` links that 404 on the live site now resolve; broken links fail the build. That closes the todo `docs-site-internal-links-miss-the-base.md`, deleted here. integrating.md's link to the OIDC page followed it to `docs/docs/oidc.mdx`.
 
 Checks: the build exits 0 with no broken-link or anchor warnings; the route list equals the Starlight one plus `search/`, `wiki/decisions-oidc/` and `wiki/decisions-oidc-build/`; no `href` misses the base; `index.html` references `/ward/docs/assets/` and no Astro asset path is left. Served from `dist/` at `/ward/docs/` by a plain static server, the configuration page's links reach the API, data and OIDC pages, all three diagrams load, there is no theme toggle, and a search returns results. Typecheck, lint, fmt:check, the 1171 tests and corpus lint pass. Not deployed: the owner deploys after vps-deploy brief 11 sets the Ward docs stack's asset directory to `assets`.
 
@@ -423,14 +423,14 @@ is recorded here only. Owner steps in [status.md](wiki/status.md).
 ## [2026-10-23] todo | Brief 33 filed: Base UI in the console
 
 The owner asked for Base UI in the apps that still hand-build their widgets.
-[Brief 33](briefs/done/33-base-ui-in-the-console.md) moves the console's
+Brief 33 moves the console's
 `Confirm` to Base UI `AlertDialog`, keeping the busy-can't-dismiss rule, and
 the New account/app disclosures to `Collapsible`. The public sign-in pages
 stay free of it.
 
 ## [2026-10-23] done | Brief 33: Base UI in the console
 
-[Brief 33](briefs/done/33-base-ui-in-the-console.md) is built. `Confirm` is a
+Brief 33 is built. `Confirm` is a
 Base UI `AlertDialog` that can't be dismissed while busy, and the New account
 and Register an app forms are `Collapsible`s. The portalled popup carries
 `data-ward-surface="console"` to keep the console's dark tokens. Checked:
@@ -438,26 +438,26 @@ typecheck, lint, 1175 tests, the build, and the console in Chromium against a
 scratch API at 1440 and 390 px. The decision is in
 [decisions.md](wiki/decisions.md). Two todos came out of it:
 `split-the-console-chunk.md` (the sign-in
-pages download Base UI too; closed by [brief 34](briefs/done/34-console-in-its-own-chunk.md)) and
+pages download Base UI too; closed by brief 34) and
 `focus-after-a-confirmed-write.md`, an
-existing gap (closed by [brief 35](briefs/done/35-focus-after-a-confirmed-write.md)). brief-board is down, so nothing was posted there.
+existing gap (closed by brief 35). brief-board is down, so nothing was posted there.
 
 ## [2026-10-23] todo | Briefs 34–38 from the three open todos
 
-[34](briefs/done/34-console-in-its-own-chunk.md) lazy-loads the console so the public
-pages stop downloading Base UI. [35](briefs/done/35-focus-after-a-confirmed-write.md)
+34 lazy-loads the console so the public
+pages stop downloading Base UI. 35
 fixes focus falling to `<body>` after a confirmed write, at all ten `Confirm` call
 sites; checking `finalFocus` is its first step. The library todo split into one brief
-per bullet: [36](briefs/done/36-library-username-for-a-new-ward-user.md) a
-`usernameFor` hook beside `roleFor`, [37](briefs/done/37-library-rename-a-user.md)
+per bullet: 36 a
+`usernameFor` hook beside `roleFor`, 37
 `renameUser` plus a self-service `POST /username`, and
-[38](briefs/done/38-library-disable-a-user.md) `disableUser` with a new migration and
+38 `disableUser` with a new migration and
 one answer for every refusal. 36–38 share the CHANGELOG and version, so they run in
 order. Adoption in each app is left to that app's corpus.
 
 ## [2026-10-24] done | Brief 37: the library renames a user
 
-[Brief 37](briefs/done/37-library-rename-a-user.md) is built as ward-auth 0.4.0.
+Brief 37 is built as ward-auth 0.4.0.
 Shelfmark's owner asked to change their username, and chose to put the rename in
 the library rather than have Shelfmark write `auth_users` itself. It ran ahead of
 36, since the two only share the CHANGELOG and version; 36 and 38 now build on
@@ -470,9 +470,9 @@ build. brief-board is down, so nothing was posted there.
 The owner asked for a username rename in the console, then for deleting a user.
 Both sat on database functions written early and never called: `setUsername` and
 `deleteUser`, with the schema's cascades and an audit log without foreign keys.
-[39](briefs/done/39-console-rename-an-account.md) adds
+39 adds
 `POST /console/accounts/:subject/username` and a Username panel.
-[40](briefs/done/40-console-delete-an-account.md) adds
+40 adds
 `DELETE /console/accounts/:subject` and a danger panel. Both are audited and stop at
 Ward's edge, since the apps keep their own users
 ([decisions-admin.md](wiki/decisions-admin.md)). On the way, the app page's removal
@@ -482,7 +482,7 @@ database. brief-board is down, so nothing was posted there.
 
 ## [2026-10-27] done | Brief 34: the console in its own chunk
 
-[Brief 34](briefs/done/34-console-in-its-own-chunk.md) is built. `app.tsx` loads
+Brief 34 is built. `app.tsx` loads
 `ConsoleRoutes` with `React.lazy`, so Base UI and `console.css` ride in a chunk that
 only `/console` fetches. The entry JS went from 120.07 kB to 81.45 kB gzip and the
 entry CSS from 3.99 kB to 2.14 kB; the console chunk is 40.30 kB gzip. While it
@@ -496,7 +496,7 @@ there.
 
 ## [2026-10-27] done | Brief 35: focus after a confirmed write
 
-[Brief 35](briefs/done/35-focus-after-a-confirmed-write.md) is built. Base UI's
+Brief 35 is built. Base UI's
 `finalFocus` can't do it alone: it runs in the commit that closes the dialog,
 and the reload in the same batch has already unmounted the opener (checked in
 Chromium: `isConnected: false`, focus on `<body>`). So each screen asks for focus
@@ -514,7 +514,7 @@ nothing was posted there.
 
 ## [2026-10-27] done | Brief 36: an app shapes a new Ward user's username
 
-[Brief 36](briefs/done/36-library-username-for-a-new-ward-user.md) is built as
+Brief 36 is built as
 ward-auth 0.5.0. `ward.usernameFor({ username, subject })` sits beside `roleFor`
 and shapes a new Ward user's name before it is suffixed. For the suffix to keep
 an app's cap, the app passes `ward.usernameMaxLength` too, and the library cuts
@@ -527,7 +527,7 @@ posted there.
 
 ## [2026-10-27] done | Brief 38: an app switches a local user off
 
-[Brief 38](briefs/done/38-library-disable-a-user.md) is built as ward-auth 0.6.0.
+Brief 38 is built as ward-auth 0.6.0.
 `Accounts.disableUser` stamps `auth_users.disabled_at` (migration 4, every existing
 user active) and ends the user's sessions; `enableUser` clears it. A disabled user
 gets the answer an unknown one gets: the password check fails at one scrypt cost,
@@ -542,7 +542,7 @@ brief. brief-board is down, so nothing was posted there.
 ## [2026-10-27] done | Brief 41: the bundle exports 0.5.0's and 0.6.0's new names
 
 The owner asked for the three names briefs 36 and 38 left out of `index.ts`.
-[Brief 41](briefs/done/41-library-export-the-new-names.md) is built as ward-auth
+Brief 41 is built as ward-auth
 0.6.1, a patch: the bundle exports `UsernameFor`, `isUsernameMaxLength` and
 `UserDisabledError`, and nothing changes at runtime. The vendor smoke test's
 TypeScript consumer and `.mjs` server both use them, and fail against the old
@@ -555,7 +555,7 @@ nothing was posted there.
 
 The owner asked for the gap sports-app's brief 32 left: after a refused "Sign in
 with Ward" the app lost the `returnTo` it had passed, so a retry landed on `/`.
-[Brief 42](briefs/done/42-library-return-path-through-a-refused-sign-in.md) is
+Brief 42 is
 built as ward-auth 0.7.0. Every sign-in failure now lands on
 `loginPath?ward_error=<code>&ward_return_to=<returnTo>`, checked with
 `isLocalPath` when written and again when the browser client reads it, and
@@ -571,7 +571,7 @@ there.
 
 ## [2026-10-27] done | Brief 43: docs tidy
 
-[Brief 43](briefs/done/43-docs-tidy.md) is done in one docs commit. The README's
+Brief 43 is done in one docs commit. The README's
 status says Ward is on `ward.<domain>` since the release of 2026-10-22, not "with
 its next deploy". The cutover runbook gives Satchel the URIs of its own host, as
 satchel's setup guide registers them. Prettier on `README.md` and
@@ -585,3 +585,30 @@ fmt:check, typecheck, lint, 1231 tests. status.md's history no longer calls brie
 ## [2026-10-31] maintenance | README checked; the shots record names today's paths
 
 A README refresh pass with the readme-docs standard. The README already met it after brief 43 and still matches the code. `npm install`, `npm test` (69 files, 1231 tests), `npm run typecheck`, `npm run lint` and `npm run build` all pass, and every relative link in the README and `docs/` resolves. The sign-in and account shots still show their pages as they render today: brief 32's changes to those pages were paths, not looks. `docs/images/shots.md` said to open `/ward/login` and `/ward/account`; since brief 32 those are `/login` and `/account` on Ward's own host, and it says so now. Ward itself was not started: it runs in Docker from images this workspace cannot pull.
+
+## [2026-11-02] maintenance | Briefs reset
+
+Part of an estate-wide reset. The forty-two briefs in `briefs/done/` (00-10, 13-43) and the
+superseded 11 are folded into the wiki and deleted; brief numbering restarts at 01 (there was
+never a 12). The last commit that held them is `5de7c6b`: read one with
+`git show 5de7c6b:corpus/briefs/done/28-lockout-behind-containers.md`. Brief numbers in the
+entries above refer to that set, and other repos' numbers to theirs before their own resets.
+
+The outcome notes were checked against the wiki; the decisions pages already held their calls,
+cited by brief number, and now cite the date or the work instead. status.md loses its wave
+tables and becomes a dated snapshot per area with the owner's next steps and the ward-auth
+version each app vendors. open-questions.md drops the deferred items that are done (the
+cutover, the deploy entry, the UI) and keeps the key-rotation runbook and the repo rename.
+overview.md no longer says every app vendors 0.3.1.
+
+Code comments, five test titles and the docs no longer cite brief numbers. Most were build-era
+narrative ("brief 03 is writing this in parallel", "brief 09 owns this file") and now say what
+the code does or name the part of Ward that owns it. The shared library's source comments and
+CHANGELOG changed too (the owner's call, 2026-11-02); the apps' vendored copies stay as they are
+until they re-vendor. Left as they were: the dated migration files under
+`api/src/db/migrations/` and the SQL comments inside `shared-library/src/store/migrations.ts`.
+
+Checks: corpus lint, typecheck, lint and `fmt:check` are clean; `npm test` passes 1230 of 1231.
+The one failure predates this reset: `shared-library/scripts/vendor.test.ts` expects the vendored
+README to carry the GitHub URL that `5de7c6b` (2026-11-01) replaced with the repository's name.
+It is in status.md's known issues.

@@ -25,8 +25,8 @@ into the repo. Start the UI with `npx vite --port 5199` in `ui/`; its dev server
 `POST /ward-api/console/apps` (`{ slug, name }`), take the shot, then stop both and delete the
 directory. Seven rows need the 720 px viewport.
 
-sign-in.webp was taken on 2026-10-09 through the old `?next=/atrium/` link. Since brief 30
-(2026-10-13) `?next=` accepts only Ward's own pages and the "Continue to" heading appears only for
+sign-in.webp was taken on 2026-10-09 through the old `?next=/atrium/` link. Since
+2026-10-13 `?next=` accepts only Ward's own pages and the "Continue to" heading appears only for
 an OpenID Connect sign-in, so the recipe above is the one to use next time. Expect small differences
 from the committed image, such as the OIDC page's "Back to" link.
 

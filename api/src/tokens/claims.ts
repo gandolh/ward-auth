@@ -5,7 +5,7 @@
  * This module is deliberately dependency-free: no `jose`, no `config.js`, no
  * `node:` anything, so importing it never runs Ward's environment validation
  * (and its `process.exit(1)`). Since the shared-cookie contract was retired
- * (brief 30) the access token is read by Ward alone, for its own pages.
+ * the access token is read by Ward alone, for its own pages.
  */
 
 /**
@@ -79,7 +79,7 @@ export const ACCESS_TOKEN_CLOCK_TOLERANCE_SECONDS = 5;
  * roles, no grants**. wiki/decisions-tokens.md forbids them outright — a token
  * minted before a grant changed would carry stale authority for its whole
  * lifetime, and the fix is that authority lives in the introspection response
- * (brief 04) where a change lands in the same 30-second window a revocation
+ * where a change lands in the same 30-second window a revocation
  * does. If you are reaching for a place to put a role, this type is not it.
  *
  * `sub` is the **Subject** in the glossary's sense: the stable, opaque

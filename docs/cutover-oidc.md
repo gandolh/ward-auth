@@ -1,20 +1,20 @@
 # Cutover: local accounts and "Sign in with Ward"
 
-The owner's runbook for brief 27. It moves production from Ward's shared cookie
+The owner's runbook for the 2026-10-13 cutover. It moves production from Ward's shared cookie
 to the shape in [decisions-oidc.md](../corpus/wiki/decisions-oidc.md): every app
 signs people in with its own accounts, and Ward is the OpenID Connect provider
 behind each app's "Sign in with Ward" button.
 
-**Status: done.** Production was cut over on 2026-10-13, and brief 30 removed
-the old contract from Ward's code the same day. It reaches production with the
+**Status: done.** Production was cut over on 2026-10-13, and the old contract was removed
+from Ward's code the same day. It reaches production with the
 next Ward deploy (step 9).
 
-**Since 2026-10-22 (brief 32) Ward has a host of its own.** Read `<origin>/ward`
+**Since 2026-10-22 Ward has a host of its own.** Read `<origin>/ward`
 below as `https://ward.<domain>` and `<origin>/ward-api` as
 `https://ward.<domain>/ward-api`: the console is at `https://ward.<domain>/console`,
 and every app's `WARD_OIDC_ISSUER` is `https://ward.<domain>/ward-api/oidc`.
 Ward's move changed no app's redirect URIs. Satchel's changed with its own move
-to the root of `satchel.<domain>` (satchel's brief 15, the same day), so its row
+to the root of `satchel.<domain>` (the same day), so its row
 in step 4 is written out in full.
 
 Every step here is yours to run. The deploy configuration is already in
@@ -35,7 +35,7 @@ export DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock
 ```
 
 **Why this order was safe.** The old contract (app keys, `/introspect` and the
-shared cookie) stayed live in Ward until brief 30 retired it on 2026-10-13. A
+shared cookie) stayed live in Ward until it was retired on 2026-10-13. A
 Ward of that time served both the old and the new flow, so the apps still in
 production kept working after step 3. Each new app version stops reading
 `WARD_APP_KEY`, so apps could move one at a time.
@@ -72,9 +72,9 @@ Use new pairs for production. Do not reuse the keys the local seed wrote into
 the apps' development `.env` files.
 
 Each file's old `WARD_APP_KEY` is read by nothing once its app redeploys.
-Brief 30 is done, so you can delete those lines. `secrets/sports-app.env` must
+The old contract is retired, so you can delete those lines. `secrets/sports-app.env` must
 also keep `SPORTS_APP_SYNC_SECRET`. The stack still requires it although the
-service no longer reads it (vps-deploy brief 09).
+service no longer reads it.
 
 A deploy of an app stack without `WARD_OIDC_CLIENT_KEY` stops at preflight and
 names the file. A Ward deploy does not need any of them.
@@ -361,9 +361,9 @@ For each app:
 Revoking a session in Ward's console should end that app's Ward-originated
 session within 30 seconds.
 
-## 9. Only then: brief 30 (done 2026-10-13)
+## 9. Only then: retire the old contract (done 2026-10-13)
 
-Brief 30 retired the old contract once every app in production ran the new
+The old contract was retired once every app in production ran the new
 version: app keys and the `app_keys` table, `/introspect`, the shared cookie
 (the access cookie is now at `Path=/ward-api`), the app-wide `?next=` list and
 `client/`. Only Ward redeploys for it: here, in vps-deploy,

@@ -135,7 +135,7 @@ export type SessionVerdict =
   | { ok: true }
   | {
       ok: false;
-      /** A stable code, sent to the browser as `reason` (brief 21: `ward_unavailable`). */
+      /** A stable code, sent to the browser as `reason` (e.g. `ward_unavailable`). */
       reason: string;
       /** Delete the session row and clear the cookie, rather than refusing only this request. */
       endSession?: boolean;
@@ -144,7 +144,7 @@ export type SessionVerdict =
 /**
  * **The guard's extension hook.** Runs on every request that carries a live
  * session — guarded routes and `GET <routePrefix>/session` alike — after the
- * row is found and before the request proceeds. Brief 21 hooks the 30-second
+ * row is found and before the request proceeds. The Ward half hooks the 30-second
  * Ward check in here for Ward-originated sessions; a local session should
  * return `{ ok: true }` without doing any I/O.
  *

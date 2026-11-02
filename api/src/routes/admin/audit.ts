@@ -16,7 +16,7 @@ import { databaseResolver, type AdminRoutesOptions } from "./support.js";
  * only credential that still works when the database is empty or the last admin
  * has been removed — and the price named in the same decision is that this log
  * is *the only observability the credential has*. Every console mutation has
- * been writing rows since brief 05; until this route existed there was no way
+ * been writing rows since 2026-09-04; until this route existed there was no way
  * to read them, so the requirement was met in the schema and unmet in practice.
  *
  * ## The filter that could not work, and now can
@@ -53,7 +53,7 @@ import { databaseResolver, type AdminRoutesOptions } from "./support.js";
  * empty page that reads as "nothing ever happened on this surface" — the single
  * most misleading answer this screen can give.
  *
- * `limit` defaults to 200, which is what brief 10's console asks for, and is
+ * `limit` defaults to 200, which is what the console asks for, and is
  * capped at 500. `beforeId` starts at 1 because `audit_log.id` is a rowid
  * alias.
  */
@@ -147,7 +147,7 @@ export async function adminAuditRoutes(
      * **`total` is the size of the whole log, not of the filtered set.**
      *
      * That is what answers the operator's question — "am I looking at
-     * everything?" — and it is what brief 10's table renders: "42 shown of 1207
+     * everything?" — and it is what the console's table renders: "42 shown of 1207
      * in the log". A filtered count would make the two numbers agree whenever a
      * filter was applied and so say nothing at all, and it would cost a second
      * scan of the same predicate on a screen that is already showing every row

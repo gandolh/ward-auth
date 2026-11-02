@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { WARD_API } from "./api.js";
 
 /**
- * The login page's half of "Sign in with Ward" (brief 18).
+ * The login page's half of "Sign in with Ward".
  *
  * When an app sends someone to Ward and they are not signed in, Ward's
  * provider sends them here as `/login?oidc=<uid>`. The uid names the

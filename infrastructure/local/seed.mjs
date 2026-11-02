@@ -10,7 +10,7 @@
  *
  *   1. every app that uses Ward is registered;
  *   2. one owner account exists and holds `admin` on each of them;
- *   3. each app is an OpenID Connect client (brief 18): its dev redirect URI and
+ *   3. each app is an OpenID Connect client: its dev redirect URI and
  *      sign-out return URI are registered, and its client key pair exists. The
  *      private half goes into the app's env file(s) as WARD_OIDC_CLIENT_KEY,
  *      next to WARD_OIDC_ISSUER, WARD_OIDC_CLIENT_ID, WARD_OIDC_REDIRECT_URI
@@ -19,7 +19,7 @@
  *      nothing else in those files changes.
  *
  * It no longer writes WARD_APP_KEY, WARD_PUBLIC_ORIGIN or WARD_API_BASE_PATH:
- * those served the shared-cookie contract, retired in brief 30. An app env file
+ * those served the shared-cookie contract, retired on 2026-10-13. An app env file
  * that still has them can simply drop the three lines; nothing reads them.
  *
  * The owner's username and password come from WARD_OWNER_USERNAME and
@@ -49,7 +49,7 @@ const OIDC_ISSUER = `${API}/oidc`;
  * proxy rule. An app that picks another path registers it in the console.
  */
 const OIDC_CALLBACK_PATH = "/auth/ward/callback";
-/** brief 18's convention, under the UI base path; replaced by the one above. */
+/** The first convention (2026-10-13), under the UI base path; replaced by the one above. */
 const OLD_OIDC_CALLBACK_PATH = "auth/ward/callback";
 
 const ENV_FILE = process.env.WARD_LOCAL_ENV_FILE ?? join(homedir(), ".config/ward/local.env");

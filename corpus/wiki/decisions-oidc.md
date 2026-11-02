@@ -1,6 +1,6 @@
 ---
-summary: The 2026-10-13 redesign — every app keeps its own accounts and its own login page, "Sign in with Ward" is an OpenID Connect flow against Ward as the provider, Ward-originated app sessions still die within 30 seconds of a Ward revoke, and the shared code ships as a built library each app copies in. Revises Q4, Q21 and the no-shared-package call. Brief 18 added how apps authenticate as clients (private_key_jwt) and what the provider's own session still does.
-updated: 2026-10-13
+summary: The 2026-10-13 redesign — every app keeps its own accounts and its own login page, "Sign in with Ward" is an OpenID Connect flow against Ward as the provider, Ward-originated app sessions still die within 30 seconds of a Ward revoke, and the shared code ships as a built library each app copies in. Revises Q4, Q21 and the no-shared-package call. Building it settled how apps authenticate as clients (private_key_jwt) and what the provider's own session still does.
+updated: 2026-11-02
 ---
 
 # Decisions — local accounts and Ward as an OIDC provider
@@ -19,7 +19,7 @@ pointing here:
 - [integrating.md](./integrating.md), 2026-09-06: there is now a shared
   package. Each app does not install it. It holds a copied, built version.
 
-Briefs 18–27 build it. The wave plan is in [status.md](./status.md).
+Built and cut over on 2026-10-13 ([status.md](./status.md)).
 
 ## Every app owns its accounts; Ward is a linked second way in
 _2026-10-13_ — Each app has a users table in its own database, its own
@@ -98,7 +98,7 @@ would let one end while the other lives on. Ward passes the family id to the app
 in a custom ID token claim, `ward_sid`. The provider's own `sid` is left alone.
 
 **Failing closed still holds** ([integrating.md](./integrating.md) rule 5;
-since brief 30 that page holds the app-side rules for `/session-status`).
+since 2026-10-13 that page holds the app-side rules for `/session-status`).
 When Ward cannot answer, a Ward-originated session is rejected, and the app
 tells the person to sign in with their local password. Local sessions are
 unaffected.
@@ -110,10 +110,9 @@ handling in Ward for no gain over a 30-second pull.
 ## Calls settled while building
 
 How clients authenticate, why Ward's refresh family outranks the provider's
-own session, the prefix and logout details, the session-status endpoint
-(brief 19), and the library's build calls for its local half (brief 20) and
-its Ward half (brief 21, which moved the callback under each app's API prefix)
-live in [decisions-oidc-build.md](./decisions-oidc-build.md). An app adopts
+own session, the prefix and logout details, the session-status endpoint,
+and the library's build calls for its local half and its Ward half (which
+moved the callback under each app's API prefix) live in [decisions-oidc-build.md](./decisions-oidc-build.md). An app adopts
 the library by following `shared-library/README.md`.
 
 ## Mail stays a Ward service, for Ward-linked users only
@@ -163,6 +162,6 @@ source** (each app would compile it under its own `tsconfig`, and sports-app
 has no TypeScript build).
 
 ## imbatranimOS stays out
-_2026-10-13, owner answer 6_ — imbatranimOS keeps its own sign-in (its brief
-157) and gets no Ward button for now. Nothing here may assume Fastify in the
+_2026-10-13, owner answer 6_ — imbatranimOS keeps its own sign-in (since it
+left Ward on 2026-10-07) and gets no Ward button for now. Nothing here may assume Fastify in the
 library's core, so a NestJS adapter stays possible later.

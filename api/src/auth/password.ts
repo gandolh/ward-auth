@@ -48,7 +48,7 @@ const scrypt = promisify(scryptCallback) as (
  * the next person to turn the dial gets a hash that works.
  *
  * **These parameters are not stored in the hash string.** The stored format is
- * `saltHex:hashHex` and nothing else, per the brief. The consequence is that
+ * `saltHex:hashHex` and nothing else, by design. The consequence is that
  * changing any constant below invalidates every existing hash: a stored value
  * derived at the old cost will simply stop matching, and the only migration
  * available is rehash-on-next-login (verify with the old parameters, then
@@ -104,7 +104,7 @@ export class PasswordPolicyError extends Error {
  * Hash a password for storage. Returns `saltHex:hashHex`.
  *
  * Throws `PasswordPolicyError` outside `MIN_PASSWORD_LENGTH ..
- * MAX_PASSWORD_LENGTH`. Brief 07 (registration) and any password-change route
+ * MAX_PASSWORD_LENGTH`. Registration and any password-change route
  * are the callers; both should surface `error.code` rather than the message.
  *
  * The salt is fresh per call, which is why the same password hashed twice gives

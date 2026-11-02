@@ -10,7 +10,7 @@ import { Verify } from "./pages/Verify.js";
 import "./ward.css";
 
 /**
- * The console, in a chunk of its own (brief 34). Only the console imports Base
+ * The console, in a chunk of its own. Only the console imports Base
  * UI and `console.css`, so loading it lazily keeps both off the sign-in,
  * registration, verification and account pages. `routes.tsx` exports a named
  * `ConsoleRoutes`, and its contract is not changed for this, so the wrapper
@@ -21,21 +21,21 @@ const ConsoleRoutes = lazy(() =>
 );
 
 /**
- * Ward's router. Brief 09 owns this file.
+ * Ward's router: the sign-in side's pages, and the console's mount.
  *
- * ## The contract with brief 10
+ * ## The contract with the console
  *
- * **Brief 10 owns everything under `pages/console/` and exposes it as one
+ * **Everything under `pages/console/` is the console's, exposed as one
  * `<ConsoleRoutes />`**; this file mounts it under `/console/*` and wraps that
  * subtree in `data-ward-surface="console"` so the console tokens apply. Neither
- * brief edits a file the other owns to add a screen, and nothing here reaches
- * into the console's pages. Since brief 34 the mount is lazy, and the import
+ * side edits a file the other owns to add a screen, and nothing here reaches
+ * into the console's pages. Since 2026-10-27 the mount is lazy, and the import
  * above is the only reference to the console from outside it.
  *
  * The wrapper is a `<div>` rather than an attribute on something the console
  * renders, because the token re-pointing has to be an **ancestor** of every
  * console element for `var(--ward-*)` to resolve to the dark palette. Putting
- * it here also means the console cannot forget it, and brief 10's own reasoning
+ * it here also means the console cannot forget it, and the console's own reasoning
  * for the dark surface is a safety property — someone reaching for break-glass
  * should be able to see that they have — so it should not depend on every
  * console page remembering a class name.

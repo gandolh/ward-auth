@@ -12,8 +12,8 @@ import {
 
 /**
  * The password primitive. Nothing here needs an environment or a database —
- * `password.ts` imports only `node:crypto`, which is what lets brief 07 use it
- * from a registration route without dragging config validation along.
+ * `password.ts` imports only `node:crypto`, which is what lets registration use it
+ * from its route without dragging config validation along.
  */
 
 describe("hashPassword", () => {

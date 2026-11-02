@@ -7,7 +7,7 @@ import { prepareOnce } from "../db/prepared.js";
  *
  * The provider's own records know an account id and a grant. They do not know
  * Ward's refresh family, and the ID token has to carry it as `ward_sid`: it is
- * the id an app later asks Ward about (brief 19), and the reason a Ward sign-out
+ * the id an app later asks Ward about, and the reason a Ward sign-out
  * ends the app session within 30 seconds (decisions-oidc.md). The interaction
  * writes one row here per authorization, keyed by the grant it creates, and
  * `findAccount` reads it back when the code is exchanged.

@@ -50,8 +50,8 @@
  *
  * ## Fastify-free on purpose
  *
- * Nothing here imports Fastify, `config.js`, or the database. Brief 06 applies
- * the same counter to the superuser console login, and a shared module that
+ * Nothing here imports Fastify, `config.js`, or the database. The console
+ * applies the same counter to the superuser console login, and a shared module that
  * drags a web framework or the environment validation along with it would
  * couple two unrelated surfaces. The caller derives the key; `lockoutKeyFor`
  * below is offered as the one-liner for doing that correctly, and it takes its
@@ -75,7 +75,7 @@ import { isIP } from "node:net";
 /**
  * Failures tolerated before the next attempt is refused.
  *
- * Five, per the brief. Note how that reads on the wire: attempts 1–5 get a
+ * Five. Note how that reads on the wire: attempts 1–5 get a
  * `401`, and the **sixth** request is the one that earns the `429`, because the
  * check runs before the attempt rather than after it.
  */
@@ -140,7 +140,7 @@ export const LOCKOUT_AMBIGUOUS_ADDRESS_WARN_INTERVAL_SECONDS = 5 * 60;
  * - `"login"` — `POST /login`, ordinary accounts.
  * - `"console"` — `POST /console/login`, the break-glass superuser.
  * - `"register"` — `POST /register`, the estate's only anonymous write surface
- *   (brief 07). It is throttled hardest and shares nothing: a registration
+ *  . It is throttled hardest and shares nothing: a registration
  *   flood must not stop the people who already have accounts from signing in.
  * - `"account_password"` — `POST /account/password`, a person changing their
  *   own password. It takes the **current** password as input, so it is a
@@ -494,8 +494,8 @@ export interface LockoutKeyOptions {
  * publishes `127.0.0.1:<port>`, host Caddy reaches Ward through Docker's proxy
  * and the peer is a bridge address instead — and locally it is the Caddy
  * container. Loopback-only trust then ignored the header for every request, and
- * five bad passwords from anyone locked everyone out for fifteen minutes (brief
- * 28). `trustedProxies` names those bridge ranges; loopback stays trusted
+ * five bad passwords from anyone locked everyone out for fifteen minutes (fixed
+ * 2026-10-13). `trustedProxies` names those bridge ranges; loopback stays trusted
  * without being listed, because a loopback peer on this box is the proxy by
  * construction.
  *
@@ -513,7 +513,7 @@ export interface LockoutKeyOptions {
  * The opposite case warns too: an `X-Forwarded-For` from an untrusted peer.
  * That is either somebody reaching Ward directly with a forged header, or —
  * far likelier — the proxy's own range missing from `trustedProxies`, which is
- * brief 28's outage. It went unnoticed in production because nothing said so.
+ * the 2026-10-13 outage. It went unnoticed in production because nothing said so.
  *
  * @example
  * const key = lockoutKeyFor(request.socket.remoteAddress, request.headers["x-forwarded-for"], {
@@ -619,7 +619,7 @@ const LOOPBACK: TrustedProxies = parseTrustedProxies(["127.0.0.0/8", "::1"]);
 function isTrustedPeer(peer: string, trusted: TrustedProxies): boolean {
   const parsed = addressBytes(peer);
   // A peer that is not an address at all (a runtime oddity) is trusted by
-  // nobody; it becomes its own bucket, which is the pre-brief-28 behaviour.
+  // nobody; it becomes its own bucket, which is the behaviour from before trusted proxies.
   if (parsed === undefined) return false;
   // `normaliseAddress` already unwraps the dotted mapped form Node reports;
   // this catches the hex spelling (`::ffff:ac13:3`) of the same address.

@@ -40,8 +40,8 @@ import { issueRefreshToken } from "../auth/refresh.js";
  * path into it (`corpus/wiki/decisions-admin.md`), so an ordinary person's
  * browser gets `401` there; the only way to make the console's password route
  * serve a person would be to put the estate's one plaintext, unrotatable
- * break-glass credential into their browser. Brief 09 declined to do that and
- * reported the gap instead, which is why this file exists.
+ * break-glass credential into their browser. The login UI declined to do that
+ * and reported the gap instead, which is why this file exists.
  *
  * ## Why the self-service page is justified at all
  *
@@ -162,7 +162,7 @@ export async function accountRoutes(
   /** Resolved once, at registration — see `routes/auth.ts` for both reasons. */
   const secure = await wardSecureCookies();
   const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
-  /** The lockout's trusted proxies (brief 28) — the same list `/login` uses. */
+  /** The lockout's trusted proxies — the same list `/login` uses. */
   const trustedProxies = options.trustedProxies ?? WARD_TRUSTED_PROXIES;
 
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
@@ -304,7 +304,7 @@ export async function accountRoutes(
       passwordHash = await hashPassword(body.data.newPassword);
     } catch (error) {
       if (error instanceof PasswordPolicyError) {
-        // The stable `code`, never the message — brief 09 renders these.
+        // The stable `code`, never the message — the login UI renders these.
         return reply.code(400).send({ error: error.code });
       }
       throw error;
@@ -505,7 +505,7 @@ function crossSite(reply: FastifyReply): FastifyReply {
 /**
  * `429` with `Retry-After`. **No artificial delay** — holding the connection
  * open is the denial of service the lockout exists to prevent
- * (`auth/lockout.ts`). `retryAfterSeconds` is repeated in the body so brief 09
+ * (`auth/lockout.ts`). `retryAfterSeconds` is repeated in the body so the UI
  * can render the wait without reading a header.
  */
 function lockedOut(reply: FastifyReply, retryAfterSeconds: number): FastifyReply {
@@ -527,7 +527,7 @@ function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): st
  * Whether the request is same-origin enough to act on the session cookies.
  *
  * A deliberate duplicate of the predicate in `routes/auth.ts`, which does not
- * export it and which this brief does not own. The rule is stated in one place
+ * export it. The rule is stated in one place
  * — that file's header — and both copies must agree; if a third surface ever
  * needs it, that is the moment to lift it into `auth/cookie.ts` rather than
  * write it a third time.

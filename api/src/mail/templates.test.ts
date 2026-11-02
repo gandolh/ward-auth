@@ -21,7 +21,7 @@ describe("verificationLink", () => {
    *
    * Both pages verify an address, and for a while this pointed at
    * `/ward-api/verify` — the API's own server-rendered page — which meant
-   * brief 09's verify screen (`/verify` since 2026-10-22, `/ward/verify`
+   * the login UI's verify screen (`/verify` since 2026-10-22, `/ward/verify`
    * before) was built for a moment nobody reached.
    * The API route is deliberately kept (a non-browser client uses it, and it is
    * content-negotiated for exactly that); only the URL a person is mailed

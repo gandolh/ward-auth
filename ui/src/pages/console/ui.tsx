@@ -213,7 +213,7 @@ export interface ConfirmProps {
  * which routes through the same path as the Cancel button and is ignored while
  * busy, so a dialog cannot be dismissed out from under a request in flight.
  *
- * ## Focus (brief 35)
+ * ## Focus
  *
  * Cancel and Escape return focus to the button that opened the dialog, which is
  * Base UI's default. A confirm is different. The confirm button disables itself

@@ -62,7 +62,7 @@ import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-aut
  * assertion is refused the same way.
  *
  * Until 2026-10-13 an app could also authenticate with a per-app key in a
- * header. That path is retired (brief 30) along with the rest of the
+ * header. That path is retired along with the rest of the
  * shared-cookie contract.
  *
  * The two credential fields are taken off the body before the strict check

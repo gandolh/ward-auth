@@ -508,7 +508,7 @@ All twelve call sites follow the rule (the brief counted ten, before 39-40).
 Checked keyboard-only in Chromium against a scratch API, one write of each kind,
 plus typecheck, lint, the build and 1203 tests. The writes without a confirmation
 lose focus the same way: filed as
-[focus-after-an-unconfirmed-write.md](todos/focus-after-an-unconfirmed-write.md).
+focus-after-an-unconfirmed-write.md (brief 01 since 2026-11-03).
 The todo `focus-after-a-confirmed-write.md` is deleted. brief-board is down, so
 nothing was posted there.
 
@@ -612,3 +612,9 @@ Checks: corpus lint, typecheck, lint and `fmt:check` are clean; `npm test` passe
 The one failure predates this reset: `shared-library/scripts/vendor.test.ts` expects the vendored
 README to carry the GitHub URL that `5de7c6b` (2026-11-01) replaced with the repository's name.
 It is in status.md's known issues.
+
+## [2026-11-03] todo | Brief 01: focus after a console write with no confirmation
+
+Promoted from the todo `focus-after-an-unconfirmed-write` in an estate-wide grill with the owner.
+The owner's call: after a role is removed, focus goes to the Access panel's heading; the other
+three writes return focus to their button. The todo is deleted.

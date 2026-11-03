@@ -1,6 +1,6 @@
 ---
 summary: Dated snapshot (2026-11-02) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 10-27 (not deployed), ward-auth 0.7.0 and which version each app vendors; the owner's next steps and known gaps.
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 # Status — 2026-11-02
@@ -70,7 +70,8 @@ to be specced are in [../todos/](../todos/).
 - No error boundary for a failed console chunk load; only a full page load of
   `/console` fetches it, with a fresh `index.html`.
 - Writes in the console with no `Confirm` still drop focus to `<body>`
-  ([the todo](../todos/focus-after-an-unconfirmed-write.md)).
+  (brief 01, written 2026-11-03: focus returns to each button, and after a
+  role is removed it goes to the Access panel's heading).
 
 ## What is actually known
 

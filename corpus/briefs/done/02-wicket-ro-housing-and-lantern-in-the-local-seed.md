@@ -57,3 +57,37 @@ of this repo during their runs.
   lists the three apps.
 - Either the seed ran (each of the three `.env` files gained the five
   `WARD_OIDC_*` lines) or the owner step says exactly what to run.
+
+## Outcome (2026-11-04)
+
+`APPS` in `infrastructure/local/seed.mjs` has the three entries exactly as
+above, and the local README's table has their rows. The README now says the
+seed registers ten apps, not seven. `node --check` passes.
+
+Checked against each repo, read-only:
+
+- **Wicket**: `web/vite.config.ts` serves `/wicket/` on 5179 (strict port) and
+  proxies `/wicket-api`. Its `.env` is at the repo root and gitignored. Its
+  `docs/owner-setup.md` asks for this entry word for word.
+- **ro-housing**: `web/vite.config.ts` serves `/ro-housing/` on 5173 and
+  proxies `/ro-housing-api`; the API's default `PUBLIC_ORIGIN` is
+  `http://127.0.0.1:5173`, hence the `127.0.0.1` host. Ward accepts an http
+  redirect URI on any 127.0.0.0/8 host (`api/src/oidc/clients.ts`). `.env` is
+  gitignored but doesn't exist yet.
+- **Lantern**: no dev config yet. Its corpus (decisions, 2026-11-04) has
+  `/lantern/` on 5180 and `/lantern-api/`, matching the brief. `.env` is
+  gitignored but doesn't exist yet.
+
+**The seed didn't run.** The local container was up and healthy, but
+`node seed.mjs </dev/null` stops before it contacts Ward: with no
+`WARD_OWNER_USERNAME` and `WARD_OWNER_PASSWORD` and no terminal, it asks for
+them ("set WARD_OWNER_USERNAME and WARD_OWNER_PASSWORD, or run this in a
+terminal to be asked"). It wrote nothing. Owner step:
+
+1. In ro-housing and in Lantern, copy `.env.example` to `.env` at the repo
+   root (Wicket has one). Otherwise the seed creates a `.env` that holds only
+   the Ward lines, and a later copy of the example overwrites them.
+2. In this repo's `infrastructure/local/`, in a terminal, run
+   `node seed.mjs` and answer with the owner account. Each of the three
+   `.env` files gains the five `WARD_OIDC_*` lines; the seven apps already
+   seeded keep their keys.

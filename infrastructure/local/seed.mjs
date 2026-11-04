@@ -78,6 +78,9 @@ const APPS = [
   { slug: "satchel", name: "Satchel", repo: "satchel", envFiles: [".env"], dev: "http://localhost:5175/satchel/", api: "/satchel-api" },
   { slug: "shelfmark", name: "Shelfmark", repo: "shelfmark", envFiles: [".env"], dev: "http://localhost:5176/shelfmark/", api: "/shelfmark-api" },
   { slug: "almanac", name: "Almanac", repo: "almanac", envFiles: [".env"], dev: "http://localhost:5177/almanac/", api: "/almanac-api" },
+  { slug: "wicket", name: "Wicket", repo: "wicket", envFiles: [".env"], dev: "http://localhost:5179/wicket/", api: "/wicket-api" },
+  { slug: "ro-housing", name: "ro-housing", repo: "ro-housing", envFiles: [".env"], dev: "http://127.0.0.1:5173/ro-housing/", api: "/ro-housing-api" },
+  { slug: "lantern", name: "Lantern", repo: "lantern", envFiles: [".env"], dev: "http://localhost:5180/lantern/", api: "/lantern-api" },
 ];
 
 async function main() {

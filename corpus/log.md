@@ -640,3 +640,13 @@ a panel heading can be a focus target. The tests stay DOM-less, as the
 confirmed writes' tests do. Checked with typecheck, eslint over the console,
 the console's 53 tests, and a keyboard walk in Chromium against a scratch API
 and database, not the shared container. Details in the brief's outcome.
+
+## [2026-11-04] done | Brief 02: Wicket, ro-housing and Lantern in the local seed
+
+The local seed's `APPS` and the local README's table list Wicket
+(`localhost:5179/wicket/`), ro-housing (`127.0.0.1:5173/ro-housing/`) and Lantern
+(`localhost:5180/lantern/`), each with its API prefix. Wicket's and ro-housing's
+values match their Vite configs; Lantern has no dev config yet, so its values
+come from its own corpus. The seed didn't run: with stdin closed and no
+`WARD_OWNER_*` it stops before contacting Ward and asks for the owner account,
+so running it in a terminal is an owner step (status.md, Next).

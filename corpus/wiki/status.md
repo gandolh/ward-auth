@@ -1,12 +1,12 @@
 ---
-summary: Dated snapshot (2026-11-02) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 10-27 (not deployed), ward-auth 0.7.0 and which version each app vendors; the owner's next steps and known gaps.
+summary: Dated snapshot (2026-11-04) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 11-04 (not deployed), the local seed's ten apps, ward-auth 0.7.0 and which version each app vendors; the owner's next steps and known gaps.
 updated: 2026-11-04
 ---
 
-# Status — 2026-11-02
+# Status — 2026-11-04
 
-`origin/main` is at `2450b49`; the local commits after it (`5de7c6b` and the
-briefs reset) are not pushed. Brief numbering restarted at 01 on 2026-11-02
+`origin/main` is at `a5520e3`; the commits after it (briefs 01 and 02, built
+2026-11-04) are local. Brief numbering restarted at 01 on 2026-11-02
 (see [../log.md](../log.md), "Briefs reset"); no brief is open. Ideas waiting
 to be specced are in [../todos/](../todos/).
 
@@ -50,6 +50,9 @@ to be specced are in [../todos/](../todos/).
   confirmation got the same rule (not deployed): adding or removing a role
   lands on the Access panel's heading, a save on its button or, when the
   button is disabled after the reload, the heading.
+- **The local Ward** (`infrastructure/local/`). Its seed lists ten apps since
+  2026-11-04: Wicket, ro-housing and Lantern joined the seven. The seed hasn't
+  run for the three yet; it needs the owner's credentials (Next, below).
 - **ward-auth** (`shared-library/`, 0.7.0 on 2026-10-27). 0.4.0 renames a user,
   0.5.0 shapes a new Ward user's name, 0.6.0 disables a local user, 0.6.1
   exports the new names, 0.7.0 keeps a refused sign-in's return path. Vendored
@@ -63,6 +66,10 @@ to be specced are in [../todos/](../todos/).
 - **Re-vendor ward-auth** in the apps that want 0.4.0 to 0.7.0; the comment-only
   source changes of 2026-11-02 reach them with the next vendor run.
 - **Delete imbatranimOS's app row** in the deployed database.
+- **Run the local seed** for Wicket, ro-housing and Lantern, in a terminal,
+  since it asks for the owner account: `node seed.mjs` in
+  `infrastructure/local/`. In ro-housing and Lantern, copy `.env.example` to
+  `.env` first, or the seed creates a `.env` holding only the Ward lines.
 
 ## Known issues
 

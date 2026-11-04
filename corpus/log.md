@@ -618,3 +618,10 @@ It is in status.md's known issues.
 Promoted from the todo `focus-after-an-unconfirmed-write` in an estate-wide grill with the owner.
 The owner's call: after a role is removed, focus goes to the Access panel's heading; the other
 three writes return focus to their button. The todo is deleted.
+
+## [2026-11-04] brief | 02, Wicket, ro-housing and Lantern in the local seed
+
+Filed before a brief run: three apps that sign in through Ward aren't in the
+local seed. Wicket and ro-housing asked for their entries as owner steps
+while agents were kept out of this repo; Lantern's first version is being
+built the same day, on dev port 5180 and `/lantern-api`.

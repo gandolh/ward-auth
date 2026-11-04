@@ -1,6 +1,6 @@
 ---
 summary: The foundational calls for Ward — the one-origin topology and the isolation it costs, Ward's own host since 2026-10-22, what the service owns versus what apps keep, the single central login page, what the UI carries, Base UI in the console only, newspapper's move off loopback, the name, and the two inherited atrium decisions.
-updated: 2026-11-02
+updated: 2026-11-04
 ---
 
 # Decisions
@@ -179,7 +179,9 @@ its own wiring, and shadcn, which brings Tailwind. Only `ui/src/pages/console/`
 imports it, and since 2026-10-27 the console is a lazy chunk, so the sign-in
 pages download none of it. After a confirmed write focus goes to the opener,
 found again by its `data-wc-focus` key, or else to the heading (2026-10-27):
-`finalFocus` can't do it, because the reload removes the opener.
+`finalFocus` can't do it, because the reload removes the opener. Writes with no
+confirmation use the same rule (2026-11-04), and a role added or removed lands
+on the Access panel's heading (owner, 2026-11-03).
 
 ## Inherited — not ours to break quietly
 

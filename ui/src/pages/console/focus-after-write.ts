@@ -1,5 +1,5 @@
 /**
- * Where keyboard focus goes after a confirmed write.
+ * Where keyboard focus goes after a console write, confirmed or not.
  *
  * ## Why `Confirm` cannot do this on its own
  *
@@ -24,13 +24,31 @@
  *
  * A deleted account or app is the one case outside this: the screen becomes
  * its outcome alert, which takes focus itself.
+ *
+ * ## Writes with no confirmation
+ *
+ * The same reload removes the button pressed for a write with no dialog, so
+ * those writes use the same request and settle. A key can sit on a panel's
+ * heading as well as on a button (`Panel`'s `focusKey`), for a write whose
+ * button never comes back enabled:
+ *
+ * - Removing a role, and adding one, land on the Access panel's heading. The
+ *   `×` that was pressed is gone, and the add form comes back empty, so its
+ *   button is disabled. The owner chose the panel's heading over the page's
+ *   (2026-11-03): it keeps the operator where they were working.
+ * - Saving an app's display name asks for its button, which the reload leaves
+ *   disabled (the name matches), so it lands on the heading, which shows the
+ *   new name. The same as Rename on the account page.
+ * - Saving an app's OIDC client settings returns to its button.
  */
 
 import { useCallback, useRef } from "react";
 
 /**
- * The attribute a screen puts on each button that opens a `Confirm`. JSX needs
- * the name written out, so the screens spell it `data-wc-focus` literally.
+ * The attribute a screen puts on each element a write can send focus back to:
+ * every button that opens a `Confirm`, the buttons of the writes with no
+ * confirmation, and a panel heading. JSX needs the name written out, so the
+ * screens spell it `data-wc-focus` literally.
  */
 export const FOCUS_KEY_ATTRIBUTE = "data-wc-focus";
 

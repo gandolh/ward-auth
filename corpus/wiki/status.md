@@ -1,6 +1,6 @@
 ---
 summary: Dated snapshot (2026-11-02) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 10-27 (not deployed), ward-auth 0.7.0 and which version each app vendors; the owner's next steps and known gaps.
-updated: 2026-11-03
+updated: 2026-11-04
 ---
 
 # Status — 2026-11-02
@@ -46,7 +46,10 @@ to be specced are in [../todos/](../todos/).
   `Confirm` and the create forms; rename and delete an account, stopping at
   Ward's edge; the console in a lazy chunk, so the sign-in pages no longer
   download Base UI (entry JS 120.07 → 81.45 kB gzip); focus after a confirmed
-  write goes to the opener or the heading.
+  write goes to the opener or the heading. On 2026-11-04 the writes with no
+  confirmation got the same rule (not deployed): adding or removing a role
+  lands on the Access panel's heading, a save on its button or, when the
+  button is disabled after the reload, the heading.
 - **ward-auth** (`shared-library/`, 0.7.0 on 2026-10-27). 0.4.0 renames a user,
   0.5.0 shapes a new Ward user's name, 0.6.0 disables a local user, 0.6.1
   exports the new names, 0.7.0 keeps a refused sign-in's return path. Vendored
@@ -69,9 +72,6 @@ to be specced are in [../todos/](../todos/).
   the new wording (1230 of 1231 pass).
 - No error boundary for a failed console chunk load; only a full page load of
   `/console` fetches it, with a fresh `index.html`.
-- Writes in the console with no `Confirm` still drop focus to `<body>`
-  (brief 01, written 2026-11-03: focus returns to each button, and after a
-  role is removed it goes to the Access panel's heading).
 
 ## What is actually known
 

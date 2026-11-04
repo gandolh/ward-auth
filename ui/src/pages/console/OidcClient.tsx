@@ -32,6 +32,9 @@ function lines(value: string): string[] {
     .filter((line) => line !== "");
 }
 
+/** The `data-wc-focus` key of the save button, where focus returns after a save. */
+const SAVE_FOCUS = "oidc-client";
+
 function keysText(jwks: AppView["oidc"]["jwks"]): string {
   if (jwks === null) return "";
   return jwks.keys.length === 1 ? JSON.stringify(jwks.keys[0]) : JSON.stringify(jwks);
@@ -40,9 +43,12 @@ function keysText(jwks: AppView["oidc"]["jwks"]): string {
 export function OidcClientPanel({
   app,
   reload,
+  requestFocus,
 }: {
   app: AppView;
   reload: () => void;
+  /** Where focus goes once the reload after a save is on screen. */
+  requestFocus: (key: string) => void;
 }): React.JSX.Element {
   const writer = useWriter();
   const [redirectUris, setRedirectUris] = useState(app.oidc.redirectUris.join("\n"));
@@ -77,7 +83,10 @@ export function OidcClientPanel({
           ? `${updated.slug} can sign people in with Ward.`
           : `Saved. ${updated.slug} needs a redirect URI and a public key before it can sign anyone in with Ward.`,
     );
-    if (ok) reload();
+    if (ok) {
+      requestFocus(SAVE_FOCUS);
+      reload();
+    }
   }
 
   return (
@@ -166,7 +175,12 @@ export function OidcClientPanel({
           {keysError === undefined ? null : <span className="wc-field-error">{keysError}</span>}
         </p>
         <div className="wc-actions">
-          <button type="submit" className="wc-btn" disabled={writer.busy}>
+          <button
+            type="submit"
+            className="wc-btn"
+            data-wc-focus={SAVE_FOCUS}
+            disabled={writer.busy}
+          >
             Save client settings
           </button>
         </div>

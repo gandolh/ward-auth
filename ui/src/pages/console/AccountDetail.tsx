@@ -28,13 +28,15 @@
  * can be renamed back, but the person can't sign in under the old name
  * meanwhile, and only the operator can tell them.)
  *
- * ## Focus after a confirmed write
+ * ## Focus after a write
  *
  * The reload after a write remounts the whole body, so the screen asks for
- * focus by the opener's `data-wc-focus` key before it reloads and settles it
- * once the account is back (`focus-after-write.ts`). Disable and Re-enable share
- * a key; everything else lands on the heading, because its button is gone or
- * disabled after the reload.
+ * focus by a `data-wc-focus` key before it reloads and settles it once the
+ * account is back (`focus-after-write.ts`). After a confirmed write that is the
+ * opener: Disable and Re-enable share a key; everything else lands on the
+ * heading, because its button is gone or disabled after the reload. Adding or
+ * removing a role has no confirmation and lands on the Access panel's heading:
+ * the `×` is gone, and the add form comes back empty with its button disabled.
  */
 
 import { useEffect, useState } from "react";
@@ -98,8 +100,12 @@ type Pending =
   | { kind: "rotate" }
   | { kind: "revokeApp"; appSlug: string; roles: string[] };
 
-/** The `data-wc-focus` keys of the buttons on this screen that open a `Confirm`. */
+/**
+ * The `data-wc-focus` keys on this screen: the buttons that open a `Confirm`,
+ * and the Access panel's heading, where adding or removing a role lands.
+ */
 const FOCUS = {
+  access: "access",
   state: "account-state",
   rename: "rename",
   rotate: "rotate-password",
@@ -183,6 +189,7 @@ function AccountBody({
           setPending({ kind: "revokeApp", appSlug, roles });
         }}
         reload={reload}
+        requestFocus={requestFocus}
       />
 
       <SessionsPanel subject={account.subject} onChanged={reload} requestFocus={requestFocus} />
@@ -730,12 +737,14 @@ function AccessPanel({
   apps,
   onRevokeApp,
   reload,
+  requestFocus,
 }: {
   subject: string;
   grants: GrantView[];
   apps: AppView[];
   onRevokeApp: (appSlug: string, roles: string[]) => void;
   reload: () => void;
+  requestFocus: (key: string) => void;
 }): React.JSX.Element {
   const grouped = groupGrantsByApp(grants);
   const writer = useWriter();
@@ -761,6 +770,7 @@ function AccessPanel({
       (result) => describeGrantWrite(result.grant.role, result.grant.appSlug, result.created),
     );
     if (ok) {
+      requestFocus(FOCUS.access);
       setRole("");
       reload();
     }
@@ -771,12 +781,16 @@ function AccessPanel({
       () => consoleApi.revokeGrant({ subject, appSlug: targetApp, role: targetRole }),
       (result) => describeGrantRevoke(targetApp, result.removed, result.roles),
     );
-    if (ok) reload();
+    if (ok) {
+      requestFocus(FOCUS.access);
+      reload();
+    }
   }
 
   return (
     <Panel
       title="Access"
+      focusKey={FOCUS.access}
       note="A grant is the estate's actual security boundary: this account can use exactly the apps listed here, as exactly these roles, and nothing else. There is no wildcard — even the owner account holds one explicit row per app."
     >
       {writer.error === undefined ? null : (

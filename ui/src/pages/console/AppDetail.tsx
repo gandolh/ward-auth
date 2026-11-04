@@ -21,12 +21,16 @@
  * separately, so they are separate forms here — submitting one never quietly
  * carries the other.
  *
- * ## Focus after a confirmed write
+ * ## Focus after a write
  *
  * As on the account page (`focus-after-write.ts`): Open and Close registration
  * share a key, so opening lands on Close. Closing lands on the heading, since
  * the reopen button stays disabled until a baseline role is typed. A removed app
  * becomes its outcome alert, which takes focus itself.
+ *
+ * The two saves have no confirmation and ask for their own button. Save client
+ * settings is back after the reload. Save the name is disabled once the name
+ * matches, so that save lands on the heading, which shows the new name.
  */
 
 import { useEffect, useState } from "react";
@@ -85,6 +89,9 @@ type Pending = { kind: "none" } | { kind: "open" } | { kind: "close" } | { kind:
 
 /** The `data-wc-focus` key of the registration slot's button, open or closed. */
 const REGISTRATION_FOCUS = "registration";
+
+/** The `data-wc-focus` key of the display name's save button. */
+const NAME_FOCUS = "app-name";
 
 function AppBody({
   app,
@@ -163,7 +170,10 @@ function AppBody({
                     : `Renamed ${app.slug} to ${updated.name}.`,
               )
               .then((ok) => {
-                if (ok) reload();
+                if (ok) {
+                  requestFocus(NAME_FOCUS);
+                  reload();
+                }
               });
           }}
         >
@@ -180,6 +190,7 @@ function AppBody({
             <button
               type="submit"
               className="wc-btn"
+              data-wc-focus={NAME_FOCUS}
               disabled={writer.busy || name === "" || name === app.name}
             >
               Save the name
@@ -324,7 +335,7 @@ function AppBody({
         a save that Ward normalised (a key given its alg, duplicates dropped)
         re-renders from what was stored rather than from what was typed.
       */}
-      <OidcClientPanel key={app.updatedAt} app={app} reload={reload} />
+      <OidcClientPanel key={app.updatedAt} app={app} reload={reload} requestFocus={requestFocus} />
 
       <Panel
         title="Remove this app"

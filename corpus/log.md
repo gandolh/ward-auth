@@ -625,3 +625,18 @@ Filed before a brief run: three apps that sign in through Ward aren't in the
 local seed. Wicket and ro-housing asked for their entries as owner steps
 while agents were kept out of this repo; Lantern's first version is being
 built the same day, on dev port 5180 and `/lantern-api`.
+
+## [2026-11-04] done | Brief 01: focus after a console write with no confirmation
+
+The four console writes with no `Confirm` now ask for focus before their reload
+and settle it after, as the confirmed writes do. Removing a role and adding one
+land on the Access panel's heading (the owner's call of 2026-11-03 for
+removing). Saving the OIDC client settings returns to its button. Saving an
+app's name lands on the page heading. Two places where the code won over the
+brief: Add role and Save the name are disabled after the reload (the add form
+comes back empty, and the name matches), so neither can take focus again. The
+OIDC save lives in `OidcClient.tsx`. `Panel` gained an optional `focusKey`, so
+a panel heading can be a focus target. The tests stay DOM-less, as the
+confirmed writes' tests do. Checked with typecheck, eslint over the console,
+the console's 53 tests, and a keyboard walk in Chromium against a scratch API
+and database, not the shared container. Details in the brief's outcome.

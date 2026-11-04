@@ -291,16 +291,29 @@ export function Panel({
   title,
   note,
   tone,
+  focusKey,
   children,
 }: {
   title: string;
   note?: ReactNode;
   tone?: "danger" | "notice";
+  /**
+   * Makes the heading a place focus can be sent after a write
+   * (`focus-after-write.ts`): it gets this `data-wc-focus` key and
+   * `tabIndex={-1}`, so a script can focus it and Tab still skips it.
+   */
+  focusKey?: string;
   children?: ReactNode;
 }): React.JSX.Element {
   return (
     <section className="wc-panel" data-tone={tone}>
-      <h2>{title}</h2>
+      {focusKey === undefined ? (
+        <h2>{title}</h2>
+      ) : (
+        <h2 tabIndex={-1} data-wc-focus={focusKey}>
+          {title}
+        </h2>
+      )}
       {note === undefined ? null : <p className="wc-panel-note">{note}</p>}
       {children}
     </section>

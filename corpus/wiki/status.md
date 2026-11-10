@@ -11,7 +11,8 @@ updated: 2026-11-04
 2026-11-10 and none is started: the house style and quality harness (03), Base
 UI by the conventions (04), the UI to Tailwind (05) and the server in the
 house code structure (06). They follow the owner's estate calls of 2026-11-09
-and wait on the grilling of 2026-11-10. Ideas waiting to be specced are in
+and were revised the same day to the answers of the grilling of 2026-11-10; a
+fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas waiting to be specced are in
 [../todos/](../todos/).
 
 ## By area

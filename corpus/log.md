@@ -672,3 +672,21 @@ have a failure that is not a plain 400, so request schemas are not a mechanical
 swap; the five response schemas are JSON Schema and must become zod for the
 provider; `trustProxy` and `connectionTimeout` both touch recorded decisions or
 slow SMTP. Questions for the grilling are listed in each brief's decisions.
+
+## [2026-11-10] brief | Briefs 03-06 revised to the owner's answers; brief 07 added
+
+The owner's grilling of 2026-11-10 answered the open questions the briefs were built on. Brief 03:
+`house-style` is vendored (no git dependency, so the Dockerfile is untouched), Prettier width 120
+(the one-off reformat is 2,312 lines in 135 files), `!` is an error in source and a warning in
+tests, Markdown stays out of Prettier; the ESLint counts were re-measured on a scratch copy at
+`5234256`: the table holds, `considerDefaultExhaustiveForUnions: true` takes the three `switch`
+findings to 0, and the vitest rules add 14 findings once `valid-expect` takes two arguments and
+`expectRefused` is named as an assertion helper. Brief 04: the wrappers stay in the console's own
+`ui/` folder, the four native selects and the datalist stay native, and `Confirm` gets a jsdom
+test. Brief 05: a Light / Dark / System switch for the public pages (native control, no Base UI on
+a sign-in page), the console stays its own dark surface (flagged for the owner), the 5 kB gzip
+line for the sign-in stylesheet (Q21), the per-app token names kept. Brief 06: the start command
+is Ward's own (Q1), the slow SMTP keeps its timeout (no `connectionTimeout`), no decorators as a
+test seam. No brief changes a route, a cookie or a token format. Brief 07 is new: a redesign with
+Hallmark on the estate board. The security audit runs on Ward first (Q34), noted in each brief's
+Interplay. Work happens on `main`, with no PRs. Nothing was changed outside `corpus/`.

@@ -650,3 +650,25 @@ values match their Vite configs; Lantern has no dev config yet, so its values
 come from its own corpus. The seed didn't run: with stdin closed and no
 `WARD_OWNER_*` it stops before contacting Ward and asks for the owner account,
 so running it in a terminal is an owner step (status.md, Next).
+
+## [2026-11-10] todo | Briefs 03-06: the estate's house style, Base UI, Tailwind and code structure for ward-auth
+Four briefs, written to follow the owner's calls of 2026-11-09 (Base UI 1.9.0
+everywhere, whole apps on Tailwind v4, the conventions enforced in each repo) and
+the skills library's briefs 02, 03, 15, 16 and 27. No bump brief: `ui/package.json`
+pins `@base-ui/react` 1.9.0 and the lockfile resolves 1.9.0. Order: 03 harness,
+04 Base UI, 05 Tailwind, 06 server structure; 04 and 05 run in that order, 06 any
+time after 03. Measured on a scratch copy (no test run; `better-sqlite3` not built):
+Prettier at today's width 100 changes 30 lines in 7 files, at 120 changes 2,312 in
+135 and at 130 changes 2,793 in 141, so ward-auth is the one repo where a wider
+estate width is the expensive choice; `noUncheckedIndexedAccess` and
+`verbatimModuleSyntax` add 0 errors and `erasableSyntaxOnly` 5 (parameter
+properties, one inside the vendored bundle), `exactOptionalPropertyTypes` 24;
+`no-non-null-assertion` finds 392 (32 source, 9 harness, 351 tests), far past the
+20-finding line; the six typed rules otherwise find 0 to 4 in source. The sign-in
+CSS is 2,164 B gzip and the console's 2,400 B, Tailwind's floor 1,455 B. Found
+while writing: the console is a dark surface set by `data-ward-surface`, not by
+`prefers-color-scheme`, so Q18 does not fit; 11 of the 35 request-parse sites
+have a failure that is not a plain 400, so request schemas are not a mechanical
+swap; the five response schemas are JSON Schema and must become zod for the
+provider; `trustProxy` and `connectionTimeout` both touch recorded decisions or
+slow SMTP. Questions for the grilling are listed in each brief's decisions.

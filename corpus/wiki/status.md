@@ -7,8 +7,12 @@ updated: 2026-11-04
 
 `origin/main` is at `a5520e3`; the commits after it (briefs 01 and 02, built
 2026-11-04) are local. Brief numbering restarted at 01 on 2026-11-02
-(see [../log.md](../log.md), "Briefs reset"); no brief is open. Ideas waiting
-to be specced are in [../todos/](../todos/).
+(see [../log.md](../log.md), "Briefs reset"). Four briefs were written on
+2026-11-10 and none is started: the house style and quality harness (03), Base
+UI by the conventions (04), the UI to Tailwind (05) and the server in the
+house code structure (06). They follow the owner's estate calls of 2026-11-09
+and wait on the grilling of 2026-11-10. Ideas waiting to be specced are in
+[../todos/](../todos/).
 
 ## By area
 

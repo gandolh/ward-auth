@@ -33,7 +33,8 @@ import { consoleHref } from "./nav.js";
 import { useFocusAfterWrite } from "./focus-after-write.js";
 import { formatWhen, plural } from "./format.js";
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
-import { Alert, Confirm, Empty, TextField } from "./ui.js";
+import { Alert, Empty, TextField } from "./ui.js";
+import { Confirm } from "./ui/Confirm.js";
 
 export function AppsScreen(): React.JSX.Element {
   const { basePath } = useConsole();

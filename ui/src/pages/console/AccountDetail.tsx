@@ -48,7 +48,8 @@ import { formatWhen, plural } from "./format.js";
 import { useFocusAfterWrite } from "./focus-after-write.js";
 import { describeGrantRevoke, describeGrantWrite, groupGrantsByApp } from "./grant-set.js";
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
-import { Alert, Confirm, Empty, Panel, TextField } from "./ui.js";
+import { Alert, Empty, Panel, TextField } from "./ui.js";
+import { Confirm } from "./ui/Confirm.js";
 
 export function AccountDetailScreen({ subject }: { subject: string }): React.JSX.Element {
   const { basePath } = useConsole();

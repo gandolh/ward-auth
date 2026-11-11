@@ -63,18 +63,18 @@ describe("the vendored copy", () => {
     };
 
     expect(readme).toContain(version);
-    expect(readme).toContain("https://github.com/gandolh/ward-auth");
+    expect(readme).toContain("the `ward-auth` repository");
     expect(readme).toContain("`shared-library/`");
-    expect(readme).toContain(
-      "https://github.com/gandolh/ward-auth/blob/main/shared-library/CHANGELOG.md",
-    );
+    expect(readme).toContain("`shared-library/CHANGELOG.md` in the same repository");
   });
 
   /**
    * No local path and no domain. The production domain is not written here
-   * either; instead every URL must be on an allowed host. The README allows
-   * only GitHub. The bundles' doc comments may also use the reserved
-   * `example.com` and `localhost` in examples, and nothing else.
+   * either; instead every URL must be on an allowed host. The README names the
+   * source repository without a URL, so it allows none. The bundles name the
+   * source repository on GitHub in their banner, and their doc comments may
+   * also use the reserved `example.com` and `localhost` in examples, and
+   * nothing else.
    *
    * One exception, in the server bundle's third-party code: `openid-client`
    * compares an issuer against Microsoft's login host to switch on its Entra
@@ -84,7 +84,7 @@ describe("the vendored copy", () => {
   it("names no local path and no domain other than the source repository's", async () => {
     const examples = ["github.com", "example.com", "localhost"];
     const allowed: Record<string, string[]> = {
-      "README.md": ["github.com"],
+      "README.md": [],
       "ward-auth.js": [...examples, "login.microsoftonline.com"],
       "ward-auth-react.js": examples,
       "ward-auth.d.ts": examples,

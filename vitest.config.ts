@@ -26,6 +26,10 @@ export default defineConfig({
      * test that needs a document is the thing that justifies `jsdom` and a
      * per-project environment; adding either before then would slow the whole
      * suite down for no coverage.
+     *
+     * That test exists since 2026-11-11 (`Confirm.test.tsx`). A test file asks
+     * for a document with a `// @vitest-environment jsdom` docblock, so the
+     * root project stays in Node.
      */
     /**
      * `shared-library/` joined on 2026-10-13. Its tests are Node-side too: the

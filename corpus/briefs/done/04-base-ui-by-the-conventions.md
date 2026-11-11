@@ -130,3 +130,42 @@ One commit per step, straight on `main`, each with `npm run check` and `npm run 
 - The skills library's brief 25 (the security audit) runs on ward-auth first, by the owner's answer of 2026-11-10 (Q34): one focused run of about an hour on the login, session and token code, with its findings becoming ward-auth briefs. Moving `Confirm` changes paths in `ui/` findings, so run it before or after this brief, not during.
 - If the owner later wants decision 2 or 3 moved to Base UI, that is a new brief: it adds `Select` or `Combobox` wrappers and re-measures the console chunk.
 - Brief 07 (the redesign) comes after brief 05 and keeps these wrappers.
+
+## Outcome
+
+Built on 2026-11-11 on `main`, committed and not pushed, no route, cookie, token
+or error body touched. Commits, in order: `933e035` the `Collapsible` wrapper
+(and `"ui": ["pages/console/ui"]` in `scripts/conventions.json`), `9dcd68e`
+`Confirm` moves, `96d24d2` `Confirm.test.tsx`, `eaa7c76` the corpus, then this
+closeout.
+
+**Before** (at `3f7ac0b`): entry chunk 0 `@base-ui` sources, console chunk 103;
+`check-base-ui` 6 errors (rule 3: 3, rule 5: 3). **After:** entry 0, console
+103 (same bundle sizes, no class moved); `check-base-ui` 3 errors, all rule 5
+(`console.css`, `tokens.css`, `ward.css`), brief 05's. Rules 1, 2, 3, 9, 10, 11
+are clean. `grep -rln "@base-ui/react" ui/src` prints only the two files under
+`ui/src/pages/console/ui/`.
+
+**Tests.** `Confirm.test.tsx` (jsdom, a docblock per file; `jsdom` 31.0.0,
+`@testing-library/react` 16.3.3, `/dom` 10.4.2, `/user-event` 14.6.7, all in
+`ui/package.json`, exact): Cancel has focus on open; Escape cancels while idle;
+Escape and an outside press do nothing while busy; an outside press does
+nothing while idle; both buttons are disabled while busy. `npm run check` exit
+0, 70 files and 1241 tests. `focus-after-write.ts` and its test have no diff.
+
+**Chromium pass** (a throwaway clone with its own database, mail folder, key
+and ports, stopped and deleted afterwards), before and after, 1280 and 390:
+the trigger label flips; the panel is unmounted while closed (the form is empty
+on reopen); a create closes it; focus lands on Cancel; an outside press does
+nothing; Escape and Cancel close and return focus to the opener; while busy
+both buttons are disabled, focus sits on the popup and Escape does nothing;
+after a delete the screen places focus on its result notice. All passed both
+times. Screenshots of the Accounts form, an account's Confirm and the Apps form
+differ by 0 to 35 pixels of about 1.1 million (not kept in the repo).
+
+**Notes.** The role `×` button has no `aria-label`; its accessible name comes
+from a screen-reader-only span (`AccountDetail.tsx:816-817`), which is
+equivalent. Cancel-first matches the skill's confirm pattern, so no exception
+is recorded. The wiki's `decisions.md` hit the 200-line cap, so the console's
+UI decisions moved to the new `wiki/decisions-console.md` (in the docs sidebar
+too).

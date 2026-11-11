@@ -61,6 +61,7 @@ const sidebars: SidebarsConfig = {
         { type: 'doc', id: 'wiki/decisions-admin', label: 'Decisions — admin' },
         { type: 'doc', id: 'wiki/decisions-app-keys', label: 'Decisions — app keys (retired)' },
         { type: 'doc', id: 'wiki/decisions-implementation', label: 'Decisions — implementation' },
+        { type: 'doc', id: 'wiki/decisions-console', label: 'Decisions — console UI' },
         { type: 'doc', id: 'wiki/decisions-oidc', label: 'Decisions — OIDC redesign' },
         { type: 'doc', id: 'wiki/decisions-oidc-build', label: 'Decisions — OIDC build' },
         { type: 'doc', id: 'wiki/landscape', label: 'Landscape — roads not taken' },

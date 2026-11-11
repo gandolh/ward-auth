@@ -716,3 +716,15 @@ owner sets `blame.ignoreRevsFile` and deploys. Asked on the board: decision
 10's version question, who moves `SessionValidator`, and the `semver` 7.8.6 that
 dependency-cruiser's pin hoisted into the image.
 
+## [2026-11-11] done | Brief 04: Base UI by the conventions
+
+Base UI is imported only under `ui/src/pages/console/ui/` (`Confirm.tsx`,
+`Collapsible.tsx`, named exports), the folder named in
+`scripts/conventions.json`; `ui.tsx` and the screens import none. Entry chunk 0
+`@base-ui` sources, console chunk 103, before and after; `check-base-ui` went
+from 6 errors to 3, all rule 5 (brief 05's). `Confirm.test.tsx` runs under
+jsdom (the repo's first DOM test); the Chromium pass of the dialog and the
+collapsible matched before and after at 1280 and 390. The native selects, the
+role datalist and the textareas stay native, and Cancel stays first; the
+decisions moved to `wiki/decisions-console.md`. No route, cookie or token
+touched. Not pushed; the board column is Ready for deploy.

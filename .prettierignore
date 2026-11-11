@@ -1,0 +1,15 @@
+# Markdown stays out of Prettier (decided 2026-11-10); the corpus has its own lint.
+*.md
+
+# Generated or vendored copies.
+vendor/house-style/
+shared-library/.scratch/
+
+# Lockfile, build output, coverage.
+package-lock.json
+dist/
+coverage/
+
+# The corpus, and docs/: a Docusaurus package with its own ranges and build.
+/corpus/
+/docs/

@@ -391,20 +391,29 @@ export type MailTransport =
   | { kind: "file"; dir: string; from: string }
   | { kind: "smtp"; host: string; port: number; user: string; password: string; from: string };
 
+/**
+ * A variable the refinement above requires in this mode. A missing one has
+ * already stopped the process, so this never throws: it narrows the type where
+ * `zod` cannot carry a cross-field rule.
+ */
+function refined<T>(value: T | undefined, name: string): T {
+  if (value === undefined) throw new Error(`${name} passed the refinement unset`);
+  return value;
+}
+
 export const MAIL: MailTransport =
   env.WARD_MAIL_TRANSPORT === "file"
     ? {
         kind: "file",
-        // Non-null: the refinement rejected a `file` transport without it.
-        dir: resolve(REPO_ROOT, env.WARD_MAIL_FILE_DIR!),
+        dir: resolve(REPO_ROOT, refined(env.WARD_MAIL_FILE_DIR, "WARD_MAIL_FILE_DIR")),
         from: env.WARD_MAIL_FROM,
       }
     : {
         kind: "smtp",
-        host: env.WARD_SMTP_HOST!,
-        port: env.WARD_SMTP_PORT!,
-        user: env.WARD_SMTP_USER!,
-        password: env.WARD_SMTP_PASSWORD!,
+        host: refined(env.WARD_SMTP_HOST, "WARD_SMTP_HOST"),
+        port: refined(env.WARD_SMTP_PORT, "WARD_SMTP_PORT"),
+        user: refined(env.WARD_SMTP_USER, "WARD_SMTP_USER"),
+        password: refined(env.WARD_SMTP_PASSWORD, "WARD_SMTP_PASSWORD"),
         from: env.WARD_MAIL_FROM,
       };
 
@@ -420,4 +429,6 @@ export interface OidcSettings {
 }
 
 export const OIDC: OidcSettings | undefined =
-  env.WARD_OIDC_ISSUER === undefined ? undefined : { issuer: env.WARD_OIDC_ISSUER, uiUrl: env.WARD_UI_URL! };
+  env.WARD_OIDC_ISSUER === undefined
+    ? undefined
+    : { issuer: env.WARD_OIDC_ISSUER, uiUrl: refined(env.WARD_UI_URL, "WARD_UI_URL") };

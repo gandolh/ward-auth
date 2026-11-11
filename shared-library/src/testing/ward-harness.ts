@@ -384,12 +384,12 @@ export class Browser {
       let response = await this.request("GET", next);
       // The provider's self-submitting form: do what its script would.
       if (response.statusCode === 200 && /document\.forms\[0\]\.submit/.test(response.body)) {
-        const action = /<form method="post" action="([^"]+)"/.exec(response.body)![1]!;
+        const action = /<form method="post" action="([^"]+)"/.exec(response.body)?.[1];
+        if (action === undefined) throw new Error(`${next}: the self-submitting form has no action`);
         const fields = Object.fromEntries(
-          [...response.body.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"\/>/g)].map((match) => [
-            match[1]!,
-            match[2]!,
-          ]),
+          [...response.body.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"\/>/g)].map(
+            ([, name = "", value = ""]) => [name, value],
+          ),
         );
         response = await this.request("POST", action.replaceAll("&amp;", "&"), { form: fields });
       }
@@ -411,16 +411,16 @@ export class Browser {
       this.jars.set(origin, jar);
     }
     for (const header of headers) {
-      const [pair, ...attributes] = header.split(";").map((part) => part.trim());
-      const eq = pair!.indexOf("=");
-      const name = pair!.slice(0, eq);
-      const value = pair!.slice(eq + 1);
+      const [pair = "", ...attributes] = header.split(";").map((part) => part.trim());
+      const eq = pair.indexOf("=");
+      const name = pair.slice(0, eq);
+      const value = pair.slice(eq + 1);
       let path = "/";
       let expired = value === "";
       for (const attribute of attributes) {
-        const [key, attributeValue = ""] = attribute.split("=");
-        if (key!.toLowerCase() === "path") path = attributeValue;
-        if (key!.toLowerCase() === "max-age" && Number(attributeValue) <= 0) expired = true;
+        const [key = "", attributeValue = ""] = attribute.split("=");
+        if (key.toLowerCase() === "path") path = attributeValue;
+        if (key.toLowerCase() === "max-age" && Number(attributeValue) <= 0) expired = true;
       }
       if (expired) jar.delete(name);
       else jar.set(name, { value, path });

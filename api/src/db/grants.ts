@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import { prepareOnce } from "./prepared.js";
+import { prepareOnce, requireRow } from "./prepared.js";
 
 /**
  * The `grants` table — `(subject, app_slug, role)`, the security boundary of
@@ -129,7 +129,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
  * Use `ensureGrant` where "they already have it" is a success, not an error.
  */
 export function grantRole(db: Database.Database, input: NewGrant): GrantRow {
-  return stmts(db).insert.get(input.subject, input.appSlug, input.role, input.grantedBy)!;
+  return requireRow(stmts(db).insert.get(input.subject, input.appSlug, input.role, input.grantedBy));
 }
 
 /**

@@ -140,19 +140,19 @@ export function createWardProvider({ db, layout, keySet }: WardProviderOptions):
    * Ward's refresh cookie, can let an authorization through.
    */
   const policy = interactionPolicy.base();
-  policy
-    .get("login")!
-    .checks.add(
-      new interactionPolicy.Check(
-        "ward_session",
-        "Ward decides on every authorization whether the End-User is signed in",
-        (ctx) =>
-          ctx.oidc.result?.["login"] === undefined
-            ? interactionPolicy.Check.REQUEST_PROMPT
-            : interactionPolicy.Check.NO_NEED_TO_PROMPT,
-      ),
-      0,
-    );
+  const login = policy.get("login");
+  if (login === undefined) throw new Error("oidc-provider's base interaction policy has no login prompt");
+  login.checks.add(
+    new interactionPolicy.Check(
+      "ward_session",
+      "Ward decides on every authorization whether the End-User is signed in",
+      (ctx) =>
+        ctx.oidc.result?.["login"] === undefined
+          ? interactionPolicy.Check.REQUEST_PROMPT
+          : interactionPolicy.Check.NO_NEED_TO_PROMPT,
+    ),
+    0,
+  );
 
   const keys = keySet.previous
     ? [signingJwk(keySet.current), signingJwk(keySet.previous)]

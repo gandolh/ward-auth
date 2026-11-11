@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import { prepareOnce } from "./prepared.js";
+import { prepareOnce, requireRow } from "./prepared.js";
 
 /**
  * The `apps` table — the estate's relying parties and their registration flags.
@@ -96,7 +96,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
  */
 export function createApp(db: Database.Database, input: NewApp): AppRow {
   const open = input.publicRegistration === true;
-  return stmts(db).insert.get(input.slug, input.name, open ? 1 : 0, input.baselineRole ?? null)!;
+  return requireRow(stmts(db).insert.get(input.slug, input.name, open ? 1 : 0, input.baselineRole ?? null));
 }
 
 export function getApp(db: Database.Database, slug: string): AppRow | undefined {

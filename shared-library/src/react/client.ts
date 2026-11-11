@@ -384,7 +384,10 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
   }
 
   /** A guarded action answered with no session body; refresh to pick up its effect. */
-  async function act(path: string, body?: unknown): Promise<ActionResult & { response?: Response }> {
+  async function act(
+    path: string,
+    body?: unknown,
+  ): Promise<{ ok: true; response: Response } | { ok: false; error: AuthError }> {
     const response = await request("POST", path, body);
     if (!(response instanceof Response)) return { ok: false, error: response };
     if (!response.ok) {
@@ -439,7 +442,7 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
       const result = await act("/username", { username });
       if (!result.ok) return result;
       // The answer is the session under the new name: no second request.
-      setState(stateFromBody((await result.response!.json()) as SessionBody));
+      setState(stateFromBody((await result.response.json()) as SessionBody));
       return { ok: true };
     },
     startWardSignIn: (startOptions = {}) =>
@@ -449,7 +452,7 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
     async unlinkWard() {
       const result = await act("/ward/unlink");
       if (!result.ok) return result;
-      const { signedOut: ended } = (await result.response!.json()) as { signedOut: boolean };
+      const { signedOut: ended } = (await result.response.json()) as { signedOut: boolean };
       if (ended) setState(signedOut());
       else await refresh();
       return { ok: true };
@@ -467,7 +470,7 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
     async signOutOfWard() {
       const result = await act("/ward/logout");
       if (!result.ok) return result;
-      const { url } = (await result.response!.json()) as { url: string | null };
+      const { url } = (await result.response.json()) as { url: string | null };
       setState(signedOut());
       if (url !== null) navigate(url);
       return { ok: true };

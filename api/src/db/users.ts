@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type Database from "better-sqlite3";
-import { prepareOnce } from "./prepared.js";
+import { prepareOnce, requireRow } from "./prepared.js";
 
 /**
  * The `users` table — one row per account.
@@ -159,7 +159,9 @@ export function createUser(db: Database.Database, input: NewUser): UserRow {
   const subject = input.subject ?? generateSubject();
   const email = input.email ?? null;
 
-  return stmts(db).insert.get(subject, input.username, foldUsername(input.username), input.passwordHash, email, 0)!;
+  return requireRow(
+    stmts(db).insert.get(subject, input.username, foldUsername(input.username), input.passwordHash, email, 0),
+  );
 }
 
 /** The account a `sub` claim or a grant row points at. */
@@ -257,5 +259,5 @@ export function listUsers(db: Database.Database, limit = 100, offset = 0): UserR
 }
 
 export function countUsers(db: Database.Database): number {
-  return stmts(db).count.pluck().get()!;
+  return requireRow(stmts(db).count.pluck().get());
 }

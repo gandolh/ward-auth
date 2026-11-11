@@ -128,7 +128,7 @@ export function migrateSqlite(db: SqliteHandle, migrations: readonly Migration[]
   const row = db.prepare("SELECT MAX(version) AS version FROM auth_migrations").get() as
     { version: number | bigint | null } | undefined;
   const current = Number(row?.version ?? 0);
-  const known = migrations.length === 0 ? 0 : migrations[migrations.length - 1]!.version;
+  const known = migrations.at(-1)?.version ?? 0;
 
   // An older copy over a newer database would run against tables it does not
   // understand. Refuse at boot rather than fail somewhere stranger later.

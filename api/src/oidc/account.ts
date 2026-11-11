@@ -100,10 +100,11 @@ export function wardFindAccount(db: Database.Database): FindAccount {
     if (!hasLiveFamily(db, authorization.family_id, sub)) return undefined;
 
     const roles = listRolesInApp(db, sub, authorization.client_id);
-    if (roles.length === 0) return undefined;
+    const [first] = roles;
+    if (first === undefined) return undefined;
     // The role the interaction saw, if it is still held; otherwise the current
     // first one, so a role swapped inside the minute is not reported stale.
-    const role = roles.includes(authorization.role) ? authorization.role : roles[0]!;
+    const role = roles.includes(authorization.role) ? authorization.role : first;
 
     return {
       accountId: sub,

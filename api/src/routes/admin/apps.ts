@@ -290,7 +290,8 @@ export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutes
           setPublicRegistration(db, before.slug, open, open ? role : null);
         }
 
-        const row = getApp(db, before.slug)!;
+        const row = getApp(db, before.slug);
+        if (row === undefined) throw new Error("the app was gone during its own update");
 
         const renamed: Record<string, FieldChange> = {};
         if (row.name !== before.name) {
@@ -371,7 +372,8 @@ export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutes
 
     const after = db.transaction((): AppRow => {
       setOidcClient(db, before.slug, registration);
-      const row = getApp(db, before.slug)!;
+      const row = getApp(db, before.slug);
+      if (row === undefined) throw new Error("the app was gone during its own OIDC update");
       const was = oidcClientOf(before);
       // Key ids, never key material, in the audit row: the log is read by
       // whoever reads the console, and a kid is enough to say which key.

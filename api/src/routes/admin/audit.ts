@@ -139,6 +139,7 @@ export async function adminAuditRoutes(app: FastifyInstance, options: AdminRoute
 
     const db = await database();
     const rows = listAudit(db, query);
+    const oldest = rows.at(-1);
 
     /**
      * **`total` is the size of the whole log, not of the filtered set.**
@@ -158,7 +159,7 @@ export async function adminAuditRoutes(app: FastifyInstance, options: AdminRoute
        * `limit` and is therefore the last one. Derived from the oldest row
        * returned, because the list is newest-first.
        */
-      nextBeforeId: rows.length < limit ? null : rows[rows.length - 1]!.id,
+      nextBeforeId: oldest === undefined || rows.length < limit ? null : oldest.id,
     });
   });
 }

@@ -203,8 +203,8 @@ function outboxFilename(): string {
  * contains angle brackets cannot move the address.
  */
 export function mailboxAddress(from: string): string {
-  const bracketed = /<([^<>]+)>\s*$/.exec(from);
-  return headerSafe(bracketed === null ? from : bracketed[1]!);
+  const bracketed = /<([^<>]+)>\s*$/.exec(from)?.[1];
+  return headerSafe(bracketed ?? from);
 }
 
 /**

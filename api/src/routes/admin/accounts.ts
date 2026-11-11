@@ -268,7 +268,7 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
 
     const alreadyDisabled = before.disabled_at !== null;
 
-    const result = db.transaction((): { account: UserRow; sessionsRevoked: number } => {
+    const result = db.transaction((): { account: UserRow | undefined; sessionsRevoked: number } => {
       if (!alreadyDisabled) {
         setDisabled(db, before.subject, true);
       }
@@ -284,8 +284,9 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
         });
       }
 
-      return { account: findUserBySubject(db, before.subject)!, sessionsRevoked };
+      return { account: findUserBySubject(db, before.subject), sessionsRevoked };
     })();
+    if (result.account === undefined) throw new Error("the account was gone after its own disable");
 
     return reply.code(200).send({
       account: accountView(result.account),
@@ -318,7 +319,7 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
       return reply.code(200).send({ account: accountView(before), changed: false });
     }
 
-    const after = db.transaction((): UserRow => {
+    const after = db.transaction((): UserRow | undefined => {
       setDisabled(db, before.subject, false);
 
       recordConsoleAudit(db, request, {
@@ -328,8 +329,9 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
         detail: { username: before.username, disabledSince: before.disabled_at },
       });
 
-      return findUserBySubject(db, before.subject)!;
+      return findUserBySubject(db, before.subject);
     })();
+    if (after === undefined) throw new Error("the account was gone after its own enable");
 
     return reply.code(200).send({ account: accountView(after), changed: true });
   });
@@ -425,7 +427,8 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
     let after: UserRow;
     try {
       after = db.transaction((): UserRow => {
-        const row = setUsername(db, before.subject, body.data.username)!;
+        const row = setUsername(db, before.subject, body.data.username);
+        if (row === undefined) throw new Error("the account was gone during its own rename");
 
         recordConsoleAudit(db, request, {
           action: "user.rename",

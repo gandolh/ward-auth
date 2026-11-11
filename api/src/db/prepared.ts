@@ -40,3 +40,15 @@ export function prepareOnce<T>(build: (db: Database.Database) => T): (db: Databa
     return statements;
   };
 }
+
+/**
+ * The row of a statement that always returns one: an `INSERT … RETURNING *`,
+ * which hands back the row it wrote or throws, or a `SELECT count(*)`.
+ * `better-sqlite3` types `.get()` as possibly `undefined` either way, so this
+ * checks instead of asserting. It throws only if SQLite ever breaks that
+ * promise, where a `!` would have handed `undefined` on.
+ */
+export function requireRow<T>(row: T | undefined): T {
+  if (row === undefined) throw new Error("a statement that always returns a row returned none");
+  return row;
+}

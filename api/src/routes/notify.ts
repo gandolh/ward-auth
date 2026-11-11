@@ -160,7 +160,11 @@ export function createNotifyLimiter(limit: number = NOTIFY_LIMIT, windowMs: numb
 
       const cutoff = now - windowMs;
       let expired = 0;
-      while (expired < stamps.length && stamps[expired]! <= cutoff) expired += 1;
+      let stamp = stamps[0];
+      while (stamp !== undefined && stamp <= cutoff) {
+        expired += 1;
+        stamp = stamps[expired];
+      }
       if (expired > 0) stamps.splice(0, expired);
 
       if (stamps.length >= limit) return false;

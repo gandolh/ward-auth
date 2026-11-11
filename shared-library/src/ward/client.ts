@@ -536,17 +536,25 @@ export function wardClientOptionsFromEnv(
   const issuer = env["WARD_OIDC_ISSUER"]?.trim();
   if (issuer === undefined || issuer === "") return undefined;
 
-  const required = ["WARD_OIDC_CLIENT_ID", "WARD_OIDC_CLIENT_KEY", "WARD_OIDC_REDIRECT_URI"];
-  const missing = required.filter((name) => (env[name]?.trim() ?? "") === "");
+  const clientId = env["WARD_OIDC_CLIENT_ID"]?.trim() ?? "";
+  const clientKey = env["WARD_OIDC_CLIENT_KEY"]?.trim() ?? "";
+  const redirectUri = env["WARD_OIDC_REDIRECT_URI"]?.trim() ?? "";
+  const missing = Object.entries({
+    WARD_OIDC_CLIENT_ID: clientId,
+    WARD_OIDC_CLIENT_KEY: clientKey,
+    WARD_OIDC_REDIRECT_URI: redirectUri,
+  })
+    .filter(([, value]) => value === "")
+    .map(([name]) => name);
   if (missing.length > 0) {
     throw new TypeError(`WARD_OIDC_ISSUER is set but ${missing.join(", ")} is not`);
   }
   const postLogout = env["WARD_OIDC_POST_LOGOUT_REDIRECT_URI"]?.trim();
   return {
     issuer,
-    clientId: env["WARD_OIDC_CLIENT_ID"]!.trim(),
-    clientKey: env["WARD_OIDC_CLIENT_KEY"]!.trim(),
-    redirectUri: env["WARD_OIDC_REDIRECT_URI"]!.trim(),
+    clientId,
+    clientKey,
+    redirectUri,
     ...(postLogout === undefined || postLogout === "" ? {} : { postLogoutRedirectUri: postLogout }),
   };
 }

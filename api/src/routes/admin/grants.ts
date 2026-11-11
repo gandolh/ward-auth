@@ -106,7 +106,9 @@ export async function adminGrantsRoutes(app: FastifyInstance, options: AdminRout
       return reply.code(200).send({ grants: listGrantsForSubject(db, query.data.subject).map(grantView) });
     }
 
-    const slug = query.data.app!;
+    const slug = query.data.app;
+    // The refinement lets exactly one of `subject` and `app` through.
+    if (slug === undefined) throw new Error("neither subject nor app passed the refinement");
     if (getApp(db, slug) === undefined) {
       return reply.code(404).send({ error: "app_not_found" });
     }

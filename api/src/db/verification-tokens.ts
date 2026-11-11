@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type Database from "better-sqlite3";
-import { prepareOnce } from "./prepared.js";
+import { prepareOnce, requireRow } from "./prepared.js";
 
 /**
  * The `verification_tokens` table — single-use, expiring tokens mailed to an
@@ -98,14 +98,16 @@ const stmts = prepareOnce((db: Database.Database) => ({
 
 /** Store a freshly minted token's hash. Throws if the subject does not exist. */
 export function insertVerificationToken(db: Database.Database, input: NewVerificationToken): VerificationTokenRow {
-  return stmts(db).insert.get(
-    randomBytes(16).toString("hex"),
-    input.subject,
-    input.purpose,
-    input.email,
-    input.tokenHash,
-    input.expiresAt,
-  )!;
+  return requireRow(
+    stmts(db).insert.get(
+      randomBytes(16).toString("hex"),
+      input.subject,
+      input.purpose,
+      input.email,
+      input.tokenHash,
+      input.expiresAt,
+    ),
+  );
 }
 
 /**

@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import { prepareOnce } from "./prepared.js";
+import { prepareOnce, requireRow } from "./prepared.js";
 
 /**
  * The `audit_log` table — who did what to whom, and when. Append-only.
@@ -98,15 +98,17 @@ const stmts = prepareOnce((db: Database.Database) => ({
  * does not, and the log then quietly disagrees with the data.
  */
 export function recordAudit(db: Database.Database, event: AuditEvent): AuditLogRow {
-  return stmts(db).insert.get(
-    event.actorKind,
-    event.actorSubject ?? null,
-    event.actorLabel,
-    event.action,
-    event.targetKind ?? null,
-    event.targetId ?? null,
-    event.detail === undefined ? null : JSON.stringify(event.detail),
-  )!;
+  return requireRow(
+    stmts(db).insert.get(
+      event.actorKind,
+      event.actorSubject ?? null,
+      event.actorLabel,
+      event.action,
+      event.targetKind ?? null,
+      event.targetId ?? null,
+      event.detail === undefined ? null : JSON.stringify(event.detail),
+    ),
+  );
 }
 
 /**
@@ -265,5 +267,5 @@ export function listAudit(db: Database.Database, query: AuditQuery = {}): AuditL
 }
 
 export function countAudit(db: Database.Database): number {
-  return stmts(db).count.pluck().get()!;
+  return requireRow(stmts(db).count.pluck().get());
 }

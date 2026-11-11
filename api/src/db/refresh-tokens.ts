@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type Database from "better-sqlite3";
-import { prepareOnce } from "./prepared.js";
+import { prepareOnce, requireRow } from "./prepared.js";
 
 /**
  * The `refresh_tokens` table — one row per issued refresh token, grouped into
@@ -154,7 +154,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
  * (impossibly, at 256 bits) if the hash is already present.
  */
 export function insertRefreshToken(db: Database.Database, input: NewRefreshToken): RefreshTokenRow {
-  return stmts(db).insert.get(input.tokenHash, input.subject, input.familyId, input.expiresAt)!;
+  return requireRow(stmts(db).insert.get(input.tokenHash, input.subject, input.familyId, input.expiresAt));
 }
 
 /**

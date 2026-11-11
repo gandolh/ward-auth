@@ -18,12 +18,18 @@ paths:
   `pages/console/focus-after-write.ts` has the rule. A new write button gets
   a key, and keeps it when its label changes.
 - The console is its own dark surface (`data-ward-surface="console"`,
-  `tokens.css`), dark whatever the reader's colour scheme. The public pages
-  are light; a Light / Dark / System switch for them comes with the move to
-  Tailwind.
-- The styles are plain CSS on tokens today: `tokens.css`, `ward.css` and
-  `pages/console/console.css`. The move to Tailwind replaces all three, so
-  don't grow them; add no new stylesheet.
+  `styles/index.css`), dark whatever the reader's colour scheme and whatever
+  `data-theme` says. The public pages follow Light / Dark / System on
+  `data-theme` (`theme.ts`, the boot script in `index.html`, the radio group on
+  the account page); a new public colour is a `--ward-*` variable in both
+  `:root` blocks, and `styles.test.ts` keeps the console block covering them.
+- The styles are Tailwind 4: `styles/index.css` (the sign-in pages, plus
+  `theme.css`) and `pages/console/console.css` (utilities for the lazy console
+  chunk only). Write utilities on the element; a repeated look is a whole class
+  string in `components/looks.ts` (sign-in, no `cn()`: tailwind-merge would join
+  the entry chunk) or `pages/console/looks.ts` (console, `cn()` allowed). Class
+  strings are written whole, never built from pieces. `.wc-main` on the
+  console's `<main>` is a hook for `focus-after-write.ts`, not a style.
 - No `window.confirm`, `alert` or `prompt`: a confirmation is the console's
   dialog.
 - Tests run in Node by default (the `?next=` allowlist, the API error
@@ -32,4 +38,4 @@ paths:
 - Native selects, the role `<datalist>` and the `textarea`s stay native, by a
   recorded decision (`corpus/wiki/decisions.md`).
 - `npm run check:conventions` runs `check-base-ui` over this folder,
-  `--warn-only` until the UI is on Tailwind.
+  strict.

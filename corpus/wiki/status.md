@@ -10,7 +10,8 @@ updated: 2026-11-11
 (see [../log.md](../log.md), "Briefs reset"). Four briefs were written on
 2026-11-10: the house style and quality harness (03, built 2026-11-11, local
 and not deployed), Base UI by the conventions (04, built 2026-11-11, local and
-not deployed), the UI to Tailwind (05)
+not deployed), the UI to Tailwind (05, built 2026-11-11, local and
+not deployed)
 and the server in the house code structure (06). They follow the owner's estate calls of 2026-11-09
 and were revised the same day to the answers of the grilling of 2026-11-10; a
 fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas waiting to be specced are in
@@ -62,8 +63,8 @@ fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas 
 - **The house style** (2026-11-11, not deployed). Prettier at 120, the house
   tsconfig flags and ESLint config from `vendor/house-style/` (1.1.0), and
   `npm run check` as the gate, with `check:fast` for the Stop hook
-  ([decisions-implementation.md](decisions-implementation.md)). Both
-  convention checkers run `--warn-only` until the UI and server work.
+  ([decisions-implementation.md](decisions-implementation.md)). `check-base-ui` has run strict since the UI moved to
+  Tailwind (2026-11-11); `check-structure` runs `--warn-only` until the server work.
 - **ward-auth** (`shared-library/`, 0.7.1 on 2026-11-11). 0.4.0 renames a user,
   0.5.0 shapes a new Ward user's name, 0.6.0 disables a local user, 0.6.1
   exports the new names, 0.7.0 keeps a refused sign-in's return path, 0.7.1

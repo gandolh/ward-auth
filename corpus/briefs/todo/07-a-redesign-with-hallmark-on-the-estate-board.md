@@ -2,7 +2,7 @@
 
 **Depends on:**
 
-- In ward-auth: [brief 05](05-the-ui-to-tailwind.md), which puts the UI in Tailwind on its own token names, splits the sign-in pages' stylesheet from the console's, and adds the Light / Dark / System switch for the public pages; and [brief 04](../done/04-base-ui-by-the-conventions.md), which puts the Base UI wrappers in the console's own `ui/` folder. A redesign is then mostly a new token set and layout.
+- In ward-auth: [brief 05](../done/05-the-ui-to-tailwind.md), which puts the UI in Tailwind on its own token names, splits the sign-in pages' stylesheet from the console's, and adds the Light / Dark / System switch for the public pages; and [brief 04](../done/04-base-ui-by-the-conventions.md), which puts the Base UI wrappers in the console's own `ui/` folder. A redesign is then mostly a new token set and layout.
 - In the owner's skills library:
   - brief 24, which vendors Hallmark as the design skill and adopts taste-skill 2.5's ideas (palettes and type dealt by trade, its copy layer);
   - the estate redesign board: one artifact with a page per app, owned by the skills library.

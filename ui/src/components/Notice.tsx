@@ -2,6 +2,21 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 export type NoticeTone = "error" | "wait" | "info";
 
+/*
+ * One border, not two. An earlier pass gave these an accent stripe down the left edge, which put a second vertical
+ * rule inside a block already hanging off the jamb: the structure stopped meaning anything. A tinted ground and a
+ * hairline is enough. The bottom margin is there because a notice is almost always followed by the thing it is about
+ * (a form, a heading), and butting straight up against a field label reads as part of the field. Whole class strings,
+ * not built from the tone, so Tailwind's scanner sees them.
+ */
+const BASE = "mb-6 rounded-ward border px-4 py-3 text-sm";
+
+const TONES: Record<NoticeTone, string> = {
+  error: `${BASE} border-ward-danger/35 bg-ward-danger-surface text-ward-danger`,
+  wait: `${BASE} border-ward-notice/35 bg-ward-notice-surface text-ward-notice`,
+  info: `${BASE} border-ward-border bg-ward-surface-sunken text-ward-text-muted`,
+};
+
 /**
  * A form-level message: what went wrong, or what is true and worth knowing.
  *
@@ -50,7 +65,7 @@ export function Notice({
   return (
     <div
       ref={ref}
-      className={`ward-notice ward-notice--${tone}`}
+      className={TONES[tone]}
       // `alert` on an error so it is announced without waiting for a pause;
       // `status` otherwise. Both are set alongside `aria-live` rather than
       // relying on the implicit value, because the implicit politeness of

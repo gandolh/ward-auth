@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
+import { lede, prose, link, form, actions, button, hint } from "../components/looks.js";
 import {
   WardApiError,
   changeOwnPassword,
@@ -106,7 +107,7 @@ export function Account(): React.JSX.Element {
     return (
       <Threshold wide>
         <h1>Your account</h1>
-        <p className="ward-lede">Loading.</p>
+        <p className={lede}>Loading.</p>
       </Threshold>
     );
   }
@@ -115,9 +116,9 @@ export function Account(): React.JSX.Element {
     return (
       <Threshold wide>
         <h1>Ward isn't answering</h1>
-        <p className="ward-lede">Your session is probably fine — Ward just didn't respond. Try again.</p>
-        <div className="ward-actions">
-          <button className="ward-button" type="button" onClick={load}>
+        <p className={lede}>Your session is probably fine — Ward just didn't respond. Try again.</p>
+        <div className={actions}>
+          <button className={button()} type="button" onClick={load}>
             Try again
           </button>
         </div>
@@ -137,9 +138,9 @@ export function Account(): React.JSX.Element {
     return (
       <Threshold wide>
         <h1>You're signed out</h1>
-        <p className="ward-lede">Sessions end after a while, and this one has. Sign in to see your account.</p>
-        <p className="ward-prose">
-          <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
+        <p className={lede}>Sessions end after a while, and this one has. Sign in to see your account.</p>
+        <p className={prose}>
+          <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in
           </Link>
         </p>
@@ -221,9 +222,7 @@ function SignedIn({
   return (
     <Threshold wide footer={<>Signed in as {session.username}. Ward keeps the estate's accounts.</>}>
       <h1>Your account</h1>
-      <p className="ward-lede">
-        One account for every app here. What you can reach in each of them is set per app, below.
-      </p>
+      <p className={lede}>One account for every app here. What you can reach in each of them is set per app, below.</p>
 
       {unverified && (
         <Notice tone="info">
@@ -233,7 +232,7 @@ function SignedIn({
       )}
 
       <h2>Who you are</h2>
-      <dl className="ward-facts">
+      <dl className="grid grid-cols-[minmax(6rem,auto)_1fr] gap-x-5 gap-y-2 text-sm [&>dd]:text-ward-text [&>dt]:text-ward-text-faint">
         <dt>Username</dt>
         <dd>{session.username}</dd>
         <dt>Account id</dt>
@@ -243,7 +242,7 @@ function SignedIn({
           gone wrong somewhere else. Monospace because it is meant to be read
           character by character.
         */}
-        <dd className="ward-mono">{session.subject}</dd>
+        <dd className="font-ward-mono text-xs wrap-anywhere">{session.subject}</dd>
         {account.state === "ready" && (
           <>
             <dt>Email</dt>
@@ -258,17 +257,22 @@ function SignedIn({
 
       <h2>What you can reach</h2>
       {grants.length === 0 ? (
-        <p className="ward-prose">
+        <p className={prose}>
           No app access yet. Access is granted per app by whoever runs the estate — ask them, and it will appear here.
         </p>
       ) : (
         <>
-          <p className="ward-prose">Read-only. Changing any of this is done by whoever runs the estate.</p>
-          <ul className="ward-grants">
+          <p className={prose}>Read-only. Changing any of this is done by whoever runs the estate.</p>
+          <ul className="border-t border-ward-border">
             {grants.map(([slug, roles]) => (
-              <li key={slug}>
-                <span className="ward-grants__app">{appName(slug)}</span>
-                <span className="ward-grants__roles">{roles.length === 0 ? "no roles" : roles.join(", ")}</span>
+              <li
+                key={slug}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b border-ward-border py-3"
+              >
+                <span className="text-sm font-semibold">{appName(slug)}</span>
+                <span className="text-sm text-ward-text-muted">
+                  {roles.length === 0 ? "no roles" : roles.join(", ")}
+                </span>
               </li>
             ))}
           </ul>
@@ -354,7 +358,7 @@ function ChangePassword({ onSignedOut }: { onSignedOut: () => void }): React.JSX
     <>
       <h2>Password</h2>
       {!CAN_CHANGE_OWN_PASSWORD ? (
-        <div className="ward-unavailable">
+        <div className="rounded-ward border border-dashed border-ward-border-strong bg-ward-surface-sunken p-4 text-sm text-ward-text-muted">
           <p>
             You can't change your own password here yet — Ward has no endpoint for it. Ask whoever runs the estate to
             set a new one from the console.
@@ -378,7 +382,7 @@ function ChangePassword({ onSignedOut }: { onSignedOut: () => void }): React.JSX
             <Notice tone="error">{passwordMessage(failure)}</Notice>
           )}
           <form
-            className="ward-form"
+            className={form}
             noValidate
             onSubmit={(event) => {
               void onSubmit(event);
@@ -426,11 +430,11 @@ function ChangePassword({ onSignedOut }: { onSignedOut: () => void }): React.JSX
                 setConfirm(event.target.value);
               }}
             />
-            <div className="ward-actions">
-              <button className="ward-button" type="submit" disabled={busy || lockedOut}>
+            <div className={actions}>
+              <button className={button()} type="submit" disabled={busy || lockedOut}>
                 {busy ? "Changing…" : "Change password"}
               </button>
-              <span className="ward-field__hint">
+              <span className={hint}>
                 Signs out every other device that was signed in as you. This one stays signed in — it gets a fresh
                 session automatically.
               </span>
@@ -478,7 +482,7 @@ function OtherDevices({ onSignedOut }: { onSignedOut: () => void }): React.JSX.E
     <>
       <h2>Other devices</h2>
       {!CAN_REVOKE_OTHER_SESSIONS ? (
-        <div className="ward-unavailable">
+        <div className="rounded-ward border border-dashed border-ward-border-strong bg-ward-surface-sunken p-4 text-sm text-ward-text-muted">
           <p>
             Signing out your other devices isn't possible yet — Ward has no endpoint for it. If you think somebody else
             is signed in as you, ask whoever runs the estate to revoke your sessions from the console, and change your
@@ -487,7 +491,7 @@ function OtherDevices({ onSignedOut }: { onSignedOut: () => void }): React.JSX.E
         </div>
       ) : (
         <>
-          <p className="ward-prose">
+          <p className={prose}>
             Ends every other signed-in session and leaves this one alone. Worth doing if you think somebody else has
             your session.
           </p>
@@ -504,9 +508,9 @@ function OtherDevices({ onSignedOut }: { onSignedOut: () => void }): React.JSX.E
               sessions.
             </Notice>
           )}
-          <div className="ward-actions">
+          <div className={actions}>
             <button
-              className="ward-button ward-button--danger"
+              className={button("danger")}
               type="button"
               disabled={busy}
               onClick={() => {
@@ -551,10 +555,10 @@ function SignOut({ username }: { username: string }): React.JSX.Element {
   return (
     <>
       <h2>Sign out</h2>
-      <p className="ward-prose">Ends this session only, on this device. Signed in as {username}.</p>
-      <div className="ward-actions">
+      <p className={prose}>Ends this session only, on this device. Signed in as {username}.</p>
+      <div className={actions}>
         <button
-          className="ward-button ward-button--quiet"
+          className={button("quiet")}
           type="button"
           disabled={busy}
           onClick={() => {

@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
+import { lede, prose, proseSpaced, link, form, actions, button } from "../components/looks.js";
 import { WardApiError, register, type RegisterResult, type WardErrorCode } from "../lib/api.js";
 import { DEFAULT_NEXT, loginRouteFor } from "../lib/next.js";
 import { useOpenApps } from "../lib/open-apps.js";
@@ -151,12 +152,12 @@ export function Register(): React.JSX.Element {
     return (
       <Threshold>
         <h1>Which app?</h1>
-        <p className="ward-lede">
+        <p className={lede}>
           Signing up happens at an app, not at Ward — an account carries that app's starting role and nothing else.
           Start from the app you want to join and it will send you back here.
         </p>
-        <p className="ward-prose">
-          <Link className="ward-link" to="/login">
+        <p className={prose}>
+          <Link className={link} to="/login">
             Already have an account? Sign in
           </Link>
         </p>
@@ -170,14 +171,14 @@ export function Register(): React.JSX.Element {
         footer={
           <>
             Signed up for {name}.{" "}
-            <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
+            <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
               Sign in
             </Link>
           </>
         }
       >
         <h1>Account created</h1>
-        <p className="ward-lede">
+        <p className={lede}>
           You're registered at {name} as <strong>{created.username}</strong> with the {created.role} role. Signing up
           doesn't sign you in: open {name} and sign in with Ward there.
         </p>
@@ -199,8 +200,8 @@ export function Register(): React.JSX.Element {
             carry on.
           </Notice>
         )}
-        <p className="ward-prose ward-prose--spaced">
-          <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
+        <p className={proseSpaced}>
+          <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in to your Ward account
           </Link>
         </p>
@@ -212,12 +213,12 @@ export function Register(): React.JSX.Element {
     return (
       <Threshold>
         <h1>{name} isn't taking signups</h1>
-        <p className="ward-lede">
+        <p className={lede}>
           Accounts for {name} are handed out by whoever runs the estate rather than created here. Ask them for one — and
           if you already have an account, it works everywhere.
         </p>
-        <p className="ward-prose">
-          <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
+        <p className={prose}>
+          <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in instead
           </Link>
         </p>
@@ -287,13 +288,13 @@ export function Register(): React.JSX.Element {
   return (
     <Threshold
       footer={
-        <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
+        <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
           Already have an account? Sign in
         </Link>
       }
     >
       <h1>Join {name}</h1>
-      <p className="ward-lede">
+      <p className={lede}>
         This creates one Ward account, which signs you in to every app here. It gives you access to {name} and nothing
         else until somebody grants more.
       </p>
@@ -306,7 +307,7 @@ export function Register(): React.JSX.Element {
       {failure !== undefined && failure !== "too_many_attempts" && <Notice tone="error">{messageFor(failure)}</Notice>}
 
       <form
-        className="ward-form"
+        className={form}
         noValidate
         onSubmit={(event) => {
           void onSubmit(event);
@@ -373,8 +374,8 @@ export function Register(): React.JSX.Element {
             setPassword(event.target.value);
           }}
         />
-        <div className="ward-actions">
-          <button className="ward-button" type="submit" disabled={submitting || lockedOut}>
+        <div className={actions}>
+          <button className={button()} type="submit" disabled={submitting || lockedOut}>
             {submitting ? "Creating account…" : `Join ${name}`}
           </button>
         </div>

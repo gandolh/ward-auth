@@ -15,7 +15,6 @@
 @layer theme, base, vendor, legacy, components, utilities;
 
 @import "tailwindcss";
-@import "../ward.css" layer(legacy);
 @import "../pages/console/console.css" layer(legacy);
 
 /* Until ward.css and console.css are gone: the old tokens they still read. */

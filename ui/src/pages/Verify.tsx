@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
+import { lede, link } from "../components/looks.js";
 import { WardApiError, verifyEmail, type WardErrorCode } from "../lib/api.js";
 import { onceByKey } from "../lib/once.js";
 
@@ -93,7 +94,7 @@ export function Verify(): React.JSX.Element {
     return (
       <Threshold>
         <h1>Checking your link</h1>
-        <p className="ward-lede">One moment.</p>
+        <p className={lede}>One moment.</p>
       </Threshold>
     );
   }
@@ -102,13 +103,13 @@ export function Verify(): React.JSX.Element {
     return (
       <Threshold
         footer={
-          <Link className="ward-link" to="/login">
+          <Link className={link} to="/login">
             Sign in
           </Link>
         }
       >
         <h1>Email confirmed</h1>
-        <p className="ward-lede">That's your address confirmed. Nothing else to do here — sign in and carry on.</p>
+        <p className={lede}>That's your address confirmed. Nothing else to do here — sign in and carry on.</p>
       </Threshold>
     );
   }
@@ -117,13 +118,13 @@ export function Verify(): React.JSX.Element {
     return (
       <Threshold
         footer={
-          <Link className="ward-link" to="/login">
+          <Link className={link} to="/login">
             Sign in
           </Link>
         }
       >
         <h1>The link expired</h1>
-        <p className="ward-lede">
+        <p className={lede}>
           Confirmation links last 24 hours and this one is past that. Your account still works exactly as before —
           confirming an address doesn't unlock anything, so nothing is waiting on it.
         </p>
@@ -145,7 +146,7 @@ export function Verify(): React.JSX.Element {
     return (
       <Threshold>
         <h1>Ward isn't answering</h1>
-        <p className="ward-lede">The link is probably fine. Reload this page in a moment to try again.</p>
+        <p className={lede}>The link is probably fine. Reload this page in a moment to try again.</p>
       </Threshold>
     );
   }
@@ -153,13 +154,13 @@ export function Verify(): React.JSX.Element {
   return (
     <Threshold
       footer={
-        <Link className="ward-link" to="/login">
+        <Link className={link} to="/login">
           Sign in
         </Link>
       }
     >
       <h1>That link doesn't work</h1>
-      <p className="ward-lede">
+      <p className={lede}>
         Most likely it's already been used, in which case your address is confirmed and there's nothing left to do.
         Otherwise check it was copied in full — they're long.
       </p>

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 
+import { lede, link, prose } from "./components/looks.js";
 import { Threshold } from "./components/Threshold.js";
 import { WARD_BASENAME } from "./lib/next.js";
 import { Account } from "./pages/Account.js";
@@ -94,7 +95,7 @@ export function App(): React.JSX.Element {
  */
 function ConsoleLoading(): React.JSX.Element {
   return (
-    <p className="ward-lede" role="status" style={{ margin: 0, padding: "var(--ward-space-8) var(--ward-space-6)" }}>
+    <p className="max-w-[38ch] px-6 py-8 text-sm text-ward-text-muted" role="status">
       Loading the console…
     </p>
   );
@@ -111,12 +112,12 @@ function NotFound(): React.JSX.Element {
   return (
     <Threshold>
       <h1>Nothing here</h1>
-      <p className="ward-lede">
+      <p className={lede}>
         That address isn&apos;t one of Ward&apos;s pages. If you were on your way somewhere, sign in and you&apos;ll be
         sent on.
       </p>
-      <p className="ward-prose">
-        <Link className="ward-link" to="/login">
+      <p className={prose}>
+        <Link className={link} to="/login">
           Sign in
         </Link>
       </p>

@@ -1,5 +1,14 @@
 import type { InputHTMLAttributes, Ref } from "react";
 
+import { hint as hintLook, hintError } from "./looks.js";
+
+const INPUT = [
+  "w-full rounded-ward border border-ward-border-strong bg-ward-surface p-3 text-ward-text",
+  "transition-[border-color] duration-120 ease-ward hover:enabled:border-ward-text-faint",
+  "focus-visible:border-ward-accent aria-invalid:border-ward-danger",
+  "disabled:bg-ward-surface-sunken disabled:text-ward-text-faint",
+].join(" ");
+
 /**
  * A labelled text input, with the accessibility wiring done once.
  *
@@ -49,23 +58,25 @@ export function Field({
       .join(" ") || undefined;
 
   return (
-    <div className="ward-field">
-      <label htmlFor={id}>{label}</label>
+    <div className="grid gap-2">
+      <label htmlFor={id} className="text-sm font-semibold text-ward-text">
+        {label}
+      </label>
       <input
         {...input}
         id={id}
         ref={inputRef}
-        className="ward-input"
+        className={INPUT}
         aria-describedby={describedBy}
         aria-invalid={error === undefined ? undefined : true}
       />
       {hint !== undefined && (
-        <span className="ward-field__hint" id={hintId}>
+        <span className={hintLook} id={hintId}>
           {hint}
         </span>
       )}
       {error !== undefined && (
-        <span className="ward-field__hint ward-field__hint--error" id={errorId}>
+        <span className={hintError} id={errorId}>
           {error}
         </span>
       )}

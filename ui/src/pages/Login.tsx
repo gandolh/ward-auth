@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
+import { lede, link, form, actions, button } from "../components/looks.js";
 import { WardApiError, login, type WardErrorCode } from "../lib/api.js";
 import { resolveNext } from "../lib/next.js";
 import { interactionAbortUrl, interactionResumeUrl, oidcInteraction, useInteractionClient } from "../lib/oidc.js";
@@ -188,13 +189,13 @@ export function Login(): React.JSX.Element {
         <>
           {interaction !== undefined ? (
             // A plain link, not a router one: it leaves the SPA for the API.
-            <a className="ward-link" href={interactionAbortUrl(interaction)}>
+            <a className={link} href={interactionAbortUrl(interaction)}>
               Back to {interactionClient?.name ?? "the app"}
             </a>
           ) : (
             <>
               One sign-in for every app here.{" "}
-              <Link className="ward-link" to="/account">
+              <Link className={link} to="/account">
                 Your account
               </Link>
             </>
@@ -203,7 +204,7 @@ export function Login(): React.JSX.Element {
       }
     >
       <h1>{heading}</h1>
-      <p className="ward-lede">
+      <p className={lede}>
         {interaction !== undefined
           ? "Sign in with your Ward account. You'll go straight back to the app."
           : "Ward keeps the estate's accounts. Sign in to see yours."}
@@ -233,7 +234,7 @@ export function Login(): React.JSX.Element {
 
       */}
       <form
-        className="ward-form"
+        className={form}
         noValidate
         onSubmit={(event) => {
           void onSubmit(event);
@@ -277,8 +278,8 @@ export function Login(): React.JSX.Element {
           says how long, the disabled button already says "not yet", and a
           countdown rendered twice on one screen reads as two different clocks.
         */}
-        <div className="ward-actions">
-          <button className="ward-button" type="submit" disabled={submitting || lockedOut}>
+        <div className={actions}>
+          <button className={button()} type="submit" disabled={submitting || lockedOut}>
             {submitting ? "Signing in…" : "Sign in"}
           </button>
         </div>

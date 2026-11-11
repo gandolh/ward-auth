@@ -47,13 +47,11 @@ export class WardConfigurationError extends WardUnavailableError {
  * expose; the app writes the message.
  */
 export class WardSignInError extends Error {
+  readonly code: string;
   override readonly name = "WardSignInError";
 
-  constructor(
-    readonly code: string,
-    message: string,
-    options?: { cause?: unknown },
-  ) {
+  constructor(code: string, message: string, options?: { cause?: unknown }) {
     super(message, options);
+    this.code = code;
   }
 }

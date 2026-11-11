@@ -123,10 +123,13 @@ function optionalString(value: unknown): string | null {
 }
 
 export class SqliteAdapter implements Adapter {
-  constructor(
-    private readonly db: Database.Database,
-    private readonly model: string,
-  ) {}
+  private readonly db: Database.Database;
+  private readonly model: string;
+
+  constructor(db: Database.Database, model: string) {
+    this.db = db;
+    this.model = model;
+  }
 
   async upsert(id: string, payload: AdapterPayload, expiresIn?: number): Promise<void> {
     this.refuseClientWrites();

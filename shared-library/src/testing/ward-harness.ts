@@ -278,12 +278,14 @@ export interface AppEndpoint {
 }
 
 export class Browser {
+  private readonly ward: RealWard;
+  private readonly target: AppEndpoint;
   private readonly jars = new Map<string, Map<string, StoredCookie>>();
 
-  constructor(
-    private readonly ward: RealWard,
-    private readonly target: AppEndpoint,
-  ) {}
+  constructor(ward: RealWard, target: AppEndpoint) {
+    this.ward = ward;
+    this.target = target;
+  }
 
   cookie(origin: string, name: string): StoredCookie | undefined {
     return this.jars.get(origin)?.get(name);

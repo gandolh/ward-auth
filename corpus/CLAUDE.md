@@ -1,7 +1,8 @@
 # wzd_auth corpus
 
 Start at [index.md](index.md); [routing.md](routing.md) says which layer answers
-what.
+what. The commands, the hard rules and the brief-board section are in the
+repo's root [CLAUDE.md](../CLAUDE.md).
 
 ## Conventions
 
@@ -15,8 +16,3 @@ what.
   why, or give the date; the history belongs in `log.md`. The dated migration
   files under `api/src/db/migrations/` and the SQL in
   `shared-library/src/store/migrations.ts` keep theirs.
-
-## brief-board
-
-Brief progress goes on brief-board. Run `brief-board guide` before you
-start or resume a brief, and follow it.

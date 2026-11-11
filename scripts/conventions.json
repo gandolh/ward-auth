@@ -2,5 +2,6 @@
   "$schema": "../vendor/house-style/conventions.schema.json",
   "web": ["ui/src"],
   "server": ["api/src"],
-  "shared": ["shared-library/src"]
+  "shared": ["shared-library/src"],
+  "ui": ["pages/console/ui"]
 }

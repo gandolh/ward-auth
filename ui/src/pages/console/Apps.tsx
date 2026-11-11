@@ -24,7 +24,7 @@
  * list has reloaded (`focus-after-write.ts`), whether or not it was confirmed.
  */
 
-import { Collapsible } from "@base-ui/react/collapsible";
+import * as Collapsible from "./ui/Collapsible.js";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 

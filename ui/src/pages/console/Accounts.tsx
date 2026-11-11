@@ -15,7 +15,7 @@
  * forgotten password is fixed by the operator rotating it.
  */
 
-import { Collapsible } from "@base-ui/react/collapsible";
+import * as Collapsible from "./ui/Collapsible.js";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 

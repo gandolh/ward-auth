@@ -7,6 +7,24 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 0.7.1 — 2026-11-11
+
+No change for apps. The source moved to the estate's house style, and two
+reads in the server bundle changed shape without changing what they do.
+
+- The source is formatted with Prettier at width 120, and its tsconfig turns
+  on `noUncheckedIndexedAccess`, `verbatimModuleSyntax` and
+  `erasableSyntaxOnly`. `WardSignInError`'s `code` is a declared field
+  instead of a parameter property; the built class is the same.
+- Two reads no longer assert non-null: `migrateSqlite`'s newest known
+  migration, and `wardClientOptionsFromEnv`, which reads each variable once.
+  The checks, the `TypeError` and its text are the same.
+- The React bundle and both declaration files are byte for byte 0.7.0's.
+
+Upgrade notes from 0.7.0:
+
+- Nothing to change, and no migration. Re-vendoring is optional.
+
 ## 0.7.0 — 2026-10-27
 
 A refused "Sign in with Ward" keeps the path it was started with.

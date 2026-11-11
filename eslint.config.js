@@ -21,7 +21,17 @@ import reactHooks from "eslint-plugin-react-hooks";
  * @type {import('eslint').Linter.Config[]}
  */
 export default [
-  { ignores: ["**/dist/**", "**/node_modules/**", "shared-library/.scratch/**"] },
+  {
+    // docs/ is a Docusaurus site with its own typecheck; vendor/ holds generated
+    // copies. Everything else in the repo is linted.
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/vendor/**",
+      "shared-library/.scratch/**",
+      "docs/**",
+    ],
+  },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -51,14 +61,22 @@ export default [
 
   {
     /**
-     * The shared library's build scripts are plain Node ESM, so they need
-     * Node's globals declared; `no-undef` would otherwise flag `process`.
+     * The JavaScript files (the library's build scripts, the local seed, the
+     * root configs) are plain Node ESM, so they need Node's globals declared;
+     * `no-undef` would otherwise flag `process`.
      */
-    files: ["shared-library/scripts/**/*.mjs"],
+    files: ["**/*.{js,mjs}"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
-      globals: { process: "readonly", console: "readonly", URL: "readonly" },
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        URL: "readonly",
+        Buffer: "readonly",
+        fetch: "readonly",
+        setTimeout: "readonly",
+      },
     },
   },
 

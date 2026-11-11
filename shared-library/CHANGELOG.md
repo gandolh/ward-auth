@@ -19,7 +19,8 @@ reads in the server bundle changed shape without changing what they do.
 - Two reads no longer assert non-null: `migrateSqlite`'s newest known
   migration, and `wardClientOptionsFromEnv`, which reads each variable once.
   The checks, the `TypeError` and its text are the same.
-- The React bundle and both declaration files are byte for byte 0.7.0's.
+- The React bundle and both declaration files differ from 0.7.0's only in
+  the version in their banner.
 
 Upgrade notes from 0.7.0:
 

@@ -26,16 +26,12 @@ interface FakeElement extends FocusCandidate {
   name: string;
 }
 
-function element(
-  name: string,
-  options: { disabled?: boolean; ariaDisabled?: boolean } = {},
-): FakeElement {
+function element(name: string, options: { disabled?: boolean; ariaDisabled?: boolean } = {}): FakeElement {
   return {
     name,
     disabled: options.disabled,
     focus: () => undefined,
-    getAttribute: (attribute) =>
-      attribute === "aria-disabled" && options.ariaDisabled === true ? "true" : null,
+    getAttribute: (attribute) => (attribute === "aria-disabled" && options.ariaDisabled === true ? "true" : null),
   };
 }
 
@@ -56,10 +52,7 @@ describe("focus after a confirmed write", () => {
   });
 
   it("falls back to the heading when the opener is gone", () => {
-    const target = focusTargetAfterWrite(
-      root({ [HEADING_SELECTOR]: heading }),
-      "revoke-app:atrium",
-    );
+    const target = focusTargetAfterWrite(root({ [HEADING_SELECTOR]: heading }), "revoke-app:atrium");
     expect(target?.name).toBe("heading");
   });
 
@@ -82,9 +75,7 @@ describe("focus after a confirmed write", () => {
   });
 
   it("goes to the heading when no key was asked for", () => {
-    expect(focusTargetAfterWrite(root({ [HEADING_SELECTOR]: heading }), undefined)?.name).toBe(
-      "heading",
-    );
+    expect(focusTargetAfterWrite(root({ [HEADING_SELECTOR]: heading }), undefined)?.name).toBe("heading");
   });
 
   it("answers nothing when the screen has no heading, as a deleted account's alert", () => {
@@ -134,9 +125,7 @@ describe("focus after a write with no confirmation", () => {
 
 describe("a panel heading as a focus target", () => {
   it("carries the key and tabindex -1 when given a focusKey", () => {
-    const html = renderToStaticMarkup(
-      createElement(Panel, { title: "Access", focusKey: "access" }),
-    );
+    const html = renderToStaticMarkup(createElement(Panel, { title: "Access", focusKey: "access" }));
     expect(html).toContain('<h2 tabindex="-1" data-wc-focus="access">Access</h2>');
   });
 

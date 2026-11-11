@@ -70,10 +70,7 @@ export function clientMetadataFor(row: AppRow): Record<string, unknown> | undefi
 }
 
 export type ClientRegistrationError =
-  | "invalid_redirect_uri"
-  | "invalid_post_logout_redirect_uri"
-  | "invalid_client_key"
-  | "private_key_not_public";
+  "invalid_redirect_uri" | "invalid_post_logout_redirect_uri" | "invalid_client_key" | "private_key_not_public";
 
 /**
  * Validate one list of redirect URIs from the console.
@@ -148,10 +145,7 @@ export async function parseClientJwks(
     const x = jwk["x"];
     // An Ed25519 public key is 32 bytes: 43 base64url characters, unpadded.
     if (typeof x !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(x)) return "invalid_client_key";
-    if (
-      jwk["alg"] !== undefined &&
-      !(CLIENT_ASSERTION_ALGS as string[]).includes(String(jwk["alg"]))
-    ) {
+    if (jwk["alg"] !== undefined && !(CLIENT_ASSERTION_ALGS as string[]).includes(String(jwk["alg"]))) {
       return "invalid_client_key";
     }
     if (jwk["use"] !== undefined && jwk["use"] !== "sig") return "invalid_client_key";

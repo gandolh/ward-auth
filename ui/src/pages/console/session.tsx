@@ -71,10 +71,7 @@ export function useConsole(): ConsoleContextValue {
  * every mutation calls, because a console showing a stale grant tells an
  * operator that access was removed when it was not.
  */
-export function useConsoleLoad<T>(
-  key: string,
-  load: () => Promise<T>,
-): { result: Loadable<T>; reload: () => void } {
+export function useConsoleLoad<T>(key: string, load: () => Promise<T>): { result: Loadable<T>; reload: () => void } {
   // `touch` needs no "latest ref" idiom to stay fresh in `wrapped` below: it
   // comes from `routes.tsx`'s `useCallback(() => { setSession(...) }, [])`,
   // a stable identity for the console's lifetime, so it can simply be a
@@ -153,10 +150,7 @@ export function useWriter(): {
 /** Build the context value once per identity of its parts. */
 export function useConsoleContextValue(parts: ConsoleContextValue): ConsoleContextValue {
   const { basePath, onUnauthorized, touch, announce } = parts;
-  return useMemo(
-    () => ({ basePath, onUnauthorized, touch, announce }),
-    [basePath, onUnauthorized, touch, announce],
-  );
+  return useMemo(() => ({ basePath, onUnauthorized, touch, announce }), [basePath, onUnauthorized, touch, announce]);
 }
 
 export type { ConsoleSessionView };

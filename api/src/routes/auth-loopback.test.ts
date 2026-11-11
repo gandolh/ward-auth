@@ -129,9 +129,7 @@ describe("plain HTTP on loopback", () => {
       payload: { username: "alice", password: PASSWORD },
     });
     const raw0 = loggedIn.headers["set-cookie"];
-    const cookie = (Array.isArray(raw0) ? raw0 : [String(raw0)])
-      .map((header) => header.split(";")[0]!)
-      .join("; ");
+    const cookie = (Array.isArray(raw0) ? raw0 : [String(raw0)]).map((header) => header.split(";")[0]!).join("; ");
 
     const response = await app.inject({ method: "POST", url: "/logout", headers: { cookie } });
 

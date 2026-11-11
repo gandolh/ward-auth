@@ -69,13 +69,9 @@ export function up(db: Database.Database): void {
       CHECK (id <> '')
     ) STRICT
   `);
-  db.exec(
-    `CREATE INDEX oidc_payloads_grant_idx ON oidc_payloads (grant_id) WHERE grant_id IS NOT NULL`,
-  );
+  db.exec(`CREATE INDEX oidc_payloads_grant_idx ON oidc_payloads (grant_id) WHERE grant_id IS NOT NULL`);
   db.exec(`CREATE INDEX oidc_payloads_uid_idx ON oidc_payloads (model, uid) WHERE uid IS NOT NULL`);
-  db.exec(
-    `CREATE INDEX oidc_payloads_user_code_idx ON oidc_payloads (model, user_code) WHERE user_code IS NOT NULL`,
-  );
+  db.exec(`CREATE INDEX oidc_payloads_user_code_idx ON oidc_payloads (model, user_code) WHERE user_code IS NOT NULL`);
   db.exec(`CREATE INDEX oidc_payloads_expiry_idx ON oidc_payloads (expires_at)`);
 
   db.exec(`

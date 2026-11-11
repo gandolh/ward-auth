@@ -309,8 +309,7 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
 
   /** What signing out here leaves: signed out, and Ward still offered if it was. */
   function signedOut(): SessionState {
-    const enabled =
-      state.status === "signed_in" || state.status === "signed_out" ? state.ward.enabled : false;
+    const enabled = state.status === "signed_in" || state.status === "signed_out" ? state.ward.enabled : false;
     return { status: "signed_out", ward: { enabled, linked: false } };
   }
 
@@ -319,11 +318,7 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
    * JSON body only when there is one, because Fastify refuses an empty body
    * sent as `application/json`.
    */
-  async function request(
-    method: "GET" | "POST",
-    path: string,
-    body?: unknown,
-  ): Promise<Response | AuthError> {
+  async function request(method: "GET" | "POST", path: string, body?: unknown): Promise<Response | AuthError> {
     try {
       return await doFetch(`${basePath}${path}`, {
         method,
@@ -346,14 +341,12 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
     } catch {
       payload = undefined;
     }
-    const record =
-      typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : {};
+    const record = typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : {};
     const error: AuthError = {
       code: typeof record.error === "string" ? record.error : "unknown",
       status: response.status,
     };
-    if (typeof record.retryAfterSeconds === "number")
-      error.retryAfterSeconds = record.retryAfterSeconds;
+    if (typeof record.retryAfterSeconds === "number") error.retryAfterSeconds = record.retryAfterSeconds;
     return error;
   }
 
@@ -391,10 +384,7 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
   }
 
   /** A guarded action answered with no session body; refresh to pick up its effect. */
-  async function act(
-    path: string,
-    body?: unknown,
-  ): Promise<ActionResult & { response?: Response }> {
+  async function act(path: string, body?: unknown): Promise<ActionResult & { response?: Response }> {
     const response = await request("POST", path, body);
     if (!(response instanceof Response)) return { ok: false, error: response };
     if (!response.ok) {
@@ -453,10 +443,7 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
       return { ok: true };
     },
     startWardSignIn: (startOptions = {}) =>
-      goToWard(
-        "/ward/start",
-        startOptions.returnTo === undefined ? {} : { returnTo: startOptions.returnTo },
-      ),
+      goToWard("/ward/start", startOptions.returnTo === undefined ? {} : { returnTo: startOptions.returnTo }),
     startWardLink: () => goToWard("/ward/link"),
     startWardReauthentication: () => goToWard("/ward/reauthenticate"),
     async unlinkWard() {

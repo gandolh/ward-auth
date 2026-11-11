@@ -141,9 +141,7 @@ describe("createAuthClient", () => {
   });
 
   it("renames, taking the new name from the answer without asking again", async () => {
-    const fetch = vi.fn(async () =>
-      json(200, { user: { ...alice, username: "Alicia" }, session, ward: noWard }),
-    );
+    const fetch = vi.fn(async () => json(200, { user: { ...alice, username: "Alicia" }, session, ward: noWard }));
     const client = createAuthClient({ basePath: "/a", fetch });
     expect(await client.renameUser("Alicia")).toEqual({ ok: true });
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -190,9 +188,7 @@ describe("Sign in with Ward, in the browser", () => {
 
   it("asks the server for Ward's URL and navigates there", async () => {
     const navigate = vi.fn();
-    const fetch = vi.fn(async () =>
-      json(200, { url: "https://example.com/ward-api/oidc/auth?x=1" }),
-    );
+    const fetch = vi.fn(async () => json(200, { url: "https://example.com/ward-api/oidc/auth?x=1" }));
     const client = createAuthClient({ basePath: "/a", fetch, navigate });
 
     expect(await client.startWardSignIn({ returnTo: "/myapp/items/7" })).toEqual({ ok: true });
@@ -277,10 +273,9 @@ describe("Sign in with Ward, in the browser", () => {
       cleaned: "https://example.com/myapp/login",
     });
     // An error that is not code-shaped carries no path either.
-    expect(
-      readWardResult("https://example.com/?ward_error=%3Cscript%3E&ward_return_to=%2Fmyapp%2F")
-        .result,
-    ).toEqual({});
+    expect(readWardResult("https://example.com/?ward_error=%3Cscript%3E&ward_return_to=%2Fmyapp%2F").result).toEqual(
+      {},
+    );
   });
 
   it("unlinks, and is signed out when the session began with Ward", async () => {

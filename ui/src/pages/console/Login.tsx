@@ -91,8 +91,8 @@ export function ConsoleLogin({
         <div>
           <h1>Ward console</h1>
           <p className="wc-lede">
-            Break-glass access to the estate&rsquo;s identity service. Sign in with the credential
-            from Ward&rsquo;s environment, not with a Ward account.
+            Break-glass access to the estate&rsquo;s identity service. Sign in with the credential from Ward&rsquo;s
+            environment, not with a Ward account.
           </p>
 
           {notice === undefined || failure !== undefined ? null : (
@@ -149,29 +149,28 @@ export function ConsoleLogin({
           <dl className="wc-gate-terms">
             <dt>It is not an account</dt>
             <dd>
-              Ward&rsquo;s database holds no row for it: no subject, no grants, nothing in the
-              account list below, and nothing to revoke. It reaches this console and no app in the
-              estate, because access in this estate is a grant and this credential holds none.
+              Ward&rsquo;s database holds no row for it: no subject, no grants, nothing in the account list below, and
+              nothing to revoke. It reaches this console and no app in the estate, because access in this estate is a
+              grant and this credential holds none.
             </dd>
 
             <dt>It cannot be rotated from here</dt>
             <dd>
-              Changing the password means editing <span className="wc-id">WARD_ADMIN_PASSWORD</span>{" "}
-              and restarting Ward. That friction is deliberate for a credential of this kind, and a
-              restart also ends every open console session.
+              Changing the password means editing <span className="wc-id">WARD_ADMIN_PASSWORD</span> and restarting
+              Ward. That friction is deliberate for a credential of this kind, and a restart also ends every open
+              console session.
             </dd>
 
             <dt>Every attempt is recorded</dt>
             <dd>
-              Successes and failures both land in the audit log. Since the credential cannot be
-              revoked, that log is the only observability it has — which is why this console renders
-              it.
+              Successes and failures both land in the audit log. Since the credential cannot be revoked, that log is the
+              only observability it has — which is why this console renders it.
             </dd>
 
             <dt>Day-to-day work belongs elsewhere</dt>
             <dd>
-              The apps are run by an ordinary Ward account holding explicit admin grants, created on
-              the accounts screen. This credential is for when something is broken.
+              The apps are run by an ordinary Ward account holding explicit admin grants, created on the accounts
+              screen. This credential is for when something is broken.
             </dd>
           </dl>
         </div>

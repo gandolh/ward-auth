@@ -1,16 +1,8 @@
 import type Database from "better-sqlite3";
-import Fastify, {
-  type FastifyInstance,
-  type InjectOptions,
-  type LightMyRequestResponse,
-} from "fastify";
+import Fastify, { type FastifyInstance, type InjectOptions, type LightMyRequestResponse } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  CONSOLE_COOKIE_NAME,
-  openConsoleSession,
-  resetConsoleSessionsForTests,
-} from "../../auth/superuser.js";
+import { CONSOLE_COOKIE_NAME, openConsoleSession, resetConsoleSessionsForTests } from "../../auth/superuser.js";
 import { grantTargetId, recordAudit, SUPERUSER_LABEL } from "../../db/audit-log.js";
 import { freshDb, seedApps, seedUser } from "../../db/test-support.js";
 import { adminAuditRoutes } from "./audit.js";

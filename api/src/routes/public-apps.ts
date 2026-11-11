@@ -76,30 +76,21 @@ export const PUBLIC_APPS_RESPONSE_SCHEMA = {
   },
 } as const;
 
-export async function publicAppsRoutes(
-  app: FastifyInstance,
-  options: PublicAppsRoutesOptions = {},
-): Promise<void> {
+export async function publicAppsRoutes(app: FastifyInstance, options: PublicAppsRoutesOptions = {}): Promise<void> {
   /** Lazy, for the reason `routes/auth.ts` gives. */
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
 
-  app.get(
-    "/apps",
-    { schema: { response: PUBLIC_APPS_RESPONSE_SCHEMA } },
-    async (_request, reply) => {
-      /**
-       * `no-store`, even though the answer is identical for every caller and
-       * holds no secret. What it is, is *state an operator changes* — closing an
-       * app to strangers must take effect on the next request, not when a proxy's
-       * TTL happens to lapse — and the fails-safe direction for a registration
-       * flag is that a closed app stops being advertised immediately.
-       */
-      reply.header("cache-control", "no-store");
+  app.get("/apps", { schema: { response: PUBLIC_APPS_RESPONSE_SCHEMA } }, async (_request, reply) => {
+    /**
+     * `no-store`, even though the answer is identical for every caller and
+     * holds no secret. What it is, is *state an operator changes* — closing an
+     * app to strangers must take effect on the next request, not when a proxy's
+     * TTL happens to lapse — and the fails-safe direction for a registration
+     * flag is that a closed app stops being advertised immediately.
+     */
+    reply.header("cache-control", "no-store");
 
-      const db = await database();
-      return reply
-        .code(200)
-        .send(listOpenApps(db).map((row) => ({ slug: row.slug, name: row.name })));
-    },
-  );
+    const db = await database();
+    return reply.code(200).send(listOpenApps(db).map((row) => ({ slug: row.slug, name: row.name })));
+  });
 }

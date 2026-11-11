@@ -1,18 +1,10 @@
 import type Database from "better-sqlite3";
-import Fastify, {
-  type FastifyInstance,
-  type InjectOptions,
-  type LightMyRequestResponse,
-} from "fastify";
+import Fastify, { type FastifyInstance, type InjectOptions, type LightMyRequestResponse } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { verifyPassword } from "../../auth/password.js";
 import { issueRefreshToken, rotateRefreshToken, usableAccount } from "../../auth/refresh.js";
-import {
-  CONSOLE_COOKIE_NAME,
-  openConsoleSession,
-  resetConsoleSessionsForTests,
-} from "../../auth/superuser.js";
+import { CONSOLE_COOKIE_NAME, openConsoleSession, resetConsoleSessionsForTests } from "../../auth/superuser.js";
 import { listAudit } from "../../db/audit-log.js";
 import { grantRole, listGrantsForSubject, SUPERUSER_ACTOR } from "../../db/grants.js";
 import { listFamily, listLiveTokensForSubject } from "../../db/refresh-tokens.js";
@@ -375,9 +367,7 @@ describe("rotating a password", () => {
     expect(response.json()).toEqual({ subject, sessionsRevoked: 1 });
 
     const row = findUserBySubject(db, subject)!;
-    await expect(verifyPassword("an-entirely-different-password", row.password_hash)).resolves.toBe(
-      true,
-    );
+    await expect(verifyPassword("an-entirely-different-password", row.password_hash)).resolves.toBe(true);
     await expect(verifyPassword(PASSWORD, row.password_hash)).resolves.toBe(false);
     expect(listLiveTokensForSubject(db, subject)).toEqual([]);
 
@@ -558,10 +548,7 @@ describe("reading accounts", () => {
     const response = await asConsole({ method: "GET", url: "/console/accounts" });
     expect(response.statusCode).toBe(200);
     expect(response.json().total).toBe(2);
-    expect(response.json().accounts.map((a: { username: string }) => a.username)).toEqual([
-      "cristian",
-      "guest",
-    ]);
+    expect(response.json().accounts.map((a: { username: string }) => a.username)).toEqual(["cristian", "guest"]);
     // The stored hash is `saltHex:hashHex`; none of it reaches the wire.
     for (const username of ["cristian", "guest"]) {
       const hash = findUserByUsername(db, username)!.password_hash;

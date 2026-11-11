@@ -1,16 +1,8 @@
 import type Database from "better-sqlite3";
-import Fastify, {
-  type FastifyInstance,
-  type InjectOptions,
-  type LightMyRequestResponse,
-} from "fastify";
+import Fastify, { type FastifyInstance, type InjectOptions, type LightMyRequestResponse } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  CONSOLE_COOKIE_NAME,
-  openConsoleSession,
-  resetConsoleSessionsForTests,
-} from "../../auth/superuser.js";
+import { CONSOLE_COOKIE_NAME, openConsoleSession, resetConsoleSessionsForTests } from "../../auth/superuser.js";
 import { createApp } from "../../db/apps.js";
 import { grantTargetId, listAudit, parseGrantTargetId } from "../../db/audit-log.js";
 import { listGrantsForSubject, listRolesInApp, SUPERUSER_ACTOR } from "../../db/grants.js";
@@ -52,10 +44,8 @@ afterEach(async () => {
 const asConsole = (init: InjectOptions): Promise<LightMyRequestResponse> =>
   app.inject({ ...init, headers: { ...init.headers, cookie } });
 
-const grant = (payload: Record<string, unknown>) =>
-  asConsole({ method: "POST", url: "/console/grants", payload });
-const revoke = (payload: Record<string, unknown>) =>
-  asConsole({ method: "DELETE", url: "/console/grants", payload });
+const grant = (payload: Record<string, unknown>) => asConsole({ method: "POST", url: "/console/grants", payload });
+const revoke = (payload: Record<string, unknown>) => asConsole({ method: "DELETE", url: "/console/grants", payload });
 
 it("answers 401 with no console session, on every route", async () => {
   for (const init of [
@@ -185,11 +175,7 @@ describe("issuing grants", () => {
   });
 
   it("rejects a malformed body", async () => {
-    for (const payload of [
-      {},
-      { subject, appSlug: "prm" },
-      { subject, appSlug: "prm", role: "" },
-    ]) {
+    for (const payload of [{}, { subject, appSlug: "prm" }, { subject, appSlug: "prm", role: "" }]) {
       const response = await grant(payload);
       expect(response.statusCode).toBe(400);
       expect(response.json()).toEqual({ error: "invalid_request" });

@@ -267,10 +267,9 @@ async function readKeyFile(path: string, label: string): Promise<string> {
       );
     }
     if (code === "EISDIR") {
-      throw new SigningKeyError(
-        `${label} path ${path} is a directory, not a key file. Check WARD_SIGNING_KEY_PATH.`,
-        { cause },
-      );
+      throw new SigningKeyError(`${label} path ${path} is a directory, not a key file. Check WARD_SIGNING_KEY_PATH.`, {
+        cause,
+      });
     }
     throw new SigningKeyError(`${label} at ${path} could not be read.`, { cause });
   }
@@ -348,11 +347,7 @@ export async function loadKeySet(currentPath: string): Promise<WardKeySet> {
   const previousPath = previousSigningKeyPath(currentPath);
   let previous: WardSigningKey | undefined;
   try {
-    previous = await toSigningKey(
-      await readFile(previousPath, "utf8"),
-      previousPath,
-      "Ward's previous signing key",
-    );
+    previous = await toSigningKey(await readFile(previousPath, "utf8"), previousPath, "Ward's previous signing key");
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
       if (err instanceof SigningKeyError) throw err;

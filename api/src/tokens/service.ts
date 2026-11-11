@@ -64,10 +64,7 @@ export async function getPublicJwks(): Promise<JSONWebKeySet> {
  * Always signs with the *current* key, never the previous one, even mid
  * rotation. Login and refresh call this.
  */
-export async function mintAccessToken(
-  subject: string,
-  sessionId: string,
-): Promise<MintedAccessToken> {
+export async function mintAccessToken(subject: string, sessionId: string): Promise<MintedAccessToken> {
   const [keySet, { WARD_PUBLIC_ORIGIN }] = await Promise.all([getKeySet(), import("../config.js")]);
   return signAccessToken({
     subject,

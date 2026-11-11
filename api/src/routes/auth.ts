@@ -125,10 +125,7 @@ const loginBody = z.object({
  */
 const refreshBody = z.object({ refreshToken: z.string().min(1).max(512).optional() }).optional();
 
-export async function authRoutes(
-  app: FastifyInstance,
-  options: AuthRoutesOptions = {},
-): Promise<void> {
+export async function authRoutes(app: FastifyInstance, options: AuthRoutesOptions = {}): Promise<void> {
   /**
    * Resolved once, at registration, because it never changes for the life of
    * the process — and resolving it here rather than per request means a
@@ -213,10 +210,7 @@ export async function authRoutes(
      * reason `spendDummyHash` exists as a named function rather than as a
      * comment saying "remember to hash anyway".
      */
-    const ok =
-      user === undefined
-        ? await spendDummyHash(password)
-        : await verifyPassword(password, user.password_hash);
+    const ok = user === undefined ? await spendDummyHash(password) : await verifyPassword(password, user.password_hash);
 
     // `user === undefined` is repeated rather than inferred from `ok`: the
     // compiler cannot see that `spendDummyHash` returns the literal `false`
@@ -316,10 +310,7 @@ export async function authRoutes(
       secure,
     });
 
-    request.log.info(
-      { subject: user.subject, jti: access.jti, family: issued.row.family_id },
-      "login succeeded",
-    );
+    request.log.info({ subject: user.subject, jti: access.jti, family: issued.row.family_id }, "login succeeded");
 
     return reply.code(200).send({
       subject: user.subject,
@@ -449,10 +440,7 @@ export async function authRoutes(
       refreshMaxAgeSeconds: refreshCookieMaxAge(outcome.row),
     });
 
-    request.log.info(
-      { subject: outcome.subject, jti: access.jti, family: outcome.row.family_id },
-      "refresh rotated",
-    );
+    request.log.info({ subject: outcome.subject, jti: access.jti, family: outcome.row.family_id }, "refresh rotated");
 
     return reply.code(200).send({
       subject: outcome.subject,
@@ -639,11 +627,7 @@ function lockedOut(reply: FastifyReply, retryAfterSeconds: number): FastifyReply
  * window, which kills the family. Weigh that against signing someone out every
  * other time two of their tabs wake up together.
  */
-function refreshRejected(
-  reply: FastifyReply,
-  secure: boolean,
-  options: { clearCookies?: boolean } = {},
-): FastifyReply {
+function refreshRejected(reply: FastifyReply, secure: boolean, options: { clearCookies?: boolean } = {}): FastifyReply {
   if (options.clearCookies ?? true) {
     clearSessionCookies(reply, secure);
   }

@@ -95,14 +95,14 @@ export function OidcClientPanel({
       note={
         isClient ? (
           <>
-            This app is an OpenID Connect client: <Id>client_id</Id> is <Id>{app.slug}</Id>, and it
-            authenticates with <Id>private_key_jwt</Id> using{" "}
-            {kids.length === 1 ? "the key" : "one of the keys"} <Id>{kids.join(", ")}</Id>.
+            This app is an OpenID Connect client: <Id>client_id</Id> is <Id>{app.slug}</Id>, and it authenticates with{" "}
+            <Id>private_key_jwt</Id> using {kids.length === 1 ? "the key" : "one of the keys"}{" "}
+            <Id>{kids.join(", ")}</Id>.
           </>
         ) : (
           <>
-            Not set up. The app needs at least one redirect URI and its public key before its “Sign
-            in with Ward” button can work. Until then Ward answers <Id>invalid_client</Id>.
+            Not set up. The app needs at least one redirect URI and its public key before its “Sign in with Ward” button
+            can work. Until then Ward answers <Id>invalid_client</Id>.
           </>
         )
       }
@@ -132,8 +132,8 @@ export function OidcClientPanel({
             }}
           />
           <span className="wc-field-hint">
-            Exact strings, one per environment: the dev server’s (http on localhost is allowed) and
-            the production one (https).
+            Exact strings, one per environment: the dev server’s (http on localhost is allowed) and the production one
+            (https).
           </span>
         </p>
         <p className="wc-field">
@@ -149,9 +149,7 @@ export function OidcClientPanel({
               setPostLogout(event.target.value);
             }}
           />
-          <span className="wc-field-hint">
-            Where Ward may send someone after “sign out of Ward too”. Optional.
-          </span>
+          <span className="wc-field-hint">Where Ward may send someone after “sign out of Ward too”. Optional.</span>
         </p>
         <p className="wc-field">
           <label htmlFor={`oidc-keys-${app.slug}`}>Public key (JWK)</label>
@@ -168,19 +166,14 @@ export function OidcClientPanel({
             }}
           />
           <span className="wc-field-hint">
-            The JSON line from <Id>npm run oidc-client-key --workspace=api -- {app.slug}</Id>. To
-            rotate, paste a set — <Id>{'{"keys":[old, new]}'}</Id> — deploy the new key, then remove
-            the old one. Empty removes every key and stops this app signing anyone in with Ward.
+            The JSON line from <Id>npm run oidc-client-key --workspace=api -- {app.slug}</Id>. To rotate, paste a set —{" "}
+            <Id>{'{"keys":[old, new]}'}</Id> — deploy the new key, then remove the old one. Empty removes every key and
+            stops this app signing anyone in with Ward.
           </span>
           {keysError === undefined ? null : <span className="wc-field-error">{keysError}</span>}
         </p>
         <div className="wc-actions">
-          <button
-            type="submit"
-            className="wc-btn"
-            data-wc-focus={SAVE_FOCUS}
-            disabled={writer.busy}
-          >
+          <button type="submit" className="wc-btn" data-wc-focus={SAVE_FOCUS} disabled={writer.busy}>
             Save client settings
           </button>
         </div>

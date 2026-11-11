@@ -98,16 +98,16 @@ describe("createUser", () => {
 
   it("refuses control characters, odd whitespace and an empty name", async () => {
     for (const username of ["", "   ", "al\u0000ice", "al ice", "al  ice", "a\tb"]) {
-      await expect(
-        accounts.createUser({ username, password: "correct horse", role: "r" }),
-      ).rejects.toBeInstanceOf(UsernamePolicyError);
+      await expect(accounts.createUser({ username, password: "correct horse", role: "r" })).rejects.toBeInstanceOf(
+        UsernamePolicyError,
+      );
     }
   });
 
   it("applies the password policy", async () => {
-    await expect(
-      accounts.createUser({ username: "alice", password: "short", role: "r" }),
-    ).rejects.toBeInstanceOf(PasswordPolicyError);
+    await expect(accounts.createUser({ username: "alice", password: "short", role: "r" })).rejects.toBeInstanceOf(
+      PasswordPolicyError,
+    );
   });
 
   it("creates a user with no local password", async () => {
@@ -153,9 +153,7 @@ describe("sessions", () => {
   let userId: string;
 
   beforeEach(async () => {
-    userId = (
-      await accounts.createUser({ username: "alice", password: "correct horse", role: "member" })
-    ).id;
+    userId = (await accounts.createUser({ username: "alice", password: "correct horse", role: "member" })).id;
   });
 
   it("stores only the hash of a 32-byte token", async () => {
@@ -245,9 +243,7 @@ describe("changePassword", () => {
   let userId: string;
 
   beforeEach(async () => {
-    userId = (
-      await accounts.createUser({ username: "alice", password: "correct horse", role: "member" })
-    ).id;
+    userId = (await accounts.createUser({ username: "alice", password: "correct horse", role: "member" })).id;
   });
 
   it("ends every other session and keeps the one the change came from", async () => {
@@ -255,9 +251,7 @@ describe("changePassword", () => {
     const laptop = await accounts.startSession(userId);
     const phone = await accounts.startSession(userId);
 
-    expect(
-      await accounts.changePassword(userId, "correct horse", "battery staple", here.session.idHash),
-    ).toBe(true);
+    expect(await accounts.changePassword(userId, "correct horse", "battery staple", here.session.idHash)).toBe(true);
 
     expect(await accounts.resolveSession(here.token)).toBeDefined();
     expect(await accounts.resolveSession(laptop.token)).toBeUndefined();
@@ -274,9 +268,7 @@ describe("changePassword", () => {
   });
 
   it("checks the new password's policy before anything else", async () => {
-    await expect(accounts.changePassword(userId, "wrong horse", "short")).rejects.toBeInstanceOf(
-      PasswordPolicyError,
-    );
+    await expect(accounts.changePassword(userId, "wrong horse", "short")).rejects.toBeInstanceOf(PasswordPolicyError);
   });
 });
 
@@ -331,9 +323,7 @@ describe("disableUser and enableUser", () => {
   let userId: string;
 
   beforeEach(async () => {
-    userId = (
-      await accounts.createUser({ username: "alice", password: "correct horse", role: "member" })
-    ).id;
+    userId = (await accounts.createUser({ username: "alice", password: "correct horse", role: "member" })).id;
   });
 
   it("ends the user's sessions and refuses every way in, as for an unknown user", async () => {
@@ -434,9 +424,7 @@ describe("seedUsers", () => {
     });
 
     // And a second run is a no-op.
-    expect(
-      await seedUsers(accounts, [{ username: "bob", password: "x".repeat(8), role: "r" }]),
-    ).toEqual({
+    expect(await seedUsers(accounts, [{ username: "bob", password: "x".repeat(8), role: "r" }])).toEqual({
       created: [],
       existing: ["bob"],
     });

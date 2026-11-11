@@ -67,10 +67,7 @@ export function TextField({
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
-  const describedBy = [
-    hint === undefined ? undefined : hintId,
-    error === undefined ? undefined : errorId,
-  ]
+  const describedBy = [hint === undefined ? undefined : hintId, error === undefined ? undefined : errorId]
     .filter((part): part is string => part !== undefined)
     .join(" ");
 
@@ -145,13 +142,7 @@ export function Alert({ tone, title, children, takeFocus }: AlertProps): React.J
   }, [takeFocus]);
 
   return (
-    <div
-      className="wc-alert"
-      data-tone={tone}
-      role={tone === "done" ? "status" : "alert"}
-      tabIndex={-1}
-      ref={ref}
-    >
+    <div className="wc-alert" data-tone={tone} role={tone === "done" ? "status" : "alert"} tabIndex={-1} ref={ref}>
       {title === undefined ? null : <h2>{title}</h2>}
       <p>{children}</p>
     </div>
@@ -328,13 +319,7 @@ export function Panel({
  * account Ward creates, and is easy to mistake for a page that failed to load.
  * Saying so in words is the fix.
  */
-export function Empty({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}): React.JSX.Element {
+export function Empty({ title, children }: { title: string; children: ReactNode }): React.JSX.Element {
   return (
     <div className="wc-empty">
       <h3>{title}</h3>
@@ -440,9 +425,7 @@ export function useLoadable<T>(
 
 /** True for a `ConsoleApiError` carrying a 401, without importing the class. */
 export function isUnauthorized(error: unknown): boolean {
-  return (
-    typeof error === "object" && error !== null && (error as { status?: unknown }).status === 401
-  );
+  return typeof error === "object" && error !== null && (error as { status?: unknown }).status === 401;
 }
 
 /** A `ConsoleApiError`'s `code`, without importing the class. */

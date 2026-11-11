@@ -150,10 +150,7 @@ function consoleLockoutTarget(address: string): LockoutTarget {
   return { surface: "console", address };
 }
 
-export async function consoleRoutes(
-  app: FastifyInstance,
-  options: ConsoleRoutesOptions = {},
-): Promise<void> {
+export async function consoleRoutes(app: FastifyInstance, options: ConsoleRoutesOptions = {}): Promise<void> {
   const resolveDb = async (): Promise<Database.Database> => options.db ?? (await getDb());
 
   /**
@@ -161,8 +158,7 @@ export async function consoleRoutes(
    * through a dynamic import (see `routes/auth.ts`). One list for both is what
    * keeps the two surfaces agreeing on what an address is.
    */
-  const trustedProxies =
-    options.trustedProxies ?? (await import("../config.js")).WARD_TRUSTED_PROXIES;
+  const trustedProxies = options.trustedProxies ?? (await import("../config.js")).WARD_TRUSTED_PROXIES;
 
   // Encapsulated to this plugin. Everything on the console is administrative,
   // per-operator and stale immediately; a shared cache holding any of it has no
@@ -269,10 +265,7 @@ export async function consoleRoutes(
      * make `HttpOnly` decorative. The body carries only the non-secret session
      * view the console UI needs to show a countdown.
      */
-    reply.header(
-      "set-cookie",
-      consoleSessionSetCookie(token, { secure: await consoleCookieSecure() }),
-    );
+    reply.header("set-cookie", consoleSessionSetCookie(token, { secure: await consoleCookieSecure() }));
     return reply.code(200).send({ session: sessionView(session) });
   });
 

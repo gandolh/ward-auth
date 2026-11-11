@@ -95,11 +95,7 @@ export interface AddGrantResult {
  * `foreign_keys = ON`. Routes check first for a clean 404 and still catch this,
  * because between the check and the insert an app can be deleted.
  */
-export function addGrant(
-  db: Database.Database,
-  actor: AuditActor,
-  input: GrantTriple,
-): AddGrantResult {
+export function addGrant(db: Database.Database, actor: AuditActor, input: GrantTriple): AddGrantResult {
   const grantedBy = grantedByFor(actor);
 
   return db.transaction((): AddGrantResult => {
@@ -137,11 +133,7 @@ export interface RemoveGrantResult {
 }
 
 /** Remove one role. Removing a role nobody holds is not an error. */
-export function removeGrant(
-  db: Database.Database,
-  actor: AuditActor,
-  input: GrantTriple,
-): RemoveGrantResult {
+export function removeGrant(db: Database.Database, actor: AuditActor, input: GrantTriple): RemoveGrantResult {
   return db.transaction((): RemoveGrantResult => {
     if (!revokeGrant(db, input.subject, input.appSlug, input.role)) {
       return { removed: false };

@@ -205,15 +205,14 @@ function AppBody({
         note={
           app.publicRegistration ? (
             <>
-              This app is <strong>open</strong>. Anyone who can reach Ward may create an account
-              without an invitation, and each one is granted{" "}
-              <span className="wc-id">{app.baselineRole ?? "nothing"}</span> in this app on sign-up.
+              This app is <strong>open</strong>. Anyone who can reach Ward may create an account without an invitation,
+              and each one is granted <span className="wc-id">{app.baselineRole ?? "nothing"}</span> in this app on
+              sign-up.
             </>
           ) : (
             <>
-              This app is <strong>closed</strong>. Accounts for it exist only because the operator
-              created them and issued a grant. This is the default, and it is the reason a newly
-              registered app is reachable by nobody.
+              This app is <strong>closed</strong>. Accounts for it exist only because the operator created them and
+              issued a grant. This is the default, and it is the reason a newly registered app is reachable by nobody.
             </>
           )
         }
@@ -279,9 +278,8 @@ function AppBody({
         {grants.length === 0 ? (
           <Empty title="Nobody">
             <p>
-              No account holds a grant in <span className="wc-id">{app.slug}</span>, so nobody can
-              use it — not even the owner account. For a newly registered app that is the expected
-              state, not a fault.
+              No account holds a grant in <span className="wc-id">{app.slug}</span>, so nobody can use it — not even the
+              owner account. For a newly registered app that is the expected state, not a fault.
             </p>
             <p>Issue grants from each account&rsquo;s page.</p>
           </Empty>
@@ -301,10 +299,7 @@ function AppBody({
                 {grants.map((grant) => (
                   <tr key={`${grant.subject}:${grant.role}`}>
                     <th scope="row">
-                      <Link
-                        to={consoleHref(basePath, { kind: "account", subject: grant.subject })}
-                        className="wc-id"
-                      >
+                      <Link to={consoleHref(basePath, { kind: "account", subject: grant.subject })} className="wc-id">
                         {grant.subject}
                       </Link>
                     </th>
@@ -378,14 +373,14 @@ function AppBody({
         }}
       >
         <p>
-          Anyone who can reach Ward will be able to create an account for{" "}
-          <span className="wc-id">{app.slug}</span> without an invitation, and each will be granted{" "}
-          <span className="wc-id">{baselineRole}</span> in it automatically.
+          Anyone who can reach Ward will be able to create an account for <span className="wc-id">{app.slug}</span>{" "}
+          without an invitation, and each will be granted <span className="wc-id">{baselineRole}</span> in it
+          automatically.
         </p>
         <p>
-          This is the only setting in Ward that exposes an anonymous write surface on the public
-          internet. It writes an <span className="wc-id">app.registration</span> audit row, which is
-          the row to look for when asking who opened an app.
+          This is the only setting in Ward that exposes an anonymous write surface on the public internet. It writes an{" "}
+          <span className="wc-id">app.registration</span> audit row, which is the row to look for when asking who opened
+          an app.
         </p>
       </Confirm>
 
@@ -399,10 +394,8 @@ function AppBody({
         onConfirm={() => {
           void writer
             .run(
-              () =>
-                consoleApi.patchApp(app.slug, { publicRegistration: false, baselineRole: null }),
-              (updated) =>
-                `Registration closed for ${updated.slug}. The baseline role was cleared with it.`,
+              () => consoleApi.patchApp(app.slug, { publicRegistration: false, baselineRole: null }),
+              (updated) => `Registration closed for ${updated.slug}. The baseline role was cleared with it.`,
             )
             .then((ok) => {
               if (ok) requestFocus(REGISTRATION_FOCUS);
@@ -416,12 +409,12 @@ function AppBody({
       >
         <p>
           No new accounts can be self-created for this app. The baseline role{" "}
-          <span className="wc-id">{app.baselineRole ?? "none"}</span> is cleared, so reopening later
-          has to name one again — a reopen must not inherit an answer nobody re-checked.
+          <span className="wc-id">{app.baselineRole ?? "none"}</span> is cleared, so reopening later has to name one
+          again — a reopen must not inherit an answer nobody re-checked.
         </p>
         <p>
-          The {plural(grants.length, "person", "people")} already holding a grant here keep it.
-          Closing registration stops new strangers; it does not evict anyone.
+          The {plural(grants.length, "person", "people")} already holding a grant here keep it. Closing registration
+          stops new strangers; it does not evict anyone.
         </p>
       </Confirm>
 
@@ -435,8 +428,7 @@ function AppBody({
           void writer
             .run(
               () => consoleApi.deleteApp(app.slug),
-              (result) =>
-                `Removed ${result.deleted} and ${plural(result.grantsRevoked, "grant", "grants")} with it.`,
+              (result) => `Removed ${result.deleted} and ${plural(result.grantsRevoked, "grant", "grants")} with it.`,
             )
             .then((ok) => {
               close();
@@ -445,12 +437,11 @@ function AppBody({
         }}
       >
         <p>
-          {plural(grantCount, "grant", "grants")} will be deleted along with the app, and everyone
-          holding one loses access to it. Ward keeps no copy of which roles they were.
+          {plural(grantCount, "grant", "grants")} will be deleted along with the app, and everyone holding one loses
+          access to it. Ward keeps no copy of which roles they were.
         </p>
         <p>
-          Re-registering the same slug afterwards creates an app that nobody can reach: the grants
-          do not come back.
+          Re-registering the same slug afterwards creates an app that nobody can reach: the grants do not come back.
         </p>
       </Confirm>
     </>

@@ -52,10 +52,7 @@ interface WardModules {
     markEmailVerified(db: Db, subject: string, email: string): boolean;
   };
   grants: {
-    grantRole(
-      db: Db,
-      input: { subject: string; appSlug: string; role: string; grantedBy: string },
-    ): unknown;
+    grantRole(db: Db, input: { subject: string; appSlug: string; role: string; grantedBy: string }): unknown;
   };
   apps: {
     createApp(db: Db, input: { slug: string; name: string }): unknown;
@@ -365,18 +362,12 @@ export class Browser {
    * pages (outside its API), signing in at Ward's login page as `username` if
    * it gets there. Returns the page and whether Ward asked for a password.
    */
-  async follow(
-    url: string,
-    username?: string,
-  ): Promise<{ landed: URL; askedForPassword: boolean }> {
+  async follow(url: string, username?: string): Promise<{ landed: URL; askedForPassword: boolean }> {
     let next = url;
     let askedForPassword = false;
     for (let hop = 0; hop < 12; hop += 1) {
       const at = new URL(next);
-      if (
-        at.origin === this.target.origin &&
-        !at.pathname.startsWith(`${this.target.apiPrefix}/`)
-      ) {
+      if (at.origin === this.target.origin && !at.pathname.startsWith(`${this.target.apiPrefix}/`)) {
         return { landed: at, askedForPassword };
       }
       if (at.origin === WARD_ORIGIN && at.pathname === "/ward/login") {
@@ -393,9 +384,10 @@ export class Browser {
       if (response.statusCode === 200 && /document\.forms\[0\]\.submit/.test(response.body)) {
         const action = /<form method="post" action="([^"]+)"/.exec(response.body)![1]!;
         const fields = Object.fromEntries(
-          [
-            ...response.body.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"\/>/g),
-          ].map((match) => [match[1]!, match[2]!]),
+          [...response.body.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"\/>/g)].map((match) => [
+            match[1]!,
+            match[2]!,
+          ]),
         );
         response = await this.request("POST", action.replaceAll("&amp;", "&"), { form: fields });
       }

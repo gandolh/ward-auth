@@ -30,14 +30,11 @@ export function credentialsBody(body: unknown): { username: string; password: st
   return { username: trimmed, password };
 }
 
-export function passwordChangeBody(
-  body: unknown,
-): { currentPassword: string; newPassword: string } | undefined {
+export function passwordChangeBody(body: unknown): { currentPassword: string; newPassword: string } | undefined {
   if (typeof body !== "object" || body === null) return undefined;
   const { currentPassword, newPassword } = body as Record<string, unknown>;
   if (typeof currentPassword !== "string" || typeof newPassword !== "string") return undefined;
-  if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH)
-    return undefined;
+  if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH) return undefined;
   // The new password's length rules are the policy's, answered with its codes.
   if (newPassword.length === 0) return undefined;
   return { currentPassword, newPassword };

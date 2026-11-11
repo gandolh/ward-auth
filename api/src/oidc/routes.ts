@@ -57,10 +57,7 @@ export interface OidcBundle {
   handle: (req: FastifyRequest["raw"], res: FastifyReply["raw"]) => Promise<void>;
 }
 
-export async function oidcRoutes(
-  app: FastifyInstance,
-  options: OidcRoutesOptions = {},
-): Promise<void> {
+export async function oidcRoutes(app: FastifyInstance, options: OidcRoutesOptions = {}): Promise<void> {
   const { OIDC } = await import("../config.js");
   if (OIDC === undefined) {
     app.log.info("WARD_OIDC_ISSUER is unset; the OpenID Connect provider is not mounted");
@@ -147,10 +144,7 @@ export async function oidcRoutes(
  * `/ward-api`, and a subdomain with no prefix, are safe; `.env.example` says so
  * beside `WARD_OIDC_ISSUER`.
  */
-export function rewriteForProvider(
-  raw: FastifyRequest["raw"] & { originalUrl?: string },
-  layout: OidcLayout,
-): void {
+export function rewriteForProvider(raw: FastifyRequest["raw"] & { originalUrl?: string }, layout: OidcLayout): void {
   const internal = raw.url ?? "/";
   let rest = internal.slice(OIDC_INTERNAL_PREFIX.length);
   if (!rest.startsWith("/")) rest = `/${rest}`;

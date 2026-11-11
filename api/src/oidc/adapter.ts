@@ -55,9 +55,7 @@ interface StoredRow {
 }
 
 const stmts = prepareOnce((db: Database.Database) => ({
-  upsert: db.prepare<
-    [string, string, string, string | null, string | null, string | null, number | null]
-  >(
+  upsert: db.prepare<[string, string, string, string | null, string | null, string | null, number | null]>(
     `INSERT INTO oidc_payloads (model, id, payload, grant_id, uid, user_code, expires_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (model, id) DO UPDATE SET
@@ -86,9 +84,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
       WHERE model = ? AND user_code = ? AND (expires_at IS NULL OR expires_at > ?)`,
   ),
 
-  consume: db.prepare<[number, string, string]>(
-    `UPDATE oidc_payloads SET consumed_at = ? WHERE model = ? AND id = ?`,
-  ),
+  consume: db.prepare<[number, string, string]>(`UPDATE oidc_payloads SET consumed_at = ? WHERE model = ? AND id = ?`),
 
   destroy: db.prepare<[string, string]>(`DELETE FROM oidc_payloads WHERE model = ? AND id = ?`),
 
@@ -108,9 +104,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
   ),
 
   sweepPayloads: db.prepare<[number]>(`DELETE FROM oidc_payloads WHERE expires_at <= ?`),
-  sweepAuthorizations: db.prepare<[number]>(
-    `DELETE FROM oidc_authorizations WHERE expires_at <= ?`,
-  ),
+  sweepAuthorizations: db.prepare<[number]>(`DELETE FROM oidc_authorizations WHERE expires_at <= ?`),
 }));
 
 /** Epoch seconds, the provider's unit. */
@@ -186,9 +180,7 @@ export class SqliteAdapter implements Adapter {
    */
   private refuseClientWrites(): void {
     if (this.model === "Client") {
-      throw new Error(
-        "OIDC clients are apps; they are written through the console, not the adapter",
-      );
+      throw new Error("OIDC clients are apps; they are written through the console, not the adapter");
     }
   }
 }

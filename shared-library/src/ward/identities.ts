@@ -1,10 +1,4 @@
-import {
-  InvalidUserIdError,
-  UserDisabledError,
-  toAuthUser,
-  type Accounts,
-  type AuthUser,
-} from "../core/accounts.js";
+import { InvalidUserIdError, UserDisabledError, toAuthUser, type Accounts, type AuthUser } from "../core/accounts.js";
 import {
   MAX_USERNAME_LENGTH,
   UsernamePolicyError,
@@ -14,12 +8,7 @@ import {
   normaliseUsername,
 } from "../core/identifiers.js";
 import { hashPassword } from "../core/password.js";
-import {
-  UsernameTakenError,
-  WardSubjectTakenError,
-  isWardAuthStore,
-  type WardAuthStore,
-} from "../store/types.js";
+import { UsernameTakenError, WardSubjectTakenError, isWardAuthStore, type WardAuthStore } from "../store/types.js";
 import type { WardClient, WardIdentity } from "./client.js";
 
 /**
@@ -197,9 +186,7 @@ export function createWardIdentities(options: WardIdentitiesOptions): WardIdenti
       throw new TypeError("createLinkedUser: subject must be a non-empty string");
     }
     const passwordHash =
-      input.password === undefined || input.password === null
-        ? null
-        : await hashPassword(input.password);
+      input.password === undefined || input.password === null ? null : await hashPassword(input.password);
 
     const created = await store.createUserWithWardLink(
       {

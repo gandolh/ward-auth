@@ -32,9 +32,7 @@ export function Threshold({
     <div className="ward-threshold">
       <p className="ward-threshold__mark">Ward</p>
       <div className="ward-threshold__body">
-        <main className={wide ? "ward-crossing ward-crossing--wide" : "ward-crossing"}>
-          {children}
-        </main>
+        <main className={wide ? "ward-crossing ward-crossing--wide" : "ward-crossing"}>{children}</main>
       </div>
       {footer === undefined ? <div /> : <p className="ward-threshold__footer">{footer}</p>}
     </div>

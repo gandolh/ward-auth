@@ -135,9 +135,7 @@ describe("reuse detection kills the whole family in one write", () => {
     ).toThrowError(/CHECK constraint failed/);
 
     expect(() =>
-      db
-        .prepare("UPDATE refresh_tokens SET revoked_reason = 'logout' WHERE token_hash = ?")
-        .run(hash),
+      db.prepare("UPDATE refresh_tokens SET revoked_reason = 'logout' WHERE token_hash = ?").run(hash),
     ).toThrowError(/CHECK constraint failed/);
   });
 
@@ -146,9 +144,7 @@ describe("reuse detection kills the whole family in one write", () => {
 
     expect(() =>
       db
-        .prepare(
-          "UPDATE refresh_tokens SET revoked_at = 'now', revoked_reason = ? WHERE token_hash = ?",
-        )
+        .prepare("UPDATE refresh_tokens SET revoked_at = 'now', revoked_reason = ? WHERE token_hash = ?")
         .run("because", hash),
     ).toThrowError(/CHECK constraint failed/);
   });

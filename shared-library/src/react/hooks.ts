@@ -88,10 +88,7 @@ export function useLogin(
   options?: HookOptions,
 ): ActionState & { login: (username: string, password: string) => Promise<boolean> } {
   const client = useClient(options);
-  const run = useCallback(
-    (username: string, password: string) => client.login(username, password),
-    [client],
-  );
+  const run = useCallback((username: string, password: string) => client.login(username, password), [client]);
   const { perform, ...state } = useAction(run);
   return { ...state, login: perform };
 }
@@ -163,10 +160,7 @@ export function useRegister(
   options?: HookOptions,
 ): ActionState & { register: (username: string, password: string) => Promise<boolean> } {
   const client = useClient(options);
-  const run = useCallback(
-    (username: string, password: string) => client.register(username, password),
-    [client],
-  );
+  const run = useCallback((username: string, password: string) => client.register(username, password), [client]);
   const { perform, ...state } = useAction(run);
   return { ...state, register: perform };
 }
@@ -208,10 +202,7 @@ export function useWardSignIn(options?: HookOptions): ActionState & {
 } {
   const client = useClient(options);
   const landed = useWardResult(options);
-  const run = useCallback(
-    (signInOptions?: { returnTo?: string }) => client.startWardSignIn(signInOptions),
-    [client],
-  );
+  const run = useCallback((signInOptions?: { returnTo?: string }) => client.startWardSignIn(signInOptions), [client]);
   const { perform, error, reset, pending } = useAction(run);
   const { clear } = landed;
   const resetAll = useCallback(() => {

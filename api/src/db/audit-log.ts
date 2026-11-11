@@ -260,9 +260,7 @@ export function listAudit(db: Database.Database, query: AuditQuery = {}): AuditL
   params.push(query.limit ?? 100);
 
   return db
-    .prepare<(string | number)[], AuditLogRow>(
-      `SELECT * FROM audit_log ${where} ORDER BY id DESC LIMIT ?`,
-    )
+    .prepare<(string | number)[], AuditLogRow>(`SELECT * FROM audit_log ${where} ORDER BY id DESC LIMIT ?`)
     .all(...params);
 }
 

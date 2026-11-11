@@ -46,9 +46,7 @@ function baseEnv(): Record<string, string> {
   };
 }
 
-async function importConfig(
-  env: Record<string, string>,
-): Promise<{ code: number; stderr: string }> {
+async function importConfig(env: Record<string, string>): Promise<{ code: number; stderr: string }> {
   try {
     const { stderr } = await promisify(execFile)(process.execPath, [tsxCli!, configPath], {
       env,

@@ -16,24 +16,16 @@ describe("serializeCookie", () => {
   });
 
   it("omits Secure only when told the origin is loopback HTTP", () => {
-    expect(
-      serializeCookie({ name: "a_session", value: "x", path: "/api", secure: false }),
-    ).not.toContain("Secure");
+    expect(serializeCookie({ name: "a_session", value: "x", path: "/api", secure: false })).not.toContain("Secure");
   });
 
   it("refuses a name, value or path that would corrupt the header", () => {
-    expect(() => serializeCookie({ name: "a b", value: "x", path: "/", secure: true })).toThrow(
+    expect(() => serializeCookie({ name: "a b", value: "x", path: "/", secure: true })).toThrow(TypeError);
+    expect(() => serializeCookie({ name: "a", value: "x;y", path: "/", secure: true })).toThrow(TypeError);
+    expect(() => serializeCookie({ name: "a", value: "x", path: "/api; Domain=evil", secure: true })).toThrow(
       TypeError,
     );
-    expect(() => serializeCookie({ name: "a", value: "x;y", path: "/", secure: true })).toThrow(
-      TypeError,
-    );
-    expect(() =>
-      serializeCookie({ name: "a", value: "x", path: "/api; Domain=evil", secure: true }),
-    ).toThrow(TypeError);
-    expect(() => serializeCookie({ name: "a", value: "x", path: "api", secure: true })).toThrow(
-      TypeError,
-    );
+    expect(() => serializeCookie({ name: "a", value: "x", path: "api", secure: true })).toThrow(TypeError);
   });
 });
 
@@ -50,9 +42,7 @@ describe("clearedCookie", () => {
 
 describe("readCookie", () => {
   it("reads the first occurrence and treats empty as absent", () => {
-    expect(readCookie("a=1; atrium_session=tok; atrium_session=shadow", "atrium_session")).toBe(
-      "tok",
-    );
+    expect(readCookie("a=1; atrium_session=tok; atrium_session=shadow", "atrium_session")).toBe("tok");
     expect(readCookie("atrium_session=", "atrium_session")).toBeUndefined();
     expect(readCookie(undefined, "atrium_session")).toBeUndefined();
     expect(readCookie("other_session=tok", "atrium_session")).toBeUndefined();

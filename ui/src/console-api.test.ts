@@ -38,9 +38,10 @@ interface Call {
 }
 
 /** A `fetch` that records what it was asked and answers what it was told to. */
-function recorder(
-  reply: { status?: number; body?: unknown; headers?: Record<string, string> } = {},
-): { api: ConsoleApi; calls: Call[] } {
+function recorder(reply: { status?: number; body?: unknown; headers?: Record<string, string> } = {}): {
+  api: ConsoleApi;
+  calls: Call[];
+} {
   const calls: Call[] = [];
   const fetchImpl: FetchLike = (url, init = {}) => {
     calls.push({
@@ -103,8 +104,7 @@ describe("the base path", () => {
     },
     {
       name: "setOidcClient",
-      run: (api) =>
-        api.setOidcClient("prm", { redirectUris: [], postLogoutRedirectUris: [], jwks: null }),
+      run: (api) => api.setOidcClient("prm", { redirectUris: [], postLogoutRedirectUris: [], jwks: null }),
       body: { app: {} },
     },
     { name: "grantsForSubject", run: (api) => api.grantsForSubject("s"), body: { grants: [] } },
@@ -315,9 +315,7 @@ describe("the behaviours the status code deliberately does not carry", () => {
 describe("error mapping", () => {
   it("throws a ConsoleApiError carrying the status and Ward's code", async () => {
     const { api } = recorder({ status: 409, body: { error: "username_taken" } });
-    const error = await api
-      .createAccount({ username: "u", password: "p" })
-      .catch((e: unknown) => e);
+    const error = await api.createAccount({ username: "u", password: "p" }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ConsoleApiError);
     const typed = error as ConsoleApiError;
     expect(typed.status).toBe(409);
@@ -339,9 +337,7 @@ describe("error mapping", () => {
       body: { error: "too many attempts" },
       headers: { "retry-after": "90" },
     });
-    const error = (await api
-      .login({ username: "u", password: "p" })
-      .catch((e: unknown) => e)) as ConsoleApiError;
+    const error = (await api.login({ username: "u", password: "p" }).catch((e: unknown) => e)) as ConsoleApiError;
     expect(error.status).toBe(429);
     expect(error.retryAfterSeconds).toBe(90);
     expect(error.message).toContain("Too many failed attempts");
@@ -353,17 +349,13 @@ describe("error mapping", () => {
       body: { error: "too many attempts" },
       headers: { "retry-after": "Wed, 21 Oct 2026 07:28:00 GMT" },
     });
-    const error = (await api
-      .login({ username: "u", password: "p" })
-      .catch((e: unknown) => e)) as ConsoleApiError;
+    const error = (await api.login({ username: "u", password: "p" }).catch((e: unknown) => e)) as ConsoleApiError;
     expect(error.retryAfterSeconds).toBeUndefined();
   });
 
   it("maps /console/login's prose bodies by status instead of echoing them", async () => {
     const { api } = recorder({ status: 401, body: { error: "invalid credentials" } });
-    const error = (await api
-      .login({ username: "u", password: "p" })
-      .catch((e: unknown) => e)) as ConsoleApiError;
+    const error = (await api.login({ username: "u", password: "p" }).catch((e: unknown) => e)) as ConsoleApiError;
     // The prose is not treated as a code, and not shown raw.
     expect(error.code).toBe("http_401");
     expect(error.message).toBe("Those credentials were refused.");
@@ -389,9 +381,7 @@ describe("error mapping", () => {
   });
 
   it("refuses a 200 that is not JSON rather than returning undefined", async () => {
-    const api = createConsoleApi(() =>
-      Promise.resolve(new Response("<html>nope</html>", { status: 200 })),
-    );
+    const api = createConsoleApi(() => Promise.resolve(new Response("<html>nope</html>", { status: 200 })));
     const error = (await api.listApps().catch((e: unknown) => e)) as ConsoleApiError;
     expect(error.code).toBe("malformed_response");
   });

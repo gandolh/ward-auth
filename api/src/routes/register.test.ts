@@ -107,10 +107,7 @@ beforeEach(async () => {
 });
 
 /** `POST /register`, always with an address so the lockout key is per test. */
-async function register(
-  body: Record<string, unknown>,
-  ip = "203.0.113.7",
-): Promise<LightMyRequestResponse> {
+async function register(body: Record<string, unknown>, ip = "203.0.113.7"): Promise<LightMyRequestResponse> {
   return app.inject({
     method: "POST",
     url: "/register",
@@ -177,10 +174,7 @@ function apiPathFor(link: string): string {
 }
 
 /** Follow a mailed link the way the UI screen behind it does. */
-async function follow(
-  link: string,
-  headers: Record<string, string> = {},
-): Promise<LightMyRequestResponse> {
+async function follow(link: string, headers: Record<string, string> = {}): Promise<LightMyRequestResponse> {
   return app.inject({ method: "GET", url: apiPathFor(link), headers });
 }
 
@@ -396,9 +390,7 @@ describe("username collisions — the ordinary case, not an edge case", () => {
     mod.users.markEmailVerified(db, verified.subject, "v@example.com");
 
     const answers = await Promise.all(
-      ["Owner", "Verified"].map((name, index) =>
-        register(goodBody({ username: name }), `198.51.100.${20 + index}`),
-      ),
+      ["Owner", "Verified"].map((name, index) => register(goodBody({ username: name }), `198.51.100.${20 + index}`)),
     );
 
     for (const response of answers) {
@@ -428,10 +420,7 @@ describe("username collisions — the ordinary case, not an edge case", () => {
   it("never says an email is already registered", async () => {
     expect((await register(goodBody())).statusCode).toBe(201);
 
-    const second = await register(
-      goodBody({ username: "Bob", email: "alice@example.com" }),
-      "198.51.100.5",
-    );
+    const second = await register(goodBody({ username: "Bob", email: "alice@example.com" }), "198.51.100.5");
     expect(second.statusCode).toBe(201);
     expect(mod.users.findUsersByEmail(db, "alice@example.com")).toHaveLength(2);
   });
@@ -579,27 +568,18 @@ describe("rate limiting", () => {
     const flood = "198.51.100.77";
 
     for (let i = 0; i < mod.lockout.LOCKOUT_MAX_FAILURES; i += 1) {
-      const response = await register(
-        goodBody({ username: `flood-${i}`, email: `flood-${i}@example.com` }),
-        flood,
-      );
+      const response = await register(goodBody({ username: `flood-${i}`, email: `flood-${i}@example.com` }), flood);
       expect(response.statusCode, `attempt ${i}`).toBe(201);
     }
 
-    const refused = await register(
-      goodBody({ username: "flood-last", email: "last@example.com" }),
-      flood,
-    );
+    const refused = await register(goodBody({ username: "flood-last", email: "last@example.com" }), flood);
     expect(refused.statusCode).toBe(429);
     expect(refused.json()).toMatchObject({ error: "too_many_attempts" });
     expect(Number(refused.headers["retry-after"])).toBeGreaterThan(0);
     expect(mod.users.findUserByUsername(db, "flood-last")).toBeUndefined();
 
     // Another address is unaffected — the counter is per address, not global.
-    const elsewhere = await register(
-      goodBody({ username: "elsewhere", email: "e@example.com" }),
-      "198.51.100.78",
-    );
+    const elsewhere = await register(goodBody({ username: "elsewhere", email: "e@example.com" }), "198.51.100.78");
     expect(elsewhere.statusCode).toBe(201);
   });
 

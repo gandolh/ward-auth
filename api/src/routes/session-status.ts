@@ -204,23 +204,12 @@ export async function sessionStatusRoutes(
       const parsed = statusBody.safeParse(request.body);
       if (!parsed.success) {
         // Not echoed: zod's issues carry the submitted values.
-        request.log.warn(
-          { client: client.clientId },
-          "session-status: body is not { wardSid, subject }",
-        );
+        request.log.warn({ client: client.clientId }, "session-status: body is not { wardSid, subject }");
         return INACTIVE;
       }
 
-      const answer = sessionStatusFor(
-        await database(),
-        client.clientId,
-        parsed.data.wardSid,
-        parsed.data.subject,
-      );
-      request.log.debug(
-        { client: client.clientId, active: answer.active },
-        "session-status: answered",
-      );
+      const answer = sessionStatusFor(await database(), client.clientId, parsed.data.wardSid, parsed.data.subject);
+      request.log.debug({ client: client.clientId, active: answer.active }, "session-status: answered");
       return answer;
     },
   );

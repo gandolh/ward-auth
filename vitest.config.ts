@@ -33,12 +33,7 @@ export default defineConfig({
      * client is what is tested, with a fake `fetch`. `.scratch/` holds the
      * vendor smoke test's throwaway copies and is never a test source.
      */
-    include: [
-      "api/**/*.test.ts",
-      "ui/**/*.test.ts",
-      "ui/**/*.test.tsx",
-      "shared-library/**/*.test.ts",
-    ],
+    include: ["api/**/*.test.ts", "ui/**/*.test.ts", "ui/**/*.test.tsx", "shared-library/**/*.test.ts"],
     exclude: ["**/node_modules/**", "**/dist/**", "shared-library/.scratch/**"],
     pool: "forks",
   },

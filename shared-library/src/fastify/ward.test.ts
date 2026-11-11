@@ -5,23 +5,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createAccounts, seedUsers, type Accounts } from "../core/accounts.js";
 import { hashSessionToken } from "../core/identifiers.js";
 import { createSqliteStore } from "../store/sqlite.js";
-import {
-  Browser,
-  WARD_ISSUER,
-  WARD_ORIGIN,
-  WARD_PREFIX,
-  startWard,
-  type RealWard,
-} from "../testing/ward-harness.js";
+import { Browser, WARD_ISSUER, WARD_ORIGIN, WARD_PREFIX, startWard, type RealWard } from "../testing/ward-harness.js";
 import { createWardClient, type WardClient } from "../ward/client.js";
 import { WardConfigurationError, WardUnavailableError } from "../ward/errors.js";
 import { createWardIdentities, type WardIdentities } from "../ward/identities.js";
 import { wardAuth } from "./plugin.js";
-import {
-  REAUTHENTICATION_MAX_AGE_SECONDS,
-  isFreshReauthentication,
-  type WardSignInOptions,
-} from "./ward.js";
+import { REAUTHENTICATION_MAX_AGE_SECONDS, isFreshReauthentication, type WardSignInOptions } from "./ward.js";
 
 /**
  * "Sign in with Ward" end to end: the library's plugin in a test app, against
@@ -139,9 +128,7 @@ async function walkToCallback(b: Browser, url: string, username?: string): Promi
 
 /** Move every Ward sign-in into the past, as if the password was typed that long ago. */
 function backdateWardSignIns(seconds: number): void {
-  ward.db.exec(
-    `UPDATE refresh_tokens SET issued_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-${seconds} seconds')`,
-  );
+  ward.db.exec(`UPDATE refresh_tokens SET issued_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-${seconds} seconds')`);
 }
 
 async function setPassword(b: Browser, newPassword = LOCAL_PASSWORD) {
@@ -227,8 +214,7 @@ describe("a first Ward sign-in", () => {
 
     const b = browser();
     await wardRoundTrip(b, "erin");
-    const signedIn = (await me(b)).json<{ user: { id: string; username: string; role: string } }>()
-      .user;
+    const signedIn = (await me(b)).json<{ user: { id: string; username: string; role: string } }>().user;
     expect(signedIn.id).not.toBe(local.id);
     expect(signedIn.username).toBe("erin-2");
     expect(signedIn.role).toBe("viewer");
@@ -248,9 +234,7 @@ describe("a first Ward sign-in", () => {
       await wardRoundTrip(browser(shaped), "ALICE.SMITH-WITH-Another-Name");
 
       expect((await shaped.identities.findUserBySubject(first))?.username).toBe("alice.smith-with");
-      expect((await shaped.identities.findUserBySubject(second))?.username).toBe(
-        "alice.smith-wi-2",
-      );
+      expect((await shaped.identities.findUserBySubject(second))?.username).toBe("alice.smith-wi-2");
     } finally {
       await shaped.app.close();
     }
@@ -277,9 +261,7 @@ describe("a first Ward sign-in", () => {
 
   it("refuses a usernameMaxLength it could not honour at registration", async () => {
     for (const usernameMaxLength of [9, 257, 12.5]) {
-      await expect(buildTestApp(clientKey, { usernameMaxLength })).rejects.toThrow(
-        /usernameMaxLength/,
-      );
+      await expect(buildTestApp(clientKey, { usernameMaxLength })).rejects.toThrow(/usernameMaxLength/);
     }
   });
 
@@ -781,9 +763,7 @@ describe("settings: local password and unlink", () => {
         "utf8",
       ).toString("base64url");
 
-      const callback = new URL(
-        await walkToCallback(b, `${started.json<{ url: string }>().url}${extra}`),
-      );
+      const callback = new URL(await walkToCallback(b, `${started.json<{ url: string }>().url}${extra}`));
       expect(callback.href.startsWith(REDIRECT_URI)).toBe(true);
       const finished = await t.app.inject({
         method: "GET",
@@ -791,9 +771,7 @@ describe("settings: local password and unlink", () => {
         headers: { cookie: `${COOKIE}_ward=${forged}; ${COOKIE}=${sessionToken}` },
       });
       expect(finished.statusCode).toBe(303);
-      expect(finished.headers.location, extra).toBe(
-        `${APP_ORIGIN}/myapp/settings?ward_error=invalid_callback`,
-      );
+      expect(finished.headers.location, extra).toBe(`${APP_ORIGIN}/myapp/settings?ward_error=invalid_callback`);
     }
 
     const refused = await setPassword(b);
@@ -806,9 +784,7 @@ describe("isFreshReauthentication", () => {
   it("needs auth_time and iat, the password typed at most two minutes before issuance", () => {
     const iat = 1_800_000_000;
     expect(isFreshReauthentication({ authTime: iat, issuedAt: iat })).toBe(true);
-    expect(
-      isFreshReauthentication({ authTime: iat - REAUTHENTICATION_MAX_AGE_SECONDS, issuedAt: iat }),
-    ).toBe(true);
+    expect(isFreshReauthentication({ authTime: iat - REAUTHENTICATION_MAX_AGE_SECONDS, issuedAt: iat })).toBe(true);
     expect(
       isFreshReauthentication({
         authTime: iat - REAUTHENTICATION_MAX_AGE_SECONDS - 1,
@@ -862,16 +838,17 @@ describe("mail", () => {
     const b = browser();
     await wardRoundTrip(b, "pia");
     const user = (await t.accounts.findUserByUsername("pia"))!;
-    expect(
-      await t.identities.notifyUser(t.client, user.id, { mailSubject: "Hi", text: "Hello." }),
-    ).toEqual({ sent: true });
+    expect(await t.identities.notifyUser(t.client, user.id, { mailSubject: "Hi", text: "Hello." })).toEqual({
+      sent: true,
+    });
 
     await seedUsers(t.accounts, [{ username: "quinn", password: LOCAL_PASSWORD, role: "a" }]);
     const quinn = (await t.accounts.findUserByUsername("quinn"))!;
     const before = ward.calls.length;
-    expect(
-      await t.identities.notifyUser(t.client, quinn.id, { mailSubject: "Hi", text: "Hello." }),
-    ).toEqual({ sent: false, reason: "not_linked" });
+    expect(await t.identities.notifyUser(t.client, quinn.id, { mailSubject: "Hi", text: "Hello." })).toEqual({
+      sent: false,
+      reason: "not_linked",
+    });
     expect(ward.calls.length).toBe(before);
 
     ward.stop();

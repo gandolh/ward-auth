@@ -44,13 +44,9 @@ describe("client registration", () => {
     expect(parsed).toEqual({ keys: [pair.publicJwk] });
 
     expect(await parseClientJwks(pair.privateJwk)).toBe("private_key_not_public");
-    expect(await parseClientJwks({ keys: [pair.publicJwk, pair.privateJwk] })).toBe(
-      "private_key_not_public",
-    );
+    expect(await parseClientJwks({ keys: [pair.publicJwk, pair.privateJwk] })).toBe("private_key_not_public");
     expect(await parseClientJwks({ kty: "RSA", n: "x", e: "AQAB" })).toBe("invalid_client_key");
-    expect(await parseClientJwks({ kty: "OKP", crv: "Ed25519", x: "short" })).toBe(
-      "invalid_client_key",
-    );
+    expect(await parseClientJwks({ kty: "OKP", crv: "Ed25519", x: "short" })).toBe("invalid_client_key");
     expect(await parseClientJwks({ keys: [] })).toBe("invalid_client_key");
   });
 
@@ -135,10 +131,9 @@ describe("verifyClientAssertion (for /session-status and /notify)", () => {
 
   it("accepts both names for an Ed25519 signature", async () => {
     for (const alg of ["EdDSA", "Ed25519"]) {
-      expect(
-        await verifyClientAssertion(db, await assertion({ alg }), { audience: ISSUER }),
-        alg,
-      ).toMatchObject({ ok: true });
+      expect(await verifyClientAssertion(db, await assertion({ alg }), { audience: ISSUER }), alg).toMatchObject({
+        ok: true,
+      });
     }
   });
 

@@ -76,12 +76,7 @@ export function serializeCookie(options: CookieOptions): string {
     throw new TypeError(`serializeCookie: unsafe cookie path ${JSON.stringify(options.path)}`);
   }
 
-  const parts = [
-    `${options.name}=${options.value}`,
-    `Path=${options.path}`,
-    "HttpOnly",
-    "SameSite=Lax",
-  ];
+  const parts = [`${options.name}=${options.value}`, `Path=${options.path}`, "HttpOnly", "SameSite=Lax"];
   if (options.secure) parts.push("Secure");
   if (options.maxAgeSeconds !== undefined) {
     parts.push(`Max-Age=${Math.max(0, Math.trunc(options.maxAgeSeconds))}`);
@@ -109,10 +104,7 @@ export function clearedCookie(name: string, path: string, secure: boolean): stri
  * front of the real one); the browser sends the more specific path first, and
  * taking the first match is the safer of the two readings.
  */
-export function readCookie(
-  header: string | string[] | undefined,
-  name: string,
-): string | undefined {
+export function readCookie(header: string | string[] | undefined, name: string): string | undefined {
   if (header === undefined) return undefined;
 
   const flat = Array.isArray(header) ? header.join("; ") : header;
@@ -152,10 +144,6 @@ export function secureCookiesFor(publicOrigin: string): boolean {
 
   const host = url.hostname.toLowerCase();
   const isLoopback =
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    host === "[::1]" ||
-    host === "::1" ||
-    host.startsWith("127.");
+    host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1" || host.startsWith("127.");
   return !isLoopback;
 }

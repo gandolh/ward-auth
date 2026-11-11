@@ -83,10 +83,7 @@ function canTakeFocus(element: FocusCandidate): boolean {
  * heading, else nothing (the screen shows something else, such as an alert that
  * focuses itself).
  */
-export function focusTargetAfterWrite<T extends FocusCandidate>(
-  root: FocusRoot<T>,
-  key: string | undefined,
-): T | null {
+export function focusTargetAfterWrite<T extends FocusCandidate>(root: FocusRoot<T>, key: string | undefined): T | null {
   if (key !== undefined) {
     const opener = root.querySelector(focusKeySelector(key));
     if (opener !== null && canTakeFocus(opener)) return opener;

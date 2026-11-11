@@ -58,9 +58,9 @@ export function AppsScreen(): React.JSX.Element {
         </div>
 
         <p className="wc-lede">
-          An app has to be registered here before a grant can name it. Registering one takes no
-          deploy, and a new app arrives closed to strangers and reachable by nobody — including the
-          owner account — until grants are issued for it.
+          An app has to be registered here before a grant can name it. Registering one takes no deploy, and a new app
+          arrives closed to strangers and reachable by nobody — including the owner account — until grants are issued
+          for it.
         </p>
 
         <Collapsible.Panel>
@@ -86,8 +86,8 @@ export function AppsScreen(): React.JSX.Element {
         result.data.length === 0 ? (
           <Empty title="No apps registered">
             <p>
-              Ward knows of no apps, so no grant can be issued for anything and the estate has no
-              security boundary to configure yet.
+              Ward knows of no apps, so no grant can be issued for anything and the estate has no security boundary to
+              configure yet.
             </p>
             <p>Register the estate&rsquo;s apps here — one row each, slug and name.</p>
           </Empty>
@@ -208,9 +208,8 @@ function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element
     <section className="wc-panel">
       <h2>Register an app</h2>
       <p className="wc-panel-note">
-        The slug is what grants, tokens and the audit log name this app by, and it is permanent —
-        renaming later changes the display name only. Keep it to lower-case letters, digits and
-        single hyphens.
+        The slug is what grants, tokens and the audit log name this app by, and it is permanent — renaming later changes
+        the display name only. Keep it to lower-case letters, digits and single hyphens.
       </p>
 
       {writer.error === undefined ? null : (
@@ -257,8 +256,8 @@ function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element
             }}
           />
           <label htmlFor="wc-new-app-open">
-            Open this app to public registration — anyone on the internet may create an account for
-            it without an invitation.
+            Open this app to public registration — anyone on the internet may create an account for it without an
+            invitation.
           </label>
         </p>
 
@@ -304,14 +303,13 @@ function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element
         }}
       >
         <p>
-          Anyone who can reach Ward will be able to create an account for{" "}
-          <span className="wc-id">{slug}</span> without an invitation, and each one will be granted{" "}
-          <span className="wc-id">{baselineRole}</span> in it automatically.
+          Anyone who can reach Ward will be able to create an account for <span className="wc-id">{slug}</span> without
+          an invitation, and each one will be granted <span className="wc-id">{baselineRole}</span> in it automatically.
         </p>
         <p>
-          This is the only setting in Ward that exposes an anonymous write surface. It can be closed
-          again from the app&rsquo;s page, which also clears the baseline role — closing it stops
-          new strangers arriving and does not evict the ones already inside.
+          This is the only setting in Ward that exposes an anonymous write surface. It can be closed again from the
+          app&rsquo;s page, which also clears the baseline role — closing it stops new strangers arriving and does not
+          evict the ones already inside.
         </p>
       </Confirm>
     </section>

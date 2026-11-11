@@ -3,12 +3,7 @@ import Fastify, { type FastifyInstance, type LightMyRequestResponse } from "fast
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  SESSION_RENEW_INTERVAL_SECONDS,
-  createAccounts,
-  seedUsers,
-  type Accounts,
-} from "../core/accounts.js";
+import { SESSION_RENEW_INTERVAL_SECONDS, createAccounts, seedUsers, type Accounts } from "../core/accounts.js";
 import { LOCKOUT_MAX_FAILURES } from "../core/lockout.js";
 import { createSqliteStore, type SqliteHandle } from "../store/sqlite.js";
 import { requireRole, wardAuth, type WardAuthOptions } from "./plugin.js";
@@ -84,12 +79,7 @@ function setCookieHeader(response: LightMyRequestResponse): string {
   return Array.isArray(header) ? header.join("\n") : (header ?? "");
 }
 
-async function login(
-  h: Harness,
-  username: string,
-  password: string,
-  headers: Record<string, string> = {},
-) {
+async function login(h: Harness, username: string, password: string, headers: Record<string, string> = {}) {
   return h.app.inject({
     method: "POST",
     url: "/auth/login",
@@ -139,14 +129,10 @@ describe("end to end", () => {
       payload: { currentPassword: "correct horse", newPassword: "battery staple" },
     });
     expect(change.statusCode).toBe(204);
-    expect(
-      (await h.app.inject({ method: "GET", url: "/me", headers: { cookie: elsewhereCookie } }))
-        .statusCode,
-    ).toBe(401);
-    expect(
-      (await h.app.inject({ method: "GET", url: "/me", headers: { cookie: hereCookie } }))
-        .statusCode,
-    ).toBe(200);
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: elsewhereCookie } })).statusCode).toBe(
+      401,
+    );
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: hereCookie } })).statusCode).toBe(200);
     expect((await login(h, "alice", "correct horse")).statusCode).toBe(401);
     expect((await login(h, "alice", "battery staple")).statusCode).toBe(200);
 
@@ -159,10 +145,7 @@ describe("end to end", () => {
     expect(out.statusCode).toBe(204);
     expect(setCookieHeader(out)).toContain(`${COOKIE}=; Path=${COOKIE_PATH}`);
     expect(setCookieHeader(out)).toContain("Max-Age=0");
-    expect(
-      (await h.app.inject({ method: "GET", url: "/me", headers: { cookie: hereCookie } }))
-        .statusCode,
-    ).toBe(401);
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: hereCookie } })).statusCode).toBe(401);
   });
 
   it("works the same over node:sqlite, as sports-app hands it", async () => {
@@ -179,9 +162,7 @@ describe("the cookie", () => {
     const header = setCookieHeader(await login(h, "alice", "correct horse"));
 
     expect(header).toMatch(
-      new RegExp(
-        `^${COOKIE}=[A-Za-z0-9_-]{43}; Path=${COOKIE_PATH}; HttpOnly; SameSite=Lax; Max-Age=\\d+$`,
-      ),
+      new RegExp(`^${COOKIE}=[A-Za-z0-9_-]{43}; Path=${COOKIE_PATH}; HttpOnly; SameSite=Lax; Max-Age=\\d+$`),
     );
   });
 
@@ -257,10 +238,9 @@ describe("the guard", () => {
     const admin = cookieFrom(await login(h, "alice", "correct horse"))!;
     const member = cookieFrom(await login(h, "bob", "bob's password"))!;
 
-    expect(
-      (await h.app.inject({ method: "DELETE", url: "/things/1", headers: { cookie: admin } }))
-        .statusCode,
-    ).toBe(200);
+    expect((await h.app.inject({ method: "DELETE", url: "/things/1", headers: { cookie: admin } })).statusCode).toBe(
+      200,
+    );
     const refused = await h.app.inject({
       method: "DELETE",
       url: "/things/1",
@@ -283,11 +263,7 @@ describe("the validateSession hook", () => {
     const refused = await h.app.inject({ method: "GET", url: "/me", headers: { cookie: bob } });
     expect(refused.statusCode).toBe(401);
     expect(refused.json()).toEqual({ error: "unauthorized", reason: "ward_unavailable" });
-    expect(
-      (
-        await h.app.inject({ method: "GET", url: "/auth/session", headers: { cookie: bob } })
-      ).json(),
-    ).toEqual({
+    expect((await h.app.inject({ method: "GET", url: "/auth/session", headers: { cookie: bob } })).json()).toEqual({
       user: null,
       session: null,
       reason: "ward_unavailable",
@@ -295,9 +271,7 @@ describe("the validateSession hook", () => {
     });
 
     // Not ended: when the check passes again, the same cookie works.
-    expect(
-      (await h.app.inject({ method: "GET", url: "/me", headers: { cookie: alice } })).statusCode,
-    ).toBe(200);
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: alice } })).statusCode).toBe(200);
   });
 
   it("ends the session when the verdict says so", async () => {
@@ -346,8 +320,7 @@ describe("login", () => {
     const h = await build();
     for (let i = 0; i < LOCKOUT_MAX_FAILURES + 2; i += 1) {
       expect(
-        (await h.app.inject({ method: "POST", url: "/auth/login", payload: { username: "alice" } }))
-          .statusCode,
+        (await h.app.inject({ method: "POST", url: "/auth/login", payload: { username: "alice" } })).statusCode,
       ).toBe(400);
     }
     expect((await login(h, "alice", "correct horse")).statusCode).toBe(200);
@@ -367,24 +340,17 @@ describe("login", () => {
     expect(locked.json()).toMatchObject({ error: "too_many_attempts" });
 
     // Spoofing the first element changes nothing: the last is what counts.
-    expect(
-      (await login(h, "alice", "correct horse", { "x-forwarded-for": "9.9.9.9, 203.0.113.9" }))
-        .statusCode,
-    ).toBe(429);
+    expect((await login(h, "alice", "correct horse", { "x-forwarded-for": "9.9.9.9, 203.0.113.9" })).statusCode).toBe(
+      429,
+    );
     // A different address — and so the real alice — is untouched.
-    expect(
-      (await login(h, "alice", "correct horse", { "x-forwarded-for": "198.51.100.4" })).statusCode,
-    ).toBe(200);
+    expect((await login(h, "alice", "correct horse", { "x-forwarded-for": "198.51.100.4" })).statusCode).toBe(200);
   });
 
   it("refuses a cross-site browser request before looking at credentials", async () => {
     const h = await build();
-    expect(
-      (await login(h, "alice", "correct horse", { origin: "https://evil.example" })).statusCode,
-    ).toBe(403);
-    expect(
-      (await login(h, "alice", "correct horse", { "sec-fetch-site": "cross-site" })).statusCode,
-    ).toBe(403);
+    expect((await login(h, "alice", "correct horse", { origin: "https://evil.example" })).statusCode).toBe(403);
+    expect((await login(h, "alice", "correct horse", { "sec-fetch-site": "cross-site" })).statusCode).toBe(403);
     expect(
       (
         await login(h, "alice", "correct horse", {
@@ -399,9 +365,7 @@ describe("login", () => {
     const h = await build();
     const first = cookieFrom(await login(h, "alice", "correct horse"))!;
     await login(h, "alice", "correct horse", { cookie: first });
-    expect(
-      (await h.app.inject({ method: "GET", url: "/me", headers: { cookie: first } })).statusCode,
-    ).toBe(401);
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: first } })).statusCode).toBe(401);
   });
 });
 
@@ -496,9 +460,7 @@ describe("password change", () => {
     expect(short.json()).toEqual({ error: "password_too_short" });
 
     // A wrong current password did not sign this session out.
-    expect(
-      (await h.app.inject({ method: "GET", url: "/me", headers: { cookie } })).statusCode,
-    ).toBe(200);
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie } })).statusCode).toBe(200);
   });
 });
 

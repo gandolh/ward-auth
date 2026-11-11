@@ -22,12 +22,7 @@ import {
   type LockoutTarget,
   type TrustedProxies,
 } from "../auth/lockout.js";
-import {
-  hashPassword,
-  MAX_PASSWORD_LENGTH,
-  PasswordPolicyError,
-  verifyPassword,
-} from "../auth/password.js";
+import { hashPassword, MAX_PASSWORD_LENGTH, PasswordPolicyError, verifyPassword } from "../auth/password.js";
 import { issueRefreshToken } from "../auth/refresh.js";
 
 /**
@@ -155,10 +150,7 @@ interface Caller {
   familyId: string;
 }
 
-export async function accountRoutes(
-  app: FastifyInstance,
-  options: AccountRoutesOptions = {},
-): Promise<void> {
+export async function accountRoutes(app: FastifyInstance, options: AccountRoutesOptions = {}): Promise<void> {
   /** Resolved once, at registration — see `routes/auth.ts` for both reasons. */
   const secure = await wardSecureCookies();
   const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
@@ -322,50 +314,46 @@ export async function accountRoutes(
     const familyId = newFamilyId();
     const access = await mintAccessToken(caller.row.subject, familyId);
 
-    const result = db.transaction(
-      (): { sessionsRevoked: number; refreshToken: string; refreshExpiresAt: string } => {
-        setPasswordHash(db, caller.row.subject, passwordHash);
+    const result = db.transaction((): { sessionsRevoked: number; refreshToken: string; refreshExpiresAt: string } => {
+      setPasswordHash(db, caller.row.subject, passwordHash);
 
-        // Counted before the write for the same reason `admin/sessions.ts` does
-        // it: the number reported must describe the same moment as the rows.
-        const families = new Set(
-          listLiveTokensForSubject(db, caller.row.subject).map((row) => row.family_id),
-        );
-        revokeAllForSubject(db, caller.row.subject, "admin");
+      // Counted before the write for the same reason `admin/sessions.ts` does
+      // it: the number reported must describe the same moment as the rows.
+      const families = new Set(listLiveTokensForSubject(db, caller.row.subject).map((row) => row.family_id));
+      revokeAllForSubject(db, caller.row.subject, "admin");
 
-        /**
-         * Issued **after** the sweep, so the caller's new family survives it.
-         * Doing it the other way round would revoke the pair that was just
-         * minted and sign the person out of the browser they changed their
-         * password in.
-         */
-        const issued = issueRefreshToken(db, caller.row.subject, { familyId });
+      /**
+       * Issued **after** the sweep, so the caller's new family survives it.
+       * Doing it the other way round would revoke the pair that was just
+       * minted and sign the person out of the browser they changed their
+       * password in.
+       */
+      const issued = issueRefreshToken(db, caller.row.subject, { familyId });
 
-        recordAudit(db, {
-          actorKind: "account",
-          actorSubject: caller.row.subject,
-          actorLabel: caller.row.username,
-          action: "user.password_change",
-          targetKind: "user",
-          targetId: caller.row.subject,
-          detail: {
-            sessionsRevoked: families.size,
-            // The family that was replaced, and the one that replaced it.
-            // Neither is a secret — a family id is a handle, never a
-            // credential.
-            previousSession: caller.familyId,
-            session: familyId,
-            ip: target.address,
-          },
-        });
-
-        return {
+      recordAudit(db, {
+        actorKind: "account",
+        actorSubject: caller.row.subject,
+        actorLabel: caller.row.username,
+        action: "user.password_change",
+        targetKind: "user",
+        targetId: caller.row.subject,
+        detail: {
           sessionsRevoked: families.size,
-          refreshToken: issued.token,
-          refreshExpiresAt: issued.row.expires_at,
-        };
-      },
-    )();
+          // The family that was replaced, and the one that replaced it.
+          // Neither is a secret — a family id is a handle, never a
+          // credential.
+          previousSession: caller.familyId,
+          session: familyId,
+          ip: target.address,
+        },
+      });
+
+      return {
+        sessionsRevoked: families.size,
+        refreshToken: issued.token,
+        refreshExpiresAt: issued.row.expires_at,
+      };
+    })();
 
     for (const cookie of sessionCookies({
       accessToken: access.token,
@@ -442,12 +430,7 @@ export async function accountRoutes(
           .filter((family) => family !== caller.familyId),
       );
 
-      const tokensRevoked = revokeAllForSubjectExceptFamily(
-        db,
-        caller.row.subject,
-        caller.familyId,
-        "logout",
-      );
+      const tokensRevoked = revokeAllForSubjectExceptFamily(db, caller.row.subject, caller.familyId, "logout");
 
       if (tokensRevoked > 0) {
         recordAudit(db, {

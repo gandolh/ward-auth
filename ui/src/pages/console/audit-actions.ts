@@ -168,8 +168,7 @@ const ACTIONS: Record<string, Omit<AuditActionPresentation, "isAlarm">> = {
   "app.delete": {
     severity: "authority",
     label: "App removed",
-    explanation:
-      "Every grant for the app went with it. The count in the detail is the only trace those rows existed.",
+    explanation: "Every grant for the app went with it. The count in the detail is the only trace those rows existed.",
   },
   "app.update": { severity: "benign", label: "App renamed", explanation: "" },
   "app.registration": {
@@ -233,17 +232,11 @@ export const AUDIT_ACTION_GROUPS: { group: string; actions: string[] }[] = [
  * for, so this decodes each part and refuses anything that is not three of
  * them.
  */
-export function parseGrantTarget(
-  targetId: string,
-): { subject: string; appSlug: string; role: string } | undefined {
+export function parseGrantTarget(targetId: string): { subject: string; appSlug: string; role: string } | undefined {
   const parts = targetId.split(":");
   if (parts.length !== 3) return undefined;
   try {
-    const [subject, appSlug, role] = parts.map((part) => decodeURIComponent(part)) as [
-      string,
-      string,
-      string,
-    ];
+    const [subject, appSlug, role] = parts.map((part) => decodeURIComponent(part)) as [string, string, string];
     return { subject, appSlug, role };
   } catch {
     // A malformed escape such as "%zz". Better to render the raw id than throw.

@@ -81,15 +81,11 @@ describe("grants are a set of (subject, app, role)", () => {
 
   it("rejects the duplicate even on a raw INSERT that bypasses this module", () => {
     const alice = seedUser(db, "alice");
-    const insert = db.prepare(
-      "INSERT INTO grants (subject, app_slug, role, granted_by) VALUES (?, ?, ?, ?)",
-    );
+    const insert = db.prepare("INSERT INTO grants (subject, app_slug, role, granted_by) VALUES (?, ?, ?, ?)");
 
     insert.run(alice.subject, "atrium", "user", SUPERUSER_ACTOR);
 
-    expect(() => insert.run(alice.subject, "atrium", "user", SUPERUSER_ACTOR)).toThrowError(
-      /UNIQUE constraint failed/,
-    );
+    expect(() => insert.run(alice.subject, "atrium", "user", SUPERUSER_ACTOR)).toThrowError(/UNIQUE constraint failed/);
   });
 
   it("is unique on all three columns together, not on (subject, app)", () => {
@@ -317,12 +313,9 @@ describe("foreign keys actually enforce", () => {
 
     expect(grant.granted_by).toBe("superuser");
     // And there is no users row for it, now or ever.
-    expect(
-      db
-        .prepare<[], number>("SELECT count(*) FROM users WHERE username_folded = 'superuser'")
-        .pluck()
-        .get(),
-    ).toBe(0);
+    expect(db.prepare<[], number>("SELECT count(*) FROM users WHERE username_folded = 'superuser'").pluck().get()).toBe(
+      0,
+    );
   });
 
   // No foreign key does not mean no constraint. The column exists so that "who
@@ -342,9 +335,7 @@ describe("foreign keys actually enforce", () => {
     // And omitting the column entirely is the same refusal — there is no
     // default to fall back to, deliberately.
     expect(() =>
-      db
-        .prepare("INSERT INTO grants (subject, app_slug, role) VALUES (?, ?, ?)")
-        .run(alice.subject, "atrium", "user"),
+      db.prepare("INSERT INTO grants (subject, app_slug, role) VALUES (?, ?, ?)").run(alice.subject, "atrium", "user"),
     ).toThrowError(/NOT NULL constraint failed: grants\.granted_by/);
 
     expect(listGrantsForApp(db, "atrium")).toEqual([]);
@@ -361,13 +352,13 @@ describe("apps: registration is closed by default", () => {
   });
 
   it("cannot be opened to the public without naming what a stranger gets", () => {
-    expect(() =>
-      createApp(db, { slug: "trips", name: "Trips", publicRegistration: true }),
-    ).toThrowError(/CHECK constraint failed/);
+    expect(() => createApp(db, { slug: "trips", name: "Trips", publicRegistration: true })).toThrowError(
+      /CHECK constraint failed/,
+    );
 
-    expect(() =>
-      db.prepare("UPDATE apps SET public_registration = 1 WHERE slug = ?").run("atrium"),
-    ).toThrowError(/CHECK constraint failed/);
+    expect(() => db.prepare("UPDATE apps SET public_registration = 1 WHERE slug = ?").run("atrium")).toThrowError(
+      /CHECK constraint failed/,
+    );
   });
 
   it("opening and closing carries the baseline role with it", () => {
@@ -382,8 +373,6 @@ describe("apps: registration is closed by default", () => {
   });
 
   it("keeps slugs lower case so one app cannot become two", () => {
-    expect(() => createApp(db, { slug: "Trips", name: "Trips" })).toThrowError(
-      /CHECK constraint failed/,
-    );
+    expect(() => createApp(db, { slug: "Trips", name: "Trips" })).toThrowError(/CHECK constraint failed/);
   });
 });

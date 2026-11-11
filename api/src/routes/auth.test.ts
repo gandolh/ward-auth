@@ -192,11 +192,7 @@ describe("POST /login", () => {
     expect(response.statusCode).toBe(200);
 
     const cookies = setCookies(response.headers);
-    expect([...cookies.keys()].sort()).toEqual([
-      "legacy:ward_session",
-      "ward_refresh",
-      "ward_session",
-    ]);
+    expect([...cookies.keys()].sort()).toEqual(["legacy:ward_session", "ward_refresh", "ward_session"]);
 
     // Scoped to Ward's API since the shared-cookie contract was retired.
     const access = cookies.get("ward_session")!;
@@ -264,9 +260,7 @@ describe("POST /login", () => {
 
     const dump = JSON.stringify(db.prepare("SELECT * FROM refresh_tokens").all());
     expect(dump).not.toContain(presented);
-    expect(
-      mod.refreshTokens.findRefreshToken(db, mod.refreshTokens.hashRefreshToken(presented)),
-    ).toBeDefined();
+    expect(mod.refreshTokens.findRefreshToken(db, mod.refreshTokens.hashRefreshToken(presented))).toBeDefined();
   });
 
   it("accepts any casing of the username", async () => {
@@ -547,10 +541,7 @@ describe("POST /refresh", () => {
   it("replaying a token whose family has moved on revokes the family", async () => {
     const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.102");
     const r1 = setCookies(loggedIn.headers).get("ward_refresh")!.value;
-    const familyId = mod.refreshTokens.findRefreshToken(
-      db,
-      mod.refreshTokens.hashRefreshToken(r1),
-    )!.family_id;
+    const familyId = mod.refreshTokens.findRefreshToken(db, mod.refreshTokens.hashRefreshToken(r1))!.family_id;
 
     const first = await app.inject({
       method: "POST",
@@ -605,11 +596,9 @@ describe("POST /refresh", () => {
     for (const member of family) {
       expect(member.revoked_at).not.toBeNull();
     }
-    expect(
-      mod.refreshTokens
-        .listLiveTokensForSubject(db, subject)
-        .filter((row) => row.family_id === familyId),
-    ).toEqual([]);
+    expect(mod.refreshTokens.listLiveTokensForSubject(db, subject).filter((row) => row.family_id === familyId)).toEqual(
+      [],
+    );
 
     // And it is on the record.
     const audit = mod.auditLog.listAudit(db, { action: "session.reuse_detected" });
@@ -727,9 +716,7 @@ describe("POST /logout", () => {
     // Scoped to this family — other cases in this file leave `alice` other live
     // sessions, and logging out one device must not touch them.
     expect(
-      mod.refreshTokens
-        .listLiveTokensForSubject(db, subject)
-        .filter((live) => live.family_id === row!.family_id),
+      mod.refreshTokens.listLiveTokensForSubject(db, subject).filter((live) => live.family_id === row!.family_id),
     ).toEqual([]);
 
     // And the token is inert.
@@ -750,8 +737,7 @@ describe("POST /logout", () => {
   function browserCookies(headers: Record<string, unknown>, publicPath: string): string {
     const pathMatches = (cookiePath: string) =>
       publicPath === cookiePath ||
-      (publicPath.startsWith(cookiePath) &&
-        (cookiePath.endsWith("/") || publicPath.charAt(cookiePath.length) === "/"));
+      (publicPath.startsWith(cookiePath) && (cookiePath.endsWith("/") || publicPath.charAt(cookiePath.length) === "/"));
     return [...setCookies(headers).entries()]
       .filter(([, c]) => pathMatches(c.path ?? "/"))
       .map(([name, c]) => `${name}=${c.value}`)
@@ -788,11 +774,7 @@ describe("POST /logout", () => {
     const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.113");
     const real = setCookies(loggedIn.headers).get("ward_refresh")!.value;
 
-    for (const payload of [
-      { refreshToken: real },
-      { refreshToken: "f".repeat(64) },
-      { refreshToken: "not-a-token" },
-    ]) {
+    for (const payload of [{ refreshToken: real }, { refreshToken: "f".repeat(64) }, { refreshToken: "not-a-token" }]) {
       const response = await app.inject({ method: "POST", url: "/logout", payload });
       expect(response.statusCode).toBe(204);
       expect(setCookies(response.headers).size).toBe(3);
@@ -835,10 +817,7 @@ describe("the same-token refresh race", () => {
   it("leaves the session alive, with the winner's R2 still usable", async () => {
     const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.130");
     const r1 = setCookies(loggedIn.headers).get("ward_refresh")!.value;
-    const familyId = mod.refreshTokens.findRefreshToken(
-      db,
-      mod.refreshTokens.hashRefreshToken(r1),
-    )!.family_id;
+    const familyId = mod.refreshTokens.findRefreshToken(db, mod.refreshTokens.hashRefreshToken(r1))!.family_id;
 
     const [a, b] = await Promise.all([
       app.inject({ method: "POST", url: "/refresh", payload: { refreshToken: r1 } }),
@@ -861,9 +840,7 @@ describe("the same-token refresh race", () => {
 
     // The family is ALIVE, with exactly one live token: the R2 the winning tab
     // wrote into the jar the two tabs share.
-    const live = mod.refreshTokens
-      .listLiveTokensForSubject(db, subject)
-      .filter((row) => row.family_id === familyId);
+    const live = mod.refreshTokens.listLiveTokensForSubject(db, subject).filter((row) => row.family_id === familyId);
     expect(live).toHaveLength(1);
     expect(live[0]!.token_hash).toBe(mod.refreshTokens.hashRefreshToken(r2));
 
@@ -879,10 +856,7 @@ describe("the same-token refresh race", () => {
   it("records session.refresh_raced with the presenter's address, and no theft alarm", async () => {
     const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.131");
     const r1 = setCookies(loggedIn.headers).get("ward_refresh")!.value;
-    const familyId = mod.refreshTokens.findRefreshToken(
-      db,
-      mod.refreshTokens.hashRefreshToken(r1),
-    )!.family_id;
+    const familyId = mod.refreshTokens.findRefreshToken(db, mod.refreshTokens.hashRefreshToken(r1))!.family_id;
 
     const [first, second] = await Promise.all([
       app.inject({
@@ -938,9 +912,7 @@ describe("the same-token refresh race", () => {
 
     // An operator paging on the theft alarm must not be woken by two tabs.
     expect(
-      mod.auditLog
-        .listAudit(db, { action: "session.reuse_detected" })
-        .filter((row) => row.target_id === familyId),
+      mod.auditLog.listAudit(db, { action: "session.reuse_detected" }).filter((row) => row.target_id === familyId),
     ).toEqual([]);
   });
 
@@ -949,10 +921,7 @@ describe("the same-token refresh race", () => {
     // and timestamps but not who presented the replayed token.
     const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.132");
     const r1 = setCookies(loggedIn.headers).get("ward_refresh")!.value;
-    const familyId = mod.refreshTokens.findRefreshToken(
-      db,
-      mod.refreshTokens.hashRefreshToken(r1),
-    )!.family_id;
+    const familyId = mod.refreshTokens.findRefreshToken(db, mod.refreshTokens.hashRefreshToken(r1))!.family_id;
 
     const first = await app.inject({
       method: "POST",
@@ -983,10 +952,7 @@ describe("the same-token refresh race", () => {
     // drowns the operator's only alert channel.
     const loggedIn = await login({ username: "alice", password: PASSWORD }, "203.0.113.133");
     const r1 = setCookies(loggedIn.headers).get("ward_refresh")!.value;
-    const familyId = mod.refreshTokens.findRefreshToken(
-      db,
-      mod.refreshTokens.hashRefreshToken(r1),
-    )!.family_id;
+    const familyId = mod.refreshTokens.findRefreshToken(db, mod.refreshTokens.hashRefreshToken(r1))!.family_id;
 
     const first = await app.inject({
       method: "POST",
@@ -1006,9 +972,7 @@ describe("the same-token refresh race", () => {
     }
 
     expect(
-      mod.auditLog
-        .listAudit(db, { action: "session.reuse_detected" })
-        .filter((row) => row.target_id === familyId),
+      mod.auditLog.listAudit(db, { action: "session.reuse_detected" }).filter((row) => row.target_id === familyId),
     ).toHaveLength(1);
   });
 });
@@ -1100,10 +1064,7 @@ describe("a mint failure leaves nothing behind", () => {
     tokens.resetTokenServiceForTests();
 
     try {
-      const response = await login(
-        { username: "mint-failure", password: PASSWORD },
-        "198.51.100.50",
-      );
+      const response = await login({ username: "mint-failure", password: PASSWORD }, "198.51.100.50");
 
       // The route throws rather than lying about success.
       expect(response.statusCode).toBe(500);

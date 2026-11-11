@@ -5,12 +5,7 @@ import { UserDisabledError, createAccounts } from "../core/accounts.js";
 import { createSqliteStore } from "../store/sqlite.js";
 import { AlreadyLinkedError, WardSubjectTakenError, type AuthStore } from "../store/types.js";
 import type { WardIdentity } from "./client.js";
-import {
-  NoLocalPasswordError,
-  NotLinkedError,
-  createWardIdentities,
-  type UsernameFor,
-} from "./identities.js";
+import { NoLocalPasswordError, NotLinkedError, createWardIdentities, type UsernameFor } from "./identities.js";
 
 /** The linking rules without a Ward; the flow itself is `fastify/ward.test.ts`. */
 
@@ -35,9 +30,7 @@ describe("createWardIdentities", () => {
     const { accounts } = setup();
     const bare: AuthStore = { ...accounts.store } as AuthStore;
     delete (bare as Partial<{ findWardLinkBySubject: unknown }>).findWardLinkBySubject;
-    expect(() => createWardIdentities({ accounts: { ...accounts, store: bare } })).toThrow(
-      /WardAuthStore/,
-    );
+    expect(() => createWardIdentities({ accounts: { ...accounts, store: bare } })).toThrow(/WardAuthStore/);
   });
 
   it("creates linked users keyed by the Ward subject, for the migration path", async () => {
@@ -111,21 +104,11 @@ describe("createWardIdentities", () => {
     };
     const name = "Alice.Smith-With-A-Very-Long-Name";
 
-    const first = await identities.userForSignIn(
-      identity({ username: name }),
-      undefined,
-      shape,
-      16,
-    );
+    const first = await identities.userForSignIn(identity({ username: name }), undefined, shape, 16);
     expect(first.user.username).toBe("alice.smith-with");
     expect(seen).toEqual([{ username: name, subject: "s-1" }]);
 
-    const second = await identities.userForSignIn(
-      identity({ subject: "s-2", username: name }),
-      undefined,
-      shape,
-      16,
-    );
+    const second = await identities.userForSignIn(identity({ subject: "s-2", username: name }), undefined, shape, 16);
     expect(second.user.username).toBe("alice.smith-wi-2");
     expect(second.user.username.length).toBeLessThanOrEqual(16);
 
@@ -172,9 +155,7 @@ describe("createWardIdentities", () => {
   it("refuses a usernameMaxLength outside 10 to 256", async () => {
     const { identities } = setup();
     for (const max of [9, 257, 10.5]) {
-      await expect(identities.userForSignIn(identity(), undefined, undefined, max)).rejects.toThrow(
-        TypeError,
-      );
+      await expect(identities.userForSignIn(identity(), undefined, undefined, max)).rejects.toThrow(TypeError);
     }
   });
 

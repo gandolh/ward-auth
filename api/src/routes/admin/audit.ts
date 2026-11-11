@@ -120,10 +120,7 @@ function auditView(row: AuditLogRow): AuditRowView {
   };
 }
 
-export async function adminAuditRoutes(
-  app: FastifyInstance,
-  options: AdminRoutesOptions = {},
-): Promise<void> {
+export async function adminAuditRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
   const database = databaseResolver(options);
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`.

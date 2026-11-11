@@ -164,13 +164,7 @@ it("refuses an ordinary account's real access token, however it is presented", a
 
   // And nothing happened. Not one app created, not one grant issued, not one
   // account made, not one audit row written.
-  expect(listApps(db).map((row) => row.slug)).toEqual([
-    "atrium",
-    "imbatranimos",
-    "newspapper",
-    "prm",
-    "sports-app",
-  ]);
+  expect(listApps(db).map((row) => row.slug)).toEqual(["atrium", "imbatranimos", "newspapper", "prm", "sports-app"]);
   // Unchanged from the fixture: the refused requests wrote nothing.
   expect(listGrantsForSubject(db, subject)).toHaveLength(listApps(db).length * 3);
   expect(findUserByUsername(db, "intruder")).toBeUndefined();

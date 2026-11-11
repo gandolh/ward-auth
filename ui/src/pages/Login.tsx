@@ -6,12 +6,7 @@ import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
 import { WardApiError, login, type WardErrorCode } from "../lib/api.js";
 import { resolveNext } from "../lib/next.js";
-import {
-  interactionAbortUrl,
-  interactionResumeUrl,
-  oidcInteraction,
-  useInteractionClient,
-} from "../lib/oidc.js";
+import { interactionAbortUrl, interactionResumeUrl, oidcInteraction, useInteractionClient } from "../lib/oidc.js";
 import { deadlineIn, useCountdown } from "../lib/use-countdown.js";
 import { formatWait } from "../lib/wait.js";
 
@@ -130,9 +125,7 @@ export function Login(): React.JSX.Element {
   }, []);
 
   const heading =
-    interaction !== undefined && interactionClient !== undefined
-      ? `Continue to ${interactionClient.name}`
-      : "Sign in";
+    interaction !== undefined && interactionClient !== undefined ? `Continue to ${interactionClient.name}` : "Sign in";
 
   async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -177,9 +170,7 @@ export function Login(): React.JSX.Element {
        * about to be replaced, and re-enabling a form for the few milliseconds
        * before that happens is an invitation to double-submit.
        */
-      window.location.assign(
-        interaction === undefined ? destination.path : interactionResumeUrl(interaction),
-      );
+      window.location.assign(interaction === undefined ? destination.path : interactionResumeUrl(interaction));
     } catch (error) {
       const code = error instanceof WardApiError ? error.code : "unexpected";
       if (code === "too_many_attempts") {
@@ -227,14 +218,11 @@ export function Login(): React.JSX.Element {
       */}
       {lockedOut && (
         <Notice tone="wait">
-          Too many sign-in attempts from your network. Try again in{" "}
-          <strong>{formatWait(waitLeft)}</strong>.
+          Too many sign-in attempts from your network. Try again in <strong>{formatWait(waitLeft)}</strong>.
         </Notice>
       )}
 
-      {failure !== undefined && failure !== "too_many_attempts" && (
-        <Notice tone="error">{messageFor(failure)}</Notice>
-      )}
+      {failure !== undefined && failure !== "too_many_attempts" && <Notice tone="error">{messageFor(failure)}</Notice>}
 
       {/*
         `noValidate` turns off the browser's own bubble validation in favour of

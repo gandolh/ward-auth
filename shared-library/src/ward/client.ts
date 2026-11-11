@@ -3,12 +3,7 @@ import { isIP } from "node:net";
 import * as oidc from "openid-client";
 
 import { WardConfigurationError, WardSignInError, WardUnavailableError } from "./errors.js";
-import {
-  CLIENT_ASSERTION_TYPE,
-  importClientKey,
-  signClientAssertion,
-  type ClientKey,
-} from "./key.js";
+import { CLIENT_ASSERTION_TYPE, importClientKey, signClientAssertion, type ClientKey } from "./key.js";
 
 /**
  * Talking to Ward: "Sign in with Ward", the 30-second check, mail, and
@@ -337,10 +332,7 @@ export async function createWardClient(options: WardClientOptions): Promise<Ward
   }
 
   function discoveryError(error: unknown): WardUnavailableError {
-    if (
-      error instanceof oidc.ClientError &&
-      error.code === "OAUTH_JSON_ATTRIBUTE_COMPARISON_FAILED"
-    ) {
+    if (error instanceof oidc.ClientError && error.code === "OAUTH_JSON_ATTRIBUTE_COMPARISON_FAILED") {
       // Ward answered, but its metadata names another issuer: WARD_OIDC_ISSUER
       // is not what Ward was configured with.
       return new WardConfigurationError(
@@ -423,10 +415,7 @@ export async function createWardClient(options: WardClientOptions): Promise<Ward
         typeof role !== "string" ||
         role.length === 0
       ) {
-        throw new WardSignInError(
-          "invalid_callback",
-          "Ward's ID token lacks sub, ward_sid or ward_role",
-        );
+        throw new WardSignInError("invalid_callback", "Ward's ID token lacks sub, ward_sid or ward_role");
       }
       return {
         subject,
@@ -529,10 +518,7 @@ export function signInErrorFor(error: unknown): WardSignInError {
   if (error instanceof TypeError && !("code" in error)) {
     return new WardSignInError("ward_unavailable", error.message, { cause: error });
   }
-  if (
-    error instanceof DOMException &&
-    (error.name === "TimeoutError" || error.name === "AbortError")
-  ) {
+  if (error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError")) {
     return new WardSignInError("ward_unavailable", error.message, { cause: error });
   }
   return new WardSignInError("ward_error", "the Ward sign-in failed", { cause: error });

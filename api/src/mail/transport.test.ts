@@ -82,10 +82,7 @@ describe("file transport", () => {
 
   it("creates the outbox and keeps the message readable only by its owner", async () => {
     const target = join(dir, "nested", "outbox");
-    const result = await sendMail(
-      { to: "alice@example.com", subject: "s", text: "t" },
-      fileTransport(target),
-    );
+    const result = await sendMail({ to: "alice@example.com", subject: "s", text: "t" }, fileTransport(target));
 
     /**
      * A verification mail holds a live single-use token, so these files are

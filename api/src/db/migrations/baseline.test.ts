@@ -81,10 +81,7 @@ describe("baseline migration", () => {
   it("records itself in ward_migrations exactly once", () => {
     const db = freshDb();
 
-    const applied = db
-      .prepare<[], string>("SELECT name FROM ward_migrations ORDER BY name")
-      .pluck()
-      .all();
+    const applied = db.prepare<[], string>("SELECT name FROM ward_migrations ORDER BY name").pluck().all();
 
     expect(applied).toEqual(MIGRATIONS.map((migration) => migration.name));
     expect(applied).toContain("20260902000000-baseline");

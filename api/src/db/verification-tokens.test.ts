@@ -126,9 +126,7 @@ describe("verification tokens", () => {
     ).toThrowError(/FOREIGN KEY constraint failed/);
 
     db.prepare("DELETE FROM users WHERE subject = ?").run(subject);
-    expect(db.prepare<[], number>("SELECT count(*) FROM verification_tokens").pluck().get()).toBe(
-      0,
-    );
+    expect(db.prepare<[], number>("SELECT count(*) FROM verification_tokens").pluck().get()).toBe(0);
   });
 
   it("sweep away expired rows", () => {
@@ -136,8 +134,6 @@ describe("verification tokens", () => {
     issue("password_reset", "alice@example.test", yesterday());
 
     expect(deleteExpiredVerificationTokens(db)).toBe(1);
-    expect(db.prepare<[], number>("SELECT count(*) FROM verification_tokens").pluck().get()).toBe(
-      1,
-    );
+    expect(db.prepare<[], number>("SELECT count(*) FROM verification_tokens").pluck().get()).toBe(1);
   });
 });

@@ -165,9 +165,9 @@ describe("email is optional and never trusted until verified", () => {
   it("cannot be flagged verified with no address at all", () => {
     const user = seedUser(db, "alice");
 
-    expect(() =>
-      db.prepare("UPDATE users SET email_verified = 1 WHERE subject = ?").run(user.subject),
-    ).toThrowError(/CHECK constraint failed/);
+    expect(() => db.prepare("UPDATE users SET email_verified = 1 WHERE subject = ?").run(user.subject)).toThrowError(
+      /CHECK constraint failed/,
+    );
   });
 
   it("changing the address clears the verified flag", () => {

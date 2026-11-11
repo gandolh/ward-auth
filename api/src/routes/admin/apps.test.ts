@@ -1,16 +1,8 @@
 import type Database from "better-sqlite3";
-import Fastify, {
-  type FastifyInstance,
-  type InjectOptions,
-  type LightMyRequestResponse,
-} from "fastify";
+import Fastify, { type FastifyInstance, type InjectOptions, type LightMyRequestResponse } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  CONSOLE_COOKIE_NAME,
-  openConsoleSession,
-  resetConsoleSessionsForTests,
-} from "../../auth/superuser.js";
+import { CONSOLE_COOKIE_NAME, openConsoleSession, resetConsoleSessionsForTests } from "../../auth/superuser.js";
 import { listAudit } from "../../db/audit-log.js";
 import { getApp } from "../../db/apps.js";
 import { grantRole, listGrantsForApp, SUPERUSER_ACTOR } from "../../db/grants.js";
@@ -156,9 +148,7 @@ describe("creating an app", () => {
 
   it("answers 409 on a duplicate slug", async () => {
     const payload = { slug: "atrium", name: "Atrium" };
-    expect((await asConsole({ method: "POST", url: "/console/apps", payload })).statusCode).toBe(
-      201,
-    );
+    expect((await asConsole({ method: "POST", url: "/console/apps", payload })).statusCode).toBe(201);
 
     const again = await asConsole({ method: "POST", url: "/console/apps", payload });
     expect(again.statusCode).toBe(409);

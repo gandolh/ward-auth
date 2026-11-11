@@ -216,10 +216,7 @@ function tokenDigest(token: string): string {
  * both. There is no user-existence oracle to worry about — there is exactly one
  * credential — but "which half did I get right" is one, and this closes it.
  */
-export async function checkSuperuserCredentials(
-  username: string,
-  password: string,
-): Promise<boolean> {
+export async function checkSuperuserCredentials(username: string, password: string): Promise<boolean> {
   const { WARD_ADMIN_USERNAME, WARD_ADMIN_PASSWORD } = await import("../config.js");
 
   const usernameMatches = fingerprintsMatch(username, WARD_ADMIN_USERNAME);
@@ -281,10 +278,7 @@ function view(stored: StoredSession): ConsoleSession {
 }
 
 function expired(stored: StoredSession, now: number): boolean {
-  return (
-    now >= stored.absoluteDeadline ||
-    now - stored.lastSeenAt >= CONSOLE_SESSION_IDLE_TIMEOUT_SECONDS * 1000
-  );
+  return now >= stored.absoluteDeadline || now - stored.lastSeenAt >= CONSOLE_SESSION_IDLE_TIMEOUT_SECONDS * 1000;
 }
 
 function prune(now: number): void {

@@ -16,9 +16,7 @@ import "./ward.css";
  * `ConsoleRoutes`, and its contract is not changed for this, so the wrapper
  * here gives `lazy` the default export it wants.
  */
-const ConsoleRoutes = lazy(() =>
-  import("./pages/console/routes.js").then((m) => ({ default: m.ConsoleRoutes })),
-);
+const ConsoleRoutes = lazy(() => import("./pages/console/routes.js").then((m) => ({ default: m.ConsoleRoutes })));
 
 /**
  * Ward's router: the sign-in side's pages, and the console's mount.
@@ -97,11 +95,7 @@ export function App(): React.JSX.Element {
  */
 function ConsoleLoading(): React.JSX.Element {
   return (
-    <p
-      className="ward-lede"
-      role="status"
-      style={{ margin: 0, padding: "var(--ward-space-8) var(--ward-space-6)" }}
-    >
+    <p className="ward-lede" role="status" style={{ margin: 0, padding: "var(--ward-space-8) var(--ward-space-6)" }}>
       Loading the console…
     </p>
   );
@@ -119,8 +113,8 @@ function NotFound(): React.JSX.Element {
     <Threshold>
       <h1>Nothing here</h1>
       <p className="ward-lede">
-        That address isn&apos;t one of Ward&apos;s pages. If you were on your way somewhere, sign in
-        and you&apos;ll be sent on.
+        That address isn&apos;t one of Ward&apos;s pages. If you were on your way somewhere, sign in and you&apos;ll be
+        sent on.
       </p>
       <p className="ward-prose">
         <Link className="ward-link" to="/login">

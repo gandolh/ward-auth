@@ -159,15 +159,9 @@ describe("clearedSessionCookies", () => {
 
 describe("serializeCookie", () => {
   it("refuses a value that a browser would silently truncate", () => {
-    expect(() => serializeCookie({ name: "x", value: "a b", path: "/", secure: true })).toThrow(
-      TypeError,
-    );
-    expect(() => serializeCookie({ name: "x", value: "a;b", path: "/", secure: true })).toThrow(
-      TypeError,
-    );
-    expect(() => serializeCookie({ name: "a b", value: "x", path: "/", secure: true })).toThrow(
-      TypeError,
-    );
+    expect(() => serializeCookie({ name: "x", value: "a b", path: "/", secure: true })).toThrow(TypeError);
+    expect(() => serializeCookie({ name: "x", value: "a;b", path: "/", secure: true })).toThrow(TypeError);
+    expect(() => serializeCookie({ name: "a b", value: "x", path: "/", secure: true })).toThrow(TypeError);
   });
 
   it("does not put the value in the error message", () => {
@@ -226,14 +220,8 @@ describe("readCookies", () => {
   it("returns every value for a duplicated name, in header order", () => {
     // The current Path=/ward-api cookie and the legacy Path=/ one, in either
     // order — the browser chooses.
-    expect(readCookies("ward_session=new; theme=dark; ward_session=old", "ward_session")).toEqual([
-      "new",
-      "old",
-    ]);
-    expect(readCookies("ward_session=old; ward_session=new", "ward_session")).toEqual([
-      "old",
-      "new",
-    ]);
+    expect(readCookies("ward_session=new; theme=dark; ward_session=old", "ward_session")).toEqual(["new", "old"]);
+    expect(readCookies("ward_session=old; ward_session=new", "ward_session")).toEqual(["old", "new"]);
   });
 
   it("skips cleared values and other names, and handles a missing header", () => {

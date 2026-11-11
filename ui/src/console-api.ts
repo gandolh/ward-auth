@@ -393,11 +393,7 @@ export interface ConsoleApi {
   grantsForSubject(subject: string): Promise<GrantView[]>;
   grantsForApp(slug: string): Promise<GrantView[]>;
   addGrant(target: { subject: string; appSlug: string; role: string }): Promise<GrantWriteResult>;
-  revokeGrant(target: {
-    subject: string;
-    appSlug: string;
-    role?: string;
-  }): Promise<GrantRevokeResult>;
+  revokeGrant(target: { subject: string; appSlug: string; role?: string }): Promise<GrantRevokeResult>;
 
   listAccounts(page?: { limit?: number; offset?: number }): Promise<AccountListResult>;
   getAccount(subject: string): Promise<AccountDetailResult>;
@@ -455,16 +451,12 @@ function errorCode(body: unknown, status: number): string {
  * Adding a method must not add a second place any of those are decided.
  */
 export function createConsoleApi(fetchImpl?: FetchLike): ConsoleApi {
-  const doFetch: FetchLike =
-    fetchImpl ?? ((input, init) => globalThis.fetch(input, init) as Promise<Response>);
+  const doFetch: FetchLike = fetchImpl ?? ((input, init) => globalThis.fetch(input, init) as Promise<Response>);
 
   // `body` is widened deliberately: every caller hands over a plain object and
   // this function is the single place it becomes JSON, so no method can forget
   // the content-type header or serialise it a second, different way.
-  async function call<T>(
-    path: string,
-    init: Omit<RequestInit, "body"> & { body?: unknown } = {},
-  ): Promise<T> {
+  async function call<T>(path: string, init: Omit<RequestInit, "body"> & { body?: unknown } = {}): Promise<T> {
     const { body, ...rest } = init;
     const headers: Record<string, string> = { accept: "application/json" };
     if (body !== undefined) headers["content-type"] = "application/json";
@@ -678,10 +670,9 @@ export function createConsoleApi(fetchImpl?: FetchLike): ConsoleApi {
      * the whole difference from `disableAccount`.
      */
     revokeAllSessions(subject) {
-      return call<SessionRevokeAllResult>(
-        `/accounts/${encodeURIComponent(subject)}/sessions/revoke`,
-        { method: "POST" },
-      );
+      return call<SessionRevokeAllResult>(`/accounts/${encodeURIComponent(subject)}/sessions/revoke`, {
+        method: "POST",
+      });
     },
 
     /**

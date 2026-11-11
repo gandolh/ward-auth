@@ -95,27 +95,19 @@ const stmts = prepareOnce((db: Database.Database) => ({
      RETURNING *`,
   ),
 
-  delete: db.prepare<[string, string, string]>(
-    `DELETE FROM grants WHERE subject = ? AND app_slug = ? AND role = ?`,
-  ),
+  delete: db.prepare<[string, string, string]>(`DELETE FROM grants WHERE subject = ? AND app_slug = ? AND role = ?`),
 
-  deleteForSubjectInApp: db.prepare<[string, string]>(
-    `DELETE FROM grants WHERE subject = ? AND app_slug = ?`,
-  ),
+  deleteForSubjectInApp: db.prepare<[string, string]>(`DELETE FROM grants WHERE subject = ? AND app_slug = ?`),
 
   deleteForSubject: db.prepare<[string]>(`DELETE FROM grants WHERE subject = ?`),
 
-  forSubject: db.prepare<[string], GrantRow>(
-    `SELECT * FROM grants WHERE subject = ? ORDER BY app_slug, role`,
-  ),
+  forSubject: db.prepare<[string], GrantRow>(`SELECT * FROM grants WHERE subject = ? ORDER BY app_slug, role`),
 
   rolesInApp: db.prepare<[string, string], string>(
     `SELECT role FROM grants WHERE subject = ? AND app_slug = ? ORDER BY role`,
   ),
 
-  forApp: db.prepare<[string], GrantRow>(
-    `SELECT * FROM grants WHERE app_slug = ? ORDER BY role, subject`,
-  ),
+  forApp: db.prepare<[string], GrantRow>(`SELECT * FROM grants WHERE app_slug = ? ORDER BY role, subject`),
 
   exists: db.prepare<[string, string, string], number>(
     `SELECT 1 FROM grants WHERE subject = ? AND app_slug = ? AND role = ?`,
@@ -157,12 +149,7 @@ export function ensureGrant(db: Database.Database, input: NewGrant): GrantRow | 
 }
 
 /** Remove one role. False if they did not hold it. */
-export function revokeGrant(
-  db: Database.Database,
-  subject: string,
-  appSlug: string,
-  role: string,
-): boolean {
+export function revokeGrant(db: Database.Database, subject: string, appSlug: string, role: string): boolean {
   return stmts(db).delete.run(subject, appSlug, role).changes === 1;
 }
 
@@ -200,12 +187,7 @@ export function listRolesInApp(db: Database.Database, subject: string, appSlug: 
 }
 
 /** Exactly this triple, or not. */
-export function hasGrant(
-  db: Database.Database,
-  subject: string,
-  appSlug: string,
-  role: string,
-): boolean {
+export function hasGrant(db: Database.Database, subject: string, appSlug: string, role: string): boolean {
   return stmts(db).exists.pluck().get(subject, appSlug, role) !== undefined;
 }
 

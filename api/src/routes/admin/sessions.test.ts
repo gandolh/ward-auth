@@ -1,17 +1,9 @@
 import type Database from "better-sqlite3";
-import Fastify, {
-  type FastifyInstance,
-  type InjectOptions,
-  type LightMyRequestResponse,
-} from "fastify";
+import Fastify, { type FastifyInstance, type InjectOptions, type LightMyRequestResponse } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { issueRefreshToken, rotateRefreshToken } from "../../auth/refresh.js";
-import {
-  CONSOLE_COOKIE_NAME,
-  openConsoleSession,
-  resetConsoleSessionsForTests,
-} from "../../auth/superuser.js";
+import { CONSOLE_COOKIE_NAME, openConsoleSession, resetConsoleSessionsForTests } from "../../auth/superuser.js";
 import { listAudit } from "../../db/audit-log.js";
 import { listFamily, listLiveTokensForSubject } from "../../db/refresh-tokens.js";
 import { findUserBySubject, setDisabled } from "../../db/users.js";
@@ -95,9 +87,7 @@ describe("GET .../sessions", () => {
       total: number;
     };
     expect(body.total).toBe(2);
-    expect(body.sessions.map((session) => session.familyId).sort()).toEqual(
-      [first.familyId, second.familyId].sort(),
-    );
+    expect(body.sessions.map((session) => session.familyId).sort()).toEqual([first.familyId, second.familyId].sort());
 
     for (const session of body.sessions) {
       expect(Object.keys(session).sort()).toEqual(["expiresAt", "familyId", "issuedAt", "usedAt"]);
@@ -154,9 +144,7 @@ describe("GET .../sessions", () => {
       method: "GET",
       url: `/console/accounts/${subject}/sessions`,
     });
-    expect((response.json().sessions as { familyId: string }[]).map((s) => s.familyId)).toEqual([
-      kept.familyId,
-    ]);
+    expect((response.json().sessions as { familyId: string }[]).map((s) => s.familyId)).toEqual([kept.familyId]);
   });
 
   it("distinguishes an account with no sessions from an account that does not exist", async () => {
@@ -196,9 +184,7 @@ describe("DELETE .../sessions/:familyId", () => {
 
     const dead = listFamily(db, doomed.familyId);
     expect(dead.every((row) => row.revoked_reason === "admin")).toBe(true);
-    expect(listLiveTokensForSubject(db, subject).map((row) => row.family_id)).toEqual([
-      kept.familyId,
-    ]);
+    expect(listLiveTokensForSubject(db, subject).map((row) => row.family_id)).toEqual([kept.familyId]);
   });
 
   it("audits it as the superuser, naming the family and the account", async () => {

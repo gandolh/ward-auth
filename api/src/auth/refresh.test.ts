@@ -2,12 +2,7 @@ import type Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { listAudit } from "../db/audit-log.js";
-import {
-  findRefreshToken,
-  hashRefreshToken,
-  listFamily,
-  listLiveTokensForSubject,
-} from "../db/refresh-tokens.js";
+import { findRefreshToken, hashRefreshToken, listFamily, listLiveTokensForSubject } from "../db/refresh-tokens.js";
 import { freshDb, seedUser } from "../db/test-support.js";
 import { setDisabled } from "../db/users.js";
 import {
@@ -78,9 +73,7 @@ describe("issueRefreshToken", () => {
     const now = new Date("2026-09-04T12:00:00.000Z");
     const issued = issueRefreshToken(db, subject, { now });
 
-    expect(Date.parse(issued.row.expires_at) - now.getTime()).toBe(
-      REFRESH_TOKEN_TTL_SECONDS * 1000,
-    );
+    expect(Date.parse(issued.row.expires_at) - now.getTime()).toBe(REFRESH_TOKEN_TTL_SECONDS * 1000);
   });
 });
 

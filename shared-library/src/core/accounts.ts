@@ -148,10 +148,7 @@ export interface Accounts {
    * Mint a session. The token is the cookie value and is not stored. Throws
    * `UserDisabledError` for a disabled user; no caller should ask for one.
    */
-  startSession(
-    userId: string,
-    options?: StartSessionOptions,
-  ): Promise<{ token: string; session: SessionRecord }>;
+  startSession(userId: string, options?: StartSessionOptions): Promise<{ token: string; session: SessionRecord }>;
   /**
    * The session a cookie value names, renewing its sliding expiry when due.
    * `undefined` when there is none, it expired, or its user is gone or
@@ -216,9 +213,7 @@ export function createAccounts(options: AccountsOptions): Accounts {
     }
 
     const passwordHash =
-      input.password === undefined || input.password === null
-        ? null
-        : await hashPassword(input.password);
+      input.password === undefined || input.password === null ? null : await hashPassword(input.password);
 
     const created = await store.createUser({
       id: input.id ?? generateUserId(),
@@ -231,10 +226,7 @@ export function createAccounts(options: AccountsOptions): Accounts {
     return toAuthUser(created);
   }
 
-  async function verifyCredentials(
-    username: string,
-    password: string,
-  ): Promise<AuthUser | undefined> {
+  async function verifyCredentials(username: string, password: string): Promise<AuthUser | undefined> {
     const user = await store.findUserByFoldedUsername(foldUsername(username));
 
     // The unknown-username branch and the no-local-password branch both spend
@@ -275,11 +267,7 @@ export function createAccounts(options: AccountsOptions): Accounts {
     return true;
   }
 
-  async function setPassword(
-    userId: string,
-    newPassword: string,
-    keepSessionIdHash?: string,
-  ): Promise<void> {
+  async function setPassword(userId: string, newPassword: string, keepSessionIdHash?: string): Promise<void> {
     const hash = await hashPassword(newPassword);
     await store.setPasswordHash(userId, hash, now());
     await store.deleteUserSessions(userId, keepSessionIdHash);
@@ -431,10 +419,7 @@ export interface SeedResult {
  * the person changed since, every time it ran. The passwords come from the
  * app's environment or a prompt, never from a file in the repo.
  */
-export async function seedUsers(
-  accounts: Accounts,
-  users: readonly SeedUser[],
-): Promise<SeedResult> {
+export async function seedUsers(accounts: Accounts, users: readonly SeedUser[]): Promise<SeedResult> {
   const result: SeedResult = { created: [], existing: [] };
   for (const user of users) {
     if ((await accounts.findUserByUsername(user.username)) !== undefined) {

@@ -100,9 +100,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
      RETURNING *`,
   ),
 
-  byHash: db.prepare<[string], RefreshTokenRow>(
-    `SELECT * FROM refresh_tokens WHERE token_hash = ?`,
-  ),
+  byHash: db.prepare<[string], RefreshTokenRow>(`SELECT * FROM refresh_tokens WHERE token_hash = ?`),
 
   claim: db.prepare<[string, string, string], RefreshTokenRow>(
     `UPDATE refresh_tokens
@@ -166,10 +164,7 @@ export function insertRefreshToken(db: Database.Database, input: NewRefreshToken
  * that fails needs to know *why*, and specifically needs the `family_id` of a
  * replayed token so it can burn the family down.
  */
-export function findRefreshToken(
-  db: Database.Database,
-  tokenHash: string,
-): RefreshTokenRow | undefined {
+export function findRefreshToken(db: Database.Database, tokenHash: string): RefreshTokenRow | undefined {
   return stmts(db).byHash.get(tokenHash);
 }
 
@@ -293,9 +288,6 @@ export function listFamily(db: Database.Database, familyId: string): RefreshToke
  * the number of people. Nothing calls this on a schedule yet; deployment
  * is where that belongs.
  */
-export function deleteExpiredRefreshTokens(
-  db: Database.Database,
-  now: string = new Date().toISOString(),
-): number {
+export function deleteExpiredRefreshTokens(db: Database.Database, now: string = new Date().toISOString()): number {
   return stmts(db).deleteExpired.run(now).changes;
 }

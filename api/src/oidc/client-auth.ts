@@ -35,8 +35,7 @@ export type ClientAuthRejection =
   "absent" | "malformed" | "unknown_client" | "invalid_signature" | "invalid_claims" | "replayed";
 
 export type ClientAuthResult =
-  | { readonly ok: true; readonly clientId: string }
-  | { readonly ok: false; readonly reason: ClientAuthRejection };
+  { readonly ok: true; readonly clientId: string } | { readonly ok: false; readonly reason: ClientAuthRejection };
 
 export interface VerifyClientAssertionOptions {
   /**
@@ -82,20 +81,13 @@ export async function verifyClientAssertion(
       clockTolerance: CLIENT_ASSERTION_CLOCK_TOLERANCE_SECONDS,
     }));
   } catch (error) {
-    if (
-      error instanceof joseErrors.JWTClaimValidationFailed ||
-      error instanceof joseErrors.JWTExpired
-    ) {
+    if (error instanceof joseErrors.JWTClaimValidationFailed || error instanceof joseErrors.JWTExpired) {
       return { ok: false, reason: "invalid_claims" };
     }
     return { ok: false, reason: "invalid_signature" };
   }
 
-  if (
-    typeof payload.jti !== "string" ||
-    payload.jti.length === 0 ||
-    typeof payload.exp !== "number"
-  ) {
+  if (typeof payload.jti !== "string" || payload.jti.length === 0 || typeof payload.exp !== "number") {
     return { ok: false, reason: "invalid_claims" };
   }
 

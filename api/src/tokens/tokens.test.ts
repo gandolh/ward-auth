@@ -143,9 +143,9 @@ describe("verification", () => {
   it("rejects that same token against any other JWKS", async () => {
     // "verifies against the published JWKS and nothing else" — the other half.
     const minted = await mint();
-    await expect(
-      verifyAccessToken(minted.token, createJwksKeyStore(keySetB.jwks), { issuer: ISSUER }),
-    ).rejects.toThrow(AccessTokenVerificationError);
+    await expect(verifyAccessToken(minted.token, createJwksKeyStore(keySetB.jwks), { issuer: ISSUER })).rejects.toThrow(
+      AccessTokenVerificationError,
+    );
   });
 
   it("rejects a token signed with a different key", async () => {
@@ -157,9 +157,9 @@ describe("verification", () => {
       signingKey: keySetB.current,
       issuer: ISSUER,
     });
-    await expect(
-      verifyAccessToken(forged.token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER }),
-    ).rejects.toThrow(AccessTokenVerificationError);
+    await expect(verifyAccessToken(forged.token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER })).rejects.toThrow(
+      AccessTokenVerificationError,
+    );
   });
 
   it('rejects an unsigned token claiming alg: "none"', async () => {
@@ -175,9 +175,9 @@ describe("verification", () => {
         aud: ACCESS_TOKEN_AUDIENCE,
       },
     );
-    await expect(
-      verifyAccessToken(token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER }),
-    ).rejects.toThrow(AccessTokenVerificationError);
+    await expect(verifyAccessToken(token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER })).rejects.toThrow(
+      AccessTokenVerificationError,
+    );
   });
 
   it("rejects an HS256 token signed with the public key's own bytes", async () => {
@@ -195,16 +195,16 @@ describe("verification", () => {
       .setExpirationTime(now + ACCESS_TOKEN_TTL_SECONDS)
       .sign(new Uint8Array(publicKeyBytes));
 
-    await expect(
-      verifyAccessToken(token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER }),
-    ).rejects.toThrow(AccessTokenVerificationError);
+    await expect(verifyAccessToken(token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER })).rejects.toThrow(
+      AccessTokenVerificationError,
+    );
   });
 
   it("rejects an expired token", async () => {
     const stale = await mint("sub_01H8XABCDEF", new Date(Date.now() - 20 * 60_000));
-    await expect(
-      verifyAccessToken(stale.token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER }),
-    ).rejects.toThrow(AccessTokenVerificationError);
+    await expect(verifyAccessToken(stale.token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER })).rejects.toThrow(
+      AccessTokenVerificationError,
+    );
   });
 
   it("rejects a token whose iss is not this Ward", async () => {
@@ -214,9 +214,9 @@ describe("verification", () => {
       signingKey: keySetA.current,
       issuer: "https://evil.example",
     });
-    await expect(
-      verifyAccessToken(minted.token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER }),
-    ).rejects.toThrow(AccessTokenVerificationError);
+    await expect(verifyAccessToken(minted.token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER })).rejects.toThrow(
+      AccessTokenVerificationError,
+    );
   });
 
   it("rejects a token minted for a different audience", async () => {
@@ -227,9 +227,9 @@ describe("verification", () => {
       issuer: ISSUER,
       audience: "some-other-estate",
     });
-    await expect(
-      verifyAccessToken(minted.token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER }),
-    ).rejects.toThrow(AccessTokenVerificationError);
+    await expect(verifyAccessToken(minted.token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER })).rejects.toThrow(
+      AccessTokenVerificationError,
+    );
   });
 
   it("rejects a token that omits exp entirely", async () => {
@@ -240,9 +240,9 @@ describe("verification", () => {
       .setAudience(ACCESS_TOKEN_AUDIENCE)
       .setIssuedAt()
       .sign(keySetA.current.privateKey);
-    await expect(
-      verifyAccessToken(token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER }),
-    ).rejects.toThrow(AccessTokenVerificationError);
+    await expect(verifyAccessToken(token, createJwksKeyStore(keySetA.jwks), { issuer: ISSUER })).rejects.toThrow(
+      AccessTokenVerificationError,
+    );
   });
 });
 
@@ -252,10 +252,7 @@ describe("key rotation", () => {
     await copyFile(join(dir, "a.pem"), previousSigningKeyPath(join(dir, "b.pem")));
     const rotating = await loadKeySet(join(dir, "b.pem"));
 
-    expect(rotating.jwks.keys.map((k) => k.kid)).toEqual([
-      keySetB.current.kid,
-      keySetA.current.kid,
-    ]);
+    expect(rotating.jwks.keys.map((k) => k.kid)).toEqual([keySetB.current.kid, keySetA.current.kid]);
     expect(rotating.current.kid).toBe(keySetB.current.kid);
 
     const store = createJwksKeyStore(rotating.jwks);
@@ -274,12 +271,8 @@ describe("key rotation", () => {
 
     // Nobody is signed out by the rotation itself: that is the whole reason
     // the previous key stays published for one access-token lifetime.
-    expect((await verifyAccessToken(oldToken.token, store, { issuer: ISSUER })).sub).toBe(
-      "sub_still_valid",
-    );
-    expect((await verifyAccessToken(newToken.token, store, { issuer: ISSUER })).sub).toBe(
-      "sub_fresh",
-    );
+    expect((await verifyAccessToken(oldToken.token, store, { issuer: ISSUER })).sub).toBe("sub_still_valid");
+    expect((await verifyAccessToken(newToken.token, store, { issuer: ISSUER })).sub).toBe("sub_fresh");
 
     await rm(previousSigningKeyPath(join(dir, "b.pem")));
   });

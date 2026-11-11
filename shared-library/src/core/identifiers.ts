@@ -41,9 +41,7 @@ export class UsernamePolicyError extends Error {
 export function normaliseUsername(username: string): string {
   const trimmed = username.trim();
   if (trimmed.length === 0 || trimmed.length > MAX_USERNAME_LENGTH) {
-    throw new UsernamePolicyError(
-      `username must be 1 to ${MAX_USERNAME_LENGTH} characters after trimming`,
-    );
+    throw new UsernamePolicyError(`username must be 1 to ${MAX_USERNAME_LENGTH} characters after trimming`);
   }
   if (!USERNAME_PATTERN.test(trimmed)) {
     throw new UsernamePolicyError("username contains a control character or unusual whitespace");

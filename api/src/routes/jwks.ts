@@ -36,10 +36,7 @@ export async function jwksRoutes(app: FastifyInstance): Promise<void> {
   // object on every request, and this endpoint is hit by six apps.
   const body = JSON.stringify(jwks);
 
-  app.log.info(
-    { kids: jwks.keys.map((key) => key.kid) },
-    "signing keys loaded; JWKS ready to publish",
-  );
+  app.log.info({ kids: jwks.keys.map((key) => key.kid) }, "signing keys loaded; JWKS ready to publish");
 
   app.get("/.well-known/jwks.json", async (_request, reply) => {
     /**

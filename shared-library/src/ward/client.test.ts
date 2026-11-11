@@ -62,14 +62,9 @@ describe("the client key", () => {
       exp: 1_060,
       jti: expect.any(String),
     });
-    expect(
-      verify(
-        null,
-        Buffer.from(`${header}.${claims}`),
-        publicKey,
-        Buffer.from(signature!, "base64url"),
-      ),
-    ).toBe(true);
+    expect(verify(null, Buffer.from(`${header}.${claims}`), publicKey, Buffer.from(signature!, "base64url"))).toBe(
+      true,
+    );
   });
 
   it("refuses a public half, another curve, garbage, and never echoes the value", async () => {
@@ -93,24 +88,18 @@ describe("configuration", () => {
       clientKey: clientKeyPair().envValue,
       redirectUri: "https://example.com/cb",
     };
-    await expect(
-      createWardClient({ ...base, issuer: "https://example.com/ward-api" }),
-    ).rejects.toThrow(/end in \/oidc/);
-    await expect(
-      createWardClient({ ...base, issuer: "http://example.com/ward-api/oidc" }),
-    ).rejects.toThrow(/https/);
+    await expect(createWardClient({ ...base, issuer: "https://example.com/ward-api" })).rejects.toThrow(
+      /end in \/oidc/,
+    );
+    await expect(createWardClient({ ...base, issuer: "http://example.com/ward-api/oidc" })).rejects.toThrow(/https/);
     // A name that only starts like a loopback address is a public host.
     for (const host of ["127.evil.com", "127.0.0.1.nip.io", "localhost.evil.com"]) {
-      await expect(
-        createWardClient({ ...base, issuer: `http://${host}/ward-api/oidc` }),
-        host,
-      ).rejects.toThrow(/https/);
+      await expect(createWardClient({ ...base, issuer: `http://${host}/ward-api/oidc` }), host).rejects.toThrow(
+        /https/,
+      );
     }
     for (const host of ["localhost:8792", "127.0.0.1:8792", "127.9.9.9", "[::1]:8792"]) {
-      await expect(
-        createWardClient({ ...base, issuer: `http://${host}/ward-api/oidc` }),
-        host,
-      ).resolves.toBeDefined();
+      await expect(createWardClient({ ...base, issuer: `http://${host}/ward-api/oidc` }), host).resolves.toBeDefined();
     }
   });
 
@@ -262,11 +251,9 @@ describe("sendNotification", () => {
     let answer = json(200, { sent: true });
     const fetch = vi.fn(async () => answer);
     const ward = await client(fetch);
-    expect(await ward.sendNotification({ subject: "s", mailSubject: "Hi", text: "Hello" })).toEqual(
-      {
-        sent: true,
-      },
-    );
+    expect(await ward.sendNotification({ subject: "s", mailSubject: "Hi", text: "Hello" })).toEqual({
+      sent: true,
+    });
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://example.com/ward-api/notify");
     expect(Object.keys(JSON.parse(String(init.body))).sort()).toEqual([
@@ -278,12 +265,12 @@ describe("sendNotification", () => {
     ]);
 
     answer = json(503, { error: "mail_unavailable" });
-    await expect(
-      ward.sendNotification({ subject: "s", mailSubject: "Hi", text: "Hello" }),
-    ).rejects.toBeInstanceOf(WardUnavailableError);
+    await expect(ward.sendNotification({ subject: "s", mailSubject: "Hi", text: "Hello" })).rejects.toBeInstanceOf(
+      WardUnavailableError,
+    );
     answer = json(401, { error: "invalid_client" });
-    await expect(
-      ward.sendNotification({ subject: "s", mailSubject: "Hi", text: "Hello" }),
-    ).rejects.toBeInstanceOf(WardConfigurationError);
+    await expect(ward.sendNotification({ subject: "s", mailSubject: "Hi", text: "Hello" })).rejects.toBeInstanceOf(
+      WardConfigurationError,
+    );
   });
 });

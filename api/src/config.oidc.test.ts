@@ -46,9 +46,7 @@ function baseEnv(): Record<string, string> {
   };
 }
 
-async function importConfig(
-  env: Record<string, string>,
-): Promise<{ code: number; stderr: string }> {
+async function importConfig(env: Record<string, string>): Promise<{ code: number; stderr: string }> {
   try {
     const { stderr } = await promisify(execFile)(process.execPath, [tsxCli!, configPath], {
       env,
@@ -91,38 +89,32 @@ describe("WARD_OIDC_ISSUER and WARD_UI_URL", () => {
     expect(result.stderr).toContain("WARD_OIDC_ISSUER");
   });
 
-  it.skipIf(tsxCli === undefined)(
-    "refuses an issuer with a query or an upper-case host",
-    async () => {
-      for (const issuer of ["https://example.com/ward-api/oidc?x=1", "https://Example.com/oidc"]) {
-        const result = await importConfig({
-          ...baseEnv(),
-          WARD_OIDC_ISSUER: issuer,
-          WARD_UI_URL: "https://example.com/ward",
-        });
-        expect(result.code, issuer).toBe(1);
-        expect(result.stderr).toContain("WARD_OIDC_ISSUER");
-      }
-    },
-  );
-
-  it.skipIf(tsxCli === undefined)(
-    "requires the UI URL with an issuer, on the same origin",
-    async () => {
-      const missing = await importConfig({
+  it.skipIf(tsxCli === undefined)("refuses an issuer with a query or an upper-case host", async () => {
+    for (const issuer of ["https://example.com/ward-api/oidc?x=1", "https://Example.com/oidc"]) {
+      const result = await importConfig({
         ...baseEnv(),
-        WARD_OIDC_ISSUER: "https://example.com/ward-api/oidc",
+        WARD_OIDC_ISSUER: issuer,
+        WARD_UI_URL: "https://example.com/ward",
       });
-      expect(missing.code).toBe(1);
-      expect(missing.stderr).toContain("WARD_UI_URL");
+      expect(result.code, issuer).toBe(1);
+      expect(result.stderr).toContain("WARD_OIDC_ISSUER");
+    }
+  });
 
-      const elsewhere = await importConfig({
-        ...baseEnv(),
-        WARD_OIDC_ISSUER: "https://example.com/ward-api/oidc",
-        WARD_UI_URL: "https://ward.example.net/ward",
-      });
-      expect(elsewhere.code).toBe(1);
-      expect(elsewhere.stderr).toContain("WARD_UI_URL");
-    },
-  );
+  it.skipIf(tsxCli === undefined)("requires the UI URL with an issuer, on the same origin", async () => {
+    const missing = await importConfig({
+      ...baseEnv(),
+      WARD_OIDC_ISSUER: "https://example.com/ward-api/oidc",
+    });
+    expect(missing.code).toBe(1);
+    expect(missing.stderr).toContain("WARD_UI_URL");
+
+    const elsewhere = await importConfig({
+      ...baseEnv(),
+      WARD_OIDC_ISSUER: "https://example.com/ward-api/oidc",
+      WARD_UI_URL: "https://ward.example.net/ward",
+    });
+    expect(elsewhere.code).toBe(1);
+    expect(elsewhere.stderr).toContain("WARD_UI_URL");
+  });
 });

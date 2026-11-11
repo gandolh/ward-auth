@@ -18,12 +18,8 @@ import {
 
 describe("passwordPolicyError", () => {
   it("names the same codes hashPassword throws, without hashing", () => {
-    expect(passwordPolicyError("a".repeat(MIN_PASSWORD_LENGTH - 1))?.code).toBe(
-      "password_too_short",
-    );
-    expect(passwordPolicyError("a".repeat(MAX_PASSWORD_LENGTH + 1))?.code).toBe(
-      "password_too_long",
-    );
+    expect(passwordPolicyError("a".repeat(MIN_PASSWORD_LENGTH - 1))?.code).toBe("password_too_short");
+    expect(passwordPolicyError("a".repeat(MAX_PASSWORD_LENGTH + 1))?.code).toBe("password_too_long");
     expect(passwordPolicyError("a".repeat(MIN_PASSWORD_LENGTH))).toBeUndefined();
   });
 });

@@ -149,9 +149,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
       expect(response.body).not.toContain("wcs_");
       const payload = response.json() as { session: { id: string; idleTimeoutSeconds: number } };
       expect(payload.session.id).toMatch(/^[0-9a-f]{32}$/);
-      expect(payload.session.idleTimeoutSeconds).toBe(
-        superuser.CONSOLE_SESSION_IDLE_TIMEOUT_SECONDS,
-      );
+      expect(payload.session.idleTimeoutSeconds).toBe(superuser.CONSOLE_SESSION_IDLE_TIMEOUT_SECONDS);
       expect(payload.session).not.toHaveProperty("subject");
     });
 
@@ -241,10 +239,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
 
       // A different address is unaffected — the key is the IP, and it is the
       // whole reason the lockout is not keyed on the username.
-      const elsewhere = await login(
-        { username: ADMIN_USERNAME, password: ADMIN_PASSWORD },
-        "198.51.100.9",
-      );
+      const elsewhere = await login({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD }, "198.51.100.9");
       expect(elsewhere.statusCode).toBe(200);
     });
 
@@ -353,9 +348,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
     it("clears the failure counter on a success", async () => {
       await login({ username: ADMIN_USERNAME, password: "wrong" });
       await login({ username: ADMIN_USERNAME, password: "wrong" });
-      expect((await login({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD })).statusCode).toBe(
-        200,
-      );
+      expect((await login({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD })).statusCode).toBe(200);
 
       for (let i = 0; i < 3; i += 1) {
         const response = await login({ username: ADMIN_USERNAME, password: "wrong" });
@@ -380,9 +373,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
         headers: { cookie },
       });
       expect(authorized.statusCode).toBe(200);
-      expect((authorized.json() as { session: { id: string } }).session.id).toMatch(
-        /^[0-9a-f]{32}$/,
-      );
+      expect((authorized.json() as { session: { id: string } }).session.id).toMatch(/^[0-9a-f]{32}$/);
 
       const anonymous = await app.inject({ method: "GET", url: "/console/session" });
       expect(anonymous.statusCode).toBe(401);

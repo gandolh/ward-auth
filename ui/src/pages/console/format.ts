@@ -62,10 +62,7 @@ export function sessionRemaining(
   session: { idleExpiresAt: string; absoluteExpiresAt: string },
   now: number = Date.now(),
 ): { seconds: number; text: string; low: boolean } {
-  const seconds = Math.min(
-    secondsUntil(session.idleExpiresAt, now),
-    secondsUntil(session.absoluteExpiresAt, now),
-  );
+  const seconds = Math.min(secondsUntil(session.idleExpiresAt, now), secondsUntil(session.absoluteExpiresAt, now));
   return { seconds, text: formatRemaining(seconds), low: seconds <= 120 };
 }
 

@@ -250,11 +250,7 @@ function withConsole(consoleCookie: string): { cookie: string } {
   return { cookie: cookieHeader({ [mod.superuser.CONSOLE_COOKIE_NAME]: consoleCookie }) };
 }
 
-async function createApp(
-  consoleCookie: string,
-  slug: string,
-  name: string,
-): Promise<{ slug: string }> {
+async function createApp(consoleCookie: string, slug: string, name: string): Promise<{ slug: string }> {
   const response = await app.inject({
     method: "POST",
     url: "/console/apps",
@@ -265,11 +261,7 @@ async function createApp(
   return response.json<{ app: { slug: string } }>().app;
 }
 
-async function createAccount(
-  consoleCookie: string,
-  username: string,
-  password: string,
-): Promise<{ subject: string }> {
+async function createAccount(consoleCookie: string, username: string, password: string): Promise<{ subject: string }> {
   const response = await app.inject({
     method: "POST",
     url: "/console/accounts",
@@ -292,10 +284,7 @@ async function grantRoleViaConsole(
     headers: withConsole(consoleCookie),
     payload: { subject, appSlug, role },
   });
-  expect(
-    response.statusCode,
-    `POST /console/grants — grant "${role}" on "${appSlug}" to ${subject}`,
-  ).toBe(200);
+  expect(response.statusCode, `POST /console/grants — grant "${role}" on "${appSlug}" to ${subject}`).toBe(200);
 }
 
 async function revokeRoleViaConsole(
@@ -310,10 +299,7 @@ async function revokeRoleViaConsole(
     headers: withConsole(consoleCookie),
     payload: { subject, appSlug, role },
   });
-  expect(
-    response.statusCode,
-    `DELETE /console/grants — revoke "${role}" on "${appSlug}" from ${subject}`,
-  ).toBe(200);
+  expect(response.statusCode, `DELETE /console/grants — revoke "${role}" on "${appSlug}" from ${subject}`).toBe(200);
 }
 
 async function disableAccountViaConsole(consoleCookie: string, subject: string): Promise<void> {
@@ -374,10 +360,7 @@ describe("flow 1 — the console bootstraps the estate", () => {
     await grantRoleViaConsole(consoleCookie, subject, "atrium", "admin");
 
     const introspected = await sessionFor(accessToken);
-    expect(
-      introspected.json(),
-      "the same access token, unchanged, after POST /console/grants added admin",
-    ).toEqual({
+    expect(introspected.json(), "the same access token, unchanged, after POST /console/grants added admin").toEqual({
       active: true,
       subject,
       username: "alice",
@@ -434,10 +417,7 @@ describe("flow 4 — disabling an account ends its live session end to end", () 
     // And the refresh token behind it is refused too — an app that never
     // introspects but does try to refresh gets the same lockout.
     const refreshed = await refreshWith(session.refreshToken);
-    expect(
-      refreshed.statusCode,
-      "POST /refresh with a disabled account's still-unexpired refresh token",
-    ).toBe(401);
+    expect(refreshed.statusCode, "POST /refresh with a disabled account's still-unexpired refresh token").toBe(401);
     expect(refreshed.json()).toEqual({ error: "invalid_refresh" });
   });
 });
@@ -498,10 +478,9 @@ describe("flow 5 — refresh rotation, and reuse killing the family, over real H
     // and legitimate a moment ago. This is the theft-response contract: a
     // stolen family dies in full rather than only the specific token reused.
     const afterReplay = await sessionFor(thirdAccessToken);
-    expect(
-      afterReplay.json(),
-      "the current, legitimately-rotated access token, after R1 was replayed",
-    ).toEqual({ active: false });
+    expect(afterReplay.json(), "the current, legitimately-rotated access token, after R1 was replayed").toEqual({
+      active: false,
+    });
   });
 });
 
@@ -559,10 +538,9 @@ describe("flow 6 — per-device revocation: the reason the sid claim exists", ()
       laptopAfter.json(),
       "the LOGGED-OUT device's access token — before sid, this was `active: true` for its remaining 15 minutes",
     ).toEqual({ active: false });
-    expect(
-      phoneAfter.json(),
-      "the OTHER device's access token — untouched by the laptop's logout",
-    ).toMatchObject({ active: true });
+    expect(phoneAfter.json(), "the OTHER device's access token — untouched by the laptop's logout").toMatchObject({
+      active: true,
+    });
   });
 });
 
@@ -581,10 +559,9 @@ describe("flow 7 — the superuser console session cannot open an app, and an ap
     });
     const bySessionCookie = await sessionFor(consoleCookie);
 
-    expect(
-      byConsoleCookie.json(),
-      "a real console token in the console cookie, to /session",
-    ).toEqual({ active: false });
+    expect(byConsoleCookie.json(), "a real console token in the console cookie, to /session").toEqual({
+      active: false,
+    });
     expect(bySessionCookie.json(), "the same console token in the ward_session cookie").toEqual({
       active: false,
     });
@@ -635,17 +612,12 @@ describe("flow 7 — the superuser console session cannot open an app, and an ap
       headers: { authorization: `Bearer ${session.accessToken}` },
     });
 
-    expect(
-      asConsoleCookie.statusCode,
-      "grace's access token in the ward_console cookie, on an admin route",
-    ).toBe(401);
+    expect(asConsoleCookie.statusCode, "grace's access token in the ward_console cookie, on an admin route").toBe(401);
     expect(
       asSessionCookie.statusCode,
       "grace's access token in its OWN cookie, on an admin route the guard never reads it from",
     ).toBe(401);
-    expect(asBearer.statusCode, "grace's access token as a bearer header, on an admin route").toBe(
-      401,
-    );
+    expect(asBearer.statusCode, "grace's access token as a bearer header, on an admin route").toBe(401);
   });
 });
 
@@ -693,21 +665,15 @@ describe("flow 8 — the audit trail, read back after everything above", () => {
     // Every console action is attributed to the superuser, with NO subject —
     // there is no account row to point at, and the CHECK in `audit-log.ts`
     // ties a non-null `actor_subject` to `actorKind: "account"`.
-    const consoleRows = rows.filter(
-      (row) => row.action.startsWith("console.") || row.action === "app.create",
-    );
+    const consoleRows = rows.filter((row) => row.action.startsWith("console.") || row.action === "app.create");
     expect(consoleRows.length, "at least one console-attributed row exists").toBeGreaterThan(0);
     for (const row of consoleRows) {
-      expect(row.actor_kind, `row "${row.action}" is attributed to the superuser`).toBe(
-        "superuser",
-      );
+      expect(row.actor_kind, `row "${row.action}" is attributed to the superuser`).toBe("superuser");
       expect(row.actor_subject, `row "${row.action}" carries no actor subject`).toBeNull();
     }
 
     // Account-driven events (a real login) are attributed to that account.
-    const loginRows = rows.filter(
-      (row) => row.action === "session.login" && row.actor_label === "alice",
-    );
+    const loginRows = rows.filter((row) => row.action === "session.login" && row.actor_label === "alice");
     expect(loginRows.length, 'alice\'s "session.login" row exists').toBeGreaterThan(0);
     expect(loginRows[0]!.actor_kind).toBe("account");
     expect(loginRows[0]!.actor_subject).not.toBeNull();

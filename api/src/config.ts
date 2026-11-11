@@ -303,12 +303,7 @@ const mailAwareSchema = envSchema.superRefine((env, ctx) => {
   }
 
   if (env.WARD_MAIL_TRANSPORT === "smtp") {
-    for (const key of [
-      "WARD_SMTP_HOST",
-      "WARD_SMTP_PORT",
-      "WARD_SMTP_USER",
-      "WARD_SMTP_PASSWORD",
-    ] as const) {
+    for (const key of ["WARD_SMTP_HOST", "WARD_SMTP_PORT", "WARD_SMTP_USER", "WARD_SMTP_PASSWORD"] as const) {
       if (env[key] === undefined) {
         ctx.addIssue({
           code: "custom",
@@ -328,9 +323,7 @@ const mailAwareSchema = envSchema.superRefine((env, ctx) => {
 
 const parsed = mailAwareSchema.safeParse(process.env);
 if (!parsed.success) {
-  const lines = parsed.error.issues.map(
-    (issue) => `  - ${issue.path.join(".") || "(env)"}: ${issue.message}`,
-  );
+  const lines = parsed.error.issues.map((issue) => `  - ${issue.path.join(".") || "(env)"}: ${issue.message}`);
   /**
    * Fail fast and loudly. Written straight to stderr because the Fastify
    * logger does not exist yet, and boxed because this message is read at 2am
@@ -427,6 +420,4 @@ export interface OidcSettings {
 }
 
 export const OIDC: OidcSettings | undefined =
-  env.WARD_OIDC_ISSUER === undefined
-    ? undefined
-    : { issuer: env.WARD_OIDC_ISSUER, uiUrl: env.WARD_UI_URL! };
+  env.WARD_OIDC_ISSUER === undefined ? undefined : { issuer: env.WARD_OIDC_ISSUER, uiUrl: env.WARD_UI_URL! };

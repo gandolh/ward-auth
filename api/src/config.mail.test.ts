@@ -45,9 +45,7 @@ function baseEnv(): Record<string, string> {
   };
 }
 
-async function importConfig(
-  env: Record<string, string>,
-): Promise<{ code: number; stderr: string }> {
+async function importConfig(env: Record<string, string>): Promise<{ code: number; stderr: string }> {
   try {
     const { stderr } = await promisify(execFile)(process.execPath, [tsxCli!, configPath], {
       env,
@@ -76,22 +74,19 @@ describe("the mail transport is required, and each mode requires its own setting
     expect(result.stderr).toContain("WARD_MAIL_FILE_DIR");
   });
 
-  it.skipIf(tsxCli === undefined)(
-    "refuses smtp mode missing credentials, naming each",
-    async () => {
-      const result = await importConfig({
-        ...baseEnv(),
-        WARD_MAIL_TRANSPORT: "smtp",
-        WARD_SMTP_HOST: "smtp.example.net",
-      });
-      expect(result.code).toBe(1);
-      // The whole point of the cross-field check: it says which ones are missing.
-      expect(result.stderr).toContain("WARD_SMTP_PORT");
-      expect(result.stderr).toContain("WARD_SMTP_USER");
-      expect(result.stderr).toContain("WARD_SMTP_PASSWORD");
-      expect(result.stderr).not.toContain("WARD_SMTP_HOST:");
-    },
-  );
+  it.skipIf(tsxCli === undefined)("refuses smtp mode missing credentials, naming each", async () => {
+    const result = await importConfig({
+      ...baseEnv(),
+      WARD_MAIL_TRANSPORT: "smtp",
+      WARD_SMTP_HOST: "smtp.example.net",
+    });
+    expect(result.code).toBe(1);
+    // The whole point of the cross-field check: it says which ones are missing.
+    expect(result.stderr).toContain("WARD_SMTP_PORT");
+    expect(result.stderr).toContain("WARD_SMTP_USER");
+    expect(result.stderr).toContain("WARD_SMTP_PASSWORD");
+    expect(result.stderr).not.toContain("WARD_SMTP_HOST:");
+  });
 
   it.skipIf(tsxCli === undefined)("boots in smtp mode with all four", async () => {
     const result = await importConfig({

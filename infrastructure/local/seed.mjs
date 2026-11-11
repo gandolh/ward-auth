@@ -58,9 +58,7 @@ const ENV_FILE = process.env.WARD_LOCAL_ENV_FILE ?? join(homedir(), ".config/war
  * The folder holding the estate's checkouts: `PROJECTS_DIR`, else ~/projects.
  * An app's checkout is found by name, directly in it or one group folder down.
  */
-const PROJECTS = resolve(
-  (process.env.PROJECTS_DIR?.trim() || "~/projects").replace(/^~(?=\/|$)/, homedir()),
-);
+const PROJECTS = resolve((process.env.PROJECTS_DIR?.trim() || "~/projects").replace(/^~(?=\/|$)/, homedir()));
 
 /**
  * The apps that authenticate against Ward. `slug` is Ward's `apps.slug`, `repo`
@@ -71,16 +69,86 @@ const PROJECTS = resolve(
  * which the OIDC redirect URI hangs off.
  */
 const APPS = [
-  { slug: "atrium", name: "Atrium", repo: "atrium", envFiles: [".env"], dev: "http://localhost:5173/atrium/", api: "/atrium-api" },
-  { slug: "newspapper", name: "Newspapper", repo: "newspapper", envFiles: [".env"], dev: "http://localhost:4321/newspapper/", api: "/newspapper/api" },
-  { slug: "prm", name: "Public Resource Map", repo: "public-resource-map", envFiles: [".env"], dev: "http://localhost:5173/prm/", api: "/prm-api" },
-  { slug: "sports-app", name: "Sports", repo: "sports-app", envFiles: [".env"], dev: "http://localhost:5173/sports-app/", api: "/api" },
-  { slug: "satchel", name: "Satchel", repo: "satchel", envFiles: [".env"], dev: "http://localhost:5175/satchel/", api: "/satchel-api" },
-  { slug: "shelfmark", name: "Shelfmark", repo: "shelfmark", envFiles: [".env"], dev: "http://localhost:5176/shelfmark/", api: "/shelfmark-api" },
-  { slug: "almanac", name: "Almanac", repo: "almanac", envFiles: [".env"], dev: "http://localhost:5177/almanac/", api: "/almanac-api" },
-  { slug: "wicket", name: "Wicket", repo: "wicket", envFiles: [".env"], dev: "http://localhost:5179/wicket/", api: "/wicket-api" },
-  { slug: "ro-housing", name: "ro-housing", repo: "ro-housing", envFiles: [".env"], dev: "http://127.0.0.1:5173/ro-housing/", api: "/ro-housing-api" },
-  { slug: "lantern", name: "Lantern", repo: "lantern", envFiles: [".env"], dev: "http://localhost:5180/lantern/", api: "/lantern-api" },
+  {
+    slug: "atrium",
+    name: "Atrium",
+    repo: "atrium",
+    envFiles: [".env"],
+    dev: "http://localhost:5173/atrium/",
+    api: "/atrium-api",
+  },
+  {
+    slug: "newspapper",
+    name: "Newspapper",
+    repo: "newspapper",
+    envFiles: [".env"],
+    dev: "http://localhost:4321/newspapper/",
+    api: "/newspapper/api",
+  },
+  {
+    slug: "prm",
+    name: "Public Resource Map",
+    repo: "public-resource-map",
+    envFiles: [".env"],
+    dev: "http://localhost:5173/prm/",
+    api: "/prm-api",
+  },
+  {
+    slug: "sports-app",
+    name: "Sports",
+    repo: "sports-app",
+    envFiles: [".env"],
+    dev: "http://localhost:5173/sports-app/",
+    api: "/api",
+  },
+  {
+    slug: "satchel",
+    name: "Satchel",
+    repo: "satchel",
+    envFiles: [".env"],
+    dev: "http://localhost:5175/satchel/",
+    api: "/satchel-api",
+  },
+  {
+    slug: "shelfmark",
+    name: "Shelfmark",
+    repo: "shelfmark",
+    envFiles: [".env"],
+    dev: "http://localhost:5176/shelfmark/",
+    api: "/shelfmark-api",
+  },
+  {
+    slug: "almanac",
+    name: "Almanac",
+    repo: "almanac",
+    envFiles: [".env"],
+    dev: "http://localhost:5177/almanac/",
+    api: "/almanac-api",
+  },
+  {
+    slug: "wicket",
+    name: "Wicket",
+    repo: "wicket",
+    envFiles: [".env"],
+    dev: "http://localhost:5179/wicket/",
+    api: "/wicket-api",
+  },
+  {
+    slug: "ro-housing",
+    name: "ro-housing",
+    repo: "ro-housing",
+    envFiles: [".env"],
+    dev: "http://127.0.0.1:5173/ro-housing/",
+    api: "/ro-housing-api",
+  },
+  {
+    slug: "lantern",
+    name: "Lantern",
+    repo: "lantern",
+    envFiles: [".env"],
+    dev: "http://localhost:5180/lantern/",
+    api: "/lantern-api",
+  },
 ];
 
 async function main() {
@@ -225,9 +293,7 @@ async function ensureOidcClient(cookie, app) {
   const redirect = `${new URL(app.dev).origin}${app.api}${OIDC_CALLBACK_PATH}`;
   const stale = `${app.dev}${OLD_OIDC_CALLBACK_PATH}`;
   const body = {
-    redirectUris: [
-      ...new Set([...registered.oidc.redirectUris.filter((uri) => uri !== stale), redirect]),
-    ],
+    redirectUris: [...new Set([...registered.oidc.redirectUris.filter((uri) => uri !== stale), redirect])],
     postLogoutRedirectUris: [...new Set([...registered.oidc.postLogoutRedirectUris, app.dev])],
     jwks: {
       keys: [...known.filter((key) => key.kid !== publicJwk.kid), publicJwk],
@@ -276,7 +342,9 @@ function publicHalf(envKey) {
 
 /** RFC 7638: sha256 over the required members in lexical order. */
 function thumbprint(crv, x) {
-  return createHash("sha256").update(JSON.stringify({ crv, kty: "OKP", x })).digest("base64url");
+  return createHash("sha256")
+    .update(JSON.stringify({ crv, kty: "OKP", x }))
+    .digest("base64url");
 }
 
 async function ward(method, path, { body, cookie } = {}) {

@@ -145,12 +145,7 @@ export function serializeCookie(options: CookieOptions): string {
     throw new TypeError(`serializeCookie: unsafe cookie value for ${options.name}`);
   }
 
-  const parts = [
-    `${options.name}=${options.value}`,
-    `Path=${options.path}`,
-    "HttpOnly",
-    "SameSite=Lax",
-  ];
+  const parts = [`${options.name}=${options.value}`, `Path=${options.path}`, "HttpOnly", "SameSite=Lax"];
 
   if (options.secure) parts.push("Secure");
 
@@ -261,10 +256,7 @@ export function readCookies(header: string | string[] | undefined, name: string)
  * client bug or a shadowing attempt and must not be tried twice (see the
  * header). The access cookie is read with `readCookies`.
  */
-export function readCookie(
-  header: string | string[] | undefined,
-  name: string,
-): string | undefined {
+export function readCookie(header: string | string[] | undefined, name: string): string | undefined {
   return readCookies(header, name)[0];
 }
 
@@ -298,11 +290,7 @@ export function secureCookiesFor(publicOrigin: string): boolean {
 
   const host = url.hostname.toLowerCase();
   const isLoopback =
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    host === "[::1]" ||
-    host === "::1" ||
-    host.startsWith("127.");
+    host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1" || host.startsWith("127.");
 
   return !isLoopback;
 }

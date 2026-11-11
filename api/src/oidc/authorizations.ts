@@ -46,14 +46,7 @@ export function recordAuthorization(
     expiresAt: number;
   },
 ): void {
-  stmts(db).insert.run(
-    input.grantId,
-    input.clientId,
-    input.subject,
-    input.familyId,
-    input.role,
-    input.expiresAt,
-  );
+  stmts(db).insert.run(input.grantId, input.clientId, input.subject, input.familyId, input.role, input.expiresAt);
 }
 
 export function findAuthorization(

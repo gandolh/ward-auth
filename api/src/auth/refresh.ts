@@ -136,8 +136,7 @@ export function issueRefreshToken(
 ): IssuedRefreshToken {
   const now = options.now ?? new Date();
   const token = generateRefreshToken();
-  const expiresAt =
-    options.expiresAt ?? new Date(now.getTime() + REFRESH_TOKEN_TTL_SECONDS * 1000).toISOString();
+  const expiresAt = options.expiresAt ?? new Date(now.getTime() + REFRESH_TOKEN_TTL_SECONDS * 1000).toISOString();
 
   const row = insertRefreshToken(db, {
     tokenHash: hashRefreshToken(token),
@@ -277,11 +276,7 @@ export function rotateRefreshToken(
   return rotate();
 }
 
-function completeRotation(
-  db: Database.Database,
-  claimed: RefreshTokenRow,
-  nowIso: string,
-): RotationOutcome {
+function completeRotation(db: Database.Database, claimed: RefreshTokenRow, nowIso: string): RotationOutcome {
   const user = findUserBySubject(db, claimed.subject);
 
   if (user === undefined || user.disabled_at !== null) {
@@ -446,11 +441,7 @@ function handleReuse(
  *     after the rotation is not concurrency; it is somebody who has been sitting
  *     on a copy.
  */
-function raceSuccessor(
-  db: Database.Database,
-  presented: RefreshTokenRow,
-  nowIso: string,
-): RefreshTokenRow | undefined {
+function raceSuccessor(db: Database.Database, presented: RefreshTokenRow, nowIso: string): RefreshTokenRow | undefined {
   if (presented.used_at === null) return undefined;
 
   const presentedUsedAt = Date.parse(presented.used_at);
@@ -468,11 +459,7 @@ function raceSuccessor(
     }
 
     // (2) The tip. A well-formed family has at most one.
-    if (
-      member.used_at === null &&
-      member.revoked_at === null &&
-      Date.parse(member.expires_at) > now
-    ) {
+    if (member.used_at === null && member.revoked_at === null && Date.parse(member.expires_at) > now) {
       tip = member;
     }
   }
@@ -582,10 +569,7 @@ export function refreshCookieMaxAge(row: RefreshTokenRow, now: Date = new Date()
  * authorisation check: it says who a token names, not whether it may be used.
  * Only `rotateRefreshToken` decides that.
  */
-export function subjectForRefreshToken(
-  db: Database.Database,
-  presented: string,
-): string | undefined {
+export function subjectForRefreshToken(db: Database.Database, presented: string): string | undefined {
   return findRefreshToken(db, hashRefreshToken(presented))?.subject;
 }
 
@@ -609,10 +593,7 @@ export interface PresentedSession {
  * that and remains the only thing that may. Do not let a caller treat a result
  * here as permission to proceed.
  */
-export function sessionForRefreshToken(
-  db: Database.Database,
-  presented: string,
-): PresentedSession | undefined {
+export function sessionForRefreshToken(db: Database.Database, presented: string): PresentedSession | undefined {
   const row = findRefreshToken(db, hashRefreshToken(presented));
   if (row === undefined) return undefined;
   return { subject: row.subject, familyId: row.family_id };

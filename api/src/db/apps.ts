@@ -65,9 +65,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
 
   list: db.prepare<[], AppRow>(`SELECT * FROM apps ORDER BY slug`),
 
-  listOpen: db.prepare<[], AppRow>(
-    `SELECT * FROM apps WHERE public_registration = 1 ORDER BY slug`,
-  ),
+  listOpen: db.prepare<[], AppRow>(`SELECT * FROM apps WHERE public_registration = 1 ORDER BY slug`),
 
   rename: db.prepare<[string, string]>(
     `UPDATE apps
@@ -138,9 +136,7 @@ export function setPublicRegistration(
   open: boolean,
   baselineRole: string | null = null,
 ): boolean {
-  return (
-    stmts(db).setRegistration.run(open ? 1 : 0, open ? baselineRole : null, slug).changes === 1
-  );
+  return stmts(db).setRegistration.run(open ? 1 : 0, open ? baselineRole : null, slug).changes === 1;
 }
 
 export function renameApp(db: Database.Database, slug: string, name: string): boolean {
@@ -156,19 +152,12 @@ export function oidcClientOf(row: AppRow): OidcClientRegistration {
   return {
     redirectUris: JSON.parse(row.oidc_redirect_uris) as string[],
     postLogoutRedirectUris: JSON.parse(row.oidc_post_logout_redirect_uris) as string[],
-    jwks:
-      row.oidc_jwks === null
-        ? null
-        : (JSON.parse(row.oidc_jwks) as { keys: Record<string, unknown>[] }),
+    jwks: row.oidc_jwks === null ? null : (JSON.parse(row.oidc_jwks) as { keys: Record<string, unknown>[] }),
   };
 }
 
 /** Replace an app's whole OIDC client registration. `false` if no such app. */
-export function setOidcClient(
-  db: Database.Database,
-  slug: string,
-  client: OidcClientRegistration,
-): boolean {
+export function setOidcClient(db: Database.Database, slug: string, client: OidcClientRegistration): boolean {
   return (
     stmts(db).setOidcClient.run(
       JSON.stringify(client.redirectUris),

@@ -9,11 +9,7 @@ import { recordAudit } from "../db/audit-log.js";
 import { getDb } from "../db/connection.js";
 import { listRolesInApp } from "../db/grants.js";
 import { findUserBySubject } from "../db/users.js";
-import {
-  appNotificationMail,
-  NOTIFY_MAIL_SUBJECT_MAX,
-  NOTIFY_TEXT_MAX,
-} from "../mail/templates.js";
+import { appNotificationMail, NOTIFY_MAIL_SUBJECT_MAX, NOTIFY_TEXT_MAX } from "../mail/templates.js";
 import { sendMail } from "../mail/transport.js";
 import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-auth.js";
 
@@ -151,10 +147,7 @@ export interface NotifyLimiter {
  * are kept per app, oldest first; at most `limit` per app, so the memory is
  * bounded by the number of apps times the limit.
  */
-export function createNotifyLimiter(
-  limit: number = NOTIFY_LIMIT,
-  windowMs: number = NOTIFY_WINDOW_MS,
-): NotifyLimiter {
+export function createNotifyLimiter(limit: number = NOTIFY_LIMIT, windowMs: number = NOTIFY_WINDOW_MS): NotifyLimiter {
   const admitted = new Map<string, number[]>();
 
   return {
@@ -221,13 +214,7 @@ const notifyBody = z.strictObject({
 
 /** Why a call was refused. For the audit log and the server log only. */
 export type NotifyRefusal =
-  | "rate_limited"
-  | "invalid_body"
-  | "unknown_subject"
-  | "disabled"
-  | "no_verified_email"
-  | "no_grant"
-  | "unknown_app";
+  "rate_limited" | "invalid_body" | "unknown_subject" | "disabled" | "no_verified_email" | "no_grant" | "unknown_app";
 
 type Recipient = { ok: true; email: string; app: AppRow } | { ok: false; reason: NotifyRefusal };
 
@@ -270,21 +257,14 @@ function claimedSubject(body: unknown): string | undefined {
  */
 function withoutCredentials(body: unknown): unknown {
   if (typeof body !== "object" || body === null || Array.isArray(body)) return body;
-  const {
-    client_assertion_type: _type,
-    client_assertion: _assertion,
-    ...rest
-  } = body as Record<string, unknown>;
+  const { client_assertion_type: _type, client_assertion: _assertion, ...rest } = body as Record<string, unknown>;
   return rest;
 }
 
 /** The assertion fields of a body, if it carries both as strings. */
 function presentedAssertion(body: unknown): { type: string; assertion: string } | undefined {
   if (typeof body !== "object" || body === null) return undefined;
-  const { client_assertion_type: type, client_assertion: assertion } = body as Record<
-    string,
-    unknown
-  >;
+  const { client_assertion_type: type, client_assertion: assertion } = body as Record<string, unknown>;
   return typeof type === "string" && typeof assertion === "string" && assertion.length > 0
     ? { type, assertion }
     : undefined;
@@ -317,13 +297,9 @@ const NOTIFY_ROUTE_SCHEMA = {
   },
 } as const;
 
-export async function notifyRoutes(
-  app: FastifyInstance,
-  options: NotifyRoutesOptions = {},
-): Promise<void> {
+export async function notifyRoutes(app: FastifyInstance, options: NotifyRoutesOptions = {}): Promise<void> {
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
-  const transport = async (): Promise<MailTransport> =>
-    options.transport ?? (await import("../config.js")).MAIL;
+  const transport = async (): Promise<MailTransport> => options.transport ?? (await import("../config.js")).MAIL;
 
   // One limiter per registration, so one per process in production.
   const limiter = options.limiter ?? createNotifyLimiter();
@@ -347,10 +323,7 @@ export async function notifyRoutes(
       preHandler: async (request, reply) => {
         const presented = presentedAssertion(request.body);
         if (presented === undefined) {
-          request.log.warn(
-            { reason: "absent" },
-            "notify: refusing a request with no client assertion",
-          );
+          request.log.warn({ reason: "absent" }, "notify: refusing a request with no client assertion");
           return reply.code(401).send({ error: "invalid_client" });
         }
 
@@ -362,10 +335,7 @@ export async function notifyRoutes(
                 audience: issuer,
               });
         if (!client.ok) {
-          request.log.warn(
-            { reason: client.reason },
-            "notify: refusing a request with no usable client assertion",
-          );
+          request.log.warn({ reason: client.reason }, "notify: refusing a request with no usable client assertion");
           return reply.code(401).send({ error: "invalid_client" });
         }
 

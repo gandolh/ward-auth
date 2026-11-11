@@ -108,9 +108,7 @@ export function Verify(): React.JSX.Element {
         }
       >
         <h1>Email confirmed</h1>
-        <p className="ward-lede">
-          That's your address confirmed. Nothing else to do here — sign in and carry on.
-        </p>
+        <p className="ward-lede">That's your address confirmed. Nothing else to do here — sign in and carry on.</p>
       </Threshold>
     );
   }
@@ -126,9 +124,8 @@ export function Verify(): React.JSX.Element {
       >
         <h1>The link expired</h1>
         <p className="ward-lede">
-          Confirmation links last 24 hours and this one is past that. Your account still works
-          exactly as before — confirming an address doesn't unlock anything, so nothing is waiting
-          on it.
+          Confirmation links last 24 hours and this one is past that. Your account still works exactly as before —
+          confirming an address doesn't unlock anything, so nothing is waiting on it.
         </p>
         <Notice tone="info">
           {/*
@@ -137,8 +134,8 @@ export function Verify(): React.JSX.Element {
             thing they came to fix does not need fixing — and that if they do
             want the address on record, a person can set it.
           */}
-          Ward can't send a replacement link yet. If you want the address on your account, ask
-          whoever runs the estate to set it.
+          Ward can't send a replacement link yet. If you want the address on your account, ask whoever runs the estate
+          to set it.
         </Notice>
       </Threshold>
     );
@@ -148,9 +145,7 @@ export function Verify(): React.JSX.Element {
     return (
       <Threshold>
         <h1>Ward isn't answering</h1>
-        <p className="ward-lede">
-          The link is probably fine. Reload this page in a moment to try again.
-        </p>
+        <p className="ward-lede">The link is probably fine. Reload this page in a moment to try again.</p>
       </Threshold>
     );
   }
@@ -165,12 +160,10 @@ export function Verify(): React.JSX.Element {
     >
       <h1>That link doesn't work</h1>
       <p className="ward-lede">
-        Most likely it's already been used, in which case your address is confirmed and there's
-        nothing left to do. Otherwise check it was copied in full — they're long.
+        Most likely it's already been used, in which case your address is confirmed and there's nothing left to do.
+        Otherwise check it was copied in full — they're long.
       </p>
-      <Notice tone="info">
-        Either way your account works. Confirming an address doesn't unlock anything.
-      </Notice>
+      <Notice tone="info">Either way your account works. Confirming an address doesn't unlock anything.</Notice>
     </Threshold>
   );
 }

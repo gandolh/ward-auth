@@ -152,8 +152,8 @@ export function Register(): React.JSX.Element {
       <Threshold>
         <h1>Which app?</h1>
         <p className="ward-lede">
-          Signing up happens at an app, not at Ward — an account carries that app's starting role
-          and nothing else. Start from the app you want to join and it will send you back here.
+          Signing up happens at an app, not at Ward — an account carries that app's starting role and nothing else.
+          Start from the app you want to join and it will send you back here.
         </p>
         <p className="ward-prose">
           <Link className="ward-link" to="/login">
@@ -178,8 +178,8 @@ export function Register(): React.JSX.Element {
       >
         <h1>Account created</h1>
         <p className="ward-lede">
-          You're registered at {name} as <strong>{created.username}</strong> with the {created.role}{" "}
-          role. Signing up doesn't sign you in: open {name} and sign in with Ward there.
+          You're registered at {name} as <strong>{created.username}</strong> with the {created.role} role. Signing up
+          doesn't sign you in: open {name} and sign in with Ward there.
         </p>
         {created.verificationSent ? (
           <Notice tone="info">
@@ -190,13 +190,13 @@ export function Register(): React.JSX.Element {
               because the link expires in 24 hours and **there is no way to send
               another one** — see `Verify`.
             */}
-            We've sent a confirmation link to {created.email}. Your account already works; the link
-            only confirms the address, and it's good for 24 hours.
+            We've sent a confirmation link to {created.email}. Your account already works; the link only confirms the
+            address, and it's good for 24 hours.
           </Notice>
         ) : (
           <Notice tone="wait">
-            Your account is ready, but the confirmation email didn't go out. Nothing is blocked by
-            that — sign in and carry on.
+            Your account is ready, but the confirmation email didn't go out. Nothing is blocked by that — sign in and
+            carry on.
           </Notice>
         )}
         <p className="ward-prose ward-prose--spaced">
@@ -213,8 +213,8 @@ export function Register(): React.JSX.Element {
       <Threshold>
         <h1>{name} isn't taking signups</h1>
         <p className="ward-lede">
-          Accounts for {name} are handed out by whoever runs the estate rather than created here.
-          Ask them for one — and if you already have an account, it works everywhere.
+          Accounts for {name} are handed out by whoever runs the estate rather than created here. Ask them for one — and
+          if you already have an account, it works everywhere.
         </p>
         <p className="ward-prose">
           <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
@@ -294,8 +294,8 @@ export function Register(): React.JSX.Element {
     >
       <h1>Join {name}</h1>
       <p className="ward-lede">
-        This creates one Ward account, which signs you in to every app here. It gives you access to{" "}
-        {name} and nothing else until somebody grants more.
+        This creates one Ward account, which signs you in to every app here. It gives you access to {name} and nothing
+        else until somebody grants more.
       </p>
 
       {lockedOut && (
@@ -303,9 +303,7 @@ export function Register(): React.JSX.Element {
           Too many signups from your network. Try again in <strong>{formatWait(waitLeft)}</strong>.
         </Notice>
       )}
-      {failure !== undefined && failure !== "too_many_attempts" && (
-        <Notice tone="error">{messageFor(failure)}</Notice>
-      )}
+      {failure !== undefined && failure !== "too_many_attempts" && <Notice tone="error">{messageFor(failure)}</Notice>}
 
       <form
         className="ward-form"

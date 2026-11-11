@@ -24,9 +24,7 @@ import {
 
 /** Login from one address, aimed at one account. The common case. */
 function login(address: string, account?: string): LockoutTarget {
-  return account === undefined
-    ? { surface: "login", address }
-    : { surface: "login", address, account };
+  return account === undefined ? { surface: "login", address } : { surface: "login", address, account };
 }
 
 /** Registration from one address. No account: nothing to forgive. */
@@ -442,9 +440,7 @@ describe("the shared-bucket fallback is loud", () => {
     expect(warn).toHaveBeenCalledTimes(1);
 
     // Just short of the interval: still silent.
-    vi.setSystemTime(
-      new Date(Date.now() + (LOCKOUT_AMBIGUOUS_ADDRESS_WARN_INTERVAL_SECONDS - 1) * 1000),
-    );
+    vi.setSystemTime(new Date(Date.now() + (LOCKOUT_AMBIGUOUS_ADDRESS_WARN_INTERVAL_SECONDS - 1) * 1000));
     lockoutKeyFor("127.0.0.1", undefined, { warn });
     expect(warn).toHaveBeenCalledTimes(1);
 
@@ -472,9 +468,7 @@ describe("trusted proxies", () => {
   it("honours the last element from loopback and from a trusted range", () => {
     expect(lockoutKeyFor("127.0.0.1", "198.51.100.7")).toBe("198.51.100.7");
     expect(lockoutKeyFor("127.8.9.10", "198.51.100.7")).toBe("198.51.100.7");
-    expect(lockoutKeyFor("172.19.0.3", "198.51.100.7", { trustedProxies: bridge })).toBe(
-      "198.51.100.7",
-    );
+    expect(lockoutKeyFor("172.19.0.3", "198.51.100.7", { trustedProxies: bridge })).toBe("198.51.100.7");
     expect(
       lockoutKeyFor("2001:db8:1::9", "198.51.100.7", {
         trustedProxies: parseTrustedProxies(["2001:db8:1::/48"]),
@@ -484,12 +478,8 @@ describe("trusted proxies", () => {
 
   it("ignores the header from a peer outside every trusted range", () => {
     expect(lockoutKeyFor("172.19.0.3", "198.51.100.7")).toBe("172.19.0.3");
-    expect(lockoutKeyFor("172.32.0.1", "198.51.100.7", { trustedProxies: bridge })).toBe(
-      "172.32.0.1",
-    );
-    expect(lockoutKeyFor("203.0.113.9", "198.51.100.7", { trustedProxies: bridge })).toBe(
-      "203.0.113.9",
-    );
+    expect(lockoutKeyFor("172.32.0.1", "198.51.100.7", { trustedProxies: bridge })).toBe("172.32.0.1");
+    expect(lockoutKeyFor("203.0.113.9", "198.51.100.7", { trustedProxies: bridge })).toBe("203.0.113.9");
   });
 
   it("never reads a spoofed first element, however many there are", () => {
@@ -498,26 +488,18 @@ describe("trusted proxies", () => {
     const key = (header: string) => lockoutKeyFor("172.19.0.3", header, { trustedProxies: bridge });
     expect(key("10.0.0.1, 198.51.100.7")).toBe("198.51.100.7");
     expect(key("10.0.0.1, 10.0.0.2, 10.0.0.3, 198.51.100.7")).toBe("198.51.100.7");
-    expect(
-      lockoutKeyFor("172.19.0.3", ["10.0.0.1", "198.51.100.7"], { trustedProxies: bridge }),
-    ).toBe("198.51.100.7");
+    expect(lockoutKeyFor("172.19.0.3", ["10.0.0.1", "198.51.100.7"], { trustedProxies: bridge })).toBe("198.51.100.7");
   });
 
   it("matches an IPv4-mapped IPv6 peer against IPv4 ranges", () => {
     // Node reports an IPv4 peer on a dual-stack socket as `::ffff:a.b.c.d`.
-    expect(lockoutKeyFor("::ffff:172.19.0.3", "198.51.100.7", { trustedProxies: bridge })).toBe(
-      "198.51.100.7",
-    );
+    expect(lockoutKeyFor("::ffff:172.19.0.3", "198.51.100.7", { trustedProxies: bridge })).toBe("198.51.100.7");
     // The hex spelling of the same address.
-    expect(lockoutKeyFor("::ffff:ac13:3", "198.51.100.7", { trustedProxies: bridge })).toBe(
-      "198.51.100.7",
-    );
+    expect(lockoutKeyFor("::ffff:ac13:3", "198.51.100.7", { trustedProxies: bridge })).toBe("198.51.100.7");
     expect(lockoutKeyFor("::ffff:127.0.0.1", "198.51.100.7")).toBe("198.51.100.7");
     // And a mapped entry means the IPv4 range it maps.
     const mapped = parseTrustedProxies("::ffff:172.16.0.0/108");
-    expect(lockoutKeyFor("172.19.0.3", "198.51.100.7", { trustedProxies: mapped })).toBe(
-      "198.51.100.7",
-    );
+    expect(lockoutKeyFor("172.19.0.3", "198.51.100.7", { trustedProxies: mapped })).toBe("198.51.100.7");
   });
 
   it("gives six callers behind a trusted proxy six budgets", () => {
@@ -537,9 +519,7 @@ describe("trusted proxies", () => {
   it("still fails closed, and loudly, when a trusted peer forwards nothing", () => {
     const warn = vi.fn();
 
-    expect(lockoutKeyFor("172.19.0.3", undefined, { trustedProxies: bridge, warn })).toBe(
-      "172.19.0.3",
-    );
+    expect(lockoutKeyFor("172.19.0.3", undefined, { trustedProxies: bridge, warn })).toBe("172.19.0.3");
 
     expect(warn).toHaveBeenCalledTimes(1);
     const [detail, message] = warn.mock.calls[0] as [Record<string, unknown>, string];

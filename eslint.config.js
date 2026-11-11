@@ -24,13 +24,7 @@ export default [
   {
     // docs/ is a Docusaurus site with its own typecheck; vendor/ holds generated
     // copies. Everything else in the repo is linted.
-    ignores: [
-      "**/dist/**",
-      "**/node_modules/**",
-      "**/vendor/**",
-      "shared-library/.scratch/**",
-      "docs/**",
-    ],
+    ignores: ["**/dist/**", "**/node_modules/**", "**/vendor/**", "shared-library/.scratch/**", "docs/**"],
   },
 
   js.configs.recommended,

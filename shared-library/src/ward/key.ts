@@ -71,9 +71,7 @@ export async function importClientKey(encoded: string): Promise<ClientKey> {
     throw new InvalidClientKeyError('expected an Ed25519 key (kty "OKP", crv "Ed25519")');
   }
   if (typeof x !== "string" || typeof d !== "string") {
-    throw new InvalidClientKeyError(
-      "expected the private key (x and d); this looks like the public half",
-    );
+    throw new InvalidClientKeyError("expected the private key (x and d); this looks like the public half");
   }
   if (typeof kid !== "string" || kid.length === 0) {
     throw new InvalidClientKeyError("expected a kid, which Ward uses to pick the key");
@@ -81,13 +79,7 @@ export async function importClientKey(encoded: string): Promise<ClientKey> {
 
   let privateKey: CryptoKey;
   try {
-    privateKey = await webcrypto.subtle.importKey(
-      "jwk",
-      { kty, crv, x, d },
-      { name: "Ed25519" },
-      false,
-      ["sign"],
-    );
+    privateKey = await webcrypto.subtle.importKey("jwk", { kty, crv, x, d }, { name: "Ed25519" }, false, ["sign"]);
   } catch {
     throw new InvalidClientKeyError("the key material does not import as Ed25519");
   }

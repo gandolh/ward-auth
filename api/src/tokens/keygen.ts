@@ -162,9 +162,7 @@ async function main(argv: string[]): Promise<number> {
     );
     return 0;
   } catch (err) {
-    process.stderr.write(
-      `\nkeygen failed.\n\n${err instanceof Error ? err.message : String(err)}\n\n`,
-    );
+    process.stderr.write(`\nkeygen failed.\n\n${err instanceof Error ? err.message : String(err)}\n\n`);
     return 1;
   }
 }

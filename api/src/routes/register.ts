@@ -4,12 +4,7 @@ import { z } from "zod";
 
 import type { MailTransport } from "../config.js";
 
-import {
-  checkLockout,
-  lockoutKeyFor,
-  recordFailure,
-  type TrustedProxies,
-} from "../auth/lockout.js";
+import { checkLockout, lockoutKeyFor, recordFailure, type TrustedProxies } from "../auth/lockout.js";
 import { hashPassword, PasswordPolicyError } from "../auth/password.js";
 import {
   consumeEmailVerification,
@@ -191,10 +186,7 @@ const verifyQuery = z.object({
     .regex(/^[0-9a-f]{64}$/, { message: "not a verification token" }),
 });
 
-export async function registerRoutes(
-  app: FastifyInstance,
-  options: RegisterRoutesOptions = {},
-): Promise<void> {
+export async function registerRoutes(app: FastifyInstance, options: RegisterRoutesOptions = {}): Promise<void> {
   /**
    * Resolved at registration through a **dynamic** import, so that merely
    * importing this module does not run `config.ts`'s validation (and its
@@ -204,8 +196,7 @@ export async function registerRoutes(
    * request means a misconfigured mail transport or origin is visible at boot
    * instead of at the moment somebody is waiting for a link.
    */
-  const { MAIL, WARD_ADMIN_USERNAME, WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } =
-    await import("../config.js");
+  const { MAIL, WARD_ADMIN_USERNAME, WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
   /** The lockout's trusted proxies — the same list `/login` uses. */
   const trustedProxies = options.trustedProxies ?? WARD_TRUSTED_PROXIES;
 
@@ -681,9 +672,7 @@ function verifyAnswer(
   outcome: VerifyOutcome,
 ): FastifyReply {
   if (!prefersHtml(request.headers.accept)) {
-    return reply
-      .code(status)
-      .send(outcome === "verified" ? { verified: true } : { error: outcome });
+    return reply.code(status).send(outcome === "verified" ? { verified: true } : { error: outcome });
   }
 
   reply.type("text/html; charset=utf-8");

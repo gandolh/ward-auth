@@ -29,13 +29,7 @@ export {
   type AccessTokenClaims,
 } from "./claims.js";
 
-export {
-  loadKeySet,
-  previousSigningKeyPath,
-  SigningKeyError,
-  type WardKeySet,
-  type WardSigningKey,
-} from "./keys.js";
+export { loadKeySet, previousSigningKeyPath, SigningKeyError, type WardKeySet, type WardSigningKey } from "./keys.js";
 
 export { signAccessToken, type MintedAccessToken, type SignAccessTokenParams } from "./mint.js";
 

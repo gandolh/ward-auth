@@ -27,9 +27,7 @@ import { Alert, Empty, TextField } from "./ui.js";
 
 export function AccountsScreen(): React.JSX.Element {
   const { basePath } = useConsole();
-  const { result, reload } = useConsoleLoad("accounts", () =>
-    consoleApi.listAccounts({ limit: 200 }),
-  );
+  const { result, reload } = useConsoleLoad("accounts", () => consoleApi.listAccounts({ limit: 200 }));
   const [creating, setCreating] = useState(false);
 
   return (
@@ -45,9 +43,8 @@ export function AccountsScreen(): React.JSX.Element {
         </div>
 
         <p className="wc-lede">
-          Every person who uses the estate is a row here, including the owner account. An account on
-          its own confers nothing: it can sign in to Ward and reach no app at all until a grant is
-          issued for one.
+          Every person who uses the estate is a row here, including the owner account. An account on its own confers
+          nothing: it can sign in to Ward and reach no app at all until a grant is issued for one.
         </p>
 
         <Collapsible.Panel>
@@ -72,20 +69,16 @@ export function AccountsScreen(): React.JSX.Element {
         result.data.accounts.length === 0 ? (
           <Empty title="No accounts yet">
             <p>
-              Ward holds no accounts. The break-glass credential you are signed in with is not one —
-              it has no row in this table by design.
+              Ward holds no accounts. The break-glass credential you are signed in with is not one — it has no row in
+              this table by design.
             </p>
             <p>
-              Create the owner account here: an ordinary account with explicit admin grants across
-              the apps, which is what should be used day to day.
+              Create the owner account here: an ordinary account with explicit admin grants across the apps, which is
+              what should be used day to day.
             </p>
           </Empty>
         ) : (
-          <AccountTable
-            accounts={result.data.accounts}
-            total={result.data.total}
-            basePath={basePath}
-          />
+          <AccountTable accounts={result.data.accounts} total={result.data.total} basePath={basePath} />
         )
       ) : null}
     </>
@@ -146,10 +139,7 @@ function AccountTable({
                 </time>
               </td>
               <td>
-                <Link
-                  className="wc-btn"
-                  to={consoleHref(basePath, { kind: "account", subject: account.subject })}
-                >
+                <Link className="wc-btn" to={consoleHref(basePath, { kind: "account", subject: account.subject })}>
                   Access and state
                 </Link>
               </td>
@@ -190,8 +180,7 @@ function NewAccountForm({ onCreated }: { onCreated: () => void }): React.JSX.Ele
 
     const created = await writer.run(
       () => consoleApi.createAccount({ username, password }),
-      (account) =>
-        `Created ${account.username}. It holds no grants and can reach no app until one is issued.`,
+      (account) => `Created ${account.username}. It holds no grants and can reach no app until one is issued.`,
     );
 
     setPassword("");
@@ -206,13 +195,13 @@ function NewAccountForm({ onCreated }: { onCreated: () => void }): React.JSX.Ele
     <section className="wc-panel">
       <h2>New account</h2>
       <p className="wc-panel-note">
-        A username and a password. <strong>No email address</strong> — Ward collects one only on
-        public self-registration, so an account created here has no reset link. If the password is
-        forgotten, rotate it from the account&rsquo;s own page and tell the person out of band.
+        A username and a password. <strong>No email address</strong> — Ward collects one only on public
+        self-registration, so an account created here has no reset link. If the password is forgotten, rotate it from
+        the account&rsquo;s own page and tell the person out of band.
       </p>
       <p className="wc-panel-note">
-        Creating an account grants nothing. To make this the owner account, create it and then issue
-        one admin grant per app on its page; there is no wildcard.
+        Creating an account grants nothing. To make this the owner account, create it and then issue one admin grant per
+        app on its page; there is no wildcard.
       </p>
 
       {writer.error === undefined ? null : (

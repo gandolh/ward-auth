@@ -1,10 +1,6 @@
 import { hkdfSync, type KeyObject } from "node:crypto";
 import type Database from "better-sqlite3";
-import Provider, {
-  interactionPolicy,
-  type Configuration,
-  type KoaContextWithOIDC,
-} from "oidc-provider";
+import Provider, { interactionPolicy, type Configuration, type KoaContextWithOIDC } from "oidc-provider";
 
 import { recordAudit } from "../db/audit-log.js";
 import { listFamily, revokeFamily } from "../db/refresh-tokens.js";
@@ -288,11 +284,7 @@ export function createWardProvider({ db, layout, keySet }: WardProviderOptions):
   return provider;
 }
 
-function endWardFamily(
-  db: Database.Database,
-  claims: Record<string, unknown>,
-  clientId: string,
-): void {
+function endWardFamily(db: Database.Database, claims: Record<string, unknown>, clientId: string): void {
   const sub = claims["sub"];
   const familyId = claims["ward_sid"];
   if (typeof sub !== "string" || typeof familyId !== "string") return;

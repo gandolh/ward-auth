@@ -7,12 +7,7 @@ import { getApp } from "../../db/apps.js";
 import { listGrantsForApp, listGrantsForSubject } from "../../db/grants.js";
 import { findUserBySubject } from "../../db/users.js";
 import { addGrant, removeAppAccess, removeGrant } from "../../grants/write.js";
-import {
-  databaseResolver,
-  grantView,
-  isForeignKeyViolation,
-  type AdminRoutesOptions,
-} from "./support.js";
+import { databaseResolver, grantView, isForeignKeyViolation, type AdminRoutesOptions } from "./support.js";
 
 /**
  * The grant surface: `GET`, `POST`, `DELETE /console/grants`.
@@ -81,10 +76,7 @@ const listQuery = z
     message: "exactly one of subject or app",
   });
 
-export async function adminGrantsRoutes(
-  app: FastifyInstance,
-  options: AdminRoutesOptions = {},
-): Promise<void> {
+export async function adminGrantsRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
   const database = databaseResolver(options);
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`. Every
@@ -111,9 +103,7 @@ export async function adminGrantsRoutes(
       if (findUserBySubject(db, query.data.subject) === undefined) {
         return reply.code(404).send({ error: "account_not_found" });
       }
-      return reply
-        .code(200)
-        .send({ grants: listGrantsForSubject(db, query.data.subject).map(grantView) });
+      return reply.code(200).send({ grants: listGrantsForSubject(db, query.data.subject).map(grantView) });
     }
 
     const slug = query.data.app!;
@@ -202,8 +192,6 @@ export async function adminGrantsRoutes(
 
     const target = { ...body.data, role: body.data.role };
     const result = removeGrant(db, actor, target);
-    return reply
-      .code(200)
-      .send({ removed: result.removed ? 1 : 0, roles: result.removed ? [target.role] : [] });
+    return reply.code(200).send({ removed: result.removed ? 1 : 0, roles: result.removed ? [target.role] : [] });
   });
 }

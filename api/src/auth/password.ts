@@ -113,16 +113,10 @@ export class PasswordPolicyError extends Error {
  */
 export async function hashPassword(password: string): Promise<string> {
   if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new PasswordPolicyError(
-      "password_too_short",
-      `password must be at least ${MIN_PASSWORD_LENGTH} characters`,
-    );
+    throw new PasswordPolicyError("password_too_short", `password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
   if (password.length > MAX_PASSWORD_LENGTH) {
-    throw new PasswordPolicyError(
-      "password_too_long",
-      `password must be at most ${MAX_PASSWORD_LENGTH} characters`,
-    );
+    throw new PasswordPolicyError("password_too_long", `password must be at most ${MAX_PASSWORD_LENGTH} characters`);
   }
 
   const salt = randomBytes(SALT_BYTES);
@@ -170,9 +164,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
  * Exported so a test can assert *structurally* that the unknown-username path
  * spends a hash, rather than relying on a wall-clock measurement.
  */
-export const DUMMY_STORED_HASH: string = `${randomBytes(SALT_BYTES).toString(
-  "hex",
-)}:${"00".repeat(KEY_BYTES)}`;
+export const DUMMY_STORED_HASH: string = `${randomBytes(SALT_BYTES).toString("hex")}:${"00".repeat(KEY_BYTES)}`;
 
 /**
  * Spend a hash on a password that has no account to compare it against, and

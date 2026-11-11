@@ -68,11 +68,7 @@ export function wardSessionFor(
  * then on the app's own row is the truth (decisions-oidc.md, "the app owns the
  * role"). The first role in sort order is taken, so the answer is stable.
  */
-export function wardRole(
-  db: Database.Database,
-  subject: string,
-  clientId: string,
-): string | undefined {
+export function wardRole(db: Database.Database, subject: string, clientId: string): string | undefined {
   return listRolesInApp(db, subject, clientId)[0];
 }
 
@@ -90,11 +86,7 @@ export function wardRole(
  * token.
  */
 export function wardFindAccount(db: Database.Database): FindAccount {
-  return async (
-    _ctx: KoaContextWithOIDC,
-    sub: string,
-    token?: { grantId?: string },
-  ): Promise<Account | undefined> => {
+  return async (_ctx: KoaContextWithOIDC, sub: string, token?: { grantId?: string }): Promise<Account | undefined> => {
     const user = findUserBySubject(db, sub);
     if (user === undefined || user.disabled_at !== null) return undefined;
 
@@ -103,9 +95,7 @@ export function wardFindAccount(db: Database.Database): FindAccount {
     }
 
     const authorization =
-      typeof token.grantId === "string"
-        ? findAuthorization(db, token.grantId, epochNow())
-        : undefined;
+      typeof token.grantId === "string" ? findAuthorization(db, token.grantId, epochNow()) : undefined;
     if (authorization === undefined || authorization.subject !== sub) return undefined;
     if (!hasLiveFamily(db, authorization.family_id, sub)) return undefined;
 

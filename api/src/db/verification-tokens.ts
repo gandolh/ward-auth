@@ -74,9 +74,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
      VALUES (?, ?, ?, ?, ?, ?)
      RETURNING *`),
 
-  byHash: db.prepare<[string], VerificationTokenRow>(
-    `SELECT * FROM verification_tokens WHERE token_hash = ?`,
-  ),
+  byHash: db.prepare<[string], VerificationTokenRow>(`SELECT * FROM verification_tokens WHERE token_hash = ?`),
 
   consume: db.prepare<[string, string, string], VerificationTokenRow>(
     `UPDATE verification_tokens
@@ -93,18 +91,13 @@ const stmts = prepareOnce((db: Database.Database) => ({
       ORDER BY created_at DESC`,
   ),
 
-  deleteForSubject: db.prepare<[string, string]>(
-    `DELETE FROM verification_tokens WHERE subject = ? AND purpose = ?`,
-  ),
+  deleteForSubject: db.prepare<[string, string]>(`DELETE FROM verification_tokens WHERE subject = ? AND purpose = ?`),
 
   deleteExpired: db.prepare<[string]>(`DELETE FROM verification_tokens WHERE expires_at <= ?`),
 }));
 
 /** Store a freshly minted token's hash. Throws if the subject does not exist. */
-export function insertVerificationToken(
-  db: Database.Database,
-  input: NewVerificationToken,
-): VerificationTokenRow {
+export function insertVerificationToken(db: Database.Database, input: NewVerificationToken): VerificationTokenRow {
   return stmts(db).insert.get(
     randomBytes(16).toString("hex"),
     input.subject,
@@ -120,10 +113,7 @@ export function insertVerificationToken(
  * expired, so a route can tell "this link is old" from "this link was never
  * real" without a second query.
  */
-export function findVerificationToken(
-  db: Database.Database,
-  tokenHash: string,
-): VerificationTokenRow | undefined {
+export function findVerificationToken(db: Database.Database, tokenHash: string): VerificationTokenRow | undefined {
   return stmts(db).byHash.get(tokenHash);
 }
 
@@ -165,18 +155,11 @@ export function listVerificationTokens(
  * Issuing a new reset link should retire the previous ones; leaving them live
  * means every link ever mailed keeps working until it expires.
  */
-export function deleteVerificationTokens(
-  db: Database.Database,
-  subject: string,
-  purpose: VerificationPurpose,
-): number {
+export function deleteVerificationTokens(db: Database.Database, subject: string, purpose: VerificationPurpose): number {
   return stmts(db).deleteForSubject.run(subject, purpose).changes;
 }
 
 /** Delete rows past their expiry, returning how many went. Same sweep note as refresh tokens. */
-export function deleteExpiredVerificationTokens(
-  db: Database.Database,
-  now: string = new Date().toISOString(),
-): number {
+export function deleteExpiredVerificationTokens(db: Database.Database, now: string = new Date().toISOString()): number {
   return stmts(db).deleteExpired.run(now).changes;
 }

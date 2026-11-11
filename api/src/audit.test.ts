@@ -4,11 +4,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { consoleActor, recordActorAudit, recordConsoleAudit, type AuditActor } from "./audit.js";
 import { requireConsoleSession } from "./auth/console-guard.js";
-import {
-  CONSOLE_COOKIE_NAME,
-  openConsoleSession,
-  resetConsoleSessionsForTests,
-} from "./auth/superuser.js";
+import { CONSOLE_COOKIE_NAME, openConsoleSession, resetConsoleSessionsForTests } from "./auth/superuser.js";
 import { listAudit } from "./db/audit-log.js";
 import { freshDb, seedUser } from "./db/test-support.js";
 

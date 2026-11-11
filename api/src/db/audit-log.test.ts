@@ -2,14 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type Database from "better-sqlite3";
 import { freshDb, seedApps, seedUser } from "./test-support.js";
 import { SUPERUSER_ACTOR, grantRole } from "./grants.js";
-import {
-  SUPERUSER_LABEL,
-  countAudit,
-  grantTargetId,
-  listAudit,
-  parseGrantTargetId,
-  recordAudit,
-} from "./audit-log.js";
+import { SUPERUSER_LABEL, countAudit, grantTargetId, listAudit, parseGrantTargetId, recordAudit } from "./audit-log.js";
 
 let db: Database.Database;
 
@@ -79,9 +72,9 @@ describe("audit_log answers 'who granted this and when'", () => {
     ).toThrowError(/CHECK constraint failed/);
 
     // And an account actor with no subject is equally refused.
-    expect(() =>
-      recordAudit(db, { actorKind: "account", actorLabel: "cristian", action: "user.create" }),
-    ).toThrowError(/CHECK constraint failed/);
+    expect(() => recordAudit(db, { actorKind: "account", actorLabel: "cristian", action: "user.create" })).toThrowError(
+      /CHECK constraint failed/,
+    );
   });
 
   it("refuses a half-filled target", () => {
@@ -313,9 +306,7 @@ describe("reading the log", () => {
     });
 
     it("separates system rows from superuser rows", () => {
-      expect(listAudit(db, { actorKind: "system" }).map((row) => row.actor_label)).toEqual([
-        "reuse-sweep",
-      ]);
+      expect(listAudit(db, { actorKind: "system" }).map((row) => row.actor_label)).toEqual(["reuse-sweep"]);
     });
 
     it("matches actor_label exactly, never as a prefix", () => {

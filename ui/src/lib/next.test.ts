@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  DEFAULT_NEXT,
-  MAX_NEXT_LENGTH,
-  loginUrlFor,
-  resolveNext,
-  type NextRejection,
-} from "./next.js";
+import { DEFAULT_NEXT, MAX_NEXT_LENGTH, loginUrlFor, resolveNext, type NextRejection } from "./next.js";
 
 /**
  * The `?next=` allowlist, table-driven.

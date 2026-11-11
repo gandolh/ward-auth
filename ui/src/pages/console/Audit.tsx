@@ -78,8 +78,7 @@ function toFilters(draft: Draft): Omit<AuditQuery, "beforeId" | "limit"> {
   if (draft.actorKind !== "" && isActorKind(draft.actorKind)) query.actorKind = draft.actorKind;
   if (draft.actorLabel !== "") query.actorLabel = draft.actorLabel;
   if (draft.actorSubject !== "") query.actorSubject = draft.actorSubject;
-  if (draft.targetKind !== "" && isTargetKind(draft.targetKind))
-    query.targetKind = draft.targetKind;
+  if (draft.targetKind !== "" && isTargetKind(draft.targetKind)) query.targetKind = draft.targetKind;
   if (draft.targetId !== "") query.targetId = draft.targetId;
   if (draft.action !== "") query.action = draft.action;
   return query;
@@ -123,9 +122,9 @@ export function AuditScreen(): React.JSX.Element {
       </div>
 
       <p className="wc-lede">
-        Every change of authority in the estate, newest first, and every use of this console&rsquo;s
-        credential. A no-op writes no row here — a duplicate grant, a second disable, a form
-        resubmitted unchanged — deliberately, so that mis-clicks do not bury the rows that matter.
+        Every change of authority in the estate, newest first, and every use of this console&rsquo;s credential. A no-op
+        writes no row here — a duplicate grant, a second disable, a form resubmitted unchanged — deliberately, so that
+        mis-clicks do not bury the rows that matter.
       </p>
 
       <form
@@ -229,8 +228,8 @@ export function AuditScreen(): React.JSX.Element {
 
       <p className="wc-lede">
         Actor name and target are matched exactly. An actor name is a username, or the literal{" "}
-        <span className="wc-id">superuser</span> for anything done from this console — which is also
-        why the actor filter offers a kind: a console mutation carries no subject to match on.
+        <span className="wc-id">superuser</span> for anything done from this console — which is also why the actor
+        filter offers a kind: a console mutation carries no subject to match on.
       </p>
 
       {result.state === "loading" ? <p className="wc-lede">Reading the log…</p> : null}
@@ -245,8 +244,8 @@ export function AuditScreen(): React.JSX.Element {
         result.data.entries.length === 0 ? (
           <Empty title="No matching events">
             <p>
-              Nothing in the log matches those filters. An empty result is a real answer here — a
-              no-op writes no row, so an action an operator attempted twice appears once.
+              Nothing in the log matches those filters. An empty result is a real answer here — a no-op writes no row,
+              so an action an operator attempted twice appears once.
             </p>
           </Empty>
         ) : (
@@ -285,10 +284,9 @@ function AuditTable({
     <>
       {alarms > 0 ? (
         <Alert tone="error" title="Token replay in this window">
-          {plural(alarms, "row", "rows")} record a refresh token presented after it was already
-          spent, with no live successor in its family. That is the estate&rsquo;s stolen-cookie
-          signal, not two tabs racing. Each family was revoked; rotate the affected account&rsquo;s
-          password if you have not already.
+          {plural(alarms, "row", "rows")} record a refresh token presented after it was already spent, with no live
+          successor in its family. That is the estate&rsquo;s stolen-cookie signal, not two tabs racing. Each family was
+          revoked; rotate the affected account&rsquo;s password if you have not already.
         </Alert>
       ) : null}
 
@@ -329,10 +327,7 @@ function AuditTable({
 function AuditRow({ entry }: { entry: AuditRowView }): React.JSX.Element {
   const presented = presentAuditAction(entry.action);
   const detail = formatDetail(entry.detail);
-  const grant =
-    entry.targetKind === "grant" && entry.targetId !== null
-      ? parseGrantTarget(entry.targetId)
-      : undefined;
+  const grant = entry.targetKind === "grant" && entry.targetId !== null ? parseGrantTarget(entry.targetId) : undefined;
 
   return (
     <tr className="wc-audit-row" data-severity={presented.severity}>
@@ -344,18 +339,14 @@ function AuditRow({ entry }: { entry: AuditRowView }): React.JSX.Element {
       <th scope="row">
         <span className="wc-audit-label">{presented.label}</span>
         <span className="wc-action">{entry.action}</span>
-        {presented.explanation === "" ? null : (
-          <p className="wc-audit-why">{presented.explanation}</p>
-        )}
+        {presented.explanation === "" ? null : <p className="wc-audit-why">{presented.explanation}</p>}
         {detail === "" ? null : <p className="wc-detail">{detail}</p>}
       </th>
       <td>
         {/* An actor label is a username, `superuser`, or a job name — never a
             link: the superuser has no account row to link to. */}
         <span className="wc-id">{entry.actorLabel}</span>
-        {entry.actorSubject === null ? null : (
-          <span className="wc-action">{entry.actorSubject}</span>
-        )}
+        {entry.actorSubject === null ? null : <span className="wc-action">{entry.actorSubject}</span>}
       </td>
       <td>
         {entry.targetId === null ? (

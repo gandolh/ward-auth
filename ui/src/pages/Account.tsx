@@ -15,11 +15,7 @@ import {
 } from "../lib/api.js";
 import { DEFAULT_NEXT, loginRouteFor, loginUrlFor } from "../lib/next.js";
 import { useOpenApps } from "../lib/open-apps.js";
-import {
-  CAN_CHANGE_OWN_PASSWORD,
-  CAN_READ_OWN_EMAIL,
-  CAN_REVOKE_OTHER_SESSIONS,
-} from "../lib/self-service.js";
+import { CAN_CHANGE_OWN_PASSWORD, CAN_READ_OWN_EMAIL, CAN_REVOKE_OTHER_SESSIONS } from "../lib/self-service.js";
 import { deadlineIn, useCountdown } from "../lib/use-countdown.js";
 import { formatWait } from "../lib/wait.js";
 import { readSession, type Session } from "../lib/session.js";
@@ -119,9 +115,7 @@ export function Account(): React.JSX.Element {
     return (
       <Threshold wide>
         <h1>Ward isn't answering</h1>
-        <p className="ward-lede">
-          Your session is probably fine — Ward just didn't respond. Try again.
-        </p>
+        <p className="ward-lede">Your session is probably fine — Ward just didn't respond. Try again.</p>
         <div className="ward-actions">
           <button className="ward-button" type="button" onClick={load}>
             Try again
@@ -143,9 +137,7 @@ export function Account(): React.JSX.Element {
     return (
       <Threshold wide>
         <h1>You're signed out</h1>
-        <p className="ward-lede">
-          Sessions end after a while, and this one has. Sign in to see your account.
-        </p>
+        <p className="ward-lede">Sessions end after a while, and this one has. Sign in to see your account.</p>
         <p className="ward-prose">
           <Link className="ward-link" to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in
@@ -167,15 +159,10 @@ export function Account(): React.JSX.Element {
  * setting `"failed"` — see the module docblock.
  */
 type OwnAccount =
-  | { state: "off" }
-  | { state: "loading" }
-  | { state: "ready"; data: AccountResult }
-  | { state: "failed" };
+  { state: "off" } | { state: "loading" } | { state: "ready"; data: AccountResult } | { state: "failed" };
 
 function useOwnAccount(onSignedOut: () => void): OwnAccount {
-  const [state, setState] = useState<OwnAccount>(
-    CAN_READ_OWN_EMAIL ? { state: "loading" } : { state: "off" },
-  );
+  const [state, setState] = useState<OwnAccount>(CAN_READ_OWN_EMAIL ? { state: "loading" } : { state: "off" });
 
   useEffect(() => {
     if (!CAN_READ_OWN_EMAIL) return;
@@ -229,14 +216,10 @@ function SignedIn({
    * account's own record rather than from what `/login` said earlier in the
    * page's lifetime, so it is still correct after a reload.
    */
-  const unverified =
-    account.state === "ready" && account.data.email !== null && !account.data.emailVerified;
+  const unverified = account.state === "ready" && account.data.email !== null && !account.data.emailVerified;
 
   return (
-    <Threshold
-      wide
-      footer={<>Signed in as {session.username}. Ward keeps the estate's accounts.</>}
-    >
+    <Threshold wide footer={<>Signed in as {session.username}. Ward keeps the estate's accounts.</>}>
       <h1>Your account</h1>
       <p className="ward-lede">
         One account for every app here. What you can reach in each of them is set per app, below.
@@ -244,9 +227,8 @@ function SignedIn({
 
       {unverified && (
         <Notice tone="info">
-          Your email address isn't confirmed. Nothing is blocked by that — confirming an address
-          doesn't unlock anything in Ward — but the confirmation link only lasts 24 hours and Ward
-          can't send a new one.
+          Your email address isn't confirmed. Nothing is blocked by that — confirming an address doesn't unlock anything
+          in Ward — but the confirmation link only lasts 24 hours and Ward can't send a new one.
         </Notice>
       )}
 
@@ -277,21 +259,16 @@ function SignedIn({
       <h2>What you can reach</h2>
       {grants.length === 0 ? (
         <p className="ward-prose">
-          No app access yet. Access is granted per app by whoever runs the estate — ask them, and it
-          will appear here.
+          No app access yet. Access is granted per app by whoever runs the estate — ask them, and it will appear here.
         </p>
       ) : (
         <>
-          <p className="ward-prose">
-            Read-only. Changing any of this is done by whoever runs the estate.
-          </p>
+          <p className="ward-prose">Read-only. Changing any of this is done by whoever runs the estate.</p>
           <ul className="ward-grants">
             {grants.map(([slug, roles]) => (
               <li key={slug}>
                 <span className="ward-grants__app">{appName(slug)}</span>
-                <span className="ward-grants__roles">
-                  {roles.length === 0 ? "no roles" : roles.join(", ")}
-                </span>
+                <span className="ward-grants__roles">{roles.length === 0 ? "no roles" : roles.join(", ")}</span>
               </li>
             ))}
           </ul>
@@ -379,23 +356,22 @@ function ChangePassword({ onSignedOut }: { onSignedOut: () => void }): React.JSX
       {!CAN_CHANGE_OWN_PASSWORD ? (
         <div className="ward-unavailable">
           <p>
-            You can't change your own password here yet — Ward has no endpoint for it. Ask whoever
-            runs the estate to set a new one from the console.
+            You can't change your own password here yet — Ward has no endpoint for it. Ask whoever runs the estate to
+            set a new one from the console.
           </p>
         </div>
       ) : (
         <>
           {done && (
             <Notice tone="info" live="assertive">
-              Password changed. This browser is still signed in — Ward gave it a fresh session just
-              now. The one it had a moment ago, and every other device signed in as you, has been
-              ended.
+              Password changed. This browser is still signed in — Ward gave it a fresh session just now. The one it had
+              a moment ago, and every other device signed in as you, has been ended.
             </Notice>
           )}
           {lockedOut && (
             <Notice tone="wait">
-              Too many attempts at changing your password. This is a separate limit from signing in
-              — it doesn't affect that. Try again in <strong>{formatWait(waitLeft)}</strong>.
+              Too many attempts at changing your password. This is a separate limit from signing in — it doesn't affect
+              that. Try again in <strong>{formatWait(waitLeft)}</strong>.
             </Notice>
           )}
           {failure !== undefined && failure !== "too_many_attempts" && (
@@ -455,8 +431,8 @@ function ChangePassword({ onSignedOut }: { onSignedOut: () => void }): React.JSX
                 {busy ? "Changing…" : "Change password"}
               </button>
               <span className="ward-field__hint">
-                Signs out every other device that was signed in as you. This one stays signed in —
-                it gets a fresh session automatically.
+                Signs out every other device that was signed in as you. This one stays signed in — it gets a fresh
+                session automatically.
               </span>
             </div>
           </form>
@@ -504,16 +480,16 @@ function OtherDevices({ onSignedOut }: { onSignedOut: () => void }): React.JSX.E
       {!CAN_REVOKE_OTHER_SESSIONS ? (
         <div className="ward-unavailable">
           <p>
-            Signing out your other devices isn't possible yet — Ward has no endpoint for it. If you
-            think somebody else is signed in as you, ask whoever runs the estate to revoke your
-            sessions from the console, and change your password while you're there.
+            Signing out your other devices isn't possible yet — Ward has no endpoint for it. If you think somebody else
+            is signed in as you, ask whoever runs the estate to revoke your sessions from the console, and change your
+            password while you're there.
           </p>
         </div>
       ) : (
         <>
           <p className="ward-prose">
-            Ends every other signed-in session and leaves this one alone. Worth doing if you think
-            somebody else has your session.
+            Ends every other signed-in session and leaves this one alone. Worth doing if you think somebody else has
+            your session.
           </p>
           {revoked !== undefined && (
             <Notice tone="info" live="assertive">
@@ -524,8 +500,8 @@ function OtherDevices({ onSignedOut }: { onSignedOut: () => void }): React.JSX.E
           )}
           {failure !== undefined && (
             <Notice tone="error">
-              That didn&apos;t work. Try again, and if it keeps failing ask whoever runs the estate
-              to revoke your sessions.
+              That didn&apos;t work. Try again, and if it keeps failing ask whoever runs the estate to revoke your
+              sessions.
             </Notice>
           )}
           <div className="ward-actions">

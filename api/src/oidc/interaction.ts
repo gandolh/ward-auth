@@ -111,70 +111,66 @@ export async function interactionRoutes(
   // No HEAD twins for the two routes that finish an interaction: Fastify would
   // run the same handler for HEAD, and finishing a sign-in is not something a
   // link checker should be able to do. `/verify` made the same call.
-  app.get(
-    `${INTERACTION_INTERNAL_PREFIX}/:uid`,
-    { exposeHeadRoute: false },
-    async (request, reply) => {
-      const { db, provider } = await resolve();
-      const details = await loadInteraction(provider, request, reply);
-      if (details === undefined) return reply;
+  app.get(`${INTERACTION_INTERNAL_PREFIX}/:uid`, { exposeHeadRoute: false }, async (request, reply) => {
+    const { db, provider } = await resolve();
+    const details = await loadInteraction(provider, request, reply);
+    if (details === undefined) return reply;
 
-      const clientId = String(details.params["client_id"]);
-      const session = wardSessionFor(db, readCookie(request.headers.cookie, REFRESH_COOKIE_NAME));
+    const clientId = String(details.params["client_id"]);
+    const session = wardSessionFor(db, readCookie(request.headers.cookie, REFRESH_COOKIE_NAME));
 
-      if (session === undefined || needsFreshSignIn(details, session)) {
-        return reply.redirect(loginUrlFor(layout, details.uid), 303);
-      }
+    if (session === undefined || needsFreshSignIn(details, session)) {
+      return reply.redirect(loginUrlFor(layout, details.uid), 303);
+    }
 
-      if (session.user.disabled_at !== null) {
-        return deny({ db, provider }, request, reply, clientId, "account_disabled", session);
-      }
+    if (session.user.disabled_at !== null) {
+      return deny({ db, provider }, request, reply, clientId, "account_disabled", session);
+    }
 
-      const role = wardRole(db, session.subject, clientId);
-      if (role === undefined) {
-        return deny({ db, provider }, request, reply, clientId, "no_grant", session);
-      }
+    const role = wardRole(db, session.subject, clientId);
+    if (role === undefined) {
+      return deny({ db, provider }, request, reply, clientId, "no_grant", session);
+    }
 
-      // A fresh grant per authorization, holding `openid` and nothing else. The
-      // interaction runs every time, so there is never an older grant to reuse,
-      // and its id is the key `findAccount` finds the Ward session under.
-      const grant = new provider.Grant({ accountId: session.subject, clientId });
-      grant.addOIDCScope("openid");
-      grant.addOIDCClaims([...ID_TOKEN_CLAIMS]);
-      const grantId = await grant.save();
+    // A fresh grant per authorization, holding `openid` and nothing else. The
+    // interaction runs every time, so there is never an older grant to reuse,
+    // and its id is the key `findAccount` finds the Ward session under.
+    const grant = new provider.Grant({ accountId: session.subject, clientId });
+    grant.addOIDCScope("openid");
+    grant.addOIDCClaims([...ID_TOKEN_CLAIMS]);
+    const grantId = await grant.save();
 
-      recordAuthorization(db, {
-        grantId,
-        clientId,
-        subject: session.subject,
-        familyId: session.familyId,
-        role,
-        expiresAt: epochNow() + GRANT_TTL_SECONDS,
-      });
-      recordAudit(db, {
-        actorKind: "account",
-        actorSubject: session.subject,
-        actorLabel: session.user.username,
-        action: "oidc.authorize",
-        targetKind: "session",
-        targetId: session.familyId,
-        detail: { client: clientId, role },
-      });
+    recordAuthorization(db, {
+      grantId,
+      clientId,
+      subject: session.subject,
+      familyId: session.familyId,
+      role,
+      expiresAt: epochNow() + GRANT_TTL_SECONDS,
+    });
+    recordAudit(db, {
+      actorKind: "account",
+      actorSubject: session.subject,
+      actorLabel: session.user.username,
+      action: "oidc.authorize",
+      targetKind: "session",
+      targetId: session.familyId,
+      detail: { client: clientId, role },
+    });
 
-      const returnTo = await provider.interactionResult(
-        request.raw,
-        reply.raw,
-        {
-          // `remember: false` makes the provider's own session cookie a
-          // browser-session cookie: it holds a hand-off, not a sign-in.
-          login: { accountId: session.subject, ts: session.authTime, remember: false },
-          consent: { grantId },
-        },
-        { mergeWithLastSubmission: false },
-      );
-      return reply.redirect(returnTo, 303);
-    },
-  );
+    const returnTo = await provider.interactionResult(
+      request.raw,
+      reply.raw,
+      {
+        // `remember: false` makes the provider's own session cookie a
+        // browser-session cookie: it holds a hand-off, not a sign-in.
+        login: { accountId: session.subject, ts: session.authTime, remember: false },
+        consent: { grantId },
+      },
+      { mergeWithLastSubmission: false },
+    );
+    return reply.redirect(returnTo, 303);
+  });
 
   /**
    * `GET /refresh/oidc/:uid/client` — which app the login page is signing
@@ -197,22 +193,12 @@ export async function interactionRoutes(
    * path rather than a person stranded at Ward. It is also the way out for a
    * disabled account, whose sign-in at Ward can only end in "account turned off".
    */
-  app.get(
-    `${INTERACTION_INTERNAL_PREFIX}/:uid/abort`,
-    { exposeHeadRoute: false },
-    async (request, reply) => {
-      const { db, provider } = await resolve();
-      const details = await loadInteraction(provider, request, reply);
-      if (details === undefined) return reply;
-      return deny(
-        { db, provider },
-        request,
-        reply,
-        String(details.params["client_id"]),
-        "cancelled",
-      );
-    },
-  );
+  app.get(`${INTERACTION_INTERNAL_PREFIX}/:uid/abort`, { exposeHeadRoute: false }, async (request, reply) => {
+    const { db, provider } = await resolve();
+    const details = await loadInteraction(provider, request, reply);
+    if (details === undefined) return reply;
+    return deny({ db, provider }, request, reply, String(details.params["client_id"]), "cancelled");
+  });
 }
 
 /**
@@ -241,10 +227,5 @@ async function expired(reply: FastifyReply): Promise<void> {
   await reply
     .code(400)
     .type("text/html; charset=utf-8")
-    .send(
-      plainPage(
-        "This sign-in has expired",
-        "<p>Go back to the app and choose “Sign in with Ward” again.</p>",
-      ),
-    );
+    .send(plainPage("This sign-in has expired", "<p>Go back to the app and choose “Sign in with Ward” again.</p>"));
 }

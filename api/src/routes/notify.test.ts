@@ -15,13 +15,7 @@ import { freshDb, seedApps, seedUser } from "../db/test-support.js";
 import { markEmailVerified, setDisabled, type UserRow } from "../db/users.js";
 import { CLIENT_ASSERTION_TYPE } from "../oidc/client-auth.js";
 import { generateClientKeyPair } from "../oidc/client-keygen.js";
-import {
-  createNotifyLimiter,
-  NOTIFY_LIMIT,
-  NOTIFY_WINDOW_MS,
-  notifyRoutes,
-  type NotifyLimiter,
-} from "./notify.js";
+import { createNotifyLimiter, NOTIFY_LIMIT, NOTIFY_WINDOW_MS, notifyRoutes, type NotifyLimiter } from "./notify.js";
 
 /**
  * `POST /notify` against a Fastify instance this file builds, an in-memory
@@ -260,10 +254,7 @@ describe("client authentication", () => {
   });
 
   it("keeps the same rules: another app's user is refused", async () => {
-    const response = await notifyAsClient(
-      message(alice.subject),
-      assertion(atriumClientKey, { iss: "atrium" }),
-    );
+    const response = await notifyAsClient(message(alice.subject), assertion(atriumClientKey, { iss: "atrium" }));
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ sent: false });
     expect(await outboxFiles()).toEqual([]);
@@ -329,9 +320,7 @@ describe("client authentication", () => {
 
   it("refuses a replayed assertion", async () => {
     const once = await assertion(prmClientKey);
-    expect((await notifyAsClient(message(alice.subject), Promise.resolve(once))).statusCode).toBe(
-      200,
-    );
+    expect((await notifyAsClient(message(alice.subject), Promise.resolve(once))).statusCode).toBe(200);
     const again = await notifyAsClient(message(alice.subject), Promise.resolve(once));
     expect(again.statusCode).toBe(401);
     expect(again.body).toBe('{"error":"invalid_client"}');
@@ -368,9 +357,7 @@ describe("who Ward will mail", () => {
     expect(headers).not.toMatch(/^Reply-To:/im);
 
     // The app's text, then the footer naming the app and saying why.
-    expect(body).toContain(
-      "Concert on Friday.\nOpen the map: https://gandolh.ro/prm/places/42\n\n-- \n",
-    );
+    expect(body).toContain("Concert on Friday.\nOpen the map: https://gandolh.ro/prm/places/42\n\n-- \n");
     expect(body).toContain("Public Resource Map sent you this message through Ward");
     expect(body).toContain("your account has access to Public Resource Map");
     expect(body).toContain("Public Resource Map does not see your email address.");
@@ -460,9 +447,7 @@ describe("what an app may send", () => {
   });
 
   it("accepts text at exactly the limits", async () => {
-    const response = await notify(
-      message(alice.subject, { mailSubject: "s".repeat(200), text: "t".repeat(20_000) }),
-    );
+    const response = await notify(message(alice.subject, { mailSubject: "s".repeat(200), text: "t".repeat(20_000) }));
     expect(response.json()).toEqual({ sent: true });
   });
 });
@@ -474,11 +459,7 @@ describe("the audit log", () => {
     await notify({ nonsense: true });
 
     const rows = listAudit(db, { limit: 10 }).reverse();
-    expect(rows.map((row) => row.action)).toEqual([
-      "notify.sent",
-      "notify.refused",
-      "notify.refused",
-    ]);
+    expect(rows.map((row) => row.action)).toEqual(["notify.sent", "notify.refused", "notify.refused"]);
     for (const row of rows) {
       expect(row.actor_kind).toBe("system");
       expect(row.actor_label).toBe("app:prm");

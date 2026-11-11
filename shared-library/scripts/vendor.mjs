@@ -75,12 +75,7 @@ export async function vendor(targetDir) {
     );
   }
 
-  for (const name of [
-    "ward-auth.js",
-    "ward-auth.d.ts",
-    "ward-auth-react.js",
-    "ward-auth-react.d.ts",
-  ]) {
+  for (const name of ["ward-auth.js", "ward-auth.d.ts", "ward-auth-react.js", "ward-auth-react.d.ts"]) {
     await copyFile(join(DIST, name), join(targetDir, name));
   }
   await copyFile(join(LIBRARY_ROOT, "LICENSE"), join(targetDir, "LICENSE"));
@@ -92,9 +87,7 @@ export async function vendor(targetDir) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const target = process.argv[2];
   if (target === undefined || target.length === 0) {
-    console.error(
-      "usage: npm run vendor -- <target dir>   (for example path/to/atrium/apps/api/vendor/ward)",
-    );
+    console.error("usage: npm run vendor -- <target dir>   (for example path/to/atrium/apps/api/vendor/ward)");
     process.exit(2);
   }
   const targetDir = resolve(process.env.INIT_CWD ?? process.cwd(), target);

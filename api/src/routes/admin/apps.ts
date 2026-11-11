@@ -123,10 +123,7 @@ interface FieldChange {
   to: unknown;
 }
 
-export async function adminAppsRoutes(
-  app: FastifyInstance,
-  options: AdminRoutesOptions = {},
-): Promise<void> {
+export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
   const database = databaseResolver(options);
 
   /**
@@ -265,12 +262,10 @@ export async function adminAppsRoutes(
       return reply.code(404).send({ error: "app_not_found" });
     }
 
-    const touchesRegistration =
-      body.data.publicRegistration !== undefined || body.data.baselineRole !== undefined;
+    const touchesRegistration = body.data.publicRegistration !== undefined || body.data.baselineRole !== undefined;
 
     const open = body.data.publicRegistration ?? before.public_registration === 1;
-    const role =
-      body.data.baselineRole !== undefined ? body.data.baselineRole : before.baseline_role;
+    const role = body.data.baselineRole !== undefined ? body.data.baselineRole : before.baseline_role;
 
     if (open && role === null) {
       // Either opening with no role named, or clearing the role of an open app.

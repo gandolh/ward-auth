@@ -3,12 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 
 import { SQLITE_MIGRATIONS, type Migration } from "./migrations.js";
-import {
-  SchemaTooNewError,
-  createSqliteStore,
-  migrateSqlite,
-  type SqliteHandle,
-} from "./sqlite.js";
+import { SchemaTooNewError, createSqliteStore, migrateSqlite, type SqliteHandle } from "./sqlite.js";
 import {
   AlreadyLinkedError,
   UserIdTakenError,
@@ -29,10 +24,7 @@ import {
  * no cast. If a driver's typings drift away from the interface, `npm run
  * typecheck` fails here rather than in an app.
  */
-const _typesFit: [SqliteHandle, SqliteHandle] = [
-  new Database(":memory:"),
-  new DatabaseSync(":memory:"),
-];
+const _typesFit: [SqliteHandle, SqliteHandle] = [new Database(":memory:"), new DatabaseSync(":memory:")];
 void _typesFit;
 
 const drivers: Array<[string, () => SqliteHandle]> = [
@@ -74,9 +66,7 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     createSqliteStore(db);
 
     const tables = (
-      db
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
-        .all() as Array<{
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all() as Array<{
         name: string;
       }>
     ).map((row) => row.name);
@@ -150,9 +140,9 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
   });
 
   it("refuses a migration list that is out of order", () => {
-    expect(() =>
-      migrateSqlite(open(), [{ version: 2, name: "skipped-one", sql: "SELECT 1" }]),
-    ).toThrow(/versions must run 1, 2, 3/);
+    expect(() => migrateSqlite(open(), [{ version: 2, name: "skipped-one", sql: "SELECT 1" }])).toThrow(
+      /versions must run 1, 2, 3/,
+    );
   });
 
   it("rolls a failing migration back whole", () => {
@@ -166,9 +156,9 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     expect(db.prepare("SELECT MAX(version) AS v FROM auth_migrations").get()).toMatchObject({
       v: NEXT - 1,
     });
-    expect(
-      db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name = 'auth_half'").get(),
-    ).toMatchObject({ n: 0 });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name = 'auth_half'").get()).toMatchObject({
+      n: 0,
+    });
   });
 
   it("creates and finds users by id and by folded username", () => {
@@ -295,9 +285,7 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     expect(store.findSession("w1")).toMatchObject({ origin: "ward", wardSid: "family-1" });
 
     // The CHECK ties the two columns together, so no row can be half of each.
-    expect(() =>
-      store.createSession(session({ idHash: "w2", origin: "ward", wardSid: null })),
-    ).toThrow();
+    expect(() => store.createSession(session({ idHash: "w2", origin: "ward", wardSid: null }))).toThrow();
     expect(() => store.createSession(session({ idHash: "w3", wardSid: "family-1" }))).toThrow();
   });
 
@@ -342,12 +330,12 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     });
     expect(store.findWardLinkByUserId("u-alice")?.subject).toBe("s-alice");
 
-    expect(() =>
-      store.createWardLink({ subject: "s-alice", userId: "u-bob", linkedAt: 2 }),
-    ).toThrow(WardSubjectTakenError);
-    expect(() =>
-      store.createWardLink({ subject: "s-other", userId: "u-alice", linkedAt: 2 }),
-    ).toThrow(AlreadyLinkedError);
+    expect(() => store.createWardLink({ subject: "s-alice", userId: "u-bob", linkedAt: 2 })).toThrow(
+      WardSubjectTakenError,
+    );
+    expect(() => store.createWardLink({ subject: "s-other", userId: "u-alice", linkedAt: 2 })).toThrow(
+      AlreadyLinkedError,
+    );
 
     expect(store.deleteWardLink("u-alice")).toBe(1);
     expect(store.findWardLinkBySubject("s-alice")).toBeUndefined();
@@ -359,16 +347,13 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     store.createWardLink({ subject: "taken", userId: "u-bob", linkedAt: 1 });
 
     // The subject as the local id: the migration path for rows keyed by it.
-    const created = store.createUserWithWardLink(
-      user({ id: "s-carol", username: "Carol" }),
-      "s-carol",
-    );
+    const created = store.createUserWithWardLink(user({ id: "s-carol", username: "Carol" }), "s-carol");
     expect(created.id).toBe("s-carol");
     expect(store.findWardLinkBySubject("s-carol")?.userId).toBe("s-carol");
 
-    expect(() =>
-      store.createUserWithWardLink(user({ id: "u-dan", username: "Dan" }), "taken"),
-    ).toThrow(WardSubjectTakenError);
+    expect(() => store.createUserWithWardLink(user({ id: "u-dan", username: "Dan" }), "taken")).toThrow(
+      WardSubjectTakenError,
+    );
     expect(store.findUserById("u-dan")).toBeUndefined();
   });
 

@@ -120,8 +120,7 @@ export function ConsoleRoutes(): React.JSX.Element {
   // `setState` call, only a render that treats the countdown as the console
   // treats a real `401` (see the `session === null || expiredLocally` check
   // below, and the matching `IDLE_TIMEOUT_MESSAGE` copy).
-  const remaining =
-    session === null || session === undefined ? undefined : sessionRemaining(session, now);
+  const remaining = session === null || session === undefined ? undefined : sessionRemaining(session, now);
   const remainingSeconds = remaining?.seconds;
   const expiredLocally = remainingSeconds !== undefined && remainingSeconds <= 0;
 
@@ -216,9 +215,7 @@ function TopBar({
       <p className="wc-wordmark">
         <Link to={consoleHref(basePath, { kind: "accounts" })}>Ward console</Link>
       </p>
-      <span className="wc-standing">
-        Break-glass credential — every route here changes authority
-      </span>
+      <span className="wc-standing">Break-glass credential — every route here changes authority</span>
       <div className="wc-topbar-right">
         {remaining === undefined ? null : (
           <span className="wc-countdown" data-low={remaining.low ? "true" : "false"}>

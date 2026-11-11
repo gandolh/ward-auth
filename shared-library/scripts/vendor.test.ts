@@ -20,20 +20,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);
 const LIBRARY_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const TSC = join(
-  dirname(createRequire(import.meta.url).resolve("typescript/package.json")),
-  "bin",
-  "tsc",
-);
+const TSC = join(dirname(createRequire(import.meta.url).resolve("typescript/package.json")), "bin", "tsc");
 
-const SIX = [
-  "LICENSE",
-  "README.md",
-  "ward-auth-react.d.ts",
-  "ward-auth-react.js",
-  "ward-auth.d.ts",
-  "ward-auth.js",
-];
+const SIX = ["LICENSE", "README.md", "ward-auth-react.d.ts", "ward-auth-react.js", "ward-auth.d.ts", "ward-auth.js"];
 
 let scratch: string;
 let copy: string;
@@ -176,9 +165,7 @@ export const isDisabled = (error: unknown): boolean =>
       ],
       { cwd: scratch },
     ).catch((error: { stdout?: string; stderr?: string }) => {
-      throw new Error(
-        `tsc rejected the vendored types:\n${error.stdout ?? ""}${error.stderr ?? ""}`,
-      );
+      throw new Error(`tsc rejected the vendored types:\n${error.stdout ?? ""}${error.stderr ?? ""}`);
     });
   }, 60_000);
 

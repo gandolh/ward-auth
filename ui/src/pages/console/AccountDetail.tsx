@@ -42,12 +42,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import {
-  consoleApi,
-  type AccountDetailResult,
-  type AppView,
-  type GrantView,
-} from "../../console-api.js";
+import { consoleApi, type AccountDetailResult, type AppView, type GrantView } from "../../console-api.js";
 import { consoleHref } from "./nav.js";
 import { formatWhen, plural } from "./format.js";
 import { useFocusAfterWrite } from "./focus-after-write.js";
@@ -167,9 +162,8 @@ function AccountBody({
       </div>
 
       <p className="wc-lede">
-        Subject <span className="wc-id">{account.subject}</span> — the value that appears in this
-        account&rsquo;s access tokens and in every grant row below. Created{" "}
-        {formatWhen(account.createdAt)}.
+        Subject <span className="wc-id">{account.subject}</span> — the value that appears in this account&rsquo;s access
+        tokens and in every grant row below. Created {formatWhen(account.createdAt)}.
         {account.email === null
           ? " No email address: this account was created from the console, so it has no reset link."
           : ` Email ${account.email}${account.emailVerified ? " (verified)" : " (unverified)"}.`}
@@ -348,13 +342,12 @@ function AccountBody({
         }}
       >
         <p>
-          The account will no longer be able to sign in, and its{" "}
-          {plural(liveSessions, "live session", "live sessions")} will be revoked immediately rather
-          than left to expire.
+          The account will no longer be able to sign in, and its {plural(liveSessions, "live session", "live sessions")}{" "}
+          will be revoked immediately rather than left to expire.
         </p>
         <p>
-          Its {plural(grants.length, "grant", "grants")} will be left in place, so re-enabling
-          restores exactly the access shown above.
+          Its {plural(grants.length, "grant", "grants")} will be left in place, so re-enabling restores exactly the
+          access shown above.
         </p>
       </Confirm>
 
@@ -380,9 +373,8 @@ function AccountBody({
         }}
       >
         <p>
-          The account will be able to sign in again, with the{" "}
-          {plural(grants.length, "grant", "grants")} shown above. The sessions revoked when it was
-          disabled stay revoked.
+          The account will be able to sign in again, with the {plural(grants.length, "grant", "grants")} shown above.
+          The sessions revoked when it was disabled stay revoked.
         </p>
       </Confirm>
 
@@ -410,14 +402,12 @@ function AccountBody({
         }}
       >
         <p>
-          From now on the person signs in to Ward as{" "}
-          <strong>{pending.kind === "rename" ? pending.to : ""}</strong>, and the old name stops
-          working. Tell them: Ward has no way to.
+          From now on the person signs in to Ward as <strong>{pending.kind === "rename" ? pending.to : ""}</strong>, and
+          the old name stops working. Tell them: Ward has no way to.
         </p>
         <p>
           The subject, the {plural(grants.length, "grant", "grants")} and the{" "}
-          {plural(liveSessions, "live session", "live sessions")} stay. Apps keep the name they
-          already have.
+          {plural(liveSessions, "live session", "live sessions")} stay. Apps keep the name they already have.
         </p>
       </Confirm>
 
@@ -442,13 +432,12 @@ function AccountBody({
       >
         <p>
           The account, its {plural(grants.length, "grant", "grants")} and its{" "}
-          {plural(liveSessions, "live session", "live sessions")} will be removed for good. Apps end
-          its Ward sessions within 30 seconds.
+          {plural(liveSessions, "live session", "live sessions")} will be removed for good. Apps end its Ward sessions
+          within 30 seconds.
         </p>
         <p>
-          Each app keeps its own user for this person, and that user&rsquo;s data; delete those in
-          the app. The name <strong>{account.username}</strong> becomes free, and a new account
-          under it is a stranger to every app.
+          Each app keeps its own user for this person, and that user&rsquo;s data; delete those in the app. The name{" "}
+          <strong>{account.username}</strong> becomes free, and a new account under it is a stranger to every app.
         </p>
       </Confirm>
 
@@ -477,23 +466,19 @@ function AccountBody({
         }}
       >
         <p>
-          The account&rsquo;s password will be replaced and its{" "}
-          {plural(liveSessions, "live session", "live sessions")} revoked, because a rotation that
-          leaves a thirty-day refresh token alive has not achieved the thing it was performed for.
+          The account&rsquo;s password will be replaced and its {plural(liveSessions, "live session", "live sessions")}{" "}
+          revoked, because a rotation that leaves a thirty-day refresh token alive has not achieved the thing it was
+          performed for.
         </p>
         <p>
-          Ward will not show the new password again. Pass it on before you leave this page — there
-          is no reset link for an account created in this console.
+          Ward will not show the new password again. Pass it on before you leave this page — there is no reset link for
+          an account created in this console.
         </p>
       </Confirm>
 
       <Confirm
         open={pending.kind === "revokeApp"}
-        title={
-          pending.kind === "revokeApp"
-            ? `Revoke all access to ${pending.appSlug}?`
-            : "Revoke app access?"
-        }
+        title={pending.kind === "revokeApp" ? `Revoke all access to ${pending.appSlug}?` : "Revoke app access?"}
         confirmLabel="Revoke every role"
         busy={writer.busy}
         onCancel={close}
@@ -516,8 +501,8 @@ function AccountBody({
             : ""}
         </p>
         <p>
-          The account keeps its access to every other app. Access tokens already minted stay valid
-          for up to fifteen minutes, so the app may still admit it until they expire.
+          The account keeps its access to every other app. Access tokens already minted stay valid for up to fifteen
+          minutes, so the app may still admit it until they expire.
         </p>
       </Confirm>
     </>
@@ -596,9 +581,7 @@ function SessionsPanel({
         </Alert>
       )}
 
-      {sessions.result.state === "loading" ? (
-        <p className="wc-panel-note">Loading sessions…</p>
-      ) : null}
+      {sessions.result.state === "loading" ? <p className="wc-panel-note">Loading sessions…</p> : null}
 
       {sessions.result.state === "failed" ? (
         <Alert tone="error" title="The sessions did not load">
@@ -615,9 +598,7 @@ function SessionsPanel({
           <>
             <div className="wc-table-scroll">
               <table className="wc-table">
-                <caption>
-                  {plural(sessions.result.data.sessions.length, "live session", "live sessions")}.
-                </caption>
+                <caption>{plural(sessions.result.data.sessions.length, "live session", "live sessions")}.</caption>
                 <thead>
                   <tr>
                     <th scope="col">Device</th>
@@ -666,8 +647,8 @@ function SessionsPanel({
                 End all sessions
               </button>
               <span className="wc-field-hint">
-                Rotating the password below also ends every session, and is the better move if the
-                password itself is what you no longer trust.
+                Rotating the password below also ends every session, and is the better move if the password itself is
+                what you no longer trust.
               </span>
             </div>
           </>
@@ -687,8 +668,8 @@ function SessionsPanel({
         }}
       >
         <p>
-          The device on this session is signed out the next time it tries to refresh its access
-          token — within about fifteen minutes if it is in active use.
+          The device on this session is signed out the next time it tries to refresh its access token — within about
+          fifteen minutes if it is in active use.
         </p>
       </Confirm>
 
@@ -705,9 +686,8 @@ function SessionsPanel({
         }}
       >
         <p>
-          Every live session ends in one call. The account&rsquo;s grants, password and email are
-          untouched, and it can sign in again immediately — this is the whole difference from
-          disabling it.
+          Every live session ends in one call. The account&rsquo;s grants, password and email are untouched, and it can
+          sign in again immediately — this is the whole difference from disabling it.
         </p>
       </Confirm>
     </Panel>
@@ -758,9 +738,7 @@ function AccessPanel({
     appSlug === "" ? Promise.resolve([]) : consoleApi.grantsForApp(appSlug),
   );
   const suggested =
-    suggestions.result.state === "ready"
-      ? [...new Set(suggestions.result.data.map((grant) => grant.role))].sort()
-      : [];
+    suggestions.result.state === "ready" ? [...new Set(suggestions.result.data.map((grant) => grant.role))].sort() : [];
 
   async function add(event: React.FormEvent): Promise<void> {
     event.preventDefault();
@@ -802,9 +780,9 @@ function AccessPanel({
       {grouped.length === 0 ? (
         <Empty title="No grants">
           <p>
-            This account holds no grants, so it can sign in to Ward and reach <strong>none</strong>{" "}
-            of the estate&rsquo;s apps. <em>This is the default for every new account</em> — it is
-            not a page that failed to load.
+            This account holds no grants, so it can sign in to Ward and reach <strong>none</strong> of the
+            estate&rsquo;s apps. <em>This is the default for every new account</em> — it is not a page that failed to
+            load.
           </p>
           <p>Issue one below. Access begins the moment the row exists; nothing needs a deploy.</p>
         </Empty>
@@ -912,9 +890,9 @@ function AccessPanel({
       </form>
 
       <p className="wc-panel-note">
-        The role is free text and the suggestions are only the roles already in use in the app you
-        pick. Ward never interprets a role, so there is no list of known ones to choose from — a
-        picker here would quietly become a schema Ward deliberately does not have.
+        The role is free text and the suggestions are only the roles already in use in the app you pick. Ward never
+        interprets a role, so there is no list of known ones to choose from — a picker here would quietly become a
+        schema Ward deliberately does not have.
       </p>
     </Panel>
   );

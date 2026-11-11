@@ -78,12 +78,7 @@ afterAll(async () => {
 });
 
 /** A token signed by Ward's own key, with whatever claims the case needs. */
-async function wardSigned(params: {
-  subject?: string;
-  issuer?: string;
-  audience?: string;
-  now?: Date;
-}) {
+async function wardSigned(params: { subject?: string; issuer?: string; audience?: string; now?: Date }) {
   return signAccessToken({
     subject: params.subject ?? "sub_01H8XABCDEF",
     sessionId: newFamilyId(),
@@ -132,14 +127,8 @@ describe("verifyWardAccessToken pins every claim itself", () => {
     // presence, not value, so an unpinned issuer accepts this happily.
     const foreign = await wardSigned({ issuer: "https://evil.example" });
 
-    await expect(verifyWardAccessToken(foreign.token)).rejects.toThrow(
-      AccessTokenVerificationError,
-    );
-    for (const overrides of [
-      { issuer: undefined },
-      { issuer: "https://evil.example" },
-      { issuer: null },
-    ]) {
+    await expect(verifyWardAccessToken(foreign.token)).rejects.toThrow(AccessTokenVerificationError);
+    for (const overrides of [{ issuer: undefined }, { issuer: "https://evil.example" }, { issuer: null }]) {
       await expect(forced(foreign.token, overrides)).rejects.toThrow(AccessTokenVerificationError);
     }
   });
@@ -147,9 +136,7 @@ describe("verifyWardAccessToken pins every claim itself", () => {
   it("cannot be made to accept a foreign audience", async () => {
     const foreign = await wardSigned({ audience: "some-other-estate" });
 
-    await expect(verifyWardAccessToken(foreign.token)).rejects.toThrow(
-      AccessTokenVerificationError,
-    );
+    await expect(verifyWardAccessToken(foreign.token)).rejects.toThrow(AccessTokenVerificationError);
     for (const overrides of [{ audience: "some-other-estate" }, { audience: undefined }]) {
       await expect(forced(foreign.token, overrides)).rejects.toThrow(AccessTokenVerificationError);
     }
@@ -158,9 +145,9 @@ describe("verifyWardAccessToken pins every claim itself", () => {
   it("cannot be made to backdate the clock", async () => {
     const stale = await wardSigned({ now: new Date(Date.now() - 30 * 86_400_000) });
 
-    await expect(
-      forced(stale.token, { currentDate: new Date(Date.now() - 30 * 86_400_000) }),
-    ).rejects.toThrow(AccessTokenVerificationError);
+    await expect(forced(stale.token, { currentDate: new Date(Date.now() - 30 * 86_400_000) })).rejects.toThrow(
+      AccessTokenVerificationError,
+    );
   });
 
   it("ignores an override even when every dangerous field is set at once", async () => {

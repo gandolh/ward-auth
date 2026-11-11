@@ -135,11 +135,7 @@ class Browser {
   private readonly jar = new Map<string, StoredCookie>();
 
   /** Requests an external URL on Ward's origin, as Caddy would forward it. */
-  async request(
-    method: "GET" | "POST",
-    url: string,
-    form?: Record<string, string>,
-  ): Promise<LightMyRequestResponse> {
+  async request(method: "GET" | "POST", url: string, form?: Record<string, string>): Promise<LightMyRequestResponse> {
     const target = new URL(url);
     expect(target.origin, `the browser only talks to Ward here: ${url}`).toBe(ORIGIN);
     expect(target.pathname.startsWith(`${STRIPPED}/`), `an API URL: ${url}`).toBe(true);
@@ -275,11 +271,7 @@ async function clientAssertion(
 }
 
 /** The token request an app's server makes: no browser, no cookies. */
-async function exchange(
-  code: string,
-  verifier: string,
-  assertion?: string,
-): Promise<LightMyRequestResponse> {
+async function exchange(code: string, verifier: string, assertion?: string): Promise<LightMyRequestResponse> {
   return app.inject({
     method: "POST",
     url: "/oidc/token",
@@ -298,10 +290,7 @@ async function exchange(
 
 function location(response: LightMyRequestResponse): string {
   const value = response.headers.location;
-  expect(
-    value,
-    `${response.statusCode} with a Location: ${response.body.slice(0, 300)}`,
-  ).toBeTypeOf("string");
+  expect(value, `${response.statusCode} with a Location: ${response.body.slice(0, 300)}`).toBeTypeOf("string");
   return String(value);
 }
 
@@ -338,15 +327,14 @@ async function runFlow(
     if (response.statusCode === 200 && /document\.forms\[0\]\.submit/.test(response.body)) {
       const action = /<form method="post" action="([^"]+)"/.exec(response.body)![1]!;
       const fields = Object.fromEntries(
-        [...response.body.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"\/>/g)].map(
-          (match) => [match[1]!, match[2]!],
-        ),
+        [...response.body.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"\/>/g)].map((match) => [
+          match[1]!,
+          match[2]!,
+        ]),
       );
       response = await browser.request("POST", action.replaceAll("&amp;", "&"), fields);
     }
-    expect([302, 303], `${url} → ${response.statusCode} ${response.body.slice(0, 300)}`).toContain(
-      response.statusCode,
-    );
+    expect([302, 303], `${url} → ${response.statusCode} ${response.body.slice(0, 300)}`).toContain(response.statusCode);
     url = new URL(location(response), url).href;
   }
   throw new Error("the flow did not leave Ward in 10 hops");
@@ -392,16 +380,9 @@ describe("discovery and keys behind the stripped prefix", () => {
     const discovery = response.json<Record<string, unknown>>();
 
     expect(discovery["issuer"]).toBe(ISSUER);
-    const urls = Object.entries(discovery).filter(
-      ([, value]) => typeof value === "string" && /^https?:/.test(value),
-    );
+    const urls = Object.entries(discovery).filter(([, value]) => typeof value === "string" && /^https?:/.test(value));
     expect(urls.map(([key]) => key)).toEqual(
-      expect.arrayContaining([
-        "authorization_endpoint",
-        "token_endpoint",
-        "jwks_uri",
-        "end_session_endpoint",
-      ]),
+      expect.arrayContaining(["authorization_endpoint", "token_endpoint", "jwks_uri", "end_session_endpoint"]),
     );
     for (const [key, value] of urls) {
       if (key === "issuer") continue;
@@ -514,9 +495,7 @@ describe("sign in with Ward: code + PKCE", () => {
     await browser.signIn("alice");
     // Signed in a minute ago: before the authorization began, which is what
     // `prompt=login` refuses. (Its resolution is the provider's, one second.)
-    db.prepare(
-      "UPDATE refresh_tokens SET issued_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 seconds')",
-    ).run();
+    db.prepare("UPDATE refresh_tokens SET issued_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 seconds')").run();
     const { askedForPassword } = await runFlow(browser, startSignIn({ prompt: "login" }), "alice");
     expect(askedForPassword).toBe(true);
   });
@@ -563,10 +542,7 @@ describe("sign in with Ward: code + PKCE", () => {
     expect(wrong.statusCode).toBe(400);
     expect(wrong.json()).toMatchObject({ error: "invalid_grant" });
 
-    const noPkce = await runFlow(
-      browser,
-      startSignIn({ code_challenge: undefined, code_challenge_method: undefined }),
-    );
+    const noPkce = await runFlow(browser, startSignIn({ code_challenge: undefined, code_challenge_method: undefined }));
     expect(noPkce.landed.searchParams.get("error")).toBe("invalid_request");
 
     const second = startSignIn();
@@ -608,9 +584,7 @@ describe("sign in with Ward: code + PKCE", () => {
     const next = startSignIn();
     const second = await runFlow(browser, next);
     const fresh = await clientAssertion();
-    expect(
-      (await exchange(second.landed.searchParams.get("code")!, next.verifier, fresh)).statusCode,
-    ).toBe(200);
+    expect((await exchange(second.landed.searchParams.get("code")!, next.verifier, fresh)).statusCode).toBe(200);
     expect(await verifyClientAssertion(db, fresh, { audience: ISSUER })).toEqual({
       ok: false,
       reason: "replayed",
@@ -638,11 +612,7 @@ describe("sign in with Ward: code + PKCE", () => {
     expect((await exchange(code, started.verifier, assertion)).statusCode).toBe(200);
     const next = startSignIn();
     const second = await runFlow(browser, next);
-    const replayed = await exchange(
-      second.landed.searchParams.get("code")!,
-      next.verifier,
-      assertion,
-    );
+    const replayed = await exchange(second.landed.searchParams.get("code")!, next.verifier, assertion);
     expect(replayed.json()).toMatchObject({ error: "invalid_client" });
   });
 

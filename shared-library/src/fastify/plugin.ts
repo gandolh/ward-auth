@@ -229,8 +229,7 @@ export interface WardAuthOptions {
 }
 
 /** The result of looking at a request's cookie. */
-type Authentication =
-  { kind: "none" } | { kind: "rejected"; reason?: string } | { kind: "ok"; context: AuthContext };
+type Authentication = { kind: "none" } | { kind: "rejected"; reason?: string } | { kind: "ok"; context: AuthContext };
 
 const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options) => {
   const { accounts } = options;
@@ -246,14 +245,10 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
         : [options.validateSession as SessionValidator];
 
   if (!isValidCookieName(options.cookieName)) {
-    throw new TypeError(
-      `wardAuth: cookieName ${JSON.stringify(options.cookieName)} is not a valid cookie name`,
-    );
+    throw new TypeError(`wardAuth: cookieName ${JSON.stringify(options.cookieName)} is not a valid cookie name`);
   }
   if (!isValidCookiePath(options.cookiePath)) {
-    throw new TypeError(
-      `wardAuth: cookiePath ${JSON.stringify(options.cookiePath)} must be an absolute path`,
-    );
+    throw new TypeError(`wardAuth: cookiePath ${JSON.stringify(options.cookiePath)} must be an absolute path`);
   }
   const publicOrigin = parseOrigin(options.publicOrigin);
   const secure = secureCookiesFor(publicOrigin);
@@ -268,9 +263,7 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
   }
   const validators: SessionValidator[] = [
     wardSessionValidator(
-      options.ward === undefined || identities === undefined
-        ? undefined
-        : { client: options.ward.client, identities },
+      options.ward === undefined || identities === undefined ? undefined : { client: options.ward.client, identities },
     ),
     ...appValidators,
   ];
@@ -323,10 +316,7 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
    * and re-send the cookie when the sliding expiry moved. Clears a cookie that
    * names nothing, so a browser stops presenting a dead token.
    */
-  async function authenticate(
-    request: FastifyRequest,
-    reply: FastifyReply,
-  ): Promise<Authentication> {
+  async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<Authentication> {
     const token = readCookie(request.headers.cookie, cookieName);
     if (token === undefined) return { kind: "none" };
 
@@ -496,8 +486,7 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
             auth.session.idHash,
           );
         } catch (error) {
-          if (error instanceof PasswordPolicyError)
-            return reply.code(400).send({ error: error.code });
+          if (error instanceof PasswordPolicyError) return reply.code(400).send({ error: error.code });
           throw error;
         }
 
@@ -684,9 +673,7 @@ function normaliseRoutePrefix(prefix: string): string {
 function normalisePublicRoute(entry: string): string {
   const match = /^(?:([A-Z]+)\s+)?(\/\S*)$/.exec(entry.trim());
   if (match === null) {
-    throw new TypeError(
-      `wardAuth: publicRoutes entry ${JSON.stringify(entry)} is not "METHOD /path" or "/path"`,
-    );
+    throw new TypeError(`wardAuth: publicRoutes entry ${JSON.stringify(entry)} is not "METHOD /path" or "/path"`);
   }
   return `${match[1] ?? "*"} ${match[2]}`;
 }

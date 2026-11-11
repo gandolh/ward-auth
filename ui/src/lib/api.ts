@@ -182,11 +182,7 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   const body = await parseBody(response);
   if (!response.ok) {
     const code = errorCodeFrom(body);
-    throw new WardApiError(
-      code,
-      response.status,
-      code === "too_many_attempts" ? retryAfterFrom(body) : undefined,
-    );
+    throw new WardApiError(code, response.status, code === "too_many_attempts" ? retryAfterFrom(body) : undefined);
   }
   return body as T;
 }
@@ -377,10 +373,7 @@ export interface ChangePasswordResult {
  * `/login`'s — a person locked out here can still sign in, and the copy must
  * not imply otherwise; `401 unauthorized` for a dead session.
  */
-export function changeOwnPassword(
-  currentPassword: string,
-  newPassword: string,
-): Promise<ChangePasswordResult> {
+export function changeOwnPassword(currentPassword: string, newPassword: string): Promise<ChangePasswordResult> {
   return postJson<ChangePasswordResult>("/account/password", { currentPassword, newPassword });
 }
 

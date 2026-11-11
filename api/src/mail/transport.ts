@@ -62,8 +62,7 @@ export interface OutgoingMail {
  * verification mail that is safe to log: it names a file rather than carrying
  * the token inside it.
  */
-export type SentMail =
-  { kind: "file"; messageId: string; path: string } | { kind: "smtp"; messageId: string };
+export type SentMail = { kind: "file"; messageId: string; path: string } | { kind: "smtp"; messageId: string };
 
 /**
  * Send `message` over `transport`, or over the process-wide `MAIL` when no
@@ -82,10 +81,7 @@ export type SentMail =
  * mail did not go, because the alternative is a `500` for a registration that
  * actually succeeded and a username that is now taken.
  */
-export async function sendMail(
-  message: OutgoingMail,
-  transport?: MailTransport,
-): Promise<SentMail> {
+export async function sendMail(message: OutgoingMail, transport?: MailTransport): Promise<SentMail> {
   const target = transport ?? (await import("../config.js")).MAIL;
 
   /**
@@ -173,10 +169,7 @@ async function writeToOutbox(dir: string, envelope: Envelope): Promise<SentMail>
  * nodemailer will happily fall back to plaintext when a server does not offer
  * STARTTLS, and `WARD_SMTP_PASSWORD` goes across the network in the open.
  */
-async function sendOverSmtp(
-  target: Extract<MailTransport, { kind: "smtp" }>,
-  envelope: Envelope,
-): Promise<SentMail> {
+async function sendOverSmtp(target: Extract<MailTransport, { kind: "smtp" }>, envelope: Envelope): Promise<SentMail> {
   const secure = target.port === 465;
   const mailer = createTransport({
     host: target.host,

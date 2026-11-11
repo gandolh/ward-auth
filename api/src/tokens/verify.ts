@@ -159,9 +159,7 @@ export async function verifyAccessToken(
     typeof iss !== "string" ||
     typeof aud !== "string"
   ) {
-    throw new AccessTokenVerificationError(
-      "access token verified but its claims are not the shape Ward mints",
-    );
+    throw new AccessTokenVerificationError("access token verified but its claims are not the shape Ward mints");
   }
 
   return { sub, jti, sid, iat, exp, iss, aud };

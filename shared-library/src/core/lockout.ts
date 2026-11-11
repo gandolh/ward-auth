@@ -487,10 +487,7 @@ function isTrustedPeer(peer: string, trusted: TrustedProxies): boolean {
   // `normaliseAddress` already unwraps the dotted mapped form Node reports;
   // this catches the hex spelling (`::ffff:ac13:3`) of the same address.
   const bytes = mappedIpv4(parsed) ?? parsed;
-  return (
-    LOOPBACK.some((range) => inRange(bytes, range)) ||
-    trusted.some((range) => inRange(bytes, range))
-  );
+  return LOOPBACK.some((range) => inRange(bytes, range)) || trusted.some((range) => inRange(bytes, range));
 }
 
 function inRange(bytes: readonly number[], range: TrustedProxyRange): boolean {
@@ -539,8 +536,7 @@ function addressBytes(address: string): number[] | undefined {
 /** The IPv4 address inside an IPv4-mapped IPv6 one (`::ffff:a.b.c.d`). */
 function mappedIpv4(bytes: readonly number[]): number[] | undefined {
   if (bytes.length !== 16) return undefined;
-  const isMapped =
-    bytes.slice(0, 10).every((byte) => byte === 0) && bytes[10] === 0xff && bytes[11] === 0xff;
+  const isMapped = bytes.slice(0, 10).every((byte) => byte === 0) && bytes[10] === 0xff && bytes[11] === 0xff;
   return isMapped ? bytes.slice(12) : undefined;
 }
 
@@ -553,11 +549,7 @@ function formatBytes(bytes: readonly number[]): string {
   return groups.join(":");
 }
 
-function warnAmbiguousAddress(
-  warn: LockoutKeyOptions["warn"],
-  peer: string | undefined,
-  bucket: string,
-): void {
+function warnAmbiguousAddress(warn: LockoutKeyOptions["warn"], peer: string | undefined, bucket: string): void {
   if (warn === undefined) return;
 
   const now = Date.now();

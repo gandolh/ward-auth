@@ -26,13 +26,7 @@ export {
   type SeedUser,
   type StartSessionOptions,
 } from "./core/accounts.js";
-export {
-  clearedCookie,
-  readCookie,
-  secureCookiesFor,
-  serializeCookie,
-  type CookieOptions,
-} from "./core/cookie.js";
+export { clearedCookie, readCookie, secureCookiesFor, serializeCookie, type CookieOptions } from "./core/cookie.js";
 export {
   MAX_USERNAME_LENGTH,
   UsernamePolicyError,

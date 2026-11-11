@@ -104,9 +104,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
 
   byFolded: db.prepare<[string], UserRow>(`SELECT * FROM users WHERE username_folded = ?`),
 
-  byEmail: db.prepare<[string], UserRow>(
-    `SELECT * FROM users WHERE email = ? ORDER BY created_at, subject`,
-  ),
+  byEmail: db.prepare<[string], UserRow>(`SELECT * FROM users WHERE email = ? ORDER BY created_at, subject`),
 
   setPasswordHash: db.prepare<[string, string]>(
     `UPDATE users
@@ -144,9 +142,7 @@ const stmts = prepareOnce((db: Database.Database) => ({
 
   delete: db.prepare<[string]>(`DELETE FROM users WHERE subject = ?`),
 
-  list: db.prepare<[number, number], UserRow>(
-    `SELECT * FROM users ORDER BY username_folded LIMIT ? OFFSET ?`,
-  ),
+  list: db.prepare<[number, number], UserRow>(`SELECT * FROM users ORDER BY username_folded LIMIT ? OFFSET ?`),
 
   count: db.prepare<[], number>(`SELECT count(*) FROM users`),
 }));
@@ -163,14 +159,7 @@ export function createUser(db: Database.Database, input: NewUser): UserRow {
   const subject = input.subject ?? generateSubject();
   const email = input.email ?? null;
 
-  return stmts(db).insert.get(
-    subject,
-    input.username,
-    foldUsername(input.username),
-    input.passwordHash,
-    email,
-    0,
-  )!;
+  return stmts(db).insert.get(subject, input.username, foldUsername(input.username), input.passwordHash, email, 0)!;
 }
 
 /** The account a `sub` claim or a grant row points at. */
@@ -196,11 +185,7 @@ export function findUsersByEmail(db: Database.Database, email: string): UserRow[
 }
 
 /** False if no such subject. */
-export function setPasswordHash(
-  db: Database.Database,
-  subject: string,
-  passwordHash: string,
-): boolean {
+export function setPasswordHash(db: Database.Database, subject: string, passwordHash: string): boolean {
   return stmts(db).setPasswordHash.run(passwordHash, subject).changes === 1;
 }
 
@@ -210,11 +195,7 @@ export function setPasswordHash(
  *
  * Throws on a collision, exactly like `createUser`.
  */
-export function setUsername(
-  db: Database.Database,
-  subject: string,
-  username: string,
-): UserRow | undefined {
+export function setUsername(db: Database.Database, subject: string, username: string): UserRow | undefined {
   return stmts(db).setUsername.get(username, foldUsername(username), subject);
 }
 

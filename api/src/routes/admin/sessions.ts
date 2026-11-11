@@ -121,10 +121,7 @@ function liveSessions(db: Database.Database, subject: string): SessionView[] {
   return sessions;
 }
 
-export async function adminSessionsRoutes(
-  app: FastifyInstance,
-  options: AdminRoutesOptions = {},
-): Promise<void> {
+export async function adminSessionsRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
   const database = databaseResolver(options);
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`.
@@ -205,9 +202,7 @@ export async function adminSessionsRoutes(
      * read the wrong way round: there is no path here on which a family id from
      * the URL selects the rows that then vouch for themselves.
      */
-    const owned = liveSessions(db, account.subject).some(
-      (session) => session.familyId === params.data.familyId,
-    );
+    const owned = liveSessions(db, account.subject).some((session) => session.familyId === params.data.familyId);
     if (!owned) {
       return reply.code(404).send({ error: "session_not_found" });
     }

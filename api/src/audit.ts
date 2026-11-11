@@ -2,13 +2,7 @@ import type Database from "better-sqlite3";
 import type { FastifyRequest } from "fastify";
 
 import { getConsoleSession } from "./auth/console-guard.js";
-import {
-  recordAudit,
-  SUPERUSER_LABEL,
-  type ActorKind,
-  type AuditLogRow,
-  type TargetKind,
-} from "./db/audit-log.js";
+import { recordAudit, SUPERUSER_LABEL, type ActorKind, type AuditLogRow, type TargetKind } from "./db/audit-log.js";
 
 /**
  * The one place the console's admin routes turn "who is acting" into the three
@@ -107,11 +101,7 @@ export function consoleActor(request: FastifyRequest): AuditActor {
  * omitted entirely when both are empty — `db/audit-log.ts` stores `null` rather
  * than `{}` so a reader can tell "no context" from "an empty object".
  */
-export function recordActorAudit(
-  db: Database.Database,
-  actor: AuditActor,
-  event: ActorAuditEvent,
-): AuditLogRow {
+export function recordActorAudit(db: Database.Database, actor: AuditActor, event: ActorAuditEvent): AuditLogRow {
   const detail = { ...actor.detail, ...event.detail };
 
   return recordAudit(db, {

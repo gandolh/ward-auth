@@ -8,12 +8,7 @@ import { MAX_PASSWORD_LENGTH, PasswordPolicyError } from "../core/password.js";
 import { isLocalPath } from "../core/paths.js";
 import { AlreadyLinkedError, WardSubjectTakenError, isWardAuthStore } from "../store/types.js";
 import type { SessionRecord, WardAuthStore } from "../store/types.js";
-import {
-  signInErrorFor,
-  type WardClient,
-  type WardFlowSecrets,
-  type WardIdentity,
-} from "../ward/client.js";
+import { signInErrorFor, type WardClient, type WardFlowSecrets, type WardIdentity } from "../ward/client.js";
 import { WardConfigurationError, WardUnavailableError } from "../ward/errors.js";
 import {
   MIN_USERNAME_MAX_LENGTH,
@@ -166,9 +161,7 @@ const AUTH_TIME_SKEW_SECONDS = 5;
  * `auth_time` (Ward sends it only for `prompt=login` or `max_age`) never
  * counts.
  */
-export function isFreshReauthentication(
-  identity: Pick<WardIdentity, "authTime" | "issuedAt">,
-): boolean {
+export function isFreshReauthentication(identity: Pick<WardIdentity, "authTime" | "issuedAt">): boolean {
   const { authTime, issuedAt } = identity;
   if (authTime === undefined || issuedAt === undefined) return false;
   const age = issuedAt - authTime;
@@ -191,9 +184,7 @@ interface Flow extends WardFlowSecrets {
 export interface WardRoutesContext {
   accounts: Accounts;
   identities: WardIdentities;
-  ward: Required<
-    Pick<WardSignInOptions, "client" | "loginPath" | "settingsPath" | "afterSignInPath">
-  > &
+  ward: Required<Pick<WardSignInOptions, "client" | "loginPath" | "settingsPath" | "afterSignInPath">> &
     Pick<WardSignInOptions, "roleFor" | "usernameFor" | "usernameMaxLength">;
   publicOrigin: string;
   cookieName: string;
@@ -208,16 +199,10 @@ export interface WardRoutesContext {
 }
 
 /** Check the `ward` option at boot. Every path is a browser path on the app's origin. */
-export function validateWardOptions(
-  ward: WardSignInOptions,
-  cookiePath: string,
-  routePrefix: string,
-): void {
+export function validateWardOptions(ward: WardSignInOptions, cookiePath: string, routePrefix: string): void {
   for (const name of ["loginPath", "settingsPath", "afterSignInPath"] as const) {
     if (!isLocalPath(ward[name])) {
-      throw new TypeError(
-        `wardAuth: ward.${name} must be a path on the app's origin, like "/myapp/login"`,
-      );
+      throw new TypeError(`wardAuth: ward.${name} must be a path on the app's origin, like "/myapp/login"`);
     }
   }
   if (ward.usernameFor !== undefined && typeof ward.usernameFor !== "function") {
@@ -231,8 +216,7 @@ export function validateWardOptions(
   const callback = new URL(ward.client.redirectUri).pathname;
   const expectedTail = `${routePrefix}/ward/callback`;
   const underCookiePath =
-    callback === cookiePath ||
-    callback.startsWith(cookiePath.endsWith("/") ? cookiePath : `${cookiePath}/`);
+    callback === cookiePath || callback.startsWith(cookiePath.endsWith("/") ? cookiePath : `${cookiePath}/`);
   if (!callback.endsWith(expectedTail) || !underCookiePath) {
     // The callback must reach this plugin's route, and the session cookie
     // must be sent to it (a link callback needs the session that started it).
@@ -276,9 +260,7 @@ export function wardSessionValidator(
 
     try {
       const status = await ward.client.checkSession(session.wardSid, subject);
-      return status.active
-        ? { ok: true }
-        : { ok: false, reason: "ward_session_ended", endSession: true };
+      return status.active ? { ok: true } : { ok: false, reason: "ward_session_ended", endSession: true };
     } catch (error) {
       if (error instanceof WardConfigurationError) {
         request.log.error({ err: error }, error.message);
@@ -354,9 +336,7 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
   ): Promise<FastifyReply> {
     let started: Awaited<ReturnType<WardClient["startAuthorization"]>>;
     try {
-      started = await client.startAuthorization(
-        mode === "reauthenticate" ? { prompt: "login" } : {},
-      );
+      started = await client.startAuthorization(mode === "reauthenticate" ? { prompt: "login" } : {});
     } catch (error) {
       return wardDown(reply, error);
     }
@@ -408,12 +388,7 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
   }
 
   /** Start a Ward-originated session and set its cookie. Returns its id hash. */
-  async function startSession(
-    reply: FastifyReply,
-    userId: string,
-    wardSid: string,
-    idToken: string,
-  ): Promise<string> {
+  async function startSession(reply: FastifyReply, userId: string, wardSid: string, idToken: string): Promise<string> {
     const { token, session } = await accounts.startSession(userId, { origin: "ward", wardSid });
     await store.setSessionWardIdToken(session.idHash, idToken);
     reply.header("set-cookie", context.sessionCookie(token, session.expiresAt));
@@ -483,8 +458,7 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
       identity = await client.finishAuthorization(search, flow);
     } catch (error) {
       const failure = signInErrorFor(error);
-      if (failure.code === "ward_misconfigured")
-        request.log.error({ err: failure }, failure.message);
+      if (failure.code === "ward_misconfigured") request.log.error({ err: failure }, failure.message);
       else if (failure.code === "ward_unavailable" || failure.code === "ward_error") {
         request.log.warn({ err: failure }, failure.message);
       }
@@ -511,12 +485,7 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     if (flow.mode === "sign_in") {
       let user: AuthUser;
       try {
-        ({ user } = await identities.userForSignIn(
-          identity,
-          ward.roleFor,
-          ward.usernameFor,
-          ward.usernameMaxLength,
-        ));
+        ({ user } = await identities.userForSignIn(identity, ward.roleFor, ward.usernameFor, ward.usernameMaxLength));
       } catch (error) {
         // The app disabled the linked user (0.6.0). The answer Ward gives when
         // it refuses a sign-in itself, so a switched-off user and one with no
@@ -663,9 +632,7 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     if (auth === null) return reply.code(401).send({ error: "unauthorized" });
 
     const idToken =
-      auth.session.origin === "ward"
-        ? await store.findSessionWardIdToken(auth.session.idHash)
-        : undefined;
+      auth.session.origin === "ward" ? await store.findSessionWardIdToken(auth.session.idHash) : undefined;
     let url: string | null = null;
     if (idToken !== undefined) {
       try {
@@ -681,15 +648,12 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
   });
 }
 
-function setPasswordBody(
-  body: unknown,
-): { newPassword: string; currentPassword?: string } | undefined {
+function setPasswordBody(body: unknown): { newPassword: string; currentPassword?: string } | undefined {
   if (typeof body !== "object" || body === null) return undefined;
   const { newPassword, currentPassword } = body as Record<string, unknown>;
   if (typeof newPassword !== "string" || newPassword.length === 0) return undefined;
   if (currentPassword === undefined || currentPassword === null) return { newPassword };
   if (typeof currentPassword !== "string") return undefined;
-  if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH)
-    return undefined;
+  if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH) return undefined;
   return { newPassword, currentPassword };
 }

@@ -73,10 +73,7 @@ export interface SessionRoutesOptions {
   db?: Database.Database;
 }
 
-export async function sessionRoutes(
-  app: FastifyInstance,
-  options: SessionRoutesOptions = {},
-): Promise<void> {
+export async function sessionRoutes(app: FastifyInstance, options: SessionRoutesOptions = {}): Promise<void> {
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
 
   app.get(

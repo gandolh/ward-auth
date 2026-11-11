@@ -212,12 +212,7 @@ describe("GET /account", () => {
       headers: { cookie: `${mod.cookie.ACCESS_COOKIE_NAME}=${session.access}` },
     });
 
-    expect(Object.keys(introspection.json() as object).sort()).toEqual([
-      "active",
-      "grants",
-      "subject",
-      "username",
-    ]);
+    expect(Object.keys(introspection.json() as object).sort()).toEqual(["active", "grants", "subject", "username"]);
 
     const account = await asAccount(session.access, { method: "GET", url: "/account" });
     expect(account.json().email).toBe(EMAIL);
@@ -289,18 +284,14 @@ describe("GET /account", () => {
       sub: subject,
     });
     // And still refused.
-    expect((await asAccount(session.access, { method: "GET", url: "/account" })).statusCode).toBe(
-      401,
-    );
+    expect((await asAccount(session.access, { method: "GET", url: "/account" })).statusCode).toBe(401);
   });
 
   it("refuses a disabled account", async () => {
     const session = await login();
     mod.users.setDisabled(db, subject, true);
 
-    expect((await asAccount(session.access, { method: "GET", url: "/account" })).statusCode).toBe(
-      401,
-    );
+    expect((await asAccount(session.access, { method: "GET", url: "/account" })).statusCode).toBe(401);
   });
 });
 
@@ -312,8 +303,7 @@ describe("POST /account/password", () => {
   const change = (
     access: string,
     body: InjectOptions["payload"] = { currentPassword: PASSWORD, newPassword: NEW_PASSWORD },
-  ): Promise<LightMyRequestResponse> =>
-    asAccount(access, { method: "POST", url: "/account/password", payload: body });
+  ): Promise<LightMyRequestResponse> => asAccount(access, { method: "POST", url: "/account/password", payload: body });
 
   it("changes the password, so the new one logs in and the old one does not", async () => {
     const session = await login();
@@ -511,10 +501,10 @@ describe("POST /account/password", () => {
   it("refuses a cross-site request before reading the body", async () => {
     const session = await login();
 
-    for (const headers of [
-      { "sec-fetch-site": "cross-site" },
-      { origin: "https://evil.test" },
-    ] as Record<string, string>[]) {
+    for (const headers of [{ "sec-fetch-site": "cross-site" }, { origin: "https://evil.test" }] as Record<
+      string,
+      string
+    >[]) {
       const response = await asAccount(session.access, {
         method: "POST",
         url: "/account/password",
@@ -570,10 +560,7 @@ describe("POST /account/password", () => {
 // ---------------------------------------------------------------------------
 
 describe("POST /account/sessions/revoke-others", () => {
-  const revokeOthers = (
-    access: string,
-    headers: Record<string, string> = {},
-  ): Promise<LightMyRequestResponse> =>
+  const revokeOthers = (access: string, headers: Record<string, string> = {}): Promise<LightMyRequestResponse> =>
     asAccount(access, { method: "POST", url: "/account/sessions/revoke-others", headers });
 
   /**

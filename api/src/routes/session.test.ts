@@ -176,12 +176,7 @@ describe("a live session", () => {
     grant("newspapper", "reader");
     const live = await readSession(cookieValue(await login(), mod.cookie.ACCESS_COOKIE_NAME));
 
-    expect(Object.keys(live.json() as object).sort()).toEqual([
-      "active",
-      "grants",
-      "subject",
-      "username",
-    ]);
+    expect(Object.keys(live.json() as object).sort()).toEqual(["active", "grants", "subject", "username"]);
   });
 
   it("is never cached by anything in the chain", async () => {
@@ -283,9 +278,7 @@ describe("two ward_session cookies on one request (the legacy Path=/ copy)", () 
 
   it("is inactive when neither copy is a live session", async () => {
     const dead = await signedButRevoked();
-    expect((await readSessionWith([dead, "not-a-token"])).body).toBe(
-      JSON.stringify({ active: false }),
-    );
+    expect((await readSessionWith([dead, "not-a-token"])).body).toBe(JSON.stringify({ active: false }));
   });
 });
 

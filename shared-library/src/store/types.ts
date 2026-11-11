@@ -108,12 +108,7 @@ export interface AuthStore {
    * Rename a user (0.4.0). Throws `UsernameTakenError` when another user holds
    * the folded name; the user's own name in another case is not taken.
    */
-  setUsername(
-    userId: string,
-    username: string,
-    usernameFolded: string,
-    now: number,
-  ): Awaitable<void>;
+  setUsername(userId: string, username: string, usernameFolded: string, now: number): Awaitable<void>;
   /**
    * Switch a user off (`disabledAt`, epoch ms) or back on (`null`) (0.6.0).
    * Only the column; ending the user's sessions is the core's job.

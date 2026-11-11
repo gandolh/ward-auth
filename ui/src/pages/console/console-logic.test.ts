@@ -70,12 +70,7 @@ describe("the audit vocabulary", () => {
   });
 
   it("treats every session revoke and a self-service password change as authority", () => {
-    for (const action of [
-      "session.revoke",
-      "session.revoke_all",
-      "session.revoke_others",
-      "user.password_change",
-    ]) {
+    for (const action of ["session.revoke", "session.revoke_all", "session.revoke_others", "user.password_change"]) {
       expect(presentAuditAction(action).severity).toBe("authority");
     }
   });
@@ -202,11 +197,7 @@ function grant(appSlug: string, role: string, at = "2026-09-04T10:00:00.000Z"): 
 
 describe("groupGrantsByApp", () => {
   it("collapses a flat list into one row per app with the roles as a set", () => {
-    const grouped = groupGrantsByApp([
-      grant("prm", "reader"),
-      grant("atrium", "admin"),
-      grant("prm", "admin"),
-    ]);
+    const grouped = groupGrantsByApp([grant("prm", "reader"), grant("atrium", "admin"), grant("prm", "admin")]);
     expect(grouped.map((entry) => entry.appSlug)).toEqual(["atrium", "prm"]);
     expect(grouped[1]?.roles).toEqual(["admin", "reader"]);
   });
@@ -227,11 +218,7 @@ describe("groupGrantsByApp", () => {
 
 describe("roleSuggestions", () => {
   it("offers the roles already in use, most-used first", () => {
-    const suggestions = roleSuggestions([
-      grant("prm", "admin"),
-      grant("atrium", "admin"),
-      grant("atrium", "reader"),
-    ]);
+    const suggestions = roleSuggestions([grant("prm", "admin"), grant("atrium", "admin"), grant("atrium", "reader")]);
     expect(suggestions).toEqual(["admin", "reader"]);
   });
 
@@ -266,9 +253,7 @@ describe("a no-op is reported as a no-op", () => {
   });
 
   it("names the role that went, so it can be put back verbatim", () => {
-    expect(describeGrantRevoke("prm", 1, ["resource:write"])).toBe(
-      "Revoked resource:write in prm.",
-    );
+    expect(describeGrantRevoke("prm", 1, ["resource:write"])).toBe("Revoked resource:write in prm.");
   });
 
   it("lists every role a wider revoke took", () => {
@@ -313,15 +298,11 @@ describe("formatting never throws and never over-promises", () => {
   });
 
   it("flattens a detail object into key=value pairs", () => {
-    expect(formatDetail({ username: "cristian", sessionsRevoked: 2 })).toBe(
-      "username=cristian  sessionsRevoked=2",
-    );
+    expect(formatDetail({ username: "cristian", sessionsRevoked: 2 })).toBe("username=cristian  sessionsRevoked=2");
   });
 
   it("renders a nested detail as JSON rather than [object Object]", () => {
-    expect(formatDetail({ changed: { name: { from: "a", to: "b" } } })).toBe(
-      'changed={"name":{"from":"a","to":"b"}}',
-    );
+    expect(formatDetail({ changed: { name: { from: "a", to: "b" } } })).toBe('changed={"name":{"from":"a","to":"b"}}');
   });
 
   it("bounds a runaway detail so it cannot push a row off the screen", () => {

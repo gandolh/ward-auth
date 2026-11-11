@@ -73,9 +73,7 @@ afterAll(async () => {
 
 describe("the superuser credential", () => {
   it("accepts the pair configured in the environment", async () => {
-    await expect(superuser.checkSuperuserCredentials(ADMIN_USERNAME, ADMIN_PASSWORD)).resolves.toBe(
-      true,
-    );
+    await expect(superuser.checkSuperuserCredentials(ADMIN_USERNAME, ADMIN_PASSWORD)).resolves.toBe(true);
   });
 
   it("rejects a wrong password, a wrong username, and both", async () => {
@@ -93,15 +91,9 @@ describe("the superuser credential", () => {
      * are hashed to 32 bytes first, so none of these is a special case.
      */
     await expect(superuser.checkSuperuserCredentials("", "")).resolves.toBe(false);
-    await expect(
-      superuser.checkSuperuserCredentials(ADMIN_USERNAME, ADMIN_PASSWORD.slice(0, 5)),
-    ).resolves.toBe(false);
-    await expect(
-      superuser.checkSuperuserCredentials(ADMIN_USERNAME, `${ADMIN_PASSWORD}x`),
-    ).resolves.toBe(false);
-    await expect(
-      superuser.checkSuperuserCredentials(ADMIN_USERNAME, "x".repeat(100_000)),
-    ).resolves.toBe(false);
+    await expect(superuser.checkSuperuserCredentials(ADMIN_USERNAME, ADMIN_PASSWORD.slice(0, 5))).resolves.toBe(false);
+    await expect(superuser.checkSuperuserCredentials(ADMIN_USERNAME, `${ADMIN_PASSWORD}x`)).resolves.toBe(false);
+    await expect(superuser.checkSuperuserCredentials(ADMIN_USERNAME, "x".repeat(100_000))).resolves.toBe(false);
   });
 
   it("reads nothing from the database — the superuser has no row to read", async () => {
@@ -112,9 +104,7 @@ describe("the superuser credential", () => {
      */
     const db = freshDb();
     try {
-      await expect(
-        superuser.checkSuperuserCredentials(ADMIN_USERNAME, ADMIN_PASSWORD),
-      ).resolves.toBe(true);
+      await expect(superuser.checkSuperuserCredentials(ADMIN_USERNAME, ADMIN_PASSWORD)).resolves.toBe(true);
       superuser.openConsoleSession();
 
       expect(db.prepare("SELECT count(*) FROM users").pluck().get()).toBe(0);
@@ -287,8 +277,7 @@ describe("the reported deadlines", () => {
      */
     const step = 5 * 60;
     const target =
-      superuser.CONSOLE_SESSION_ABSOLUTE_LIFETIME_SECONDS -
-      superuser.CONSOLE_SESSION_IDLE_TIMEOUT_SECONDS / 3;
+      superuser.CONSOLE_SESSION_ABSOLUTE_LIFETIME_SECONDS - superuser.CONSOLE_SESSION_IDLE_TIMEOUT_SECONDS / 3;
     for (let elapsed = 0; elapsed < target; elapsed += step) {
       vi.advanceTimersByTime(step * 1000);
       expect(superuser.resolveConsoleSession(opened.token)).toBeDefined();
@@ -297,9 +286,7 @@ describe("the reported deadlines", () => {
     const resolved = superuser.resolveConsoleSession(opened.token);
     expect(resolved).toBeDefined();
     expect(resolved!.idleExpiresAt.getTime()).toBe(resolved!.absoluteExpiresAt.getTime());
-    expect(resolved!.idleExpiresAt.getTime()).toBeLessThanOrEqual(
-      resolved!.absoluteExpiresAt.getTime(),
-    );
+    expect(resolved!.idleExpiresAt.getTime()).toBeLessThanOrEqual(resolved!.absoluteExpiresAt.getTime());
   });
 });
 
@@ -313,9 +300,7 @@ describe("the console cookie", () => {
 
     const cookie = superuser.consoleSessionSetCookie("wcs_abc", { secure: true });
 
-    expect(cookie).toBe(
-      "ward_console=wcs_abc; Path=/ward-api/console; HttpOnly; SameSite=Strict; Secure",
-    );
+    expect(cookie).toBe("ward_console=wcs_abc; Path=/ward-api/console; HttpOnly; SameSite=Strict; Secure");
     // A session cookie: the server-side idle timeout is the only deadline.
     expect(cookie).not.toContain("Max-Age");
     expect(cookie).not.toContain("Expires");
@@ -338,9 +323,7 @@ describe("the console cookie", () => {
   });
 
   it("reads its own cookie and ignores every other one on the header", () => {
-    expect(
-      superuser.readConsoleCookie("ward_session=a.jwt.value; ward_console=wcs_x; other=1"),
-    ).toBe("wcs_x");
+    expect(superuser.readConsoleCookie("ward_session=a.jwt.value; ward_console=wcs_x; other=1")).toBe("wcs_x");
     expect(superuser.readConsoleCookie("ward_session=a.jwt.value; ward_refresh=r")).toBeUndefined();
     expect(superuser.readConsoleCookie(undefined)).toBeUndefined();
     expect(superuser.readConsoleCookie("")).toBeUndefined();

@@ -17,13 +17,7 @@ import {
   setUsername,
   type UserRow,
 } from "../../db/users.js";
-import {
-  accountView,
-  databaseResolver,
-  grantView,
-  isUniqueViolation,
-  type AdminRoutesOptions,
-} from "./support.js";
+import { accountView, databaseResolver, grantView, isUniqueViolation, type AdminRoutesOptions } from "./support.js";
 
 /**
  * Account management: `GET`, `POST /console/accounts`, `GET
@@ -134,10 +128,7 @@ const listQuery = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-export async function adminAccountsRoutes(
-  app: FastifyInstance,
-  options: AdminRoutesOptions = {},
-): Promise<void> {
+export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
   const database = databaseResolver(options);
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`.

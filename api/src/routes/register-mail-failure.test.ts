@@ -110,9 +110,7 @@ it("still registers the account, reports that the mail did not go, and audits it
   expect(user.email_verified).toBe(0);
   expect(mod.grants.grantsBySlug(db, user.subject)).toEqual({ prm: ["user"] });
 
-  const failure = mod.auditLog
-    .listAudit(db)
-    .find((row) => row.action === "user.verification_mail_failed")!;
+  const failure = mod.auditLog.listAudit(db).find((row) => row.action === "user.verification_mail_failed")!;
   expect(failure).toMatchObject({
     actor_kind: "system",
     actor_subject: null,

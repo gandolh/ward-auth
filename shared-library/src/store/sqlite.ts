@@ -116,10 +116,7 @@ export function inSavepoint<T>(db: SqliteHandle, fn: () => T): T {
  *
  * Returns the versions it applied, for a boot log line.
  */
-export function migrateSqlite(
-  db: SqliteHandle,
-  migrations: readonly Migration[] = SQLITE_MIGRATIONS,
-): number[] {
+export function migrateSqlite(db: SqliteHandle, migrations: readonly Migration[] = SQLITE_MIGRATIONS): number[] {
   assertOrdered(migrations);
 
   db.exec(`CREATE TABLE IF NOT EXISTS auth_migrations (
@@ -137,9 +134,7 @@ export function migrateSqlite(
   // understand. Refuse at boot rather than fail somewhere stranger later.
   if (current > known) throw new SchemaTooNewError(current, known);
 
-  const record = db.prepare(
-    "INSERT INTO auth_migrations (version, name, applied_at) VALUES (?, ?, ?)",
-  );
+  const record = db.prepare("INSERT INTO auth_migrations (version, name, applied_at) VALUES (?, ?, ?)");
   const applied: number[] = [];
 
   for (const migration of migrations) {
@@ -226,10 +221,7 @@ function toSession(row: SessionRow): SessionRecord {
  * by the time this returns; call it once at boot, after the app's own
  * migrations or before them — the two never touch each other's tables.
  */
-export function createSqliteStore(
-  db: SqliteHandle,
-  options: SqliteStoreOptions = {},
-): SqliteAuthStore {
+export function createSqliteStore(db: SqliteHandle, options: SqliteStoreOptions = {}): SqliteAuthStore {
   migrateSqlite(db, options.migrations ?? SQLITE_MIGRATIONS);
 
   // Prepared once. Both drivers keep a prepared statement valid for the life
@@ -241,42 +233,28 @@ export function createSqliteStore(
       `INSERT INTO auth_users (id, username, username_folded, password_hash, role, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ),
-    setPasswordHash: db.prepare(
-      "UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE id = ?",
-    ),
+    setPasswordHash: db.prepare("UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE id = ?"),
     setRole: db.prepare("UPDATE auth_users SET role = ?, updated_at = ? WHERE id = ?"),
-    setUsername: db.prepare(
-      "UPDATE auth_users SET username = ?, username_folded = ?, updated_at = ? WHERE id = ?",
-    ),
+    setUsername: db.prepare("UPDATE auth_users SET username = ?, username_folded = ?, updated_at = ? WHERE id = ?"),
     setDisabled: db.prepare("UPDATE auth_users SET disabled_at = ?, updated_at = ? WHERE id = ?"),
     insertSession: db.prepare(
       `INSERT INTO auth_sessions (id_hash, user_id, origin, ward_sid, created_at, renewed_at, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ),
     sessionById: db.prepare("SELECT * FROM auth_sessions WHERE id_hash = ?"),
-    renewSession: db.prepare(
-      "UPDATE auth_sessions SET renewed_at = ?, expires_at = ? WHERE id_hash = ?",
-    ),
+    renewSession: db.prepare("UPDATE auth_sessions SET renewed_at = ?, expires_at = ? WHERE id_hash = ?"),
     deleteSession: db.prepare("DELETE FROM auth_sessions WHERE id_hash = ?"),
     deleteUserSessions: db.prepare("DELETE FROM auth_sessions WHERE user_id = ?"),
-    deleteUserSessionsExcept: db.prepare(
-      "DELETE FROM auth_sessions WHERE user_id = ? AND id_hash <> ?",
-    ),
+    deleteUserSessionsExcept: db.prepare("DELETE FROM auth_sessions WHERE user_id = ? AND id_hash <> ?"),
     deleteExpired: db.prepare("DELETE FROM auth_sessions WHERE expires_at <= ?"),
     linkBySubject: db.prepare("SELECT * FROM auth_ward_links WHERE subject = ?"),
     linkByUserId: db.prepare("SELECT * FROM auth_ward_links WHERE user_id = ?"),
-    insertLink: db.prepare(
-      "INSERT INTO auth_ward_links (subject, user_id, linked_at) VALUES (?, ?, ?)",
-    ),
+    insertLink: db.prepare("INSERT INTO auth_ward_links (subject, user_id, linked_at) VALUES (?, ?, ?)"),
     deleteLink: db.prepare("DELETE FROM auth_ward_links WHERE user_id = ?"),
-    deleteUserWardSessions: db.prepare(
-      "DELETE FROM auth_sessions WHERE user_id = ? AND origin = 'ward'",
-    ),
+    deleteUserWardSessions: db.prepare("DELETE FROM auth_sessions WHERE user_id = ? AND origin = 'ward'"),
     setSessionIdToken: db.prepare("UPDATE auth_sessions SET ward_id_token = ? WHERE id_hash = ?"),
     sessionIdToken: db.prepare("SELECT ward_id_token FROM auth_sessions WHERE id_hash = ?"),
-    setReauthenticatedAt: db.prepare(
-      "UPDATE auth_sessions SET reauthenticated_at = ? WHERE id_hash = ?",
-    ),
+    setReauthenticatedAt: db.prepare("UPDATE auth_sessions SET reauthenticated_at = ? WHERE id_hash = ?"),
     reauthenticatedAt: db.prepare("SELECT reauthenticated_at FROM auth_sessions WHERE id_hash = ?"),
   };
 
@@ -422,8 +400,7 @@ export function createSqliteStore(
     },
 
     findSessionReauthenticatedAt(idHash: string): number | undefined {
-      const row = s.reauthenticatedAt.get(idHash) as
-        { reauthenticated_at: number | bigint | null } | undefined;
+      const row = s.reauthenticatedAt.get(idHash) as { reauthenticated_at: number | bigint | null } | undefined;
       const at = row?.reauthenticated_at;
       return at === undefined || at === null ? undefined : Number(at);
     },

@@ -173,13 +173,7 @@ describe("a live session", () => {
     // alice holds atrium only. prm's client asking about her is "no grant",
     // and naming atrium in the body does not borrow atrium's grant.
     const sid = signIn(alice);
-    const asPrm = await status(
-      sid,
-      alice.subject,
-      { app: "atrium", appSlug: "atrium" },
-      prmKey,
-      "prm",
-    );
+    const asPrm = await status(sid, alice.subject, { app: "atrium", appSlug: "atrium" }, prmKey, "prm");
     expect(asPrm.body).toBe(INACTIVE_BYTES);
 
     grantRole(db, {
@@ -327,10 +321,7 @@ describe("client authentication", () => {
     const sid = signIn(alice);
     await expectRefused(await ask({ wardSid: sid, subject: alice.subject }), "no fields");
     await expectRefused(await ask({}), "empty object");
-    await expectRefused(
-      await app.inject({ method: "POST", url: "/session-status" }),
-      "no body at all",
-    );
+    await expectRefused(await app.inject({ method: "POST", url: "/session-status" }), "no body at all");
   });
 
   it("refuses a body that is not JSON, with the same 401 rather than Fastify's 400", async () => {
@@ -346,24 +337,15 @@ describe("client authentication", () => {
   it("refuses a wrong type, a malformed assertion, an unregistered client and a stranger's key", async () => {
     const sid = signIn(alice);
     const cases: [string, Record<string, unknown>][] = [
-      [
-        "wrong type",
-        { client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:saml2-bearer" },
-      ],
+      ["wrong type", { client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:saml2-bearer" }],
       ["no type", { client_assertion_type: undefined }],
       ["not a jwt", { client_assertion: "not-a-jwt" }],
       ["empty", { client_assertion: "" }],
       ["not a string", { client_assertion: 7 }],
       ["too long", { client_assertion: "a".repeat(9000) }],
       ["signed by another key", { client_assertion: await assertion(strangerKey) }],
-      [
-        "an unknown client",
-        { client_assertion: await assertion(strangerKey, { iss: "no-such-app" }) },
-      ],
-      [
-        "an app that is not a client",
-        { client_assertion: await assertion(strangerKey, { iss: "stranger" }) },
-      ],
+      ["an unknown client", { client_assertion: await assertion(strangerKey, { iss: "no-such-app" }) }],
+      ["an app that is not a client", { client_assertion: await assertion(strangerKey, { iss: "stranger" }) }],
       ["another client's key", { client_assertion: await assertion(prmKey) }],
     ];
     for (const [label, overrides] of cases) {
@@ -373,11 +355,7 @@ describe("client authentication", () => {
 
   it("refuses a wrong audience, including the internal token endpoint URL", async () => {
     const sid = signIn(alice);
-    for (const aud of [
-      "https://ward.test/other",
-      "http://127.0.0.1:8791/oidc",
-      `${ISSUER}/token`,
-    ]) {
+    for (const aud of ["https://ward.test/other", "http://127.0.0.1:8791/oidc", `${ISSUER}/token`]) {
       const response = await status(sid, alice.subject, {
         client_assertion: await assertion(atriumKey, { aud }),
       });

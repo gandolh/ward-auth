@@ -1,0 +1,235 @@
+/*
+ * Ward's one stylesheet (base-ui rule 5). The layer order comes first: the
+ * first @layer statement fixes the order for the whole page.
+ *
+ * The intent, from the login UI's spec: "a door, not a lobby." Ward interrupts
+ * somebody who was on their way somewhere else, so the sign-in side is
+ * near-monochrome, uses one accent once per screen, has generous vertical
+ * rhythm and no illustration. It should read as infrastructure that respects
+ * you, not as a product introducing itself. Two things follow that look like
+ * omissions: there is no webfont (a font on the login path is a render block on
+ * the one page whose whole job is to be over in four seconds), and there is no
+ * entrance motion (the only motion answers something a person did, and
+ * prefers-reduced-motion turns it off).
+ */
+@layer theme, base, vendor, legacy, components, utilities;
+
+@import "tailwindcss";
+@import "../ward.css" layer(legacy);
+@import "../pages/console/console.css" layer(legacy);
+
+/* Until ward.css and console.css are gone: the old tokens they still read. */
+@layer legacy {
+  :root {
+    --ward-font: var(--font-ward);
+    --ward-font-mono: var(--font-ward-mono);
+    --ward-text-xs: 0.75rem;
+    --ward-text-sm: 0.875rem;
+    --ward-text-base: 1rem;
+    --ward-text-lg: 1.25rem;
+    --ward-text-xl: 1.75rem;
+    --ward-text-2xl: 2.375rem;
+    --ward-space-1: 0.25rem;
+    --ward-space-2: 0.5rem;
+    --ward-space-3: 0.75rem;
+    --ward-space-4: 1rem;
+    --ward-space-5: 1.25rem;
+    --ward-space-6: 1.5rem;
+    --ward-space-8: 2rem;
+    --ward-space-10: 2.5rem;
+    --ward-space-12: 3rem;
+    --ward-space-16: 4rem;
+    --ward-radius: 6px;
+    --ward-radius-lg: 10px;
+    --ward-rule: 1px;
+    --ward-rule-strong: 2px;
+    --ward-transition: 120ms ease;
+    --ward-max-width-wide: 36rem;
+  }
+}
+
+/*
+ * The console is a surface, not a theme. It declares the raw --ward-* colours
+ * itself under [data-ward-surface="console"], so it stays dark whatever
+ * data-theme says on <html>. A switch for the public pages must not erase it:
+ * the console's spec is to look visibly unlike the ordinary login page.
+ */
+
+/*
+ * The names of the tokens are fixed; their values are the sign-in side's to
+ * change. Colours, shadows, the focus ring and the page width are re-pointed per
+ * surface, so they are variables on the element and `@theme inline` maps the
+ * Tailwind names onto them. With a plain @theme the value would be substituted
+ * once on :root, and neither the console's re-pointing nor the public dark
+ * block would reach a utility.
+ */
+@theme inline {
+  --color-ward-bg: var(--ward-bg);
+  --color-ward-surface: var(--ward-surface);
+  --color-ward-surface-sunken: var(--ward-surface-sunken);
+  --color-ward-border: var(--ward-border);
+  --color-ward-border-strong: var(--ward-border-strong);
+  --color-ward-text: var(--ward-text);
+  --color-ward-text-muted: var(--ward-text-muted);
+  --color-ward-text-faint: var(--ward-text-faint);
+  --color-ward-accent: var(--ward-accent);
+  --color-ward-accent-hover: var(--ward-accent-hover);
+  --color-ward-accent-text: var(--ward-accent-text);
+  --color-ward-danger: var(--ward-danger);
+  --color-ward-danger-surface: var(--ward-danger-surface);
+  --color-ward-notice: var(--ward-notice);
+  --color-ward-notice-surface: var(--ward-notice-surface);
+
+  --shadow-ward: var(--ward-shadow);
+  --shadow-ward-lg: var(--ward-shadow-lg);
+  --shadow-ward-focus: var(--ward-focus);
+
+  --container-ward: var(--ward-max-width);
+}
+
+@theme {
+  /* A system stack on purpose: see the header. */
+  --font-ward: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-ward-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  /* Ward's type scale. lg, xl and 2xl replace Tailwind's sizes of the same names
+     (1.125, 1.25 and 1.5rem). Every size inherits the body's 1.5 line height,
+     where Tailwind's own sizes each carry one. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.5;
+  --text-xl: 1.75rem;
+  --text-xl--line-height: 1.5;
+  /* The destination line, the one piece of type on this surface allowed to be
+     large. */
+  --text-2xl: 2.375rem;
+  --text-2xl--line-height: 1.5;
+  /* Capped well below 2xl: at the form's 26rem measure a larger size breaks
+     "Continue to Atrium" across two lines and the heading starts to dominate a
+     screen whose job is the two fields under it. */
+  --text-ward-signpost: clamp(1.5rem, 1.1rem + 1.5vw, 2.125rem);
+  --text-ward-signpost--line-height: 1.12;
+
+  --radius-ward: 6px;
+  --radius-lg: 10px;
+
+  /* The one screen that is read rather than crossed (self-service) has room
+     for a second column's worth of grants. */
+  --container-ward-wide: 36rem;
+
+  --ease-ward: ease;
+}
+
+@layer base {
+  /*
+   * The raw colours. The public pages are a pale limestone: cooler and greyer
+   * than a cream, warm enough to sit beside atrium's paper, mineral enough not
+   * to argue with newspapper's ink. All three text weights clear 4.5:1 on
+   * --ward-bg; --ward-text-faint at 4.95:1 is the floor, and the reason that
+   * value is not lighter. The accent is a deep lichen green, desaturated enough
+   * to read as a threshold, dark enough to carry white text at 8.9:1. `danger`
+   * is for destructive confirmations, not for form errors: a wrong password is
+   * ordinary and should not read as an alarm.
+   */
+  :root {
+    --ward-bg: #f2f1ec;
+    --ward-surface: #fdfdfc;
+    --ward-surface-sunken: #e7e6e0;
+    --ward-border: #d6d4cc;
+    --ward-border-strong: #a9a69b;
+
+    --ward-text: #1a1c1a;
+    --ward-text-muted: #4d514b;
+    --ward-text-faint: #66695f;
+
+    --ward-accent: #35473c;
+    --ward-accent-hover: #24312a;
+    --ward-accent-text: #f4f5f1;
+
+    --ward-danger: #8a2e21;
+    --ward-danger-surface: #f9eae7;
+    --ward-notice: #5e4c0e;
+    --ward-notice-surface: #faf2d8;
+
+    /* Shadows, barely: depth here would make a door look like a dialog. */
+    --ward-shadow: 0 1px 2px rgb(26 28 26 / 6%), 0 1px 1px rgb(26 28 26 / 4%);
+    --ward-shadow-lg: 0 4px 16px rgb(26 28 26 / 8%);
+    --ward-focus: 0 0 0 3px rgb(53 71 60 / 30%);
+
+    --ward-max-width: 26rem;
+  }
+
+  /*
+   * The console deliberately does NOT look like the login page. Its spec:
+   * "Make it visibly not the ordinary login page; someone reaching for
+   * break-glass should know they have." That is a safety property, not a style
+   * preference: the console is superuser-only, every route on it changes
+   * authority, and its one credential cannot be revoked or rotated without a
+   * redeploy. It should feel like a different building. A wrapper (or, for a
+   * portalled dialog, the popup itself) carries data-ward-surface="console", and
+   * the same names are re-pointed, so no component needs console-specific code.
+   */
+  [data-ward-surface="console"] {
+    --ward-bg: #17181a;
+    --ward-surface: #202225;
+    --ward-surface-sunken: #121314;
+    --ward-border: #34373b;
+    --ward-border-strong: #4c5055;
+
+    --ward-text: #e8e6e1;
+    --ward-text-muted: #a2a09a;
+    --ward-text-faint: #75736d;
+
+    --ward-accent: #b8894a;
+    --ward-accent-hover: #cb9a58;
+    --ward-accent-text: #17181a;
+
+    --ward-danger: #e0705c;
+    --ward-danger-surface: #34211d;
+    --ward-notice: #d8b25e;
+    --ward-notice-surface: #302915;
+
+    --ward-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+    --ward-shadow-lg: 0 8px 28px rgb(0 0 0 / 50%);
+    --ward-focus: 0 0 0 3px rgb(184 137 74 / 32%);
+    --ward-max-width: 72rem;
+  }
+
+  body {
+    background-color: var(--ward-bg);
+    color: var(--ward-text);
+    font-family: var(--font-ward);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The console re-points the tokens on a wrapper inside <body>, so the page
+     ground behind it has to be re-painted too, or the login surface's limestone
+     shows through under a short console page. */
+  body:has([data-ward-surface="console"]) {
+    background-color: #17181a;
+  }
+
+  /* An element default no utility can reach: never remove a focus ring, this is
+     a keyboard-first form surface. */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--ward-focus);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The only !important in the UI: it has to beat every utility's duration. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

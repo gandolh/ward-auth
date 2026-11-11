@@ -7,7 +7,6 @@ import { Account } from "./pages/Account.js";
 import { Login } from "./pages/Login.js";
 import { Register } from "./pages/Register.js";
 import { Verify } from "./pages/Verify.js";
-import "./ward.css";
 
 /**
  * The console, in a chunk of its own. Only the console imports Base

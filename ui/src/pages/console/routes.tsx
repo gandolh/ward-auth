@@ -42,7 +42,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { consoleApi, type ConsoleSessionView } from "../../console-api.js";
-import "./console.css";
 import { AccountDetailScreen } from "./AccountDetail.js";
 import { AccountsScreen } from "./Accounts.js";
 import { AppDetailScreen } from "./AppDetail.js";

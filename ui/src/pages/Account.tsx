@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
+import { ThemeSwitch } from "../components/ThemeSwitch.js";
 import { lede, prose, link, form, actions, button, hint } from "../components/looks.js";
 import {
   WardApiError,
@@ -281,6 +282,10 @@ function SignedIn({
 
       <ChangePassword onSignedOut={onSignedOut} />
       <OtherDevices onSignedOut={onSignedOut} />
+      <h2>Theme</h2>
+      <p className={prose}>Light, dark, or whatever your device uses. Kept on this device only.</p>
+      <ThemeSwitch />
+
       <SignOut username={session.username} />
     </Threshold>
   );

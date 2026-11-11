@@ -4,6 +4,25 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="light" />
+    <script>
+      // The saved theme before the first paint, so a dark choice never flashes light. Light on a first visit, even
+      // when the system is dark. It touches no cookie and makes no request; src/theme.ts does the same at runtime and
+      // follows the system while the choice is System.
+      (function () {
+        var theme = "light";
+        try {
+          var saved = localStorage.getItem("theme");
+          if (saved === "dark" || saved === "system") theme = saved;
+        } catch (error) {
+          // Storage is blocked: light.
+        }
+        var dark =
+          theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+        document.querySelector('meta[name="color-scheme"]').setAttribute("content", dark ? "dark" : "light");
+      })();
+    </script>
     <title>Ward</title>
   </head>
   <body>

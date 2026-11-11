@@ -21,6 +21,10 @@
    loads, so the sign-in pages download only what they use. */
 @source not "../pages/console";
 
+/* The sign-in pages' dark theme is a block of raw colours under data-theme (below), so most utilities follow with no
+   dark: class at all. The variant is for what a colour cannot carry. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /*
  * The console is a surface, not a theme. It declares the raw --ward-* colours
  * itself under [data-ward-surface="console"], so it stays dark whatever
@@ -65,6 +69,44 @@
     --ward-focus: 0 0 0 3px rgb(53 71 60 / 30%);
 
     --ward-max-width: 26rem;
+  }
+
+  /* Light on a first visit, even when the system is dark; the switch (src/theme.ts) and the boot script in index.html
+     set data-theme to the one in force, "system" already resolved. */
+  :root {
+    color-scheme: light;
+  }
+
+  /*
+   * The sign-in pages' dark theme: the same lichen and limestone, turned over. Near-black with a green cast (the
+   * console's dark is warmer and amber, and must stay visibly another building), the accent lightened so it carries
+   * dark text, every text weight clear of 4.5:1 on --ward-bg.
+   */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --ward-bg: #1a1c1a;
+    --ward-surface: #222522;
+    --ward-surface-sunken: #151715;
+    --ward-border: #353a35;
+    --ward-border-strong: #5a6059;
+
+    --ward-text: #e9ebe7;
+    --ward-text-muted: #b3b7b0;
+    --ward-text-faint: #8f948b;
+
+    --ward-accent: #9fbfa8;
+    --ward-accent-hover: #b6d2be;
+    --ward-accent-text: #14201a;
+
+    --ward-danger: #e58a78;
+    --ward-danger-surface: #3a2320;
+    --ward-notice: #dcbf6b;
+    --ward-notice-surface: #332c15;
+
+    --ward-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+    --ward-shadow-lg: 0 4px 16px rgb(0 0 0 / 50%);
+    --ward-focus: 0 0 0 3px rgb(159 191 168 / 35%);
   }
 
   /*

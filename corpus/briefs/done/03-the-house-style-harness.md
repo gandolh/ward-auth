@@ -200,6 +200,140 @@ One commit per step, straight on `main`, each with `npm run typecheck`, `npm tes
 
 ## Interplay
 
-- **Brief 04** adds nothing to the gate. **Brief 05** adds `better-tailwindcss` and drops `check-base-ui`'s `--warn-only`; its `fmt` glob loses `ui/src/**/*.css` except `ui/src/styles/index.css`. **Brief 06** drops `check-structure`'s `--warn-only`, adds dependency-cruiser and records the `shared-library` `process.env` exceptions.
+- **Brief 04** adds nothing to the gate. **Brief 05** adds `better-tailwindcss` and drops `check-base-ui`'s `--warn-only`; its `fmt` glob loses `ui/src/**/*.css` except `ui/src/styles/index.css`. **Brief 06** drops `check-structure`'s `--warn-only`, ~~adds dependency-cruiser~~ and records the `shared-library` `process.env` exceptions. *(2026-11-11: dependency-cruiser landed in this brief, by the controller's ruling, as `.dependency-cruiser.cjs` and in `check:conventions`, with `no-circular` a dated warning for the library's one type-only cycle; brief 06 keeps its features-against-domain-modules rules and the cross-feature check. `format` and `format:check` run over `.`, so brief 05 has no glob to change.)*
 - The skills library's brief 25 (the security audit) runs on ward-auth first, by the owner's answer of 2026-11-10 (Q34): one focused run of about an hour on the login, session and token code, and its findings become ward-auth briefs. It reads the same tree, so it should run after this reformat and sees formatted code and a typed lint; this brief changes no behaviour for it to re-run against, apart from the five parameter properties.
 - The reformat touches files every later brief rewrites. Run it when no other brief has uncommitted work.
+
+## Outcome
+
+Built on 2026-11-11 on `main`, committed and not pushed, with house-style
+1.1.0 (library commit `e9de59a`). Commits, in order: `eee7d66` the vendor
+test's wording, `881aa81` the copy and the pins, `2396c0e` `lint` over `.`,
+`4a16054` Prettier at 120 over `.`, `25252ac` `style: format with Prettier`,
+`38a9327` the blame-ignore file, `98edcf5` the tsconfig flags, `031b145` the
+source `!` as guards, `b4a12f0` ward-auth 0.7.1, `ee01889` the house ESLint
+config, `e9dc609` the gate, `870fbd2` the incremental typecheck, `d1201f4`
+the root `CLAUDE.md` and `.claude/rules/`, `718dcf1` the decisions entry,
+`8c4e0ad` the changelog's banner line, `cc126ec` brief 06's note, then this
+closeout.
+
+**Measured** at `881aa81`, the flags on: tsc `noUncheckedIndexedAccess` 0,
+`verbatimModuleSyntax` 0, `erasableSyntaxOnly` 5 (api 2, library 3),
+`exactOptionalPropertyTypes` 24 (8, 14, 2), as the brief says. The test suite
+had the one known failure (1235 of 1236), fixed first.
+
+**Lint, before and after** (house config; source / tests / harness):
+
+| Rule | Before | After |
+|---|---|---|
+| `no-non-null-assertion` | 32 / 351 (warn) / 9 | 0 / 345 (warn) / 0 |
+| `no-unnecessary-type-assertion` | 4 / 16 / 0 | 0 |
+| `n/no-process-env` | 2 / 0 / 12 | 2 / 0 / 12, warnings |
+| `no-console` | 0 / 3 / 0 | 0 |
+| `vitest/no-standalone-expect` | 0 / 4 / 0 | 0 |
+| `await-thenable` | 0 / 1 / 0 | 0 |
+| `consistent-type-imports` | 0 / 1 / 0 | 0 |
+| every other rule | 0 | 0 |
+
+84 errors and 351 warnings before; 0 errors and 359 warnings after. The
+warnings left: the 345 test `!` (decision 6), and `n/no-process-env` on
+`shared-library/src/fastify/plugin.ts`, `ward/client.ts` (the two documented
+fallbacks) and the harness's 12 writes, in a dated block until the
+library's exceptions are recorded. The brief's other counts, as found:
+`consistent-type-imports` 71 are `typeof import()` annotations the house
+allows (1 real); `@ts-expect-error` is 1 directive, already described (the
+other 2 are prose); `vitest/no-conditional-expect` is off in the house, so its
+10 are not findings; `switch-exhaustiveness-check` 0 with the house option.
+7 of the 20 dead assertions were `response.json() as T`, which the rule wants
+as `json<T>()` and doesn't fix itself.
+
+**Each `!` in source** guards a value that is always there: the db layer's
+`INSERT … RETURNING *` and `count(*)` (`requireRow` in `db/prepared.ts`),
+`config.ts`'s refined variables (`refined()`), the console's re-read rows
+(after the transaction for disable and enable, so it commits and then fails
+as `accountView(undefined)` did; inside it for rename and the two app
+writes, where the row was used next), and the rest narrowed in place. The
+compiled API differs from the commit before only by those guards; the
+React bundle is unchanged; the server bundle differs in `migrateSqlite`'s
+last migration and `wardClientOptionsFromEnv` (same checks and `TypeError`).
+So the library took 0.7.1, no change for apps; the parameter property alone
+would not have needed it (its built class is byte for byte the same).
+
+**The reformat:** 138 files, 2,323 lines out and 996 in, Prettier 3.9.10.
+`git diff -w` is not empty (rewrapped lines show under it), so the bundle
+compare stands in: 209 code, CSS, JSON and YAML files, esbuild-minified and
+JSON and YAML parsed, 202 identical. The 7 that differ are UI pages
+(`Login.tsx`, `Register.tsx`, console `AccountDetail.tsx`, `AppDetail.tsx`,
+`Apps.tsx`, `Login.tsx`, `OidcClient.tsx`) whose JSX text Prettier rejoined or
+split with `{" "}`: the same rendered text. The built library bundles,
+minified, are identical before and after.
+
+**Checkers and tools.** knip: 0 unused files and dependencies; 25 unused
+exports, 26 types, 1 duplicate (warnings); `docs` in `ignoreWorkspaces`, the
+unused `api/src/tokens/index.ts` barrel in `ignore` with a dated note.
+dependency-cruiser: 211 modules, 1,019 dependencies, one `no-circular`
+(`shared-library/src/fastify/plugin.ts` ↔ `fastify/ward.ts`, type-only), a
+dated warning. `check-base-ui` strict: 6 errors (rule 3 ×3: console
+`Accounts.tsx:18`, `Apps.tsx:27`, `ui.tsx:21`; rule 5 ×3: `console.css`,
+`tokens.css`, `ward.css`), so `--warn-only`. `check-structure` strict: 74
+errors and 23 warnings (rule 1 ×1 `api/src/index.ts:39`, rule 3 ×2 the
+library's fallbacks, rule 6 ×71 in the route files, rule 11 ×23), so
+`--warn-only`.
+
+**Timings:** `npm run check` 45.4 s warm (57.7 s at load average 12);
+`check:fast` 8.3-9.0 s with one API file changed, 9.8 s with one UI file,
+5.6 s with nothing changed; `typecheck` 6.1 s warm, 11.3 s cold (12 s before,
+every time); `eslint .` about 20 s cold; knip 1.9 s; dependency-cruiser 2.2 s.
+
+**Checks run:** `npm run check` (exit 0, 1236 tests), `npm run build`,
+`npx prettier --check .`, `npm run house-style:sync -- --check`, the bundle
+compares above, a mis-format in `ui/vite.config.ts` failing `format:check`
+(exit 1), an `enum`, a `!`, a `console.log`, a `// TODO` and an
+`export default` in `api/src/app.ts` each failing `npx eslint` (exit 1),
+reverted; api's `tsc` in a copy holding only what the image copies (exit 0);
+`git diff 137c4be -- infrastructure/Dockerfile` empty; no `package.json` with
+a git, `github:` or tarball dependency; the hooks run by hand with Claude
+Code's event JSON (the formatter formatted a messy file and left Markdown
+alone; the Stop hook exited 2 on a type error and on a `console.log`, and 0
+once fixed); `bash corpus/lint.sh` clean. Under load (average 9-12),
+`api/src/config.proxies.test.ts` and `config.oidc.test.ts` timed out once in
+the full suite; alone they pass, and `config.proxies.test.ts` timed out at
+`137c4be` under the same load, so it predates this brief.
+
+**Checks skipped:** `docker build` (no Docker builds on this machine; the
+image's compile ran on a copy instead); the live-session hook check, which
+waits for the plugin update.
+
+**Deviations:**
+
+- `format` and `format:check`, the house names, replace `fmt` and
+  `fmt:check`: the skill decides script names.
+- Prettier is 3.9.10, the house pin, not 3.9.6.
+- `tsconfig.base.json` holds the flags itself rather than extending the
+  vendored base: the image's deps stage copies only that file.
+- The format widening landed with the width change (`4a16054`), not before
+  it, so the files the globs missed weren't formatted at 100 first.
+- No `allowDefaultProject` or `disableTypeChecked` entries: the house config
+  lints JavaScript and `*.config.*` without types.
+- `typecheck` runs `tsc -p` per workspace with `--incremental` and build
+  info under `node_modules/.tmp/`, not `tsc -b` (the workspaces aren't
+  composite projects), then the docs site's own typecheck.
+- dependency-cruiser landed here (the controller's ruling).
+- `dependency-cruiser` 18.7.2 pins `semver` 7.8.6 and `acorn` 8.19.0 exactly,
+  and npm hoisted both: `semver` 7.8.5 → 7.8.6 is in the image's runtime tree
+  through `fastify`; `acorn` reaches only `docs/`. Asked on the board.
+- `.npmrc` with `save-exact=true` is new (the skill's rule 25).
+- The three `console.log` lines in `api/src/integration/estate.test.ts` are
+  gone; the assertions below them carry the same values.
+- The root `CLAUDE.md` has a Hard rules section, which the skill's shape has
+  and this brief didn't list.
+- The deliberate violations ran through `npx eslint` and `format:check`, not
+  the whole `npm run check`.
+
+**`docs/` files** the new globs would reach without the ignore: 11
+(`docusaurus.config.ts`, `sidebars.ts`, `scripts/build-diagrams.mjs`,
+`scripts/sync-corpus.mjs`, `src/components/Diagram.tsx`, `src/css/custom.css`,
+`package.json`, `tsconfig.json` and three `diagrams/*.json`).
+
+**Owner steps:** `git config blame.ignoreRevsFile .git-blame-ignore-revs`;
+then `node cli.ts ward deploy`, from the vps-deploy checkout.

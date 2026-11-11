@@ -1,16 +1,16 @@
 ---
-summary: Dated snapshot (2026-11-04) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 11-04 (not deployed), the local seed's ten apps, ward-auth 0.7.0 and which version each app vendors; the owner's next steps and known gaps.
-updated: 2026-11-04
+summary: Dated snapshot (2026-11-11) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 11-04 (not deployed), the local seed's ten apps, the house style and npm run check (2026-11-11, not deployed), ward-auth 0.7.1 and which version each app vendors; the owner's next steps and known gaps.
+updated: 2026-11-11
 ---
 
-# Status — 2026-11-04
+# Status — 2026-11-11
 
 `origin/main` is at `a5520e3`; the commits after it (briefs 01 and 02, built
 2026-11-04) are local. Brief numbering restarted at 01 on 2026-11-02
 (see [../log.md](../log.md), "Briefs reset"). Four briefs were written on
-2026-11-10 and none is started: the house style and quality harness (03), Base
-UI by the conventions (04), the UI to Tailwind (05) and the server in the
-house code structure (06). They follow the owner's estate calls of 2026-11-09
+2026-11-10: the house style and quality harness (03, built 2026-11-11, local
+and not deployed), Base UI by the conventions (04), the UI to Tailwind (05)
+and the server in the house code structure (06). They follow the owner's estate calls of 2026-11-09
 and were revised the same day to the answers of the grilling of 2026-11-10; a
 fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas waiting to be specced are in
 [../todos/](../todos/).
@@ -58,16 +58,25 @@ fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas 
 - **The local Ward** (`infrastructure/local/`). Its seed lists ten apps since
   2026-11-04: Wicket, ro-housing and Lantern joined the seven. The seed hasn't
   run for the three yet; it needs the owner's credentials (Next, below).
-- **ward-auth** (`shared-library/`, 0.7.0 on 2026-10-27). 0.4.0 renames a user,
+- **The house style** (2026-11-11, not deployed). Prettier at 120, the house
+  tsconfig flags and ESLint config from `vendor/house-style/` (1.1.0), and
+  `npm run check` as the gate, with `check:fast` for the Stop hook
+  ([decisions-implementation.md](decisions-implementation.md)). Both
+  convention checkers run `--warn-only` until the UI and server work.
+- **ward-auth** (`shared-library/`, 0.7.1 on 2026-11-11). 0.4.0 renames a user,
   0.5.0 shapes a new Ward user's name, 0.6.0 disables a local user, 0.6.1
-  exports the new names, 0.7.0 keeps a refused sign-in's return path. Vendored
+  exports the new names, 0.7.0 keeps a refused sign-in's return path, 0.7.1
+  is the house style with no change for apps. Vendored
   (read 2026-11-02): 0.7.0 in sports-app, 0.4.0 in shelfmark, 0.3.1 in atrium,
   newspapper, prm, satchel and almanac. Each app adopts a version itself.
 
 ## Next (owner)
 
 - **Deploy Ward** (`node cli.ts ward all` in `vps-deploy`): ships the console
-  work and the docs site.
+  work and the docs site; `node cli.ts ward deploy` ships the house-style
+  commits.
+- **Have git blame skip the reformat:**
+  `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 - **Re-vendor ward-auth** in the apps that want 0.4.0 to 0.7.0; the comment-only
   source changes of 2026-11-02 reach them with the next vendor run.
 - **Delete imbatranimOS's app row** in the deployed database.
@@ -78,10 +87,11 @@ fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas 
 
 ## Known issues
 
-- **One test fails since 2026-11-01**: `shared-library/scripts/vendor.test.ts`
-  still expects the vendored README to name the GitHub URL, which `5de7c6b`
-  replaced with "the `ward-auth` repository" in `vendor.mjs`. The test needs
-  the new wording (1230 of 1231 pass).
+- **Two tests time out on a busy machine**: `api/src/config.proxies.test.ts`
+  and `config.oidc.test.ts` boot a child process each and can pass 5 s when
+  the load average is near 10. Alone they pass, and they did the same before
+  2026-11-11. The vendored README test, failing since 2026-11-01, passes
+  again (1236 of 1236).
 - No error boundary for a failed console chunk load; only a full page load of
   `/console` fetches it, with a fresh `index.html`.
 

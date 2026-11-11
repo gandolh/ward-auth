@@ -690,3 +690,29 @@ is Ward's own (Q1), the slow SMTP keeps its timeout (no `connectionTimeout`), no
 test seam. No brief changes a route, a cookie or a token format. Brief 07 is new: a redesign with
 Hallmark on the estate board. The security audit runs on Ward first (Q34), noted in each brief's
 Interplay. Work happens on `main`, with no PRs. Nothing was changed outside `corpus/`.
+
+## [2026-11-11] done | Brief 03: the house style and the quality harness
+
+Ward follows the estate's house style from `vendor/house-style/` (house-style
+1.1.0, library commit `e9de59a`), and `npm run check` is the gate. Measured at
+the start: the flags as the brief said (`noUncheckedIndexedAccess` 0,
+`verbatimModuleSyntax` 0, `erasableSyntaxOnly` 5, `exactOptionalPropertyTypes`
+24); the house lint 84 errors and 351 warnings (`!` 32 source, 9 harness, 351
+tests; dead assertions 4 and 16; `process.env` 2 and 12; `console` 3, standalone
+`expect` 4, `await-thenable` 1, `consistent-type-imports` 1, all in tests); the
+suite 1235 of 1236, the vendor test fixed first. The reformat at 120 touched
+138 files (2,323 lines out, 996 in); the esbuild compare found 202 of 209 files
+identical and the 7 others JSX text split with `{" "}`. The 41 `!` became guards
+whose failing branch can't be reached, checked against the compiled API and the
+built bundles after each step; ward-auth 0.7.1 is a patch with no change for
+apps. After: 0 errors and 359 warnings (345 test `!`, 14 library
+`process.env`). knip 0 unused files and dependencies (25 exports, 26 types, 1
+duplicate as warnings); dependency-cruiser 1 type-only cycle in the library, a
+dated warning; `check-base-ui` 6 and `check-structure` 74 errors and 23
+warnings, both `--warn-only`. `check` 45 s warm; `check:fast` 8-10 s with one
+file changed, after `typecheck` became incremental (12 s to 6 s). The hooks,
+run by hand, format a saved file and stop on a type error. Not pushed; the
+owner sets `blame.ignoreRevsFile` and deploys. Asked on the board: decision
+10's version question, who moves `SessionValidator`, and the `semver` 7.8.6 that
+dependency-cruiser's pin hoisted into the image.
+

@@ -1,6 +1,6 @@
 ---
 summary: What Ward is — the estate's identity service and, since the 2026-10-13 redesign, the OpenID Connect provider behind every app's "Sign in with Ward" button, while each app owns its accounts — the shape in a paragraph, what the repo holds, and how to pick up the thread.
-updated: 2026-11-02
+updated: 2026-11-11
 ---
 
 # Overview
@@ -45,7 +45,7 @@ built, unminified library in `shared-library/`. Each app copies it into
   `/introspect` went too.
 - `ui/`: the login page, self-service and the console, with a "Sign in with
   Ward" panel per app for its redirect URIs and public key.
-- `shared-library/`: the library, at 0.7.0; each app vendors a version of its
+- `shared-library/`: the library, at 0.7.1; each app vendors a version of its
   own ([status.md](./status.md) lists them).
 - `docs/`: the Docusaurus site at `/ward/docs`, and `docs/cutover-oidc.md`, the
   owner's runbook for taking the redesign to production (done 2026-10-13).

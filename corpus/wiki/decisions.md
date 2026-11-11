@@ -183,6 +183,32 @@ found again by its `data-wc-focus` key, or else to the heading (2026-10-27):
 confirmation use the same rule (2026-11-04), and a role added or removed lands
 on the Access panel's heading (owner, 2026-11-03).
 
+**Where the wrappers live (2026-11-11, technical call).** Base UI is imported
+only under the console's own `ui/src/pages/console/ui/`, one file per
+primitive: `Confirm.tsx` and `Collapsible.tsx`, named exports. Not under
+`ui/src/components/ui/`: that folder sits beside the sign-in pages' `Field` and
+`Notice`, one wrong import from a page that must download none of it. The
+folder is named in `scripts/conventions.json` (`"ui"`), so `check-base-ui`
+rule 3 allows it there and nowhere else. The sign-in pages are the rule 13
+exception: their hand-built fields stay, because Base UI's `Field` would put
+its JavaScript on the page every app sends people to. The entry chunk's
+sourcemap listing no `@base-ui` source (the lazy console chunk lists 103) is
+the proof, and the check to rerun after any import change.
+
+**Native controls kept (2026-11-11, technical call).** The four `<select>`s
+(the audit filters, the grant form's app) are plain fields in forms that an
+Apply or submit button commits, with a handful of options and no custom
+rendering, so the `RadioGroup` rule for a live filter doesn't apply. The role
+suggestions stay a `<datalist>` on a free-text field: a native text input with
+suggestions, not a `Combobox`. The three `textarea`s are text input. Moving any
+of them is a new brief that re-measures the console chunk.
+
+**Confirm's focus order (2026-11-11).** Cancel first, which is what Base UI's
+`AlertDialog` does by default and what the base-ui skill's confirm pattern
+sets with `initialFocus`: a destructive confirm never defaults to its action.
+`Confirm.test.tsx` holds it, with the busy guard, under `jsdom` (a docblock per
+test file; the root project stays in Node).
+
 ## Inherited — not ours to break quietly
 
 Locked in another repo. A design here may contradict one, but must say so out

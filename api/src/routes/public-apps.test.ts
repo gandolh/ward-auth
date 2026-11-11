@@ -60,7 +60,7 @@ it("returns only slug and name, never the baseline role or the timestamps", asyn
   });
 
   const response = await list();
-  const [entry] = response.json() as Record<string, unknown>[];
+  const [entry] = response.json<Record<string, unknown>[]>();
 
   expect(Object.keys(entry!).sort()).toEqual(["name", "slug"]);
   expect(response.body).not.toContain("contributor");

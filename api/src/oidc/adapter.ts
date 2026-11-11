@@ -173,7 +173,7 @@ export class SqliteAdapter implements Adapter {
   private findClient(id: string): AdapterPayload | undefined {
     const row = getApp(this.db, id);
     if (row === undefined) return undefined;
-    return clientMetadataFor(row) as AdapterPayload | undefined;
+    return clientMetadataFor(row);
   }
 
   /**

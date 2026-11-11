@@ -451,7 +451,7 @@ function errorCode(body: unknown, status: number): string {
  * Adding a method must not add a second place any of those are decided.
  */
 export function createConsoleApi(fetchImpl?: FetchLike): ConsoleApi {
-  const doFetch: FetchLike = fetchImpl ?? ((input, init) => globalThis.fetch(input, init) as Promise<Response>);
+  const doFetch: FetchLike = fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
 
   // `body` is widened deliberately: every caller hands over a plain object and
   // this function is the single place it becomes JSON, so no method can forget

@@ -140,7 +140,7 @@ export async function verifyAccessToken(
       requiredClaims: ["sub", "jti", "sid", "iat", "exp", "iss", "aud"],
       typ: "JWT",
     });
-    payload = result.payload as Record<string, unknown>;
+    payload = result.payload;
   } catch (cause) {
     throw new AccessTokenVerificationError("access token is not valid", { cause });
   }

@@ -28,7 +28,7 @@ function identity(overrides: Partial<WardIdentity> = {}): WardIdentity {
 describe("createWardIdentities", () => {
   it("refuses a store without the Ward methods", () => {
     const { accounts } = setup();
-    const bare: AuthStore = { ...accounts.store } as AuthStore;
+    const bare: AuthStore = { ...accounts.store };
     delete (bare as Partial<{ findWardLinkBySubject: unknown }>).findWardLinkBySubject;
     expect(() => createWardIdentities({ accounts: { ...accounts, store: bare } })).toThrow(/WardAuthStore/);
   });

@@ -147,7 +147,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
       // The token is in the cookie and nowhere else — a body copy would make
       // HttpOnly decorative.
       expect(response.body).not.toContain("wcs_");
-      const payload = response.json() as { session: { id: string; idleTimeoutSeconds: number } };
+      const payload = response.json<{ session: { id: string; idleTimeoutSeconds: number } }>();
       expect(payload.session.id).toMatch(/^[0-9a-f]{32}$/);
       expect(payload.session.idleTimeoutSeconds).toBe(superuser.CONSOLE_SESSION_IDLE_TIMEOUT_SECONDS);
       expect(payload.session).not.toHaveProperty("subject");
@@ -373,7 +373,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
         headers: { cookie },
       });
       expect(authorized.statusCode).toBe(200);
-      expect((authorized.json() as { session: { id: string } }).session.id).toMatch(/^[0-9a-f]{32}$/);
+      expect(authorized.json<{ session: { id: string } }>().session.id).toMatch(/^[0-9a-f]{32}$/);
 
       const anonymous = await app.inject({ method: "GET", url: "/console/session" });
       expect(anonymous.statusCode).toBe(401);

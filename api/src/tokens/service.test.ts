@@ -69,7 +69,7 @@ beforeAll(async () => {
 
   const service = await import("./service.js");
   verifyWardAccessToken = service.verifyWardAccessToken;
-  forced = service.verifyWardAccessToken as unknown as WithOverrides;
+  forced = service.verifyWardAccessToken;
   keySet = await service.getKeySet();
 });
 

@@ -469,7 +469,7 @@ describe("rename", () => {
     const h = await build();
     const signedIn = await login(h, "alice", "correct horse");
     const cookie = cookieFrom(signedIn)!;
-    const id = (signedIn.json() as { user: { id: string } }).user.id;
+    const id = signedIn.json<{ user: { id: string } }>().user.id;
 
     const response = await h.app.inject({
       method: "POST",

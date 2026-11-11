@@ -888,8 +888,8 @@ describe("the same-token refresh race", () => {
      * absence of `Set-Cookie` differs. See `refreshRejected` for what that
      * concedes and why it is worth it.
      */
-    const winner = first!.statusCode === 200 ? first! : second!;
-    const loser = first!.statusCode === 200 ? second! : first!;
+    const winner = first.statusCode === 200 ? first : second;
+    const loser = first.statusCode === 200 ? second : first;
     expect([winner.statusCode, loser.statusCode]).toEqual([200, 401]);
     expect(loser.headers["set-cookie"]).toBeUndefined();
     expect(loser.json()).toEqual({ error: "invalid_refresh" });
@@ -989,7 +989,7 @@ describe("a success only forgives its own account's failures", () => {
    */
   it("does not let one valid account buy unlimited guessing at another", async () => {
     const ip = "198.51.100.40";
-    await mod.users.createUser(db, {
+    mod.users.createUser(db, {
       username: "attacker",
       passwordHash: await mod.password.hashPassword(PASSWORD),
     });

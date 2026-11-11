@@ -1,4 +1,4 @@
-import { createPublicKey, generateKeyPairSync, verify } from "node:crypto";
+import { type createPublicKey, generateKeyPairSync, verify } from "node:crypto";
 
 import { describe, expect, it, vi } from "vitest";
 

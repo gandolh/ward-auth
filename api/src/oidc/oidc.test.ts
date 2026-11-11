@@ -113,7 +113,9 @@ beforeAll(async () => {
       jwks: publicJwk,
     },
   });
-  expect(registered.statusCode, registered.body).toBe(200);
+  if (registered.statusCode !== 200) {
+    throw new Error(`registering atrium's OIDC client: ${registered.statusCode} ${registered.body}`);
+  }
 });
 
 afterAll(async () => {
@@ -137,8 +139,9 @@ class Browser {
   /** Requests an external URL on Ward's origin, as Caddy would forward it. */
   async request(method: "GET" | "POST", url: string, form?: Record<string, string>): Promise<LightMyRequestResponse> {
     const target = new URL(url);
-    expect(target.origin, `the browser only talks to Ward here: ${url}`).toBe(ORIGIN);
-    expect(target.pathname.startsWith(`${STRIPPED}/`), `an API URL: ${url}`).toBe(true);
+    // A helper, not a test: a wrong URL fails the test that asked for it.
+    if (target.origin !== ORIGIN) throw new Error(`the browser only talks to Ward here: ${url}`);
+    if (!target.pathname.startsWith(`${STRIPPED}/`)) throw new Error(`an API URL: ${url}`);
 
     const cookie = [...this.jar.entries()]
       .filter(([, stored]) => pathMatches(target.pathname, stored.path))

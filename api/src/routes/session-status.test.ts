@@ -54,7 +54,7 @@ async function register(slug: string, publicJwk: JWK): Promise<void> {
   setOidcClient(db, slug, {
     redirectUris: [`http://localhost:5173/${slug}/auth/ward/callback`],
     postLogoutRedirectUris: [],
-    jwks: { keys: [publicJwk as Record<string, unknown>] },
+    jwks: { keys: [publicJwk] },
   });
 }
 

@@ -517,7 +517,7 @@ describe("flow 6 — per-device revocation: the reason the sid claim exists", ()
     const phoneAfter = await sessionFor(phone.accessToken);
 
     /**
-     * **This is the one result the controller most needs to see.**
+     * **This is the result that matters most here.**
      *
      * Before the `sid` claim existed, `resolveSession` (then `resolveSession
      * (db, subject)`, no session id) could only ask "does this account have
@@ -530,10 +530,6 @@ describe("flow 6 — per-device revocation: the reason the sid claim exists", ()
      * scoped to the family the presented token was minted under, not to the
      * account.
      */
-    console.log("flow 6 — per-device revocation, over real HTTP:");
-    console.log("  laptop (logged out) introspects:", JSON.stringify(laptopAfter.json()));
-    console.log("  phone  (still signed in) introspects:", JSON.stringify(phoneAfter.json()));
-
     expect(
       laptopAfter.json(),
       "the LOGGED-OUT device's access token — before sid, this was `active: true` for its remaining 15 minutes",

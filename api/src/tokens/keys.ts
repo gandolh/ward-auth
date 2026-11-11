@@ -236,7 +236,7 @@ async function toSigningKey(pem: string, path: string, label: string): Promise<W
   };
   assertPublicJwk(publicJwk);
 
-  return Object.freeze({ kid, privateKey, publicJwk: Object.freeze(publicJwk) as JWK });
+  return Object.freeze({ kid, privateKey, publicJwk: Object.freeze(publicJwk) });
 }
 
 /**

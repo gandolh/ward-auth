@@ -82,10 +82,10 @@ describe("GET .../sessions", () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers["cache-control"]).toBe("no-store");
 
-    const body = response.json() as {
+    const body = response.json<{
       sessions: Record<string, unknown>[];
       total: number;
-    };
+    }>();
     expect(body.total).toBe(2);
     expect(body.sessions.map((session) => session.familyId).sort()).toEqual([first.familyId, second.familyId].sort());
 

@@ -212,7 +212,7 @@ describe("GET /account", () => {
       headers: { cookie: `${mod.cookie.ACCESS_COOKIE_NAME}=${session.access}` },
     });
 
-    expect(Object.keys(introspection.json() as object).sort()).toEqual(["active", "grants", "subject", "username"]);
+    expect(Object.keys(introspection.json<object>()).sort()).toEqual(["active", "grants", "subject", "username"]);
 
     const account = await asAccount(session.access, { method: "GET", url: "/account" });
     expect(account.json().email).toBe(EMAIL);

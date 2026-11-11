@@ -78,7 +78,10 @@ beforeAll(async () => {
   }
   // Derived, not hardcoded — the point of the fixture is "every role in every
   // app", and that should not need editing each time the estate gains one.
-  expect(listGrantsForSubject(db, subject)).toHaveLength(seeded.length * roles.length);
+  const granted = listGrantsForSubject(db, subject).length;
+  if (granted !== seeded.length * roles.length) {
+    throw new Error(`the fixture holds ${granted} grants, not every role in every app`);
+  }
 
   const { mintAccessToken } = await import("../../tokens/service.js");
   ({ token: accessToken } = await mintAccessToken(subject, newFamilyId()));

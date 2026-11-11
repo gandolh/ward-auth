@@ -176,7 +176,7 @@ describe("a live session", () => {
     grant("newspapper", "reader");
     const live = await readSession(cookieValue(await login(), mod.cookie.ACCESS_COOKIE_NAME));
 
-    expect(Object.keys(live.json() as object).sort()).toEqual(["active", "grants", "subject", "username"]);
+    expect(Object.keys(live.json<object>()).sort()).toEqual(["active", "grants", "subject", "username"]);
   });
 
   it("is never cached by anything in the chain", async () => {

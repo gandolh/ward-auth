@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "concurrently --kill-others-on-fail \"npm run dev --workspace=api\"",
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "tsc -p api --noEmit --incremental --tsBuildInfoFile node_modules/.tmp/typecheck-api.tsbuildinfo && tsc -p ui --noEmit --incremental --tsBuildInfoFile node_modules/.tmp/typecheck-ui.tsbuildinfo && tsc -p shared-library --noEmit --incremental --tsBuildInfoFile node_modules/.tmp/typecheck-shared-library.tsbuildinfo && npm run typecheck -w @ward/docs-site",
     "test": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",

@@ -140,8 +140,8 @@ Decided on 2026-11-10 unless marked as a default.
 - `api/src/**`: the moves, the new plugin, the schemas wired in, the entry rename.
 - `api/package.json` (the new dependencies pinned, the `dev` script) and `package-lock.json`.
 - `infrastructure/Dockerfile` (the `CMD` line) and `infrastructure/local/compose.yaml` (line 23).
-- The root `package.json`: `check:conventions` gains dependency-cruiser, loses `check-structure`'s `--warn-only`.
-- `.dependency-cruiser.cjs` (new, from the skill's preset).
+- The root `package.json`: `check:conventions` gains dependency-cruiser, loses `check-structure`'s `--warn-only`. *(2026-11-11, brief 03: dependency-cruiser is already in `check:conventions`, over `api/src`, `ui/src` and `shared-library/src`.)*
+- `.dependency-cruiser.cjs` (new, from the skill's preset). *(2026-11-11, brief 03: it exists, extending the vendored house preset, with `no-circular` lowered to a dated warning for its one finding, the type-only cycle between `shared-library/src/fastify/plugin.ts` and `fastify/ward.ts`. This brief keeps adding the features-against-domain-modules rules and the deliberate cross-feature check, and raises `no-circular` back to an error once that cycle is gone.)*
 - `eslint.config.js`: `no-process-env` to error.
 - `scripts/conventions.json`, for the 11 excepted parse sites, the `shared-library` environment reads, and any entry-file or helper-name exception.
 - `.claude/rules/api.md`: the structure lines.
@@ -190,6 +190,6 @@ One commit per step, straight on `main`; after each, `npm run check` and `npm ru
 
 ## Interplay
 
-- Brief 03 sets `no-process-env` as a warning for `api/src`; the only source hit there is `config.ts`, so this brief only has to except it and make it an error.
+- Brief 03 sets `no-process-env` as a warning for `api/src`; the only source hit there is `config.ts`, so this brief only has to except it and make it an error. *(2026-11-11, brief 03: `n/no-process-env` is already an error in `api/src`, with `config.ts` excepted by the house config. The warnings left are in `eslint.config.js`'s `ward/library-process-env-warns` block: `shared-library/src/fastify/plugin.ts`, `ward/client.ts` and the test harness's 12 writes; `check-structure` rule 3 counts the first two. Brief 03 also left `knip.config.js` ignoring the unused `api/src/tokens/index.ts` barrel, for this brief's layout to use or delete.)*
 - The skills library's brief 25 (the security audit) runs on ward-auth first, by the owner's answer of 2026-11-10 (Q34): one focused run of about an hour on the login, session and token code, and its findings become ward-auth briefs. It reads the very code decision 2 keeps hand-parsed. Run it before this brief's step 5, or after the whole brief, not between: its findings on the malformed-body paths would otherwise point at moved files.
 - The skills library should hear about three things before the other servers run its brief 16: the zod provider rejects JSON-Schema response objects, a handler-sent status is the only one a schema may declare, and a repo may have parse sites whose failure has a side effect. All three apply beyond ward-auth.

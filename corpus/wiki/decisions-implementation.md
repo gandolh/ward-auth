@@ -1,6 +1,6 @@
 ---
-summary: The locked engineering calls made while building — the raw better-sqlite3 driver and why Knex was rejected, static-import migrations, scrypt over argon2id, the loopback bind default, the WAL checkpoint that makes a database backup honest, why the lockout is not keyed on request.ip, and integration tests that drive the real service. Session mechanics settled during the build live in decisions-tokens.md.
-updated: 2026-11-02
+summary: The locked engineering calls made while building — the raw better-sqlite3 driver and why Knex was rejected, static-import migrations, scrypt over argon2id, the loopback bind default, the WAL checkpoint that makes a database backup honest, why the lockout is not keyed on request.ip, integration tests that drive the real service, and the house style, formatted and checked by npm run check (2026-11-11). Session mechanics settled during the build live in decisions-tokens.md.
+updated: 2026-11-11
 ---
 
 # Decisions — implementation
@@ -162,3 +162,30 @@ whatever order they like and never hit it), and **`session.refresh_denied` is
 effectively unreachable** for the everyday disabled account, because `/refresh`
 peeks `sessionForRefreshToken` — which already excludes a disabled account —
 before the rotation that would write the row.
+
+## The house style, formatted and checked
+_2026-11-11_ — Ward follows the estate's house style, from the `house-style`
+configs copied into `vendor/house-style/` by `npm run house-style:sync`, and
+`npm run check` (typecheck, lint, format, conventions, tests) is the gate.
+
+- **Width 120**, with trailing commas, over everything but Markdown, the
+  corpus, `docs/` and the vendored copy. Ward was formatted at 100, so the
+  one-off reformat touched 138 files; `.git-blame-ignore-revs` skips it.
+- **Vendored, not a dependency.** The image has no git, and npm locks a
+  `github:` dependency as a git URL, so both `npm ci` stages would need it.
+- **`tsconfig.base.json` holds the house flags itself** instead of extending
+  the vendored base: the image's deps stage copies only that file.
+- **Compiler first, kept.** ESLint adds only what the compiler can't see: six
+  typed rules (floating and misused promises, awaits, exhaustive switches,
+  dead assertions, type imports), no enum, no `!` outside tests (a guard
+  instead), no TODO comment, `console` only before a logger exists or in a
+  CLI, `process.env` only in `config.ts`.
+- **Proved on emitted code.** Each step compared what it builds: every file
+  minified before and after the reformat, and the library's bundles and
+  `api/dist` after each fix. A step that changed a bundle's code took a
+  library version (0.7.1).
+
+**Rejected:** typescript-eslint's `recommendedTypeChecked` as a whole (it
+repeats the compiler and flags the house's own patterns);
+`exactOptionalPropertyTypes` for now (24 errors, counted for a later brief);
+Markdown under Prettier (the corpus has its own lint).

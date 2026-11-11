@@ -83,7 +83,7 @@ Decided on 2026-11-10 unless marked as a default.
 - `ui/src/pages/console/ui.tsx` (`Confirm` leaves it), the new `ui/src/pages/console/ui/Confirm.tsx` and `ui/src/pages/console/ui/Collapsible.tsx`, and their tests (`Confirm.test.tsx` under jsdom).
 - `ui/package.json` and `package-lock.json`, only for the test dependencies in decision 6 (`jsdom`, Testing Library, pinned), and `vitest.config.ts` only if the docblock needs it.
 - The import lines and the `Collapsible` markup in `ui/src/pages/console/Accounts.tsx` and `ui/src/pages/console/Apps.tsx`, and the `Confirm` import in `AccountDetail.tsx`, `AppDetail.tsx` and `Apps.tsx`.
-- `scripts/conventions.json`, for any exception.
+- `scripts/conventions.json`, for any exception. *(2026-11-11, brief 03: it names the roots only. `check-base-ui` allows Base UI under `**/components/ui` and `**/features/*/ui` by default, so the console's `ui/` folder needs `"ui": ["pages/console/ui"]` there, or rule 3 still fires on the wrappers.)*
 - `.claude/rules/ui.md`: the Base UI lines.
 - Corpus: [wiki/decisions.md](../../wiki/decisions.md) (the decision above, extended), [wiki/status.md](../../wiki/status.md), [log.md](../../log.md).
 

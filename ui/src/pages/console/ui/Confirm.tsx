@@ -8,6 +8,8 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 
+import * as look from "../looks.js";
+
 export interface ConfirmProps {
   open: boolean;
   title: string;
@@ -64,25 +66,25 @@ export function Confirm({
       }}
     >
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="wc-dialog-backdrop" />
+        <AlertDialog.Backdrop className={look.dialogBackdrop} />
         {/* Portalled to <body>, outside the console wrapper, so the popup
             carries the console surface itself or it renders with the light
             sign-in tokens. */}
         <AlertDialog.Popup
           ref={popupRef}
-          className="wc-dialog"
+          className={look.dialog}
           data-ward-surface="console"
           finalFocus={() => !confirmed.current}
         >
-          <AlertDialog.Title>{title}</AlertDialog.Title>
+          <AlertDialog.Title className={look.dialogTitle}>{title}</AlertDialog.Title>
           {children}
-          <div className="wc-dialog-actions">
-            <button type="button" className="wc-btn" onClick={onCancel} disabled={busy}>
+          <div className={look.dialogActions}>
+            <button type="button" className={look.btn} onClick={onCancel} disabled={busy}>
               Cancel
             </button>
             <button
               type="button"
-              className="wc-btn"
+              className={look.btn}
               data-tone={tone}
               onClick={() => {
                 confirmed.current = true;

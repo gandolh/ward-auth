@@ -52,6 +52,8 @@ import { consoleHref, parseConsoleLocation, railSectionFor, type ConsoleView } f
 import { sessionRemaining } from "./format.js";
 import { ConsoleProvider, useConsoleContextValue } from "./session.js";
 import { useAnnounce } from "./ui.js";
+import "./console.css";
+import * as look from "./looks.js";
 
 /** How often the countdown re-renders. Nothing is fetched on this tick. */
 const TICK_MS = 10_000;
@@ -139,10 +141,10 @@ export function ConsoleRoutes(): React.JSX.Element {
 
   if (session === undefined) {
     return (
-      <div className="wc" data-ward-surface="console">
-        <div className="wc-hazard" />
-        <div className="wc-main">
-          <p className="wc-lede">Checking for a console session…</p>
+      <div className={look.frame} data-ward-surface="console">
+        <div className={look.hazard} />
+        <div className={look.main}>
+          <p className={look.lede}>Checking for a console session…</p>
         </div>
       </div>
     );
@@ -166,7 +168,7 @@ export function ConsoleRoutes(): React.JSX.Element {
     // is what re-points the token palette, and a console that silently rendered
     // in the login page's light livery would be exactly the confusion the
     // separate identity exists to prevent.
-    <div className="wc" data-ward-surface="console">
+    <div className={look.frame} data-ward-surface="console">
       <TopBar
         basePath={basePath}
         remaining={remaining}
@@ -175,12 +177,12 @@ export function ConsoleRoutes(): React.JSX.Element {
           setSignedOutBecause("Signed out of the console.");
         }}
       />
-      <div className="wc-hazard" />
+      <div className={look.hazard} />
       <ConsoleProvider value={context}>
-        <div className="wc-body">
+        <div className={look.body}>
           <Rail basePath={basePath} view={view} />
-          <main className="wc-main">
-            <div className="wc-main-inner">
+          <main className={look.main}>
+            <div className={look.mainInner}>
               <Screen view={view} basePath={basePath} />
             </div>
           </main>
@@ -210,20 +212,22 @@ function TopBar({
   }, []);
 
   return (
-    <div className="wc-topbar">
-      <p className="wc-wordmark">
-        <Link to={consoleHref(basePath, { kind: "accounts" })}>Ward console</Link>
+    <div className={look.topbar}>
+      <p className={look.wordmark}>
+        <Link className={look.wordmarkLink} to={consoleHref(basePath, { kind: "accounts" })}>
+          Ward console
+        </Link>
       </p>
-      <span className="wc-standing">Break-glass credential — every route here changes authority</span>
-      <div className="wc-topbar-right">
+      <span className={look.standing}>Break-glass credential — every route here changes authority</span>
+      <div className={look.topbarRight}>
         {remaining === undefined ? null : (
-          <span className="wc-countdown" data-low={remaining.low ? "true" : "false"}>
+          <span className={look.countdown} data-low={remaining.low ? "true" : "false"}>
             Session {remaining.text}
           </span>
         )}
         <button
           type="button"
-          className="wc-btn"
+          className={look.btn}
           disabled={busy}
           onClick={() => {
             setBusy(true);
@@ -252,10 +256,11 @@ function Rail({ basePath, view }: { basePath: string; view: ConsoleView }): Reac
   ];
 
   return (
-    <nav className="wc-rail" aria-label="Console sections">
+    <nav className={look.rail} aria-label="Console sections">
       {entries.map((entry) => (
         <Link
           key={entry.section}
+          className={look.railLink}
           to={consoleHref(basePath, entry.view)}
           aria-current={current === entry.section ? "page" : undefined}
         >
@@ -281,10 +286,10 @@ function Screen({ view, basePath }: { view: ConsoleView; basePath: string }): Re
     case "unknown":
       return (
         <>
-          <div className="wc-head">
+          <div className={look.head}>
             <h1>No such console page</h1>
           </div>
-          <p className="wc-lede">
+          <p className={look.lede}>
             <code>{view.rest.join("/")}</code> is not a console screen.{" "}
             <Link to={consoleHref(basePath, { kind: "accounts" })}>Go to accounts</Link>.
           </p>

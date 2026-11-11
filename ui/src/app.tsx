@@ -11,7 +11,7 @@ import { Verify } from "./pages/Verify.js";
 
 /**
  * The console, in a chunk of its own. Only the console imports Base
- * UI and `console.css`, so loading it lazily keeps both off the sign-in,
+ * UI and the console's utilities (`console.css`), so loading it lazily keeps both off the sign-in,
  * registration, verification and account pages. `routes.tsx` exports a named
  * `ConsoleRoutes`, and its contract is not changed for this, so the wrapper
  * here gives `lazy` the default export it wants.
@@ -88,10 +88,9 @@ export function App(): React.JSX.Element {
 /**
  * What `/console` shows while its chunk loads.
  *
- * `console.css` arrives with that chunk, so none of the console's `wc-*`
- * classes are styled yet. This uses `ward.css`, which is in the entry and reads
- * the `--ward-*` tokens: inside the console wrapper they are the dark palette,
- * and `tokens.css` paints the body to match.
+ * The console's utilities arrive with that chunk, so none of its classes are styled yet. This line uses the sign-in
+ * stylesheet, which is in the entry and reads the `--ward-*` tokens: inside the console wrapper they are the dark
+ * palette, and the base layer paints the body to match.
  */
 function ConsoleLoading(): React.JSX.Element {
   return (

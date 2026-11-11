@@ -24,6 +24,7 @@ import { useState } from "react";
 import { consoleApi, type AppView } from "../../console-api.js";
 import { useWriter } from "./session.js";
 import { Alert, Id, Panel } from "./ui.js";
+import * as look from "./looks.js";
 
 function lines(value: string): string[] {
   return value
@@ -113,14 +114,17 @@ export function OidcClientPanel({
         </Alert>
       )}
       <form
-        className="wc-form"
+        className={look.form}
         onSubmit={(event) => {
           void save(event);
         }}
       >
-        <p className="wc-field">
-          <label htmlFor={`oidc-redirect-${app.slug}`}>Redirect URIs, one per line</label>
+        <p className={look.field}>
+          <label htmlFor={`oidc-redirect-${app.slug}`} className={look.fieldLabel}>
+            Redirect URIs, one per line
+          </label>
           <textarea
+            className={look.controlMono}
             id={`oidc-redirect-${app.slug}`}
             rows={3}
             spellCheck={false}
@@ -131,14 +135,17 @@ export function OidcClientPanel({
               setRedirectUris(event.target.value);
             }}
           />
-          <span className="wc-field-hint">
+          <span className={look.fieldHint}>
             Exact strings, one per environment: the dev server’s (http on localhost is allowed) and the production one
             (https).
           </span>
         </p>
-        <p className="wc-field">
-          <label htmlFor={`oidc-logout-${app.slug}`}>Sign-out return URIs, one per line</label>
+        <p className={look.field}>
+          <label htmlFor={`oidc-logout-${app.slug}`} className={look.fieldLabel}>
+            Sign-out return URIs, one per line
+          </label>
           <textarea
+            className={look.controlMono}
             id={`oidc-logout-${app.slug}`}
             rows={2}
             spellCheck={false}
@@ -149,11 +156,14 @@ export function OidcClientPanel({
               setPostLogout(event.target.value);
             }}
           />
-          <span className="wc-field-hint">Where Ward may send someone after “sign out of Ward too”. Optional.</span>
+          <span className={look.fieldHint}>Where Ward may send someone after “sign out of Ward too”. Optional.</span>
         </p>
-        <p className="wc-field">
-          <label htmlFor={`oidc-keys-${app.slug}`}>Public key (JWK)</label>
+        <p className={look.field}>
+          <label htmlFor={`oidc-keys-${app.slug}`} className={look.fieldLabel}>
+            Public key (JWK)
+          </label>
           <textarea
+            className={look.controlMono}
             id={`oidc-keys-${app.slug}`}
             rows={3}
             spellCheck={false}
@@ -165,15 +175,15 @@ export function OidcClientPanel({
               setKeys(event.target.value);
             }}
           />
-          <span className="wc-field-hint">
+          <span className={look.fieldHint}>
             The JSON line from <Id>npm run oidc-client-key --workspace=api -- {app.slug}</Id>. To rotate, paste a set —{" "}
             <Id>{'{"keys":[old, new]}'}</Id> — deploy the new key, then remove the old one. Empty removes every key and
             stops this app signing anyone in with Ward.
           </span>
-          {keysError === undefined ? null : <span className="wc-field-error">{keysError}</span>}
+          {keysError === undefined ? null : <span className={look.fieldError}>{keysError}</span>}
         </p>
-        <div className="wc-actions">
-          <button type="submit" className="wc-btn" data-wc-focus={SAVE_FOCUS} disabled={writer.busy}>
+        <div className={look.actions}>
+          <button type="submit" className={look.btn} data-wc-focus={SAVE_FOCUS} disabled={writer.busy}>
             Save client settings
           </button>
         </div>

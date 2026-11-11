@@ -27,6 +27,8 @@ export default [
     // bail out silently on some components), so a clean run means "nothing
     // found", not "nothing there".
     web: ["ui/src", "shared-library/src/react"],
+    // The sign-in pages' stylesheet is the entry point; the console's utilities sheet reads the same theme.
+    tailwind: { css: "ui/src/styles/index.css", order: true },
     server: "api/src",
     // Scripts run by hand, which print and read the environment directly: the
     // repo's own, the library's build and vendor scripts, and the local seed.

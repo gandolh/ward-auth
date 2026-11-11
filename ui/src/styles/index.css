@@ -15,37 +15,11 @@
 @layer theme, base, vendor, legacy, components, utilities;
 
 @import "tailwindcss";
-@import "../pages/console/console.css" layer(legacy);
+@import "./theme.css";
 
-/* Until ward.css and console.css are gone: the old tokens they still read. */
-@layer legacy {
-  :root {
-    --ward-font: var(--font-ward);
-    --ward-font-mono: var(--font-ward-mono);
-    --ward-text-xs: 0.75rem;
-    --ward-text-sm: 0.875rem;
-    --ward-text-base: 1rem;
-    --ward-text-lg: 1.25rem;
-    --ward-text-xl: 1.75rem;
-    --ward-text-2xl: 2.375rem;
-    --ward-space-1: 0.25rem;
-    --ward-space-2: 0.5rem;
-    --ward-space-3: 0.75rem;
-    --ward-space-4: 1rem;
-    --ward-space-5: 1.25rem;
-    --ward-space-6: 1.5rem;
-    --ward-space-8: 2rem;
-    --ward-space-10: 2.5rem;
-    --ward-space-12: 3rem;
-    --ward-space-16: 4rem;
-    --ward-radius: 6px;
-    --ward-radius-lg: 10px;
-    --ward-rule: 1px;
-    --ward-rule-strong: 2px;
-    --ward-transition: 120ms ease;
-    --ward-max-width-wide: 36rem;
-  }
-}
+/* The console's utilities are its own stylesheet (pages/console/console.css), which only the lazy console chunk
+   loads, so the sign-in pages download only what they use. */
+@source not "../pages/console";
 
 /*
  * The console is a surface, not a theme. It declares the raw --ward-* colours
@@ -53,76 +27,6 @@
  * data-theme says on <html>. A switch for the public pages must not erase it:
  * the console's spec is to look visibly unlike the ordinary login page.
  */
-
-/*
- * The names of the tokens are fixed; their values are the sign-in side's to
- * change. Colours, shadows, the focus ring and the page width are re-pointed per
- * surface, so they are variables on the element and `@theme inline` maps the
- * Tailwind names onto them. With a plain @theme the value would be substituted
- * once on :root, and neither the console's re-pointing nor the public dark
- * block would reach a utility.
- */
-@theme inline {
-  --color-ward-bg: var(--ward-bg);
-  --color-ward-surface: var(--ward-surface);
-  --color-ward-surface-sunken: var(--ward-surface-sunken);
-  --color-ward-border: var(--ward-border);
-  --color-ward-border-strong: var(--ward-border-strong);
-  --color-ward-text: var(--ward-text);
-  --color-ward-text-muted: var(--ward-text-muted);
-  --color-ward-text-faint: var(--ward-text-faint);
-  --color-ward-accent: var(--ward-accent);
-  --color-ward-accent-hover: var(--ward-accent-hover);
-  --color-ward-accent-text: var(--ward-accent-text);
-  --color-ward-danger: var(--ward-danger);
-  --color-ward-danger-surface: var(--ward-danger-surface);
-  --color-ward-notice: var(--ward-notice);
-  --color-ward-notice-surface: var(--ward-notice-surface);
-
-  --shadow-ward: var(--ward-shadow);
-  --shadow-ward-lg: var(--ward-shadow-lg);
-  --shadow-ward-focus: var(--ward-focus);
-
-  --container-ward: var(--ward-max-width);
-}
-
-@theme {
-  /* A system stack on purpose: see the header. */
-  --font-ward: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-ward-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
-
-  /* Ward's type scale. lg, xl and 2xl replace Tailwind's sizes of the same names
-     (1.125, 1.25 and 1.5rem). Every size inherits the body's 1.5 line height,
-     where Tailwind's own sizes each carry one. */
-  --text-xs: 0.75rem;
-  --text-xs--line-height: 1.5;
-  --text-sm: 0.875rem;
-  --text-sm--line-height: 1.5;
-  --text-base: 1rem;
-  --text-base--line-height: 1.5;
-  --text-lg: 1.25rem;
-  --text-lg--line-height: 1.5;
-  --text-xl: 1.75rem;
-  --text-xl--line-height: 1.5;
-  /* The destination line, the one piece of type on this surface allowed to be
-     large. */
-  --text-2xl: 2.375rem;
-  --text-2xl--line-height: 1.5;
-  /* Capped well below 2xl: at the form's 26rem measure a larger size breaks
-     "Continue to Atrium" across two lines and the heading starts to dominate a
-     screen whose job is the two fields under it. */
-  --text-ward-signpost: clamp(1.5rem, 1.1rem + 1.5vw, 2.125rem);
-  --text-ward-signpost--line-height: 1.12;
-
-  --radius-ward: 6px;
-  --radius-lg: 10px;
-
-  /* The one screen that is read rather than crossed (self-service) has room
-     for a second column's worth of grants. */
-  --container-ward-wide: 36rem;
-
-  --ease-ward: ease;
-}
 
 @layer base {
   /*
@@ -213,6 +117,19 @@
      shows through under a short console page. */
   body:has([data-ward-surface="console"]) {
     background-color: #17181a;
+  }
+
+  /* An element default no utility can reach (Tailwind's reset strips a link to its parent's colour, and a link in
+     prose is the one thing the console draws from nowhere): stated rather than inherited. A utility on a link, the
+     rail's and the wordmark's, still wins, because this sits in the base layer. */
+  [data-ward-surface="console"] a {
+    color: var(--ward-accent);
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
+  }
+
+  [data-ward-surface="console"] a:hover {
+    color: var(--ward-accent-hover);
   }
 
   /* An element default no utility can reach: never remove a focus ring, this is

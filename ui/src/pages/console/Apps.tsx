@@ -35,6 +35,7 @@ import { formatWhen, plural } from "./format.js";
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
 import { Alert, Empty, TextField } from "./ui.js";
 import { Confirm } from "./ui/Confirm.js";
+import * as look from "./looks.js";
 
 export function AppsScreen(): React.JSX.Element {
   const { basePath } = useConsole();
@@ -49,16 +50,16 @@ export function AppsScreen(): React.JSX.Element {
   return (
     <>
       <Collapsible.Root open={creating} onOpenChange={setCreating}>
-        <div className="wc-head">
+        <div className={look.head}>
           <h1 tabIndex={-1}>Apps</h1>
-          <div className="wc-head-actions">
-            <Collapsible.Trigger className="wc-btn" data-tone="primary">
+          <div className={look.headActions}>
+            <Collapsible.Trigger className={look.btn} data-tone="primary">
               {creating ? "Close the new-app form" : "Register an app"}
             </Collapsible.Trigger>
           </div>
         </div>
 
-        <p className="wc-lede">
+        <p className={look.lede}>
           An app has to be registered here before a grant can name it. Registering one takes no deploy, and a new app
           arrives closed to strangers and reachable by nobody — including the owner account — until grants are issued
           for it.
@@ -75,7 +76,7 @@ export function AppsScreen(): React.JSX.Element {
         </Collapsible.Panel>
       </Collapsible.Root>
 
-      {result.state === "loading" ? <p className="wc-lede">Loading the registry…</p> : null}
+      {result.state === "loading" ? <p className={look.lede}>Loading the registry…</p> : null}
 
       {result.state === "failed" ? (
         <Alert tone="error" title="The registry did not load" takeFocus>
@@ -103,8 +104,8 @@ export function AppsScreen(): React.JSX.Element {
 function AppTable({ apps, basePath }: { apps: AppView[]; basePath: string }): React.JSX.Element {
   const open = apps.filter((app) => app.publicRegistration).length;
   return (
-    <div className="wc-table-scroll">
-      <table className="wc-table">
+    <div className={look.tableScroll}>
+      <table className={look.table}>
         <caption>
           {plural(apps.length, "app", "apps")} registered,{" "}
           {open === 0 ? "none open to public registration" : `${String(open)} open to strangers`}.
@@ -123,29 +124,29 @@ function AppTable({ apps, basePath }: { apps: AppView[]; basePath: string }): Re
             <tr key={app.slug}>
               <th scope="row">
                 <Link to={consoleHref(basePath, { kind: "app", slug: app.slug })}>
-                  <span className="wc-id">{app.slug}</span>
+                  <span className={look.id}>{app.slug}</span>
                 </Link>
               </th>
               <td>{app.name}</td>
               <td>
                 {app.publicRegistration ? (
-                  <span className="wc-state" data-state="open">
+                  <span className={look.state} data-state="open">
                     Open to strangers
                   </span>
                 ) : (
-                  <span className="wc-state">Closed</span>
+                  <span className={look.state}>Closed</span>
                 )}
               </td>
               <td>
                 {app.baselineRole === null ? (
-                  <span className="wc-state" data-state="none">
+                  <span className={look.state} data-state="none">
                     none
                   </span>
                 ) : (
-                  <span className="wc-id">{app.baselineRole}</span>
+                  <span className={look.id}>{app.baselineRole}</span>
                 )}
               </td>
-              <td className="wc-when">
+              <td className={look.when}>
                 <time dateTime={app.updatedAt} title={app.updatedAt}>
                   {formatWhen(app.updatedAt)}
                 </time>
@@ -206,9 +207,9 @@ function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element
   }
 
   return (
-    <section className="wc-panel">
+    <section className={look.panel}>
       <h2>Register an app</h2>
-      <p className="wc-panel-note">
+      <p className={look.panelNote}>
         The slug is what grants, tokens and the audit log name this app by, and it is permanent — renaming later changes
         the display name only. Keep it to lower-case letters, digits and single hyphens.
       </p>
@@ -219,7 +220,7 @@ function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element
         </Alert>
       )}
 
-      <form className="wc-form" onSubmit={submit}>
+      <form className={look.form} onSubmit={submit}>
         <TextField
           label="Slug"
           name="slug"
@@ -245,7 +246,7 @@ function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element
           hint="Shown to people. Change it later as often as you like."
         />
 
-        <p className="wc-check">
+        <p className={look.check}>
           <input
             id="wc-new-app-open"
             type="checkbox"
@@ -278,10 +279,10 @@ function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element
           />
         ) : null}
 
-        <div className="wc-actions">
+        <div className={look.actions}>
           <button
             type="submit"
-            className="wc-btn"
+            className={look.btn}
             data-tone="primary"
             data-wc-focus={REGISTER_FOCUS}
             disabled={writer.busy || slug === "" || name === "" || (open && baselineRole === "")}
@@ -304,8 +305,9 @@ function NewAppForm({ onCreated }: { onCreated: () => void }): React.JSX.Element
         }}
       >
         <p>
-          Anyone who can reach Ward will be able to create an account for <span className="wc-id">{slug}</span> without
-          an invitation, and each one will be granted <span className="wc-id">{baselineRole}</span> in it automatically.
+          Anyone who can reach Ward will be able to create an account for <span className={look.id}>{slug}</span>{" "}
+          without an invitation, and each one will be granted <span className={look.id}>{baselineRole}</span> in it
+          automatically.
         </p>
         <p>
           This is the only setting in Ward that exposes an anonymous write surface. It can be closed again from the

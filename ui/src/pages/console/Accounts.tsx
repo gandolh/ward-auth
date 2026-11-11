@@ -24,6 +24,7 @@ import { consoleHref } from "./nav.js";
 import { formatWhen, plural } from "./format.js";
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
 import { Alert, Empty, TextField } from "./ui.js";
+import * as look from "./looks.js";
 
 export function AccountsScreen(): React.JSX.Element {
   const { basePath } = useConsole();
@@ -33,16 +34,16 @@ export function AccountsScreen(): React.JSX.Element {
   return (
     <>
       <Collapsible.Root open={creating} onOpenChange={setCreating}>
-        <div className="wc-head">
+        <div className={look.head}>
           <h1>Accounts</h1>
-          <div className="wc-head-actions">
-            <Collapsible.Trigger className="wc-btn" data-tone="primary">
+          <div className={look.headActions}>
+            <Collapsible.Trigger className={look.btn} data-tone="primary">
               {creating ? "Close the new-account form" : "New account"}
             </Collapsible.Trigger>
           </div>
         </div>
 
-        <p className="wc-lede">
+        <p className={look.lede}>
           Every person who uses the estate is a row here, including the owner account. An account on its own confers
           nothing: it can sign in to Ward and reach no app at all until a grant is issued for one.
         </p>
@@ -57,7 +58,7 @@ export function AccountsScreen(): React.JSX.Element {
         </Collapsible.Panel>
       </Collapsible.Root>
 
-      {result.state === "loading" ? <p className="wc-lede">Loading the account list…</p> : null}
+      {result.state === "loading" ? <p className={look.lede}>Loading the account list…</p> : null}
 
       {result.state === "failed" ? (
         <Alert tone="error" title="The account list did not load" takeFocus>
@@ -95,8 +96,8 @@ function AccountTable({
   basePath: string;
 }): React.JSX.Element {
   return (
-    <div className="wc-table-scroll">
-      <table className="wc-table">
+    <div className={look.tableScroll}>
+      <table className={look.table}>
         <caption>
           {plural(total, "account", "accounts")}
           {accounts.length < total ? `, showing the first ${String(accounts.length)}` : ""}.
@@ -108,7 +109,7 @@ function AccountTable({
             <th scope="col">State</th>
             <th scope="col">Created</th>
             <th scope="col">
-              <span className="wc-sr">Actions</span>
+              <span className={look.sr}>Actions</span>
             </th>
           </tr>
         </thead>
@@ -121,25 +122,28 @@ function AccountTable({
                 </Link>
               </th>
               <td>
-                <span className="wc-id">{account.subject}</span>
+                <span className={look.id}>{account.subject}</span>
               </td>
               <td>
                 {account.disabled ? (
-                  <span className="wc-state" data-state="disabled">
+                  <span className={look.state} data-state="disabled">
                     Disabled
                     {account.disabledAt === null ? "" : ` since ${formatWhen(account.disabledAt)}`}
                   </span>
                 ) : (
-                  <span className="wc-state">Active</span>
+                  <span className={look.state}>Active</span>
                 )}
               </td>
-              <td className="wc-when">
+              <td className={look.when}>
                 <time dateTime={account.createdAt} title={account.createdAt}>
                   {formatWhen(account.createdAt)}
                 </time>
               </td>
               <td>
-                <Link className="wc-btn" to={consoleHref(basePath, { kind: "account", subject: account.subject })}>
+                <Link
+                  className={look.btnAsLink}
+                  to={consoleHref(basePath, { kind: "account", subject: account.subject })}
+                >
                   Access and state
                 </Link>
               </td>
@@ -192,14 +196,14 @@ function NewAccountForm({ onCreated }: { onCreated: () => void }): React.JSX.Ele
   }
 
   return (
-    <section className="wc-panel">
+    <section className={look.panel}>
       <h2>New account</h2>
-      <p className="wc-panel-note">
+      <p className={look.panelNote}>
         A username and a password. <strong>No email address</strong> — Ward collects one only on public
         self-registration, so an account created here has no reset link. If the password is forgotten, rotate it from
         the account&rsquo;s own page and tell the person out of band.
       </p>
-      <p className="wc-panel-note">
+      <p className={look.panelNote}>
         Creating an account grants nothing. To make this the owner account, create it and then issue one admin grant per
         app on its page; there is no wildcard.
       </p>
@@ -211,7 +215,7 @@ function NewAccountForm({ onCreated }: { onCreated: () => void }): React.JSX.Ele
       )}
 
       <form
-        className="wc-form"
+        className={look.form}
         onSubmit={(event) => {
           void submit(event);
         }}
@@ -250,8 +254,8 @@ function NewAccountForm({ onCreated }: { onCreated: () => void }): React.JSX.Ele
           disabled={writer.busy}
           error={mismatch}
         />
-        <div className="wc-actions">
-          <button type="submit" className="wc-btn" data-tone="primary" disabled={writer.busy}>
+        <div className={look.actions}>
+          <button type="submit" className={look.btn} data-tone="primary" disabled={writer.busy}>
             {writer.busy ? "Creating…" : "Create account"}
           </button>
         </div>

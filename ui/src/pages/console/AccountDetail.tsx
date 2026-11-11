@@ -50,6 +50,7 @@ import { describeGrantRevoke, describeGrantWrite, groupGrantsByApp } from "./gra
 import { useConsole, useConsoleLoad, useWriter } from "./session.js";
 import { Alert, Empty, Panel, TextField } from "./ui.js";
 import { Confirm } from "./ui/Confirm.js";
+import * as look from "./looks.js";
 
 export function AccountDetailScreen({ subject }: { subject: string }): React.JSX.Element {
   const { basePath } = useConsole();
@@ -63,11 +64,11 @@ export function AccountDetailScreen({ subject }: { subject: string }): React.JSX
 
   return (
     <>
-      <Link className="wc-back" to={consoleHref(basePath, { kind: "accounts" })}>
+      <Link className={look.back} to={consoleHref(basePath, { kind: "accounts" })}>
         Back to accounts
       </Link>
 
-      {account.result.state === "loading" ? <p className="wc-lede">Loading the account…</p> : null}
+      {account.result.state === "loading" ? <p className={look.lede}>Loading the account…</p> : null}
 
       {account.result.state === "failed" ? (
         <Alert tone="error" title="The account did not load" takeFocus>
@@ -153,18 +154,18 @@ function AccountBody({
 
   return (
     <>
-      <div className="wc-head">
+      <div className={look.head}>
         <h1 tabIndex={-1}>{account.username}</h1>
-        <span className="wc-state" data-state={account.disabled ? "disabled" : undefined}>
+        <span className={look.state} data-state={account.disabled ? "disabled" : undefined}>
           {account.disabled
             ? `Disabled${account.disabledAt === null ? "" : ` since ${formatWhen(account.disabledAt)}`}`
             : "Active"}
         </span>
       </div>
 
-      <p className="wc-lede">
-        Subject <span className="wc-id">{account.subject}</span> — the value that appears in this account&rsquo;s access
-        tokens and in every grant row below. Created {formatWhen(account.createdAt)}.
+      <p className={look.lede}>
+        Subject <span className={look.id}>{account.subject}</span> — the value that appears in this account&rsquo;s
+        access tokens and in every grant row below. Created {formatWhen(account.createdAt)}.
         {account.email === null
           ? " No email address: this account was created from the console, so it has no reset link."
           : ` Email ${account.email}${account.emailVerified ? " (verified)" : " (unverified)"}.`}
@@ -194,7 +195,7 @@ function AccountBody({
         note="What the person types at Ward's login. A rename keeps the subject, the grants and every live session. Apps keep the name they took at their first sign-in with Ward; each app renames its own."
       >
         <form
-          className="wc-form"
+          className={look.form}
           onSubmit={(event) => {
             event.preventDefault();
             if (renameTo !== "" && renameTo !== account.username) {
@@ -214,10 +215,10 @@ function AccountBody({
             disabled={writer.busy}
             hint="Ward folds case and Unicode form before comparing, so Alice and alice are the same account."
           />
-          <div className="wc-actions">
+          <div className={look.actions}>
             <button
               type="submit"
-              className="wc-btn"
+              className={look.btn}
               data-wc-focus={FOCUS.rename}
               disabled={writer.busy || renameTo === "" || renameTo === account.username}
             >
@@ -232,7 +233,7 @@ function AccountBody({
         note="The only recovery channel this account has. Set a new one here and tell the person out of band; Ward never shows a password back, and this console never puts one in a URL."
       >
         <form
-          className="wc-form"
+          className={look.form}
           onSubmit={(event) => {
             event.preventDefault();
             if (newPassword !== "") setPending({ kind: "rotate" });
@@ -249,10 +250,10 @@ function AccountBody({
             disabled={writer.busy}
             hint="At least 8 characters. Every live session for this account ends when it is set."
           />
-          <div className="wc-actions">
+          <div className={look.actions}>
             <button
               type="submit"
-              className="wc-btn"
+              className={look.btn}
               data-wc-focus={FOCUS.rotate}
               disabled={writer.busy || newPassword === ""}
             >
@@ -271,11 +272,11 @@ function AccountBody({
             : "Disabling locks the account and revokes its live sessions in the same write, so the sessions genuinely end rather than only future sign-ins being blocked. The grants survive, so a later re-enable restores exactly what is above."
         }
       >
-        <div className="wc-actions">
+        <div className={look.actions}>
           {account.disabled ? (
             <button
               type="button"
-              className="wc-btn"
+              className={look.btn}
               data-tone="primary"
               data-wc-focus={FOCUS.state}
               disabled={writer.busy}
@@ -288,7 +289,7 @@ function AccountBody({
           ) : (
             <button
               type="button"
-              className="wc-btn"
+              className={look.btn}
               data-tone="danger"
               data-wc-focus={FOCUS.state}
               disabled={writer.busy}
@@ -307,10 +308,10 @@ function AccountBody({
         tone="danger"
         note="Deleting removes the account, its grants and its sessions in one write, and nothing brings them back. The subject is retired for good, so no later account inherits what apps hold for it; the username is freed. Disable instead if the person may return."
       >
-        <div className="wc-actions">
+        <div className={look.actions}>
           <button
             type="button"
-            className="wc-btn"
+            className={look.btn}
             data-tone="danger"
             disabled={writer.busy}
             onClick={() => {
@@ -582,7 +583,7 @@ function SessionsPanel({
         </Alert>
       )}
 
-      {sessions.result.state === "loading" ? <p className="wc-panel-note">Loading sessions…</p> : null}
+      {sessions.result.state === "loading" ? <p className={look.panelNote}>Loading sessions…</p> : null}
 
       {sessions.result.state === "failed" ? (
         <Alert tone="error" title="The sessions did not load">
@@ -597,8 +598,8 @@ function SessionsPanel({
           </Empty>
         ) : (
           <>
-            <div className="wc-table-scroll">
-              <table className="wc-table">
+            <div className={look.tableScroll}>
+              <table className={look.table}>
                 <caption>{plural(sessions.result.data.sessions.length, "live session", "live sessions")}.</caption>
                 <thead>
                   <tr>
@@ -606,20 +607,20 @@ function SessionsPanel({
                     <th scope="col">Last refreshed</th>
                     <th scope="col">Expires</th>
                     <th scope="col">
-                      <span className="wc-sr">Revoke</span>
+                      <span className={look.sr}>Revoke</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {sessions.result.data.sessions.map((session) => (
                     <tr key={session.familyId}>
-                      <td className="wc-id">{session.familyId}</td>
+                      <td className={look.id}>{session.familyId}</td>
                       <td>{formatWhen(session.issuedAt)}</td>
                       <td>{formatWhen(session.expiresAt)}</td>
                       <td>
                         <button
                           type="button"
-                          className="wc-btn-link"
+                          className={look.btnLink}
                           data-wc-focus={FOCUS.endSession(session.familyId)}
                           disabled={writer.busy}
                           onClick={() => {
@@ -634,10 +635,10 @@ function SessionsPanel({
                 </tbody>
               </table>
             </div>
-            <div className="wc-actions">
+            <div className={look.actions}>
               <button
                 type="button"
-                className="wc-btn"
+                className={look.btn}
                 data-tone="danger"
                 data-wc-focus={FOCUS.endAll}
                 disabled={writer.busy}
@@ -647,7 +648,7 @@ function SessionsPanel({
               >
                 End all sessions
               </button>
-              <span className="wc-field-hint">
+              <span className={look.fieldHint}>
                 Rotating the password below also ends every session, and is the better move if the password itself is
                 what you no longer trust.
               </span>
@@ -790,23 +791,23 @@ function AccessPanel({
       ) : (
         <div>
           {grouped.map((entry) => (
-            <div className="wc-app-grant" key={entry.appSlug}>
+            <div className={look.appGrant} key={entry.appSlug}>
               <h3>{entry.appSlug}</h3>
-              <p className="wc-app-grant-meta">
+              <p className={look.appGrantMeta}>
                 {plural(entry.roles.length, "role", "roles")}, first granted{" "}
                 {formatWhen(earliest(entry.grants).grantedAt)} by{" "}
                 {/* `grantedBy` is a subject, or the literal `superuser` /
                     `self-registration`. It is not a foreign key and must never
                     be rendered as a link to an account. */}
-                <span className="wc-id">{earliest(entry.grants).grantedBy}</span>
+                <span className={look.id}>{earliest(entry.grants).grantedBy}</span>
               </p>
-              <ul className="wc-roles">
+              <ul className={look.roles}>
                 {entry.grants.map((grant) => (
-                  <li className="wc-role" key={grant.role}>
+                  <li className={look.role} key={grant.role}>
                     <span>{grant.role}</span>
                     <button
                       type="button"
-                      className="wc-role-drop"
+                      className={look.roleDrop}
                       disabled={writer.busy}
                       title={`Remove ${grant.role} in ${entry.appSlug}`}
                       onClick={() => {
@@ -814,14 +815,14 @@ function AccessPanel({
                       }}
                     >
                       <span aria-hidden="true">×</span>
-                      <span className="wc-sr">{`Remove the role ${grant.role} in ${entry.appSlug}`}</span>
+                      <span className={look.sr}>{`Remove the role ${grant.role} in ${entry.appSlug}`}</span>
                     </button>
                   </li>
                 ))}
                 <li>
                   <button
                     type="button"
-                    className="wc-btn-link"
+                    className={look.btnLink}
                     data-wc-focus={FOCUS.revokeApp(entry.appSlug)}
                     disabled={writer.busy}
                     onClick={() => {
@@ -838,14 +839,17 @@ function AccessPanel({
       )}
 
       <form
-        className="wc-form wc-form-row wc-grant-add"
+        className={look.grantAdd}
         onSubmit={(event) => {
           void add(event);
         }}
       >
-        <p className="wc-field">
-          <label htmlFor="wc-grant-app">App</label>
+        <p className={look.field}>
+          <label htmlFor="wc-grant-app" className={look.fieldLabel}>
+            App
+          </label>
           <select
+            className={look.control}
             id="wc-grant-app"
             value={appSlug}
             disabled={writer.busy}
@@ -878,10 +882,10 @@ function AccessPanel({
             <option key={value} value={value} />
           ))}
         </datalist>
-        <p className="wc-row-actions">
+        <p className={look.rowActions}>
           <button
             type="submit"
-            className="wc-btn"
+            className={look.btn}
             data-tone="primary"
             disabled={writer.busy || appSlug === "" || role === ""}
           >
@@ -890,7 +894,7 @@ function AccessPanel({
         </p>
       </form>
 
-      <p className="wc-panel-note">
+      <p className={look.panelNote}>
         The role is free text and the suggestions are only the roles already in use in the app you pick. Ward never
         interprets a role, so there is no list of known ones to choose from — a picker here would quietly become a
         schema Ward deliberately does not have.

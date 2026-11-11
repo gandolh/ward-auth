@@ -40,6 +40,7 @@ import { AUDIT_ACTION_GROUPS, parseGrantTarget, presentAuditAction } from "./aud
 import { formatDetail, formatWhen, plural } from "./format.js";
 import { useConsoleLoad } from "./session.js";
 import { Alert, Empty, TextField } from "./ui.js";
+import * as look from "./looks.js";
 
 /** The filter form's own state, all strings because that is what inputs hold. */
 interface Draft {
@@ -117,26 +118,29 @@ export function AuditScreen(): React.JSX.Element {
 
   return (
     <>
-      <div className="wc-head">
+      <div className={look.head}>
         <h1>Audit log</h1>
       </div>
 
-      <p className="wc-lede">
+      <p className={look.lede}>
         Every change of authority in the estate, newest first, and every use of this console&rsquo;s credential. A no-op
         writes no row here — a duplicate grant, a second disable, a form resubmitted unchanged — deliberately, so that
         mis-clicks do not bury the rows that matter.
       </p>
 
       <form
-        className="wc-form wc-form-row"
+        className={look.formRow}
         onSubmit={(event) => {
           event.preventDefault();
           applyFilters(toFilters(draft));
         }}
       >
-        <p className="wc-field">
-          <label htmlFor="wc-audit-actor-kind">Actor kind</label>
+        <p className={look.field}>
+          <label htmlFor="wc-audit-actor-kind" className={look.fieldLabel}>
+            Actor kind
+          </label>
           <select
+            className={look.control}
             id="wc-audit-actor-kind"
             value={draft.actorKind}
             onChange={(event) => {
@@ -160,9 +164,12 @@ export function AuditScreen(): React.JSX.Element {
           opaque
           placeholder="cristian, or superuser"
         />
-        <p className="wc-field">
-          <label htmlFor="wc-audit-target-kind">Target kind</label>
+        <p className={look.field}>
+          <label htmlFor="wc-audit-target-kind" className={look.fieldLabel}>
+            Target kind
+          </label>
           <select
+            className={look.control}
             id="wc-audit-target-kind"
             value={draft.targetKind}
             onChange={(event) => {
@@ -188,9 +195,12 @@ export function AuditScreen(): React.JSX.Element {
           opaque
           placeholder="a subject, or an app slug"
         />
-        <p className="wc-field">
-          <label htmlFor="wc-audit-action">Event</label>
+        <p className={look.field}>
+          <label htmlFor="wc-audit-action" className={look.fieldLabel}>
+            Event
+          </label>
           <select
+            className={look.control}
             id="wc-audit-action"
             value={draft.action}
             onChange={(event) => {
@@ -209,13 +219,13 @@ export function AuditScreen(): React.JSX.Element {
             ))}
           </select>
         </p>
-        <p className="wc-row-actions">
-          <button type="submit" className="wc-btn" data-tone="primary">
+        <p className={look.rowActions}>
+          <button type="submit" className={look.btn} data-tone="primary">
             Filter
           </button>
           <button
             type="button"
-            className="wc-btn"
+            className={look.btn}
             onClick={() => {
               setDraft(EMPTY);
               applyFilters({});
@@ -226,13 +236,13 @@ export function AuditScreen(): React.JSX.Element {
         </p>
       </form>
 
-      <p className="wc-lede">
+      <p className={look.lede}>
         Actor name and target are matched exactly. An actor name is a username, or the literal{" "}
-        <span className="wc-id">superuser</span> for anything done from this console — which is also why the actor
+        <span className={look.id}>superuser</span> for anything done from this console — which is also why the actor
         filter offers a kind: a console mutation carries no subject to match on.
       </p>
 
-      {result.state === "loading" ? <p className="wc-lede">Reading the log…</p> : null}
+      {result.state === "loading" ? <p className={look.lede}>Reading the log…</p> : null}
 
       {result.state === "failed" ? (
         <Alert tone="error" title="The log did not load" takeFocus>
@@ -290,8 +300,8 @@ function AuditTable({
         </Alert>
       ) : null}
 
-      <div className="wc-table-scroll">
-        <table className="wc-table">
+      <div className={look.tableScroll}>
+        <table className={look.table}>
           <caption>
             {plural(entries.length, "event", "events")} of {String(total)} in the log
             {onFirstPage ? "" : " (an older page)"}, newest first within the page.
@@ -312,11 +322,11 @@ function AuditTable({
         </table>
       </div>
 
-      <p className="wc-row-actions">
-        <button type="button" className="wc-btn" disabled={onFirstPage} onClick={onNewer}>
+      <p className={look.rowActions}>
+        <button type="button" className={look.btn} disabled={onFirstPage} onClick={onNewer}>
           Newer
         </button>
-        <button type="button" className="wc-btn" disabled={!hasOlder} onClick={onOlder}>
+        <button type="button" className={look.btn} disabled={!hasOlder} onClick={onOlder}>
           Older
         </button>
       </p>
@@ -330,35 +340,35 @@ function AuditRow({ entry }: { entry: AuditRowView }): React.JSX.Element {
   const grant = entry.targetKind === "grant" && entry.targetId !== null ? parseGrantTarget(entry.targetId) : undefined;
 
   return (
-    <tr className="wc-audit-row" data-severity={presented.severity}>
-      <td className="wc-when">
+    <tr className={look.auditRow} data-severity={presented.severity}>
+      <td className={look.when}>
         <time dateTime={entry.at} title={entry.at}>
           {formatWhen(entry.at)}
         </time>
       </td>
       <th scope="row">
-        <span className="wc-audit-label">{presented.label}</span>
-        <span className="wc-action">{entry.action}</span>
-        {presented.explanation === "" ? null : <p className="wc-audit-why">{presented.explanation}</p>}
-        {detail === "" ? null : <p className="wc-detail">{detail}</p>}
+        <span className={look.auditLabel}>{presented.label}</span>
+        <span className={look.action}>{entry.action}</span>
+        {presented.explanation === "" ? null : <p className={look.auditWhy}>{presented.explanation}</p>}
+        {detail === "" ? null : <p className={look.detail}>{detail}</p>}
       </th>
       <td>
         {/* An actor label is a username, `superuser`, or a job name — never a
             link: the superuser has no account row to link to. */}
-        <span className="wc-id">{entry.actorLabel}</span>
-        {entry.actorSubject === null ? null : <span className="wc-action">{entry.actorSubject}</span>}
+        <span className={look.id}>{entry.actorLabel}</span>
+        {entry.actorSubject === null ? null : <span className={look.action}>{entry.actorSubject}</span>}
       </td>
       <td>
         {entry.targetId === null ? (
-          <span className="wc-state" data-state="none">
+          <span className={look.state} data-state="none">
             —
           </span>
         ) : grant === undefined ? (
-          <span className="wc-id">{entry.targetId}</span>
+          <span className={look.id}>{entry.targetId}</span>
         ) : (
           // A grant target is three percent-encoded parts joined by `:`,
           // because a role may itself contain a colon. Shown decoded.
-          <span className="wc-id">
+          <span className={look.id}>
             {grant.subject} in {grant.appSlug} as {grant.role}
           </span>
         )}

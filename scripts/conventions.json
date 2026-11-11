@@ -3,5 +3,19 @@
   "web": ["ui/src"],
   "server": ["api/src"],
   "shared": ["shared-library/src"],
-  "ui": ["pages/console/ui"]
+  "ui": ["pages/console/ui"],
+  "exceptions": [
+    {
+      "check": "base-ui",
+      "rule": 5,
+      "path": "ui/src/pages/console/console.css",
+      "reason": "The console's utilities are a second stylesheet that only the lazy console chunk loads, so the sign-in pages download only their own CSS (their gzipped CSS was 6.8 kB in one sheet, past the 5 kB line)."
+    },
+    {
+      "check": "base-ui",
+      "rule": 5,
+      "path": "ui/src/styles/theme.css",
+      "reason": "The @theme blocks, shared by both stylesheets: index.css emits them and console.css imports them as a reference."
+    }
+  ]
 }

@@ -44,6 +44,7 @@ import { useConsole, useConsoleLoad, useWriter } from "./session.js";
 import { OidcClientPanel } from "./OidcClient.js";
 import { Alert, Empty, Panel, TextField } from "./ui.js";
 import { Confirm } from "./ui/Confirm.js";
+import * as look from "./looks.js";
 
 export function AppDetailScreen({ slug }: { slug: string }): React.JSX.Element {
   const { basePath } = useConsole();
@@ -57,11 +58,11 @@ export function AppDetailScreen({ slug }: { slug: string }): React.JSX.Element {
 
   return (
     <>
-      <Link className="wc-back" to={consoleHref(basePath, { kind: "apps" })}>
+      <Link className={look.back} to={consoleHref(basePath, { kind: "apps" })}>
         Back to apps
       </Link>
 
-      {app.result.state === "loading" ? <p className="wc-lede">Loading the app…</p> : null}
+      {app.result.state === "loading" ? <p className={look.lede}>Loading the app…</p> : null}
 
       {app.result.state === "failed" ? (
         <Alert tone="error" title="The app did not load" takeFocus>
@@ -131,19 +132,19 @@ function AppBody({
 
   return (
     <>
-      <div className="wc-head">
+      <div className={look.head}>
         <h1 tabIndex={-1}>{app.name}</h1>
-        <span className="wc-id">{app.slug}</span>
+        <span className={look.id}>{app.slug}</span>
         {app.publicRegistration ? (
-          <span className="wc-state" data-state="open">
+          <span className={look.state} data-state="open">
             Open to public registration
           </span>
         ) : (
-          <span className="wc-state">Closed to strangers</span>
+          <span className={look.state}>Closed to strangers</span>
         )}
       </div>
 
-      <p className="wc-lede">
+      <p className={look.lede}>
         Registered {formatWhen(app.createdAt)}, last changed {formatWhen(app.updatedAt)}.{" "}
         {plural(grantCount, "grant", "grants")} {grantCount === 1 ? "names" : "name"} this app.
       </p>
@@ -159,7 +160,7 @@ function AppBody({
         note="The display name only. The slug is permanent: it is what grants, access tokens and every audit row for this app are keyed on."
       >
         <form
-          className="wc-form"
+          className={look.form}
           onSubmit={(event) => {
             event.preventDefault();
             void writer
@@ -187,10 +188,10 @@ function AppBody({
             required
             disabled={writer.busy}
           />
-          <div className="wc-actions">
+          <div className={look.actions}>
             <button
               type="submit"
-              className="wc-btn"
+              className={look.btn}
               data-wc-focus={NAME_FOCUS}
               disabled={writer.busy || name === "" || name === app.name}
             >
@@ -207,7 +208,7 @@ function AppBody({
           app.publicRegistration ? (
             <>
               This app is <strong>open</strong>. Anyone who can reach Ward may create an account without an invitation,
-              and each one is granted <span className="wc-id">{app.baselineRole ?? "nothing"}</span> in this app on
+              and each one is granted <span className={look.id}>{app.baselineRole ?? "nothing"}</span> in this app on
               sign-up.
             </>
           ) : (
@@ -219,10 +220,10 @@ function AppBody({
         }
       >
         {app.publicRegistration ? (
-          <div className="wc-actions">
+          <div className={look.actions}>
             <button
               type="button"
-              className="wc-btn"
+              className={look.btn}
               data-tone="primary"
               data-wc-focus={REGISTRATION_FOCUS}
               disabled={writer.busy}
@@ -232,13 +233,13 @@ function AppBody({
             >
               Close registration
             </button>
-            <span className="wc-field-hint">
+            <span className={look.fieldHint}>
               Closing clears the baseline role, so reopening later has to name one again.
             </span>
           </div>
         ) : (
           <form
-            className="wc-form"
+            className={look.form}
             onSubmit={(event) => {
               event.preventDefault();
               if (baselineRole !== "") setPending({ kind: "open" });
@@ -257,10 +258,10 @@ function AppBody({
               placeholder="reader"
               hint="Ward will not open an app without one, in the same request. Free text — Ward never interprets a role."
             />
-            <div className="wc-actions">
+            <div className={look.actions}>
               <button
                 type="submit"
-                className="wc-btn"
+                className={look.btn}
                 data-tone="danger"
                 data-wc-focus={REGISTRATION_FOCUS}
                 disabled={writer.busy || baselineRole === ""}
@@ -279,14 +280,14 @@ function AppBody({
         {grants.length === 0 ? (
           <Empty title="Nobody">
             <p>
-              No account holds a grant in <span className="wc-id">{app.slug}</span>, so nobody can use it — not even the
-              owner account. For a newly registered app that is the expected state, not a fault.
+              No account holds a grant in <span className={look.id}>{app.slug}</span>, so nobody can use it — not even
+              the owner account. For a newly registered app that is the expected state, not a fault.
             </p>
             <p>Issue grants from each account&rsquo;s page.</p>
           </Empty>
         ) : (
-          <div className="wc-table-scroll">
-            <table className="wc-table">
+          <div className={look.tableScroll}>
+            <table className={look.table}>
               <caption>{plural(grants.length, "grant", "grants")}.</caption>
               <thead>
                 <tr>
@@ -300,14 +301,14 @@ function AppBody({
                 {grants.map((grant) => (
                   <tr key={`${grant.subject}:${grant.role}`}>
                     <th scope="row">
-                      <Link to={consoleHref(basePath, { kind: "account", subject: grant.subject })} className="wc-id">
+                      <Link to={consoleHref(basePath, { kind: "account", subject: grant.subject })} className={look.id}>
                         {grant.subject}
                       </Link>
                     </th>
                     <td>
-                      <span className="wc-id">{grant.role}</span>
+                      <span className={look.id}>{grant.role}</span>
                     </td>
-                    <td className="wc-when">
+                    <td className={look.when}>
                       <time dateTime={grant.grantedAt} title={grant.grantedAt}>
                         {formatWhen(grant.grantedAt)}
                       </time>
@@ -316,7 +317,7 @@ function AppBody({
                         `superuser` / `self-registration`; it is not a foreign
                         key and there may be no account behind it at all. */}
                     <td>
-                      <span className="wc-id">{grant.grantedBy}</span>
+                      <span className={look.id}>{grant.grantedBy}</span>
                     </td>
                   </tr>
                 ))}
@@ -338,10 +339,10 @@ function AppBody({
         tone="danger"
         note="Deleting an app removes every grant for it — and every service key — in the same write. It is the one action on this console that silently removes rows you did not name — the audit row records how many went, and that count is the only trace they existed."
       >
-        <div className="wc-actions">
+        <div className={look.actions}>
           <button
             type="button"
-            className="wc-btn"
+            className={look.btn}
             data-tone="danger"
             disabled={writer.busy}
             onClick={() => {
@@ -374,14 +375,14 @@ function AppBody({
         }}
       >
         <p>
-          Anyone who can reach Ward will be able to create an account for <span className="wc-id">{app.slug}</span>{" "}
-          without an invitation, and each will be granted <span className="wc-id">{baselineRole}</span> in it
+          Anyone who can reach Ward will be able to create an account for <span className={look.id}>{app.slug}</span>{" "}
+          without an invitation, and each will be granted <span className={look.id}>{baselineRole}</span> in it
           automatically.
         </p>
         <p>
           This is the only setting in Ward that exposes an anonymous write surface on the public internet. It writes an{" "}
-          <span className="wc-id">app.registration</span> audit row, which is the row to look for when asking who opened
-          an app.
+          <span className={look.id}>app.registration</span> audit row, which is the row to look for when asking who
+          opened an app.
         </p>
       </Confirm>
 
@@ -410,7 +411,7 @@ function AppBody({
       >
         <p>
           No new accounts can be self-created for this app. The baseline role{" "}
-          <span className="wc-id">{app.baselineRole ?? "none"}</span> is cleared, so reopening later has to name one
+          <span className={look.id}>{app.baselineRole ?? "none"}</span> is cleared, so reopening later has to name one
           again — a reopen must not inherit an answer nobody re-checked.
         </p>
         <p>

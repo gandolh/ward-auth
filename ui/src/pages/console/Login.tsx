@@ -32,6 +32,7 @@ import { useRef, useState } from "react";
 import { consoleApi, ConsoleApiError, type ConsoleSessionView } from "../../console-api.js";
 import { Alert, TextField } from "./ui.js";
 import { formatRemaining } from "./format.js";
+import * as look from "./looks.js";
 
 export function ConsoleLogin({
   onSignedIn,
@@ -85,12 +86,12 @@ export function ConsoleLogin({
     // The attribute is set here as well as on `app.tsx`'s wrapper. It is what
     // re-points the token palette, and this screen must be unmistakable even if
     // it is ever rendered outside that wrapper.
-    <div className="wc-gate" data-ward-surface="console">
-      <div className="wc-hazard" />
-      <div className="wc-gate-inner">
+    <div className={look.frame} data-ward-surface="console">
+      <div className={look.hazard} />
+      <div className={look.gateInner}>
         <div>
-          <h1>Ward console</h1>
-          <p className="wc-lede">
+          <h1 className={look.gateHeading}>Ward console</h1>
+          <p className={look.lede}>
             Break-glass access to the estate&rsquo;s identity service. Sign in with the credential from Ward&rsquo;s
             environment, not with a Ward account.
           </p>
@@ -108,7 +109,7 @@ export function ConsoleLogin({
           )}
 
           <form
-            className="wc-form"
+            className={look.form}
             onSubmit={(event) => {
               void submit(event);
             }}
@@ -136,8 +137,8 @@ export function ConsoleLogin({
               required
               disabled={busy}
             />
-            <div className="wc-actions">
-              <button type="submit" className="wc-btn" data-tone="primary" disabled={busy}>
+            <div className={look.actions}>
+              <button type="submit" className={look.btn} data-tone="primary" disabled={busy}>
                 {busy ? "Signing in…" : "Sign in to the console"}
               </button>
             </div>
@@ -145,8 +146,8 @@ export function ConsoleLogin({
         </div>
 
         <div>
-          <h2 className="wc-wordmark">What this credential is</h2>
-          <dl className="wc-gate-terms">
+          <h2 className={look.wordmark}>What this credential is</h2>
+          <dl className={look.gateTerms}>
             <dt>It is not an account</dt>
             <dd>
               Ward&rsquo;s database holds no row for it: no subject, no grants, nothing in the account list below, and
@@ -156,7 +157,7 @@ export function ConsoleLogin({
 
             <dt>It cannot be rotated from here</dt>
             <dd>
-              Changing the password means editing <span className="wc-id">WARD_ADMIN_PASSWORD</span> and restarting
+              Changing the password means editing <span className={look.id}>WARD_ADMIN_PASSWORD</span> and restarting
               Ward. That friction is deliberate for a credential of this kind, and a restart also ends every open
               console session.
             </dd>

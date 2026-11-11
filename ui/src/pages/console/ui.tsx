@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import * as look from "./looks.js";
 
 /* ---------------------------------------------------------------------------
  * Fields
@@ -71,13 +72,14 @@ export function TextField({
     .join(" ");
 
   return (
-    <p className="wc-field">
-      <label htmlFor={id}>
+    <p className={look.field}>
+      <label htmlFor={id} className={look.fieldLabel}>
         {label}
         {required === true ? " (required)" : ""}
       </label>
       <input
         id={id}
+        className={opaque === true ? look.controlMono : look.control}
         name={name}
         type={type}
         value={value}
@@ -96,12 +98,12 @@ export function TextField({
         ref={inputRef}
       />
       {hint === undefined ? null : (
-        <span className="wc-field-hint" id={hintId}>
+        <span className={look.fieldHint} id={hintId}>
           {hint}
         </span>
       )}
       {error === undefined ? null : (
-        <span className="wc-field-error" id={errorId}>
+        <span className={look.fieldError} id={errorId}>
           {error}
         </span>
       )}
@@ -141,7 +143,7 @@ export function Alert({ tone, title, children, takeFocus }: AlertProps): React.J
   }, [takeFocus]);
 
   return (
-    <div className="wc-alert" data-tone={tone} role={tone === "done" ? "status" : "alert"} tabIndex={-1} ref={ref}>
+    <div className={look.alert} data-tone={tone} role={tone === "done" ? "status" : "alert"} tabIndex={-1} ref={ref}>
       {title === undefined ? null : <h2>{title}</h2>}
       <p>{children}</p>
     </div>
@@ -170,7 +172,7 @@ export function useAnnounce(): {
     announce,
     latest: message,
     region: (
-      <div className="wc-sr" role="status" aria-live="polite">
+      <div className={look.sr} role="status" aria-live="polite">
         {message}
       </div>
     ),
@@ -200,7 +202,7 @@ export function Panel({
   children?: ReactNode;
 }): React.JSX.Element {
   return (
-    <section className="wc-panel" data-tone={tone}>
+    <section className={look.panel} data-tone={tone}>
       {focusKey === undefined ? (
         <h2>{title}</h2>
       ) : (
@@ -208,7 +210,7 @@ export function Panel({
           {title}
         </h2>
       )}
-      {note === undefined ? null : <p className="wc-panel-note">{note}</p>}
+      {note === undefined ? null : <p className={look.panelNote}>{note}</p>}
       {children}
     </section>
   );
@@ -224,7 +226,7 @@ export function Panel({
  */
 export function Empty({ title, children }: { title: string; children: ReactNode }): React.JSX.Element {
   return (
-    <div className="wc-empty">
+    <div className={look.empty}>
       <h3>{title}</h3>
       {children}
     </div>
@@ -233,7 +235,7 @@ export function Empty({ title, children }: { title: string; children: ReactNode 
 
 /** An opaque value Ward stores verbatim: a subject, a slug, a role, an id. */
 export function Id({ children }: { children: ReactNode }): React.JSX.Element {
-  return <span className="wc-id">{children}</span>;
+  return <span className={look.id}>{children}</span>;
 }
 
 /* ---------------------------------------------------------------------------

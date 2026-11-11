@@ -44,16 +44,11 @@ export default [
   {
     // A warning for now (2026-11-11): the library reads the environment in two
     // documented fallbacks, AUTH_TRUSTED_PROXIES in the Fastify plugin and the
-    // WARD_OIDC_* variables in wardClientOptionsFromEnv, and its test harness
-    // sets Ward's environment before booting it. When the library's own
+    // WARD_OIDC_* variables in wardClientOptionsFromEnv. When the library's own
     // exceptions are recorded with its structure, this block goes: each read
     // becomes a recorded exception or moves.
     name: "ward/library-process-env-warns",
-    files: [
-      "shared-library/src/fastify/plugin.ts",
-      "shared-library/src/ward/client.ts",
-      "shared-library/src/testing/ward-harness.ts",
-    ],
+    files: ["shared-library/src/fastify/plugin.ts", "shared-library/src/ward/client.ts"],
     rules: { "n/no-process-env": "warn" },
   },
 ];

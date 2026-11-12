@@ -163,23 +163,22 @@ export const adminSessionsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    * `200` with an empty list: "nobody is signed in" and "no such account" are
    * different facts and the console shows both differently.
    */
-  app.get("/console/accounts/:subject/sessions", { schema: { response: listSchema } }, async (request, reply) => {
-    const params = subjectParams.safeParse(request.params);
-    if (!params.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
+  app.get(
+    "/console/accounts/:subject/sessions",
+    { schema: { params: subjectParams, response: listSchema } },
+    async (request, reply) => {
+      reply.header("cache-control", "no-store");
 
-    reply.header("cache-control", "no-store");
+      const db = await database();
+      const account = findUserBySubject(db, request.params.subject);
+      if (account === undefined) {
+        return reply.code(404).send({ error: "account_not_found" });
+      }
 
-    const db = await database();
-    const account = findUserBySubject(db, params.data.subject);
-    if (account === undefined) {
-      return reply.code(404).send({ error: "account_not_found" });
-    }
-
-    const sessions = liveSessions(db, account.subject);
-    return reply.code(200).send({ sessions, total: sessions.length });
-  });
+      const sessions = liveSessions(db, account.subject);
+      return reply.code(200).send({ sessions, total: sessions.length });
+    },
+  );
 
   /**
    * `DELETE /console/accounts/:subject/sessions/:familyId` — end one device.
@@ -212,17 +211,12 @@ export const adminSessionsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    */
   app.delete(
     "/console/accounts/:subject/sessions/:familyId",
-    { schema: { response: revokeOneSchema } },
+    { schema: { params: familyParams, response: revokeOneSchema } },
     async (request, reply) => {
-      const params = familyParams.safeParse(request.params);
-      if (!params.success) {
-        return reply.code(400).send({ error: "invalid_request" });
-      }
-
       reply.header("cache-control", "no-store");
 
       const db = await database();
-      const account = findUserBySubject(db, params.data.subject);
+      const account = findUserBySubject(db, request.params.subject);
       if (account === undefined) {
         return reply.code(404).send({ error: "account_not_found" });
       }
@@ -233,19 +227,19 @@ export const adminSessionsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
        * read the wrong way round: there is no path here on which a family id from
        * the URL selects the rows that then vouch for themselves.
        */
-      const owned = liveSessions(db, account.subject).some((session) => session.familyId === params.data.familyId);
+      const owned = liveSessions(db, account.subject).some((session) => session.familyId === request.params.familyId);
       if (!owned) {
         return reply.code(404).send({ error: "session_not_found" });
       }
 
       const revoked = db.transaction((): number => {
-        const count = revokeFamily(db, params.data.familyId, "admin");
+        const count = revokeFamily(db, request.params.familyId, "admin");
 
         if (count > 0) {
           recordConsoleAudit(db, request, {
             action: "session.revoke",
             targetKind: "session",
-            targetId: params.data.familyId,
+            targetId: request.params.familyId,
             detail: {
               subject: account.subject,
               username: account.username,
@@ -259,7 +253,7 @@ export const adminSessionsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
 
       return reply.code(200).send({
         subject: account.subject,
-        familyId: params.data.familyId,
+        familyId: request.params.familyId,
         revoked,
         changed: revoked > 0,
       });
@@ -286,17 +280,12 @@ export const adminSessionsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    */
   app.post(
     "/console/accounts/:subject/sessions/revoke",
-    { schema: { response: revokeAllSchema } },
+    { schema: { params: subjectParams, response: revokeAllSchema } },
     async (request, reply) => {
-      const params = subjectParams.safeParse(request.params);
-      if (!params.success) {
-        return reply.code(400).send({ error: "invalid_request" });
-      }
-
       reply.header("cache-control", "no-store");
 
       const db = await database();
-      const account = findUserBySubject(db, params.data.subject);
+      const account = findUserBySubject(db, request.params.subject);
       if (account === undefined) {
         return reply.code(404).send({ error: "account_not_found" });
       }

@@ -367,3 +367,20 @@ describe("POST .../sessions/revoke", () => {
     expect(response.json()).toEqual({ error: "account_not_found" });
   });
 });
+
+/**
+ * The route's input is checked by its schema now, not by hand; a request that
+ * fails it gets exactly the body the hand-written check sent, with no issue
+ * list.
+ */
+it("answers a malformed parameter with exactly the old 400 body", async () => {
+  for (const init of [
+    { method: "GET", url: `/console/accounts/${"s".repeat(65)}/sessions` },
+    { method: "DELETE", url: `/console/accounts/${"s".repeat(65)}/sessions/family` },
+    { method: "POST", url: `/console/accounts/${"s".repeat(65)}/sessions/revoke` },
+  ] satisfies InjectOptions[]) {
+    const response = await asConsole(init);
+    expect(response.statusCode, `${init.method} ${init.url}`).toBe(400);
+    expect(response.body, `${init.method} ${init.url}`).toBe('{"error":"invalid_request"}');
+  }
+});

@@ -112,14 +112,14 @@
       "check": "structure",
       "rule": 3,
       "path": "shared-library/src/fastify/plugin.ts",
-      "match": "reads process.env outside config.ts",
+      "match": "process.env[\"AUTH_TRUSTED_PROXIES\"]",
       "reason": "The vendored library's one fallback read of AUTH_TRUSTED_PROXIES, only when the app passes no trustedProxies option; the library has no config.ts, and apps vendor it as a bundle."
     },
     {
       "check": "structure",
       "rule": 3,
       "path": "shared-library/src/ward/client.ts",
-      "match": "reads process.env outside config.ts",
+      "match": "string | undefined> = process.env",
       "reason": "The vendored library's wardClientOptionsFromEnv defaults its env argument to process.env, so an app that passes none reads its own WARD_OIDC_* settings; the library has no config.ts, and apps vendor it as a bundle."
     },
     {

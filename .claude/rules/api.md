@@ -25,9 +25,11 @@ paths:
   rejects included, is `500 { error: "internal" }` and never echoes a thrown
   message.
 - Every route that answers JSON declares a zod `response` schema for each
-  status its handler sends, and no other: the console guard's 401 is not
-  declared. Error statuses use `lib/replies.ts`'s `errorReply`, which also
-  carries Fastify's own 4xx body through. Keys follow the order the handler
+  status its handler sends, and no other: the admin routes don't declare the
+  console guard's 401 (`GET /console/session` declares its own as
+  `errorReply`, which carries the guard's body through). Error statuses use
+  `lib/replies.ts`'s `errorReply`, which also carries Fastify's own 4xx body
+  through. Keys follow the order the handler
   builds them, so the bytes don't change.
 - Request schemas go through the type provider. Eleven sites stay
   hand-parsed because their failure does something a 400 would replace

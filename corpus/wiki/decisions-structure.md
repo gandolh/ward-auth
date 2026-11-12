@@ -33,8 +33,11 @@ skills library's.
 ## Response schemas everywhere, request schemas where a 400 is the answer
 _2026-11-12_ — Every route that answers JSON declares a zod response schema
 for each status its own handler sends, and no other: the console guard's
-401 isn't declared, because a declared status encodes every reply on it,
-the guard's included. Error statuses share `errorReply`, whose optional
+401 isn't declared on the admin routes, because a declared status encodes
+every reply on it, the guard's included. `GET /console/session` declares one
+for its own unreachable branch, as `errorReply`, which carries the guard's
+body through unchanged; a test checks the guard's 401 byte for byte on every
+admin route. Error statuses share `errorReply`, whose optional
 `statusCode` and `message` carry Fastify's own 4xx through unchanged. Keys
 are listed in the order the handlers build them, so the bytes didn't move.
 The JWKS is the one JSON route without a schema: it is a string, serialised
@@ -79,6 +82,7 @@ signed out, as an account and as the console, with every error path, the
 lockouts, broken JSON, and the audit rows each request wrote. Tokens were
 compared by their header and claims. After every step the capture was
 byte-identical, and a field removed from a schema on purpose showed in it,
-so the schemas are live. No field was dropped: the old filters had already
-stripped the leaks, and the new schemas name every field the vendored
-library versions (0.3.1, 0.4.0, 0.7.0) read.
+so the schemas are live. No field was dropped, so nothing any vendored
+library version (0.3.1, 0.4.0, 0.7.0) reads changed; the library's source
+reads `active` and `role` from `/session-status` and `sent` from `/notify`,
+all three named in the schemas.

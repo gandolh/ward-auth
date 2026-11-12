@@ -176,14 +176,9 @@ export const adminAppsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async 
   });
 
   /** `GET /console/apps/:slug` — one app, with everyone who can reach it. */
-  app.get("/console/apps/:slug", { schema: { response: detailSchema } }, async (request, reply) => {
-    const params = slugParams.safeParse(request.params);
-    if (!params.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
+  app.get("/console/apps/:slug", { schema: { params: slugParams, response: detailSchema } }, async (request, reply) => {
     const db = await database();
-    const row = getApp(db, params.data.slug);
+    const row = getApp(db, request.params.slug);
     if (row === undefined) {
       return reply.code(404).send({ error: "app_not_found" });
     }
@@ -201,14 +196,9 @@ export const adminAppsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async 
    * PRIMARY KEY rather than by a `getApp` first: a check-then-insert has a race
    * between the two statements and the constraint does not.
    */
-  app.post("/console/apps", { schema: { response: createSchema } }, async (request, reply) => {
-    const body = createAppBody.safeParse(request.body);
-    if (!body.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    const { slug, name, publicRegistration = false } = body.data;
-    const role = body.data.baselineRole;
+  app.post("/console/apps", { schema: { body: createAppBody, response: createSchema } }, async (request, reply) => {
+    const { slug, name, publicRegistration = false } = request.body;
+    const role = request.body.baselineRole;
 
     if (publicRegistration && role === undefined) {
       return reply.code(400).send({ error: "baseline_role_required" });
@@ -277,94 +267,93 @@ export const adminAppsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async 
    * The log records changes of authority; a form resubmitted unchanged is not
    * one, and auditing it would bury the rows an operator needs.
    */
-  app.patch("/console/apps/:slug", { schema: { response: updateSchema } }, async (request, reply) => {
-    const params = slugParams.safeParse(request.params);
-    const body = patchAppBody.safeParse(request.body);
-    if (!params.success || !body.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    const db = await database();
-    const before = getApp(db, params.data.slug);
-    if (before === undefined) {
-      return reply.code(404).send({ error: "app_not_found" });
-    }
-
-    const touchesRegistration = body.data.publicRegistration !== undefined || body.data.baselineRole !== undefined;
-
-    const open = body.data.publicRegistration ?? before.public_registration === 1;
-    const role = body.data.baselineRole !== undefined ? body.data.baselineRole : before.baseline_role;
-
-    if (open && role === null) {
-      // Either opening with no role named, or clearing the role of an open app.
-      // Both leave an app open to strangers that confers nothing, which the
-      // schema refuses; this is the same refusal with a code the console can act
-      // on.
-      return reply.code(400).send({ error: "baseline_role_required" });
-    }
-    if (!open && body.data.baselineRole != null) {
-      return reply.code(400).send({ error: "baseline_role_requires_open" });
-    }
-
-    let after: AppRow;
-    try {
-      after = db.transaction((): AppRow => {
-        if (body.data.name !== undefined) {
-          renameApp(db, before.slug, body.data.name);
-        }
-        if (touchesRegistration) {
-          // `setPublicRegistration` clears the role when closing, whatever it is
-          // handed — one write for both halves of one decision.
-          setPublicRegistration(db, before.slug, open, open ? role : null);
-        }
-
-        const row = getApp(db, before.slug);
-        if (row === undefined) throw new Error("the app was gone during its own update");
-
-        const renamed: Record<string, FieldChange> = {};
-        if (row.name !== before.name) {
-          renamed["name"] = { from: before.name, to: row.name };
-        }
-
-        const registration: Record<string, FieldChange> = {};
-        if (row.public_registration !== before.public_registration) {
-          registration["publicRegistration"] = {
-            from: before.public_registration === 1,
-            to: row.public_registration === 1,
-          };
-        }
-        if (row.baseline_role !== before.baseline_role) {
-          registration["baselineRole"] = { from: before.baseline_role, to: row.baseline_role };
-        }
-
-        if (Object.keys(renamed).length > 0) {
-          recordConsoleAudit(db, request, {
-            action: "app.update",
-            targetKind: "app",
-            targetId: row.slug,
-            detail: { changed: renamed },
-          });
-        }
-        if (Object.keys(registration).length > 0) {
-          recordConsoleAudit(db, request, {
-            action: "app.registration",
-            targetKind: "app",
-            targetId: row.slug,
-            detail: { changed: registration },
-          });
-        }
-
-        return row;
-      })();
-    } catch (error) {
-      if (isCheckViolation(error)) {
-        return reply.code(400).send({ error: "invalid_request" });
+  app.patch(
+    "/console/apps/:slug",
+    { schema: { params: slugParams, body: patchAppBody, response: updateSchema } },
+    async (request, reply) => {
+      const db = await database();
+      const before = getApp(db, request.params.slug);
+      if (before === undefined) {
+        return reply.code(404).send({ error: "app_not_found" });
       }
-      throw error;
-    }
 
-    return reply.code(200).send({ app: appView(after) });
-  });
+      const touchesRegistration =
+        request.body.publicRegistration !== undefined || request.body.baselineRole !== undefined;
+
+      const open = request.body.publicRegistration ?? before.public_registration === 1;
+      const role = request.body.baselineRole !== undefined ? request.body.baselineRole : before.baseline_role;
+
+      if (open && role === null) {
+        // Either opening with no role named, or clearing the role of an open app.
+        // Both leave an app open to strangers that confers nothing, which the
+        // schema refuses; this is the same refusal with a code the console can act
+        // on.
+        return reply.code(400).send({ error: "baseline_role_required" });
+      }
+      if (!open && request.body.baselineRole != null) {
+        return reply.code(400).send({ error: "baseline_role_requires_open" });
+      }
+
+      let after: AppRow;
+      try {
+        after = db.transaction((): AppRow => {
+          if (request.body.name !== undefined) {
+            renameApp(db, before.slug, request.body.name);
+          }
+          if (touchesRegistration) {
+            // `setPublicRegistration` clears the role when closing, whatever it is
+            // handed — one write for both halves of one decision.
+            setPublicRegistration(db, before.slug, open, open ? role : null);
+          }
+
+          const row = getApp(db, before.slug);
+          if (row === undefined) throw new Error("the app was gone during its own update");
+
+          const renamed: Record<string, FieldChange> = {};
+          if (row.name !== before.name) {
+            renamed["name"] = { from: before.name, to: row.name };
+          }
+
+          const registration: Record<string, FieldChange> = {};
+          if (row.public_registration !== before.public_registration) {
+            registration["publicRegistration"] = {
+              from: before.public_registration === 1,
+              to: row.public_registration === 1,
+            };
+          }
+          if (row.baseline_role !== before.baseline_role) {
+            registration["baselineRole"] = { from: before.baseline_role, to: row.baseline_role };
+          }
+
+          if (Object.keys(renamed).length > 0) {
+            recordConsoleAudit(db, request, {
+              action: "app.update",
+              targetKind: "app",
+              targetId: row.slug,
+              detail: { changed: renamed },
+            });
+          }
+          if (Object.keys(registration).length > 0) {
+            recordConsoleAudit(db, request, {
+              action: "app.registration",
+              targetKind: "app",
+              targetId: row.slug,
+              detail: { changed: registration },
+            });
+          }
+
+          return row;
+        })();
+      } catch (error) {
+        if (isCheckViolation(error)) {
+          return reply.code(400).send({ error: "invalid_request" });
+        }
+        throw error;
+      }
+
+      return reply.code(200).send({ app: appView(after) });
+    },
+  );
 
   /**
    * `DELETE /console/apps/:slug` — remove an app.
@@ -376,88 +365,85 @@ export const adminAppsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async 
    * surface that silently removes rows the operator did not name, so the count
    * is the only trace left that they existed.
    */
-  app.put("/console/apps/:slug/oidc", { schema: { response: updateSchema } }, async (request, reply) => {
-    const params = slugParams.safeParse(request.params);
-    const body = putOidcBody.safeParse(request.body);
-    if (!params.success || !body.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    const registration = await parseClientRegistration({
-      redirectUris: body.data.redirectUris,
-      postLogoutRedirectUris: body.data.postLogoutRedirectUris,
-      jwks: body.data.jwks,
-    });
-    if (typeof registration === "string") {
-      return reply.code(400).send({ error: registration });
-    }
-
-    const db = await database();
-    const before = getApp(db, params.data.slug);
-    if (before === undefined) {
-      return reply.code(404).send({ error: "app_not_found" });
-    }
-
-    const after = db.transaction((): AppRow => {
-      setOidcClient(db, before.slug, registration);
-      const row = getApp(db, before.slug);
-      if (row === undefined) throw new Error("the app was gone during its own OIDC update");
-      const was = oidcClientOf(before);
-      // Key ids, never key material, in the audit row: the log is read by
-      // whoever reads the console, and a kid is enough to say which key.
-      recordConsoleAudit(db, request, {
-        action: "app.oidc_client",
-        targetKind: "app",
-        targetId: row.slug,
-        detail: {
-          redirectUris: { from: was.redirectUris, to: registration.redirectUris },
-          postLogoutRedirectUris: {
-            from: was.postLogoutRedirectUris,
-            to: registration.postLogoutRedirectUris,
-          },
-          kids: {
-            from: was.jwks?.keys.map((key) => key["kid"]) ?? [],
-            to: registration.jwks?.keys.map((key) => key["kid"]) ?? [],
-          },
-        },
+  app.put(
+    "/console/apps/:slug/oidc",
+    { schema: { params: slugParams, body: putOidcBody, response: updateSchema } },
+    async (request, reply) => {
+      const registration = await parseClientRegistration({
+        redirectUris: request.body.redirectUris,
+        postLogoutRedirectUris: request.body.postLogoutRedirectUris,
+        jwks: request.body.jwks,
       });
-      return row;
-    })();
+      if (typeof registration === "string") {
+        return reply.code(400).send({ error: registration });
+      }
 
-    return reply.code(200).send({ app: appView(after) });
-  });
+      const db = await database();
+      const before = getApp(db, request.params.slug);
+      if (before === undefined) {
+        return reply.code(404).send({ error: "app_not_found" });
+      }
 
-  app.delete("/console/apps/:slug", { schema: { response: deleteSchema } }, async (request, reply) => {
-    const params = slugParams.safeParse(request.params);
-    if (!params.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
+      const after = db.transaction((): AppRow => {
+        setOidcClient(db, before.slug, registration);
+        const row = getApp(db, before.slug);
+        if (row === undefined) throw new Error("the app was gone during its own OIDC update");
+        const was = oidcClientOf(before);
+        // Key ids, never key material, in the audit row: the log is read by
+        // whoever reads the console, and a kid is enough to say which key.
+        recordConsoleAudit(db, request, {
+          action: "app.oidc_client",
+          targetKind: "app",
+          targetId: row.slug,
+          detail: {
+            redirectUris: { from: was.redirectUris, to: registration.redirectUris },
+            postLogoutRedirectUris: {
+              from: was.postLogoutRedirectUris,
+              to: registration.postLogoutRedirectUris,
+            },
+            kids: {
+              from: was.jwks?.keys.map((key) => key["kid"]) ?? [],
+              to: registration.jwks?.keys.map((key) => key["kid"]) ?? [],
+            },
+          },
+        });
+        return row;
+      })();
 
-    const db = await database();
-    const row = getApp(db, params.data.slug);
-    if (row === undefined) {
-      return reply.code(404).send({ error: "app_not_found" });
-    }
+      return reply.code(200).send({ app: appView(after) });
+    },
+  );
 
-    const grantsRevoked = db.transaction((): number => {
-      // Counted before the delete, because the cascade takes the rows with it.
-      const count = listGrantsForApp(db, row.slug).length;
-      deleteApp(db, row.slug);
+  app.delete(
+    "/console/apps/:slug",
+    { schema: { params: slugParams, response: deleteSchema } },
+    async (request, reply) => {
+      const db = await database();
+      const row = getApp(db, request.params.slug);
+      if (row === undefined) {
+        return reply.code(404).send({ error: "app_not_found" });
+      }
 
-      recordConsoleAudit(db, request, {
-        action: "app.delete",
-        targetKind: "app",
-        targetId: row.slug,
-        detail: {
-          name: row.name,
-          publicRegistration: row.public_registration === 1,
-          grantsRevoked: count,
-        },
-      });
+      const grantsRevoked = db.transaction((): number => {
+        // Counted before the delete, because the cascade takes the rows with it.
+        const count = listGrantsForApp(db, row.slug).length;
+        deleteApp(db, row.slug);
 
-      return count;
-    })();
+        recordConsoleAudit(db, request, {
+          action: "app.delete",
+          targetKind: "app",
+          targetId: row.slug,
+          detail: {
+            name: row.name,
+            publicRegistration: row.public_registration === 1,
+            grantsRevoked: count,
+          },
+        });
 
-    return reply.code(200).send({ deleted: row.slug, grantsRevoked });
-  });
+        return count;
+      })();
+
+      return reply.code(200).send({ deleted: row.slug, grantsRevoked });
+    },
+  );
 };

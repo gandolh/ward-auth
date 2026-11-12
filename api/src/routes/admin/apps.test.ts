@@ -445,3 +445,23 @@ describe("the OIDC client registration", () => {
     expect(missing.statusCode).toBe(404);
   });
 });
+
+/**
+ * The route's input is checked by its schema now, not by hand; a request that
+ * fails it gets exactly the body the hand-written check sent, with no issue
+ * list.
+ */
+it("answers a malformed parameter or body with exactly the old 400 body", async () => {
+  for (const init of [
+    { method: "GET", url: `/console/apps/${"a".repeat(65)}` },
+    { method: "POST", url: "/console/apps", payload: { slug: "new-app", name: "New", publicRegistration: "yes" } },
+    { method: "PATCH", url: "/console/apps/prm", payload: {} },
+    { method: "PATCH", url: "/console/apps/prm", payload: { name: "" } },
+    { method: "PUT", url: "/console/apps/prm/oidc", payload: { redirectUris: "x" } },
+    { method: "DELETE", url: `/console/apps/${"a".repeat(65)}` },
+  ] satisfies InjectOptions[]) {
+    const response = await asConsole(init);
+    expect(response.statusCode, `${init.method} ${init.url}`).toBe(400);
+    expect(response.body, `${init.method} ${init.url}`).toBe('{"error":"invalid_request"}');
+  }
+});

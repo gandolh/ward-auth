@@ -152,7 +152,7 @@ export async function authRoutes(app: FastifyInstance, options: AuthRoutesOption
   /**
    * Lazy, and memoised by `getDb()` itself. Not resolved at registration
    * because `app.ts` is deliberately free of any reach into the database (see
-   * its header): `index.ts` runs migrations strictly before `buildApp()`, and a
+   * its header): `server.ts` runs migrations strictly before `buildApp()`, and a
    * registration-time `getDb()` would open the file from inside `buildApp` and
    * blur that ordering.
    */

@@ -343,7 +343,7 @@ if (!parsed.success) {
 
 const env = parsed.data;
 
-/** Read by `api/src/index.ts` to bind the Fastify listener. */
+/** Read by `api/src/server.ts` to bind the Fastify listener. */
 export const PORT: number = env.PORT;
 export const HOST: string = env.HOST;
 

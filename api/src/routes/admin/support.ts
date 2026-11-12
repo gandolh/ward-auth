@@ -26,7 +26,7 @@ import type { UserRow } from "../../db/users.js";
  * singleton lazily on first request.
  *
  * Lazily, specifically — never at registration. `app.ts` is deliberately free of
- * any reach into the database, because `index.ts` runs migrations strictly
+ * any reach into the database, because `server.ts` runs migrations strictly
  * before `buildApp()`, and a registration-time `getDb()` would open the file
  * from inside `buildApp` and blur that ordering.
  */

@@ -16,11 +16,11 @@ import { getPublicJwks } from "../tokens/service.js";
  *
  * ## Loading at registration is what makes a missing key a boot failure
  *
- * `getPublicJwks()` is awaited here, during `buildApp()`, which `index.ts` runs
+ * `getPublicJwks()` is awaited here, during `buildApp()`, which `server.ts` runs
  * after migrations and before `listen()` — the scaffold named "loading the
  * signing key, warming JWKS" as exactly what belongs at that point. So a
  * missing, unreadable or wrong-type key file rejects here, `buildApp()` rejects,
- * `index.ts` never binds a port, and pm2 logs a message that names
+ * `server.ts` never binds a port, and pm2 logs a message that names
  * `npm run keygen`. Ward does not start without a key, and it never invents one.
  *
  * Note the consequence for tests: a test that calls `buildApp()` needs a

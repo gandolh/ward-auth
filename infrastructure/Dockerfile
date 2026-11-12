@@ -111,4 +111,4 @@ EXPOSE 8791
 # compose file publishes ${PORT} and the service listens on it.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
   CMD wget -qO- "http://127.0.0.1:${PORT}/health" || exit 1
-CMD ["node", "api/dist/index.js"]
+CMD ["node", "api/dist/server.js"]

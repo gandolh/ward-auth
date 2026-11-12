@@ -29,7 +29,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  *    `getKeySet()` while `buildApp()` runs), which needs a key genuinely on
  *    disk rather than one handed to a test fixture;
  *  - a real `WARD_DB_PATH` file, migrated with `runMigrations`, exactly the
- *    way `index.ts` boots it — not `:memory:`;
+ *    way `server.ts` boots it — not `:memory:`;
  *  - the console's bring-up sequence end to end: "a grant added through the
  *    console appears in the next session check" and "disabling an account
  *    ends its live sessions... verified end to end" are acceptance criteria
@@ -92,7 +92,7 @@ beforeAll(async () => {
   // Set BEFORE anything imports `config.js` — see the file header.
   process.env["PORT"] = "8798";
   process.env["HOST"] = "127.0.0.1";
-  // A real on-disk file, not `:memory:`. `index.ts`'s own boot sequence — the
+  // A real on-disk file, not `:memory:`. `server.ts`'s own boot sequence — the
   // one this suite exists to reproduce — opens exactly this kind of path.
   process.env["WARD_DB_PATH"] = join(dir, "ward.db");
   process.env["WARD_ADMIN_USERNAME"] = ADMIN_USERNAME;
@@ -113,7 +113,7 @@ beforeAll(async () => {
   const { generateSigningKeyFile } = await import("../tokens/keygen.js");
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
-  // Migrations run against the real file, exactly the order `index.ts` uses:
+  // Migrations run against the real file, exactly the order `server.ts` uses:
   // open the handle, migrate it, only then build the app.
   const { getDb, closeDb } = await import("../db/connection.js");
   const { runMigrations } = await import("../db/migrate.js");

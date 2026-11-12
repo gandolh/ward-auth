@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyServerOptions } from "fastify";
 import { errorsPlugin } from "./plugins/errors.js";
 import { healthRoutes } from "./routes/health.js";
 import { jwksRoutes } from "./routes/jwks.js";
@@ -21,7 +21,7 @@ import { oidcRoutes } from "./oidc/routes.js";
  * Construct and configure the Fastify instance — nothing more.
  *
  * Deliberately free of side effects beyond that: no `listen()`, no
- * `runMigrations()`, no reach into `db`. Two reasons. First, `index.ts` needs
+ * `runMigrations()`, no reach into `db`. Two reasons. First, `server.ts` needs
  * migrations to finish (see there) strictly before the listener binds, and
  * that ordering is easiest to get right when this function cannot itself open
  * a socket. Second, the tests want to build an app in-process (e.g. with
@@ -29,8 +29,17 @@ import { oidcRoutes } from "./oidc/routes.js";
  * that way: route modules register their plugins into the instance this returns, they do not
  * add their own `listen()` calls.
  */
-export async function buildApp(): Promise<FastifyInstance> {
+export interface BuildAppOptions {
+  /**
+   * The process's server options, which `server.ts` passes (its
+   * `keepAliveTimeout`). Tests pass none and get Fastify's defaults.
+   */
+  server?: Pick<FastifyServerOptions, "keepAliveTimeout">;
+}
+
+export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
+    ...options.server,
     logger: true,
     // Fastify's default request log line uses the built-in `req` serializer,
     // which logs only method, url, host, remoteAddress, remotePort and the

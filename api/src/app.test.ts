@@ -197,3 +197,16 @@ describe("the routes buildApp wires in", () => {
     }
   });
 });
+
+describe("the server options", () => {
+  it("takes the process's keep-alive from server.ts and leaves connectionTimeout at Fastify's 0", async () => {
+    const { buildApp } = await import("./app.js");
+    const built = await buildApp({ server: { keepAliveTimeout: 125_000 } });
+    try {
+      expect(built.initialConfig.keepAliveTimeout).toBe(125_000);
+      expect(built.initialConfig.connectionTimeout).toBe(0);
+    } finally {
+      await built.close();
+    }
+  });
+});

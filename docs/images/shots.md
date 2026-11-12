@@ -16,7 +16,7 @@ a scratch copy. None comes from production.
 console-apps.webp was retaken on 2026-10-27 against a scratch API, so it shows only the apps
 registered for the shot, not whatever a long-lived database still holds. The recipe: make a
 temporary directory, write a throwaway signing key into it with
-`npx tsx api/src/tokens/keygen.ts <dir>/signing-key.pem`, and start `npx tsx api/src/index.ts` from
+`npx tsx api/src/tokens/keygen.ts <dir>/signing-key.pem`, and start `npx tsx api/src/server.ts` from
 the repo root with `PORT=8791`, `WARD_DB_PATH`, `WARD_SIGNING_KEY_PATH` and `WARD_MAIL_FILE_DIR`
 inside that directory, `WARD_MAIL_TRANSPORT=file`, `WARD_PUBLIC_ORIGIN=http://localhost:5199`, and a
 made-up `WARD_ADMIN_USERNAME` and `WARD_ADMIN_PASSWORD` passed in the environment, never written

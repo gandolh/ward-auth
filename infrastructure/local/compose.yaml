@@ -20,7 +20,7 @@ services:
     command:
       - /bin/sh
       - -c
-      - '[ -f "$$WARD_SIGNING_KEY_PATH" ] || node api/dist/tokens/keygen.js "$$WARD_SIGNING_KEY_PATH"; exec node api/dist/index.js'
+      - '[ -f "$$WARD_SIGNING_KEY_PATH" ] || node api/dist/tokens/keygen.js "$$WARD_SIGNING_KEY_PATH"; exec node api/dist/server.js'
     env_file:
       # The break-glass console login, WARD_ADMIN_USERNAME and
       # WARD_ADMIN_PASSWORD. Kept outside the repo on purpose.

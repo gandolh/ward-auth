@@ -97,7 +97,7 @@ export async function getDb(): Promise<Database.Database> {
  * Close the process-wide handle, if one was ever opened, and forget it so a
  * later `getDb()` call opens a fresh one.
  *
- * Two callers need this. `index.ts`'s `shutdown()` calls it so SQLite gets to
+ * Two callers need this. `server.ts`'s shutdown calls it so SQLite gets to
  * run its close-time WAL checkpoint before the process exits — without it the
  * committed data can be left sitting in `ward.db-wal` instead of the main
  * database file. A test suite calls it between cases to reset the singleton.

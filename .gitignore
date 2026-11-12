@@ -15,7 +15,7 @@ dist/
 # SQLite database + WAL/SHM sidecars.
 # The sidecars are NOT disposable while the process is running — an unclean
 # stop leaves committed data in the -wal. See the checkpoint-on-close note in
-# api/src/index.ts; back up all three together, never *.db alone.
+# api/src/server.ts; back up all three together, never *.db alone.
 *.db
 *.db-wal
 *.db-shm

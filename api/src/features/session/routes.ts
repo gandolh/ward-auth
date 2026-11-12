@@ -2,9 +2,9 @@ import type Database from "better-sqlite3";
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
-import { liveAccessSession } from "../auth/access-session.js";
-import { getDb } from "../db/connection.js";
-import { INACTIVE, type SessionResolution } from "../grants/resolve.js";
+import { liveAccessSession } from "../../auth/access-session.js";
+import { getDb } from "../../db/connection.js";
+import { INACTIVE, type SessionResolution } from "../../grants/resolve.js";
 
 /**
  * `GET /session` — "who am I", for a browser holding Ward's own cookie.

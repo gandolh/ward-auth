@@ -2,8 +2,8 @@ import type Database from "better-sqlite3";
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
-import { listOpenApps } from "../db/apps.js";
-import { getDb } from "../db/connection.js";
+import { listOpenApps } from "../../db/apps.js";
+import { getDb } from "../../db/connection.js";
 
 /**
  * `GET /apps` — the apps a stranger may sign up at. **Anonymous.**

@@ -1,21 +1,21 @@
 import { serializerCompiler, validatorCompiler } from "@fastify/type-provider-zod";
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from "fastify";
 import { errorsPlugin } from "./plugins/errors.js";
-import { healthRoutes } from "./routes/health.js";
-import { jwksRoutes } from "./routes/jwks.js";
-import { authRoutes } from "./routes/auth.js";
-import { consoleRoutes } from "./routes/console.js";
-import { notifyRoutes } from "./routes/notify.js";
-import { sessionRoutes } from "./routes/session.js";
-import { sessionStatusRoutes } from "./routes/session-status.js";
-import { adminAppsRoutes } from "./routes/admin/apps.js";
-import { adminGrantsRoutes } from "./routes/admin/grants.js";
-import { adminAccountsRoutes } from "./routes/admin/accounts.js";
-import { adminSessionsRoutes } from "./routes/admin/sessions.js";
-import { adminAuditRoutes } from "./routes/admin/audit.js";
-import { accountRoutes } from "./routes/account.js";
-import { publicAppsRoutes } from "./routes/public-apps.js";
-import { registerRoutes } from "./routes/register.js";
+import { healthRoutes } from "./features/health/routes.js";
+import { jwksRoutes } from "./features/jwks/routes.js";
+import { authRoutes } from "./features/auth/routes.js";
+import { consoleRoutes } from "./features/console/routes.js";
+import { notifyRoutes } from "./features/notify/routes.js";
+import { sessionRoutes } from "./features/session/routes.js";
+import { sessionStatusRoutes } from "./features/session/status.js";
+import { adminAppsRoutes } from "./features/admin/apps.js";
+import { adminGrantsRoutes } from "./features/admin/grants.js";
+import { adminAccountsRoutes } from "./features/admin/accounts.js";
+import { adminSessionsRoutes } from "./features/admin/sessions.js";
+import { adminAuditRoutes } from "./features/admin/audit.js";
+import { accountRoutes } from "./features/account/routes.js";
+import { publicAppsRoutes } from "./features/public-apps/routes.js";
+import { registerRoutes } from "./features/register/routes.js";
 import { oidcRoutes } from "./oidc/routes.js";
 
 /**

@@ -26,18 +26,18 @@ let db: Database.Database;
 let subject: string;
 
 let mod: {
-  session: typeof import("./session.js");
-  auth: typeof import("./auth.js");
-  cookie: typeof import("../auth/cookie.js");
-  lockout: typeof import("../auth/lockout.js");
-  password: typeof import("../auth/password.js");
-  superuser: typeof import("../auth/superuser.js");
-  service: typeof import("../tokens/service.js");
-  mint: typeof import("../tokens/mint.js");
-  grants: typeof import("../db/grants.js");
-  refreshTokens: typeof import("../db/refresh-tokens.js");
-  users: typeof import("../db/users.js");
-  testSupport: typeof import("../db/test-support.js");
+  session: typeof import("./routes.js");
+  auth: typeof import("../auth/routes.js");
+  cookie: typeof import("../../auth/cookie.js");
+  lockout: typeof import("../../auth/lockout.js");
+  password: typeof import("../../auth/password.js");
+  superuser: typeof import("../../auth/superuser.js");
+  service: typeof import("../../tokens/service.js");
+  mint: typeof import("../../tokens/mint.js");
+  grants: typeof import("../../db/grants.js");
+  refreshTokens: typeof import("../../db/refresh-tokens.js");
+  users: typeof import("../../db/users.js");
+  testSupport: typeof import("../../db/test-support.js");
 };
 
 function cookieValue(response: LightMyRequestResponse, name: string): string {
@@ -98,29 +98,29 @@ beforeAll(async () => {
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";
   process.env["WARD_MAIL_FROM"] = "ward@gandolh.ro";
 
-  const config = await import("../config.js");
-  const { generateSigningKeyFile } = await import("../tokens/keygen.js");
+  const config = await import("../../config.js");
+  const { generateSigningKeyFile } = await import("../../tokens/keygen.js");
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
   mod = {
-    session: await import("./session.js"),
-    auth: await import("./auth.js"),
-    cookie: await import("../auth/cookie.js"),
-    lockout: await import("../auth/lockout.js"),
-    password: await import("../auth/password.js"),
-    superuser: await import("../auth/superuser.js"),
-    service: await import("../tokens/service.js"),
-    mint: await import("../tokens/mint.js"),
-    grants: await import("../db/grants.js"),
-    refreshTokens: await import("../db/refresh-tokens.js"),
-    users: await import("../db/users.js"),
-    testSupport: await import("../db/test-support.js"),
+    session: await import("./routes.js"),
+    auth: await import("../auth/routes.js"),
+    cookie: await import("../../auth/cookie.js"),
+    lockout: await import("../../auth/lockout.js"),
+    password: await import("../../auth/password.js"),
+    superuser: await import("../../auth/superuser.js"),
+    service: await import("../../tokens/service.js"),
+    mint: await import("../../tokens/mint.js"),
+    grants: await import("../../db/grants.js"),
+    refreshTokens: await import("../../db/refresh-tokens.js"),
+    users: await import("../../db/users.js"),
+    testSupport: await import("../../db/test-support.js"),
   };
 
   db = mod.testSupport.freshDb();
   mod.testSupport.seedApps(db);
 
-  const { testFastify } = await import("../testing/fastify.js");
+  const { testFastify } = await import("../../testing/fastify.js");
   app = await testFastify({ logger: false });
   await app.register(mod.auth.authRoutes, { db });
   await app.register(mod.session.sessionRoutes, { db });
@@ -317,7 +317,7 @@ describe("the token comes from the cookie and nowhere else", () => {
 
 describe("the response schema", () => {
   it("is a filter: an over-full answer goes out with the four named fields only", async () => {
-    const { encodeReply } = await import("../testing/fastify.js");
+    const { encodeReply } = await import("../../testing/fastify.js");
     const overFull = {
       active: true,
       subject: "s-1",

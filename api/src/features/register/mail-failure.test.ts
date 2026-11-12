@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type Database from "better-sqlite3";
 import type { FastifyInstance } from "fastify";
-import { testFastify } from "../testing/fastify.js";
+import { testFastify } from "../../testing/fastify.js";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
 /**
@@ -33,11 +33,11 @@ let dir: string;
 let db: Database.Database;
 let app: FastifyInstance;
 let mod: {
-  register: typeof import("./register.js");
-  auditLog: typeof import("../db/audit-log.js");
-  grants: typeof import("../db/grants.js");
-  users: typeof import("../db/users.js");
-  testSupport: typeof import("../db/test-support.js");
+  register: typeof import("./routes.js");
+  auditLog: typeof import("../../db/audit-log.js");
+  grants: typeof import("../../db/grants.js");
+  users: typeof import("../../db/users.js");
+  testSupport: typeof import("../../db/test-support.js");
 };
 
 beforeAll(async () => {
@@ -59,11 +59,11 @@ beforeAll(async () => {
   process.env["WARD_MAIL_FROM"] = "ward@gandolh.ro";
 
   mod = {
-    register: await import("./register.js"),
-    auditLog: await import("../db/audit-log.js"),
-    grants: await import("../db/grants.js"),
-    users: await import("../db/users.js"),
-    testSupport: await import("../db/test-support.js"),
+    register: await import("./routes.js"),
+    auditLog: await import("../../db/audit-log.js"),
+    grants: await import("../../db/grants.js"),
+    users: await import("../../db/users.js"),
+    testSupport: await import("../../db/test-support.js"),
   };
 
   db = mod.testSupport.freshDb();

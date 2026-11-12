@@ -56,19 +56,19 @@ beforeAll(async () => {
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";
   process.env["WARD_MAIL_FROM"] = "ward@gandolh.ro";
 
-  const config = await import("../config.js");
-  const { generateSigningKeyFile } = await import("../tokens/keygen.js");
+  const config = await import("../../config.js");
+  const { generateSigningKeyFile } = await import("../../tokens/keygen.js");
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
-  const { freshDb } = await import("../db/test-support.js");
-  const { createUser } = await import("../db/users.js");
-  const { hashPassword } = await import("../auth/password.js");
+  const { freshDb } = await import("../../db/test-support.js");
+  const { createUser } = await import("../../db/users.js");
+  const { hashPassword } = await import("../../auth/password.js");
 
   db = freshDb();
   createUser(db, { username: "alice", passwordHash: await hashPassword(PASSWORD) });
 
-  const { authRoutes } = await import("./auth.js");
-  const { testFastify } = await import("../testing/fastify.js");
+  const { authRoutes } = await import("./routes.js");
+  const { testFastify } = await import("../../testing/fastify.js");
   app = await testFastify({ logger: false });
   await app.register(authRoutes, { db });
   await app.ready();
@@ -170,9 +170,9 @@ describe("a loopback caller with no X-Forwarded-For", () => {
       },
     };
 
-    const { authRoutes } = await import("./auth.js");
-    const { resetLockoutForTests } = await import("../auth/lockout.js");
-    const { testFastify } = await import("../testing/fastify.js");
+    const { authRoutes } = await import("./routes.js");
+    const { resetLockoutForTests } = await import("../../auth/lockout.js");
+    const { testFastify } = await import("../../testing/fastify.js");
 
     resetLockoutForTests();
     const loud = await testFastify({ logger: { level: "warn", stream } });

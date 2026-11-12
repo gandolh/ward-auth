@@ -3,17 +3,17 @@ import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import type { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import type { MailTransport } from "../config.js";
+import type { MailTransport } from "../../config.js";
 
-import { getApp, type AppRow } from "../db/apps.js";
-import { recordAudit } from "../db/audit-log.js";
-import { getDb } from "../db/connection.js";
-import { listRolesInApp } from "../db/grants.js";
-import { findUserBySubject } from "../db/users.js";
-import { appNotificationMail, NOTIFY_MAIL_SUBJECT_MAX, NOTIFY_TEXT_MAX } from "../mail/templates.js";
-import { errorReply } from "../lib/replies.js";
-import { sendMail } from "../mail/transport.js";
-import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-auth.js";
+import { getApp, type AppRow } from "../../db/apps.js";
+import { recordAudit } from "../../db/audit-log.js";
+import { getDb } from "../../db/connection.js";
+import { listRolesInApp } from "../../db/grants.js";
+import { findUserBySubject } from "../../db/users.js";
+import { appNotificationMail, NOTIFY_MAIL_SUBJECT_MAX, NOTIFY_TEXT_MAX } from "../../mail/templates.js";
+import { errorReply } from "../../lib/replies.js";
+import { sendMail } from "../../mail/transport.js";
+import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../../oidc/client-auth.js";
 
 /**
  * `POST /notify`: an app asks Ward to mail one of its own users.
@@ -294,7 +294,7 @@ export const NOTIFY_ROUTE_SCHEMA = {
 
 export const notifyRoutes: FastifyPluginAsyncZod<NotifyRoutesOptions> = async (app, options) => {
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
-  const transport = async (): Promise<MailTransport> => options.transport ?? (await import("../config.js")).MAIL;
+  const transport = async (): Promise<MailTransport> => options.transport ?? (await import("../../config.js")).MAIL;
 
   // One limiter per registration, so one per process in production.
   const limiter = options.limiter ?? createNotifyLimiter();
@@ -322,7 +322,7 @@ export const notifyRoutes: FastifyPluginAsyncZod<NotifyRoutesOptions> = async (a
           return reply.code(401).send({ error: "invalid_client" });
         }
 
-        const issuer = options.issuer ?? (await import("../config.js")).OIDC?.issuer;
+        const issuer = options.issuer ?? (await import("../../config.js")).OIDC?.issuer;
         const client =
           issuer === undefined || presented.type !== CLIENT_ASSERTION_TYPE
             ? ({ ok: false, reason: "not_accepted" } as const)

@@ -4,19 +4,19 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
-import { testFastify } from "../testing/fastify.js";
+import { testFastify } from "../../testing/fastify.js";
 import { SignJWT, importJWK, type JWK } from "jose";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import type { MailTransport } from "../config.js";
-import { setOidcClient } from "../db/apps.js";
-import { countAudit, listAudit, type AuditLogRow } from "../db/audit-log.js";
-import { grantRole, SUPERUSER_ACTOR } from "../db/grants.js";
-import { freshDb, seedApps, seedUser } from "../db/test-support.js";
-import { markEmailVerified, setDisabled, type UserRow } from "../db/users.js";
-import { CLIENT_ASSERTION_TYPE } from "../oidc/client-auth.js";
-import { generateClientKeyPair } from "../oidc/client-keygen.js";
-import { createNotifyLimiter, NOTIFY_LIMIT, NOTIFY_WINDOW_MS, notifyRoutes, type NotifyLimiter } from "./notify.js";
+import type { MailTransport } from "../../config.js";
+import { setOidcClient } from "../../db/apps.js";
+import { countAudit, listAudit, type AuditLogRow } from "../../db/audit-log.js";
+import { grantRole, SUPERUSER_ACTOR } from "../../db/grants.js";
+import { freshDb, seedApps, seedUser } from "../../db/test-support.js";
+import { markEmailVerified, setDisabled, type UserRow } from "../../db/users.js";
+import { CLIENT_ASSERTION_TYPE } from "../../oidc/client-auth.js";
+import { generateClientKeyPair } from "../../oidc/client-keygen.js";
+import { createNotifyLimiter, NOTIFY_LIMIT, NOTIFY_WINDOW_MS, notifyRoutes, type NotifyLimiter } from "./routes.js";
 
 /**
  * `POST /notify` against a Fastify instance this file builds, an in-memory
@@ -576,8 +576,8 @@ describe("createNotifyLimiter with the production numbers", () => {
 
 describe("the response schemas", () => {
   it("are filters: an over-full answer goes out with its named field only", async () => {
-    const { encodeReply } = await import("../testing/fastify.js");
-    const { NOTIFY_ROUTE_SCHEMA } = await import("./notify.js");
+    const { encodeReply } = await import("../../testing/fastify.js");
+    const { NOTIFY_ROUTE_SCHEMA } = await import("./routes.js");
     expect(encodeReply(NOTIFY_ROUTE_SCHEMA[200], { sent: true, messageId: "<m@x>", email: "a@example.com" })).toBe(
       '{"sent":true}',
     );

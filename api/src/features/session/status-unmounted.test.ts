@@ -30,15 +30,15 @@ beforeAll(async () => {
   delete process.env["WARD_OIDC_ISSUER"];
   delete process.env["WARD_UI_URL"];
 
-  const config = await import("../config.js");
-  const { generateSigningKeyFile } = await import("../tokens/keygen.js");
+  const config = await import("../../config.js");
+  const { generateSigningKeyFile } = await import("../../tokens/keygen.js");
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
-  const connection = await import("../db/connection.js");
+  const connection = await import("../../db/connection.js");
   closeDb = connection.closeDb;
-  (await import("../db/migrate.js")).runMigrations(await connection.getDb());
+  (await import("../../db/migrate.js")).runMigrations(await connection.getDb());
 
-  app = await (await import("../app.js")).buildApp();
+  app = await (await import("../../app.js")).buildApp();
   await app.ready();
 });
 

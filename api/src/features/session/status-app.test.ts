@@ -53,18 +53,18 @@ beforeAll(async () => {
   process.env["WARD_OIDC_ISSUER"] = ISSUER;
   process.env["WARD_UI_URL"] = `${ORIGIN}/ward`;
 
-  const config = await import("../config.js");
-  const { generateSigningKeyFile } = await import("../tokens/keygen.js");
+  const config = await import("../../config.js");
+  const { generateSigningKeyFile } = await import("../../tokens/keygen.js");
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
-  const connection = await import("../db/connection.js");
+  const connection = await import("../../db/connection.js");
   closeDb = connection.closeDb;
   const db = await connection.getDb();
-  (await import("../db/migrate.js")).runMigrations(db);
+  (await import("../../db/migrate.js")).runMigrations(db);
 
-  const apps = await import("../db/apps.js");
-  const refresh = await import("../db/refresh-tokens.js");
-  const pair = await (await import("../oidc/client-keygen.js")).generateClientKeyPair();
+  const apps = await import("../../db/apps.js");
+  const refresh = await import("../../db/refresh-tokens.js");
+  const pair = await (await import("../../oidc/client-keygen.js")).generateClientKeyPair();
   clientKey = pair.privateJwk;
   apps.createApp(db, { slug: "atrium", name: "Atrium" });
   apps.setOidcClient(db, "atrium", {
@@ -73,13 +73,13 @@ beforeAll(async () => {
     jwks: { keys: [pair.publicJwk] },
   });
 
-  const user = (await import("../db/users.js")).createUser(db, {
+  const user = (await import("../../db/users.js")).createUser(db, {
     username: "alice",
     passwordHash: "scrypt$not-a-real-hash$alice",
     email: null,
   });
   subject = user.subject;
-  (await import("../db/grants.js")).grantRole(db, {
+  (await import("../../db/grants.js")).grantRole(db, {
     subject,
     appSlug: "atrium",
     role: "admin",
@@ -93,7 +93,7 @@ beforeAll(async () => {
     expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
   });
 
-  app = await (await import("../app.js")).buildApp();
+  app = await (await import("../../app.js")).buildApp();
   await app.ready();
 });
 

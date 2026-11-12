@@ -33,18 +33,18 @@ let db: Database.Database;
 let subject: string;
 
 let mod: {
-  account: typeof import("./account.js");
-  auth: typeof import("./auth.js");
-  session: typeof import("./session.js");
-  cookie: typeof import("../auth/cookie.js");
-  lockout: typeof import("../auth/lockout.js");
-  password: typeof import("../auth/password.js");
-  superuser: typeof import("../auth/superuser.js");
-  service: typeof import("../tokens/service.js");
-  auditLog: typeof import("../db/audit-log.js");
-  refreshTokens: typeof import("../db/refresh-tokens.js");
-  users: typeof import("../db/users.js");
-  testSupport: typeof import("../db/test-support.js");
+  account: typeof import("./routes.js");
+  auth: typeof import("../auth/routes.js");
+  session: typeof import("../session/routes.js");
+  cookie: typeof import("../../auth/cookie.js");
+  lockout: typeof import("../../auth/lockout.js");
+  password: typeof import("../../auth/password.js");
+  superuser: typeof import("../../auth/superuser.js");
+  service: typeof import("../../tokens/service.js");
+  auditLog: typeof import("../../db/audit-log.js");
+  refreshTokens: typeof import("../../db/refresh-tokens.js");
+  users: typeof import("../../db/users.js");
+  testSupport: typeof import("../../db/test-support.js");
 };
 
 /** One named cookie value out of a response's `Set-Cookie` headers. */
@@ -124,29 +124,29 @@ beforeAll(async () => {
   process.env["WARD_MAIL_FILE_DIR"] = join(dir, "outbox");
   process.env["WARD_MAIL_FROM"] = "ward@gandolh.ro";
 
-  const config = await import("../config.js");
-  const { generateSigningKeyFile } = await import("../tokens/keygen.js");
+  const config = await import("../../config.js");
+  const { generateSigningKeyFile } = await import("../../tokens/keygen.js");
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
   mod = {
-    account: await import("./account.js"),
-    auth: await import("./auth.js"),
-    session: await import("./session.js"),
-    cookie: await import("../auth/cookie.js"),
-    lockout: await import("../auth/lockout.js"),
-    password: await import("../auth/password.js"),
-    superuser: await import("../auth/superuser.js"),
-    service: await import("../tokens/service.js"),
-    auditLog: await import("../db/audit-log.js"),
-    refreshTokens: await import("../db/refresh-tokens.js"),
-    users: await import("../db/users.js"),
-    testSupport: await import("../db/test-support.js"),
+    account: await import("./routes.js"),
+    auth: await import("../auth/routes.js"),
+    session: await import("../session/routes.js"),
+    cookie: await import("../../auth/cookie.js"),
+    lockout: await import("../../auth/lockout.js"),
+    password: await import("../../auth/password.js"),
+    superuser: await import("../../auth/superuser.js"),
+    service: await import("../../tokens/service.js"),
+    auditLog: await import("../../db/audit-log.js"),
+    refreshTokens: await import("../../db/refresh-tokens.js"),
+    users: await import("../../db/users.js"),
+    testSupport: await import("../../db/test-support.js"),
   };
 
   db = mod.testSupport.freshDb();
   mod.testSupport.seedApps(db);
 
-  const { testFastify } = await import("../testing/fastify.js");
+  const { testFastify } = await import("../../testing/fastify.js");
   app = await testFastify({ logger: false });
   await app.register(mod.auth.authRoutes, { db });
   await app.register(mod.session.sessionRoutes, { db });
@@ -736,7 +736,7 @@ describe("POST /account/sessions/revoke-others", () => {
 
 describe("the GET /account response schema", () => {
   it("is a filter: an over-full row goes out with the five named fields only", async () => {
-    const { encodeReply } = await import("../testing/fastify.js");
+    const { encodeReply } = await import("../../testing/fastify.js");
     const overFull = {
       subject: "s-1",
       username: "alice",

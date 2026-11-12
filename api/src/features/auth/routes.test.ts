@@ -37,14 +37,14 @@ let subject: string;
 
 /** Loaded dynamically in `beforeAll`; typed through `typeof import(...)`. */
 let mod: {
-  auth: typeof import("./auth.js");
-  cookie: typeof import("../auth/cookie.js");
-  lockout: typeof import("../auth/lockout.js");
-  password: typeof import("../auth/password.js");
-  refreshTokens: typeof import("../db/refresh-tokens.js");
-  auditLog: typeof import("../db/audit-log.js");
-  users: typeof import("../db/users.js");
-  testSupport: typeof import("../db/test-support.js");
+  auth: typeof import("./routes.js");
+  cookie: typeof import("../../auth/cookie.js");
+  lockout: typeof import("../../auth/lockout.js");
+  password: typeof import("../../auth/password.js");
+  refreshTokens: typeof import("../../db/refresh-tokens.js");
+  auditLog: typeof import("../../db/audit-log.js");
+  users: typeof import("../../db/users.js");
+  testSupport: typeof import("../../db/test-support.js");
 };
 
 /** One `Set-Cookie` value, split into a name, a value and its attributes. */
@@ -141,19 +141,19 @@ beforeAll(async () => {
   process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";
   process.env["WARD_MAIL_FROM"] = "ward@gandolh.ro";
 
-  const config = await import("../config.js");
-  const { generateSigningKeyFile } = await import("../tokens/keygen.js");
+  const config = await import("../../config.js");
+  const { generateSigningKeyFile } = await import("../../tokens/keygen.js");
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
   mod = {
-    auth: await import("./auth.js"),
-    cookie: await import("../auth/cookie.js"),
-    lockout: await import("../auth/lockout.js"),
-    password: await import("../auth/password.js"),
-    refreshTokens: await import("../db/refresh-tokens.js"),
-    auditLog: await import("../db/audit-log.js"),
-    users: await import("../db/users.js"),
-    testSupport: await import("../db/test-support.js"),
+    auth: await import("./routes.js"),
+    cookie: await import("../../auth/cookie.js"),
+    lockout: await import("../../auth/lockout.js"),
+    password: await import("../../auth/password.js"),
+    refreshTokens: await import("../../db/refresh-tokens.js"),
+    auditLog: await import("../../db/audit-log.js"),
+    users: await import("../../db/users.js"),
+    testSupport: await import("../../db/test-support.js"),
   };
 
   // `openDatabase(":memory:")`, never `getDb()` — `WARD_DB_PATH` above points
@@ -164,7 +164,7 @@ beforeAll(async () => {
     passwordHash: await mod.password.hashPassword(PASSWORD),
   }).subject;
 
-  const { testFastify } = await import("../testing/fastify.js");
+  const { testFastify } = await import("../../testing/fastify.js");
   app = await testFastify({ logger: false });
   await app.register(mod.auth.authRoutes, { db });
   await app.ready();
@@ -246,7 +246,7 @@ describe("POST /login", () => {
     const response = await login({ username: "alice", password: PASSWORD });
     const token = setCookies(response.headers).get("ward_session")!.value;
 
-    const { verifyWardAccessToken } = await import("../tokens/service.js");
+    const { verifyWardAccessToken } = await import("../../tokens/service.js");
     const claims = await verifyWardAccessToken(token);
 
     expect(claims.sub).toBe(subject);
@@ -1069,7 +1069,7 @@ describe("a mint failure leaves nothing behind", () => {
    */
   it("writes no refresh row when the access token cannot be minted", async () => {
     const { rename } = await import("node:fs/promises");
-    const tokens = await import("../tokens/service.js");
+    const tokens = await import("../../tokens/service.js");
     const keyPath = process.env["WARD_SIGNING_KEY_PATH"]!;
     const stashed = `${keyPath}.stashed`;
 
@@ -1230,7 +1230,7 @@ describe("the exported surface other modules consume", () => {
     // `WARD_DB_PATH` points at a file that is never created, so a
     // registration-time `getDb()` would leave one behind.
     const { existsSync } = await import("node:fs");
-    const { testFastify } = await import("../testing/fastify.js");
+    const { testFastify } = await import("../../testing/fastify.js");
 
     const bare = await testFastify({ logger: false });
     await bare.register(mod.auth.authRoutes);
@@ -1259,7 +1259,7 @@ describe("the exported surface other modules consume", () => {
     const token = mod.cookie.readCookie(header, mod.cookie.ACCESS_COOKIE_NAME);
     expect(token).toBeDefined();
 
-    const { verifyWardAccessToken } = await import("../tokens/service.js");
+    const { verifyWardAccessToken } = await import("../../tokens/service.js");
     expect((await verifyWardAccessToken(token!)).sub).toBe(subject);
   });
 });

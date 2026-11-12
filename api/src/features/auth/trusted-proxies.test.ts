@@ -42,18 +42,18 @@ beforeAll(async () => {
   process.env["WARD_MAIL_FROM"] = "ward@example.com";
   process.env["WARD_TRUSTED_PROXIES"] = "10.87.92.0/24, fd00:87:92::/64";
 
-  const config = await import("../config.js");
-  const { generateSigningKeyFile } = await import("../tokens/keygen.js");
+  const config = await import("../../config.js");
+  const { generateSigningKeyFile } = await import("../../tokens/keygen.js");
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
-  const { freshDb } = await import("../db/test-support.js");
+  const { freshDb } = await import("../../db/test-support.js");
   db = freshDb();
 
   // Neither plugin is handed `trustedProxies`: both must find the same list in
   // `config.ts`, or `/login` and `/console/login` disagree about an address.
-  const { authRoutes } = await import("./auth.js");
-  const { consoleRoutes } = await import("./console.js");
-  const { testFastify } = await import("../testing/fastify.js");
+  const { authRoutes } = await import("./routes.js");
+  const { consoleRoutes } = await import("../console/routes.js");
+  const { testFastify } = await import("../../testing/fastify.js");
   app = await testFastify({ logger: false });
   await app.register(authRoutes, { db });
   await app.register(consoleRoutes, { db });
@@ -68,7 +68,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  const { resetLockoutForTests } = await import("../auth/lockout.js");
+  const { resetLockoutForTests } = await import("../../auth/lockout.js");
   resetLockoutForTests();
 });
 

@@ -1,11 +1,11 @@
 import type Database from "better-sqlite3";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
-import { testFastify } from "../testing/fastify.js";
+import { testFastify } from "../../testing/fastify.js";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
-import { createApp, setPublicRegistration } from "../db/apps.js";
-import { freshDb, seedApps } from "../db/test-support.js";
-import { publicAppsRoutes } from "./public-apps.js";
+import { createApp, setPublicRegistration } from "../../db/apps.js";
+import { freshDb, seedApps } from "../../db/test-support.js";
+import { publicAppsRoutes } from "./routes.js";
 
 /**
  * `GET /apps` — anonymous, and the two things worth asserting are that it is
@@ -113,8 +113,8 @@ it("sends no-store, so closing an app takes effect on the next request", async (
 });
 
 it("the response schema is a filter: an over-full row goes out as slug and name only", async () => {
-  const { encodeReply } = await import("../testing/fastify.js");
-  const { PUBLIC_APPS_RESPONSE_SCHEMA } = await import("./public-apps.js");
+  const { encodeReply } = await import("../../testing/fastify.js");
+  const { PUBLIC_APPS_RESPONSE_SCHEMA } = await import("./routes.js");
   const overFull = [{ slug: "prm", name: "Public Resource Map", baseline_role: "user", public_registration: 1 }];
   expect(encodeReply(PUBLIC_APPS_RESPONSE_SCHEMA[200], overFull)).toBe('[{"slug":"prm","name":"Public Resource Map"}]');
 });

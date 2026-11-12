@@ -1,17 +1,17 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type Database from "better-sqlite3";
 import type { FastifyInstance } from "fastify";
-import { testFastify } from "../testing/fastify.js";
+import { testFastify } from "../../testing/fastify.js";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { listAudit } from "../db/audit-log.js";
-import { newFamilyId } from "../db/refresh-tokens.js";
-import { freshDb } from "../db/test-support.js";
-import { generateSigningKeyFile } from "../tokens/keygen.js";
+import { listAudit } from "../../db/audit-log.js";
+import { newFamilyId } from "../../db/refresh-tokens.js";
+import { freshDb } from "../../db/test-support.js";
+import { generateSigningKeyFile } from "../../tokens/keygen.js";
 
 /**
  * `POST /console/login`, `POST /console/logout`, `GET /console/session`.
@@ -42,8 +42,8 @@ import { generateSigningKeyFile } from "../tokens/keygen.js";
  * and both rejection directions.
  */
 
-const HERE = dirname(fileURLToPath(import.meta.url)); // api/src/routes
-const LOCKOUT_MODULE = resolve(HERE, "../auth/lockout.ts");
+const HERE = dirname(fileURLToPath(import.meta.url)); // api/src/features/console
+const LOCKOUT_MODULE = resolve(HERE, "../../auth/lockout.ts");
 const HAVE_LOCKOUT = existsSync(LOCKOUT_MODULE);
 
 const ORIGIN = "https://gandolh.ro";
@@ -54,7 +54,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
   let dir: string;
   let app: FastifyInstance;
   let db: Database.Database;
-  let superuser: typeof import("../auth/superuser.js");
+  let superuser: typeof import("../../auth/superuser.js");
   let resetLockout: () => void;
 
   beforeAll(async () => {
@@ -73,17 +73,17 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
     process.env["WARD_MAIL_FILE_DIR"] = "api/mail-outbox";
     process.env["WARD_MAIL_FROM"] = "ward@gandolh.ro";
 
-    const config = await import("../config.js");
+    const config = await import("../../config.js");
     await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
-    superuser = await import("../auth/superuser.js");
-    ({ resetLockoutForTests: resetLockout } = await import("../auth/lockout.js"));
+    superuser = await import("../../auth/superuser.js");
+    ({ resetLockoutForTests: resetLockout } = await import("../../auth/lockout.js"));
 
     // A private, fully migrated in-memory database, handed to the plugin. Never
     // `getDb()` — that resolves `WARD_DB_PATH` and opens the real file.
     db = freshDb();
 
-    const { consoleRoutes } = await import("./console.js");
+    const { consoleRoutes } = await import("./routes.js");
     app = await testFastify({ logger: false });
     // Registered the way the controller will register it, options aside.
     await app.register(consoleRoutes, { db });
@@ -122,7 +122,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
      * opens no database (`getDb()` is reached lazily, per request, so a bare
      * registration cannot touch `WARD_DB_PATH` at boot).
      */
-    const { consoleRoutes } = await import("./console.js");
+    const { consoleRoutes } = await import("./routes.js");
     const bare = await testFastify({ logger: false });
 
     await expect(bare.register(consoleRoutes)).resolves.toBeDefined();
@@ -260,8 +260,8 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
       const ACCOUNT_PASSWORD = "correct-horse-battery";
 
       async function buildBoth(): Promise<FastifyInstance> {
-        const { authRoutes } = await import("./auth.js");
-        const { consoleRoutes } = await import("./console.js");
+        const { authRoutes } = await import("../auth/routes.js");
+        const { consoleRoutes } = await import("./routes.js");
         const both = await testFastify({ logger: false });
         await both.register(authRoutes, { db });
         await both.register(consoleRoutes, { db });
@@ -270,8 +270,8 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
       }
 
       beforeAll(async () => {
-        const { createUser } = await import("../db/users.js");
-        const { hashPassword } = await import("../auth/password.js");
+        const { createUser } = await import("../../db/users.js");
+        const { hashPassword } = await import("../../auth/password.js");
         createUser(db, {
           username: "surface-test",
           passwordHash: await hashPassword(ACCOUNT_PASSWORD),
@@ -434,7 +434,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
 
   describe("no console route is reachable with an ordinary account's token", () => {
     it("refuses a valid Ward access token on the console", async () => {
-      const { mintAccessToken } = await import("../tokens/service.js");
+      const { mintAccessToken } = await import("../../tokens/service.js");
       const { token } = await mintAccessToken("c".repeat(32), newFamilyId());
 
       for (const headers of [

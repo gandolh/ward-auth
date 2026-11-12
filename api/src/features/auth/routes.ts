@@ -3,11 +3,11 @@ import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { recordAudit } from "../db/audit-log.js";
-import { errorReply, lockedOutReply } from "../lib/replies.js";
-import { getDb } from "../db/connection.js";
-import { findUserByUsername, foldUsername } from "../db/users.js";
-import { mintAccessToken } from "../tokens/service.js";
+import { recordAudit } from "../../db/audit-log.js";
+import { errorReply, lockedOutReply } from "../../lib/replies.js";
+import { getDb } from "../../db/connection.js";
+import { findUserByUsername, foldUsername } from "../../db/users.js";
+import { mintAccessToken } from "../../tokens/service.js";
 import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
@@ -15,7 +15,7 @@ import {
   readCookie,
   sessionCookies,
   wardSecureCookies,
-} from "../auth/cookie.js";
+} from "../../auth/cookie.js";
 import {
   checkLockout,
   clearFailures,
@@ -23,16 +23,16 @@ import {
   recordFailure,
   type LockoutTarget,
   type TrustedProxies,
-} from "../auth/lockout.js";
-import { MAX_PASSWORD_LENGTH, spendDummyHash, verifyPassword } from "../auth/password.js";
+} from "../../auth/lockout.js";
+import { MAX_PASSWORD_LENGTH, spendDummyHash, verifyPassword } from "../../auth/password.js";
 import {
   endSession,
   issueRefreshToken,
   refreshCookieMaxAge,
   rotateRefreshToken,
   sessionForRefreshToken,
-} from "../auth/refresh.js";
-import { newFamilyId } from "../db/refresh-tokens.js";
+} from "../../auth/refresh.js";
+import { newFamilyId } from "../../db/refresh-tokens.js";
 
 /**
  * `POST /login`, `POST /refresh`, `POST /logout` — the account session surface.
@@ -170,7 +170,7 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
    * `url.origin === value` is one of its own refinements — so a request's
    * `Origin` header can be compared to it after the same normalisation.
    */
-  const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
+  const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../../config.js");
 
   /**
    * Which socket peers' `X-Forwarded-For` the lockout believes.

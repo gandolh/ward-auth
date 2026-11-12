@@ -3,19 +3,19 @@ import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { recordAudit } from "../db/audit-log.js";
-import { errorReply, lockedOutReply } from "../lib/replies.js";
-import { getDb } from "../db/connection.js";
-import { findUserBySubject, foldUsername, setPasswordHash, type UserRow } from "../db/users.js";
+import { recordAudit } from "../../db/audit-log.js";
+import { errorReply, lockedOutReply } from "../../lib/replies.js";
+import { getDb } from "../../db/connection.js";
+import { findUserBySubject, foldUsername, setPasswordHash, type UserRow } from "../../db/users.js";
 import {
   newFamilyId,
   revokeAllForSubject,
   revokeAllForSubjectExceptFamily,
   listLiveTokensForSubject,
-} from "../db/refresh-tokens.js";
-import { mintAccessToken } from "../tokens/service.js";
-import { liveAccessSession } from "../auth/access-session.js";
-import { sessionCookies, wardSecureCookies } from "../auth/cookie.js";
+} from "../../db/refresh-tokens.js";
+import { mintAccessToken } from "../../tokens/service.js";
+import { liveAccessSession } from "../../auth/access-session.js";
+import { sessionCookies, wardSecureCookies } from "../../auth/cookie.js";
 import {
   checkLockout,
   clearFailures,
@@ -23,9 +23,9 @@ import {
   recordFailure,
   type LockoutTarget,
   type TrustedProxies,
-} from "../auth/lockout.js";
-import { hashPassword, MAX_PASSWORD_LENGTH, PasswordPolicyError, verifyPassword } from "../auth/password.js";
-import { issueRefreshToken } from "../auth/refresh.js";
+} from "../../auth/lockout.js";
+import { hashPassword, MAX_PASSWORD_LENGTH, PasswordPolicyError, verifyPassword } from "../../auth/password.js";
+import { issueRefreshToken } from "../../auth/refresh.js";
 
 /**
  * `/account` — the self-service surface. `GET /account`,
@@ -171,7 +171,7 @@ const revokeOthersSchema = {
 export const accountRoutes: FastifyPluginAsyncZod<AccountRoutesOptions> = async (app, options) => {
   /** Resolved once, at registration — see `routes/auth.ts` for both reasons. */
   const secure = await wardSecureCookies();
-  const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
+  const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../../config.js");
   /** The lockout's trusted proxies — the same list `/login` uses. */
   const trustedProxies = options.trustedProxies ?? WARD_TRUSTED_PROXIES;
 

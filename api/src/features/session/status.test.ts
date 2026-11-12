@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
-import { testFastify } from "../testing/fastify.js";
+import { testFastify } from "../../testing/fastify.js";
 import { SignJWT, importJWK, type JWK } from "jose";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createApp, setOidcClient } from "../db/apps.js";
-import { countAudit } from "../db/audit-log.js";
-import { grantRole, revokeGrant, SUPERUSER_ACTOR } from "../db/grants.js";
+import { createApp, setOidcClient } from "../../db/apps.js";
+import { countAudit } from "../../db/audit-log.js";
+import { grantRole, revokeGrant, SUPERUSER_ACTOR } from "../../db/grants.js";
 import {
   hashRefreshToken,
   generateRefreshToken,
@@ -15,12 +15,12 @@ import {
   newFamilyId,
   revokeAllForSubject,
   revokeFamily,
-} from "../db/refresh-tokens.js";
-import { freshDb, seedApps, seedUser } from "../db/test-support.js";
-import { setDisabled, setPasswordHash, type UserRow } from "../db/users.js";
-import { generateClientKeyPair } from "../oidc/client-keygen.js";
-import { CLIENT_ASSERTION_TYPE } from "../oidc/client-auth.js";
-import { sessionStatusRoutes } from "./session-status.js";
+} from "../../db/refresh-tokens.js";
+import { freshDb, seedApps, seedUser } from "../../db/test-support.js";
+import { setDisabled, setPasswordHash, type UserRow } from "../../db/users.js";
+import { generateClientKeyPair } from "../../oidc/client-keygen.js";
+import { CLIENT_ASSERTION_TYPE } from "../../oidc/client-auth.js";
+import { sessionStatusRoutes } from "./status.js";
 
 /**
  * `POST /session-status` against a Fastify instance this file builds and an
@@ -393,8 +393,8 @@ describe("client authentication", () => {
 
 describe("the response schemas", () => {
   it("are filters: an app learns active and role and nothing else", async () => {
-    const { encodeReply } = await import("../testing/fastify.js");
-    const { STATUS_ROUTE_SCHEMA } = await import("./session-status.js");
+    const { encodeReply } = await import("../../testing/fastify.js");
+    const { STATUS_ROUTE_SCHEMA } = await import("./status.js");
     expect(encodeReply(STATUS_ROUTE_SCHEMA[200], { active: true, role: "user", subject: "s-1", email: "a@x" })).toBe(
       '{"active":true,"role":"user"}',
     );

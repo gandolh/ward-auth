@@ -10,8 +10,8 @@ import {
   recordFailure,
   type LockoutTarget,
   type TrustedProxies,
-} from "../auth/lockout.js";
-import { requireConsoleSession, getConsoleSession } from "../auth/console-guard.js";
+} from "../../auth/lockout.js";
+import { requireConsoleSession, getConsoleSession } from "../../auth/console-guard.js";
 import {
   checkSuperuserCredentials,
   closeConsoleSession,
@@ -22,10 +22,10 @@ import {
   openConsoleSession,
   readConsoleCookie,
   type ConsoleSession,
-} from "../auth/superuser.js";
-import { recordAudit, SUPERUSER_LABEL } from "../db/audit-log.js";
-import { getDb } from "../db/connection.js";
-import { errorReply } from "../lib/replies.js";
+} from "../../auth/superuser.js";
+import { recordAudit, SUPERUSER_LABEL } from "../../db/audit-log.js";
+import { getDb } from "../../db/connection.js";
+import { errorReply } from "../../lib/replies.js";
 
 /**
  * The console **session** routes: `POST /console/login`, `POST /console/logout`,
@@ -182,7 +182,7 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
    * through a dynamic import (see `routes/auth.ts`). One list for both is what
    * keeps the two surfaces agreeing on what an address is.
    */
-  const trustedProxies = options.trustedProxies ?? (await import("../config.js")).WARD_TRUSTED_PROXIES;
+  const trustedProxies = options.trustedProxies ?? (await import("../../config.js")).WARD_TRUSTED_PROXIES;
 
   // Encapsulated to this plugin. Everything on the console is administrative,
   // per-operator and stale immediately; a shared cache holding any of it has no

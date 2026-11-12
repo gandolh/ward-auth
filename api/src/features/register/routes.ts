@@ -3,23 +3,23 @@ import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import type { MailTransport } from "../config.js";
+import type { MailTransport } from "../../config.js";
 
-import { checkLockout, lockoutKeyFor, recordFailure, type TrustedProxies } from "../auth/lockout.js";
-import { hashPassword, PasswordPolicyError } from "../auth/password.js";
+import { checkLockout, lockoutKeyFor, recordFailure, type TrustedProxies } from "../../auth/lockout.js";
+import { hashPassword, PasswordPolicyError } from "../../auth/password.js";
 import {
   consumeEmailVerification,
   EMAIL_VERIFICATION_TTL_HOURS,
   issueEmailVerification,
-} from "../auth/verification.js";
-import { getApp } from "../db/apps.js";
-import { grantTargetId, recordAudit } from "../db/audit-log.js";
-import { getDb } from "../db/connection.js";
-import { SELF_REGISTRATION_ACTOR, ensureGrant } from "../db/grants.js";
-import { createUser, foldUsername, type UserRow } from "../db/users.js";
-import { errorReply, lockedOutReply } from "../lib/replies.js";
-import { verificationLink, verificationMail } from "../mail/templates.js";
-import { sendMail } from "../mail/transport.js";
+} from "../../auth/verification.js";
+import { getApp } from "../../db/apps.js";
+import { grantTargetId, recordAudit } from "../../db/audit-log.js";
+import { getDb } from "../../db/connection.js";
+import { SELF_REGISTRATION_ACTOR, ensureGrant } from "../../db/grants.js";
+import { createUser, foldUsername, type UserRow } from "../../db/users.js";
+import { errorReply, lockedOutReply } from "../../lib/replies.js";
+import { verificationLink, verificationMail } from "../../mail/templates.js";
+import { sendMail } from "../../mail/transport.js";
 
 /**
  * `POST /register` and `GET /verify` — the estate's only anonymous **write**
@@ -223,7 +223,7 @@ export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = asyn
    * request means a misconfigured mail transport or origin is visible at boot
    * instead of at the moment somebody is waiting for a link.
    */
-  const { MAIL, WARD_ADMIN_USERNAME, WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
+  const { MAIL, WARD_ADMIN_USERNAME, WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../../config.js");
   /** The lockout's trusted proxies — the same list `/login` uses. */
   const trustedProxies = options.trustedProxies ?? WARD_TRUSTED_PROXIES;
 

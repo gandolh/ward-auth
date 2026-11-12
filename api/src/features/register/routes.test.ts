@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { Writable } from "node:stream";
 import type Database from "better-sqlite3";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
-import { testFastify } from "../testing/fastify.js";
+import { testFastify } from "../../testing/fastify.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 /**
@@ -31,16 +31,16 @@ let db: Database.Database;
 let app: FastifyInstance;
 
 let mod: {
-  register: typeof import("./register.js");
-  auth: typeof import("./auth.js");
-  lockout: typeof import("../auth/lockout.js");
-  verification: typeof import("../auth/verification.js");
-  password: typeof import("../auth/password.js");
-  apps: typeof import("../db/apps.js");
-  auditLog: typeof import("../db/audit-log.js");
-  grants: typeof import("../db/grants.js");
-  users: typeof import("../db/users.js");
-  testSupport: typeof import("../db/test-support.js");
+  register: typeof import("./routes.js");
+  auth: typeof import("../auth/routes.js");
+  lockout: typeof import("../../auth/lockout.js");
+  verification: typeof import("../../auth/verification.js");
+  password: typeof import("../../auth/password.js");
+  apps: typeof import("../../db/apps.js");
+  auditLog: typeof import("../../db/audit-log.js");
+  grants: typeof import("../../db/grants.js");
+  users: typeof import("../../db/users.js");
+  testSupport: typeof import("../../db/test-support.js");
 };
 
 beforeAll(async () => {
@@ -61,23 +61,23 @@ beforeAll(async () => {
   process.env["WARD_MAIL_FILE_DIR"] = outbox;
   process.env["WARD_MAIL_FROM"] = "Ward <ward@gandolh.ro>";
 
-  const config = await import("../config.js");
-  const { generateSigningKeyFile } = await import("../tokens/keygen.js");
+  const config = await import("../../config.js");
+  const { generateSigningKeyFile } = await import("../../tokens/keygen.js");
   // `/login` mints an access token, and the surface-independence test below
   // drives the real route rather than the lockout module.
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
 
   mod = {
-    register: await import("./register.js"),
-    auth: await import("./auth.js"),
-    lockout: await import("../auth/lockout.js"),
-    verification: await import("../auth/verification.js"),
-    password: await import("../auth/password.js"),
-    apps: await import("../db/apps.js"),
-    auditLog: await import("../db/audit-log.js"),
-    grants: await import("../db/grants.js"),
-    users: await import("../db/users.js"),
-    testSupport: await import("../db/test-support.js"),
+    register: await import("./routes.js"),
+    auth: await import("../auth/routes.js"),
+    lockout: await import("../../auth/lockout.js"),
+    verification: await import("../../auth/verification.js"),
+    password: await import("../../auth/password.js"),
+    apps: await import("../../db/apps.js"),
+    auditLog: await import("../../db/audit-log.js"),
+    grants: await import("../../db/grants.js"),
+    users: await import("../../db/users.js"),
+    testSupport: await import("../../db/test-support.js"),
   };
 
   // `openDatabase(":memory:")` via `freshDb()`, never `getDb()` —

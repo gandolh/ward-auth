@@ -2,12 +2,12 @@ import type Database from "better-sqlite3";
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
-import { getDb } from "../db/connection.js";
-import { findUserBySubject } from "../db/users.js";
-import { errorReply } from "../lib/replies.js";
-import { hasLiveFamily } from "../grants/resolve.js";
-import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-auth.js";
-import { wardRole } from "../oidc/account.js";
+import { getDb } from "../../db/connection.js";
+import { findUserBySubject } from "../../db/users.js";
+import { errorReply } from "../../lib/replies.js";
+import { hasLiveFamily } from "../../grants/resolve.js";
+import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../../oidc/client-auth.js";
+import { wardRole } from "../../oidc/account.js";
 
 /**
  * `POST /session-status`: an app that signed someone in through Ward asks
@@ -148,7 +148,7 @@ export function sessionStatusFor(
 }
 
 export const sessionStatusRoutes: FastifyPluginAsyncZod<SessionStatusRoutesOptions> = async (app, options) => {
-  const issuer = options.issuer ?? (await import("../config.js")).OIDC?.issuer;
+  const issuer = options.issuer ?? (await import("../../config.js")).OIDC?.issuer;
   if (issuer === undefined) {
     app.log.info("WARD_OIDC_ISSUER is unset; POST /session-status is not mounted");
     return;

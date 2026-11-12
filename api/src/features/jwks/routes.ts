@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { getPublicJwks } from "../tokens/service.js";
+import { getPublicJwks } from "../../tokens/service.js";
 
 /**
  * `GET /.well-known/jwks.json` — the one route the other five apps fetch.

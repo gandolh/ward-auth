@@ -1,8 +1,9 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
 import { recordConsoleAudit } from "../../audit.js";
 import { requireConsoleSession } from "../../auth/console-guard.js";
+import { errorReply } from "../../lib/replies.js";
 import { hashPassword, PasswordPolicyError } from "../../auth/password.js";
 import { listGrantsForSubject } from "../../db/grants.js";
 import { listLiveTokensForSubject, revokeAllForSubject } from "../../db/refresh-tokens.js";
@@ -17,7 +18,15 @@ import {
   setUsername,
   type UserRow,
 } from "../../db/users.js";
-import { accountView, databaseResolver, grantView, isUniqueViolation, type AdminRoutesOptions } from "./support.js";
+import {
+  accountView,
+  accountViewSchema,
+  databaseResolver,
+  grantView,
+  grantViewSchema,
+  isUniqueViolation,
+  type AdminRoutesOptions,
+} from "./support.js";
 
 /**
  * Account management: `GET`, `POST /console/accounts`, `GET
@@ -128,14 +137,48 @@ const listQuery = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
+/**
+ * The response schemas: each status the handlers send themselves, keys in the
+ * order they build them. No 401: `requireConsoleSession` sends it, and a
+ * declared status would encode the guard's reply too.
+ */
+const listSchema = { 200: z.object({ accounts: z.array(accountViewSchema), total: z.number() }), 400: errorReply };
+const detailSchema = {
+  200: z.object({ account: accountViewSchema, grants: z.array(grantViewSchema), liveSessions: z.number() }),
+  400: errorReply,
+  404: errorReply,
+};
+const createSchema = { 201: z.object({ account: accountViewSchema }), 400: errorReply, 409: errorReply };
+const disableSchema = {
+  200: z.object({ account: accountViewSchema, sessionsRevoked: z.number() }),
+  400: errorReply,
+  404: errorReply,
+};
+const enableSchema = {
+  200: z.object({ account: accountViewSchema, changed: z.boolean() }),
+  400: errorReply,
+  404: errorReply,
+};
+const renameSchema = { ...enableSchema, 409: errorReply };
+const passwordSchema = {
+  200: z.object({ subject: z.string(), sessionsRevoked: z.number() }),
+  400: errorReply,
+  404: errorReply,
+};
+const deleteSchema = {
+  200: z.object({ deleted: z.string(), username: z.string(), grantsRevoked: z.number(), sessionsRevoked: z.number() }),
+  400: errorReply,
+  404: errorReply,
+};
+
+export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async (app, options) => {
   const database = databaseResolver(options);
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`.
   app.addHook("preHandler", requireConsoleSession);
 
   /** `GET /console/accounts` — the console's list, ordered the way a human scans it. */
-  app.get("/console/accounts", async (request, reply) => {
+  app.get("/console/accounts", { schema: { response: listSchema } }, async (request, reply) => {
     const query = listQuery.safeParse(request.query);
     if (!query.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -159,7 +202,7 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
    * `liveSessions` is the count that makes "disabling ends live sessions"
    * visible in the UI — and the number an operator checks before believing it.
    */
-  app.get("/console/accounts/:subject", async (request, reply) => {
+  app.get("/console/accounts/:subject", { schema: { response: detailSchema } }, async (request, reply) => {
     const params = subjectParams.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -191,7 +234,7 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
    * SELECT-then-INSERT has a race between the two statements and the constraint
    * does not.
    */
-  app.post("/console/accounts", async (request, reply) => {
+  app.post("/console/accounts", { schema: { response: createSchema } }, async (request, reply) => {
     const body = createAccountBody.safeParse(request.body);
     if (!body.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -254,7 +297,7 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
    * repeat still closes anything that somehow survived — and an audit row is
    * written when either half actually changed something.
    */
-  app.post("/console/accounts/:subject/disable", async (request, reply) => {
+  app.post("/console/accounts/:subject/disable", { schema: { response: disableSchema } }, async (request, reply) => {
     const params = subjectParams.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -303,7 +346,7 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
    *
    * A no-op on an account that is already enabled: `200`, no audit row.
    */
-  app.post("/console/accounts/:subject/enable", async (request, reply) => {
+  app.post("/console/accounts/:subject/enable", { schema: { response: enableSchema } }, async (request, reply) => {
     const params = subjectParams.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -353,7 +396,7 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
    * The new password is never logged, never audited and never echoed. The audit
    * row records that a rotation happened and how many sessions it ended.
    */
-  app.post("/console/accounts/:subject/password", async (request, reply) => {
+  app.post("/console/accounts/:subject/password", { schema: { response: passwordSchema } }, async (request, reply) => {
     const params = subjectParams.safeParse(request.params);
     const body = passwordBody.safeParse(request.body);
     if (!params.success || !body.success) {
@@ -407,7 +450,7 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
    * because the folded name still belongs to the same row. A name another
    * account holds is caught by the `UNIQUE` constraint, as on create.
    */
-  app.post("/console/accounts/:subject/username", async (request, reply) => {
+  app.post("/console/accounts/:subject/username", { schema: { response: renameSchema } }, async (request, reply) => {
     const params = subjectParams.safeParse(request.params);
     const body = usernameBody.safeParse(request.body);
     if (!params.success || !body.success) {
@@ -458,7 +501,7 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
    * sessions end within 30 seconds. Each app keeps its own user and that user's
    * data; deleting those is the app's business.
    */
-  app.delete("/console/accounts/:subject", async (request, reply) => {
+  app.delete("/console/accounts/:subject", { schema: { response: deleteSchema } }, async (request, reply) => {
     const params = subjectParams.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -487,4 +530,4 @@ export async function adminAccountsRoutes(app: FastifyInstance, options: AdminRo
 
     return reply.code(200).send({ deleted: row.subject, username: row.username, ...counts });
   });
-}
+};

@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { z } from "zod";
 
 import { getDb } from "../../db/connection.js";
 import { oidcClientOf, type AppRow } from "../../db/apps.js";
@@ -106,6 +107,21 @@ export interface AppView {
   };
 }
 
+/** `AppView` as a response schema, keys in `appView`'s order. A client's JWKs pass through whole. */
+export const appViewSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  publicRegistration: z.boolean(),
+  baselineRole: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  oidc: z.object({
+    redirectUris: z.array(z.string()),
+    postLogoutRedirectUris: z.array(z.string()),
+    jwks: z.object({ keys: z.array(z.record(z.string(), z.unknown())) }).nullable(),
+  }),
+});
+
 export function appView(row: AppRow): AppView {
   return {
     slug: row.slug,
@@ -134,6 +150,18 @@ export interface AccountView {
   updatedAt: string;
 }
 
+/** `AccountView` as a response schema, keys in `accountView`'s order: a filter, so a `UserRow` never leaks its hash. */
+export const accountViewSchema = z.object({
+  subject: z.string(),
+  username: z.string(),
+  email: z.string().nullable(),
+  emailVerified: z.boolean(),
+  disabled: z.boolean(),
+  disabledAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
 export function accountView(row: UserRow): AccountView {
   return {
     subject: row.subject,
@@ -161,6 +189,15 @@ export interface GrantView {
   grantedAt: string;
   grantedBy: string;
 }
+
+/** `GrantView` as a response schema, keys in `grantView`'s order. */
+export const grantViewSchema = z.object({
+  subject: z.string(),
+  appSlug: z.string(),
+  role: z.string(),
+  grantedAt: z.string(),
+  grantedBy: z.string(),
+});
 
 export function grantView(row: GrantRow): GrantView {
   return {

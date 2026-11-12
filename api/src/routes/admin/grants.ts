@@ -111,22 +111,17 @@ export const adminGrantsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = asyn
    * answer for "you mistyped the subject", and the console cannot tell them
    * apart.
    */
-  app.get("/console/grants", { schema: { response: listSchema } }, async (request, reply) => {
-    const query = listQuery.safeParse(request.query);
-    if (!query.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
+  app.get("/console/grants", { schema: { querystring: listQuery, response: listSchema } }, async (request, reply) => {
     const db = await database();
 
-    if (query.data.subject !== undefined) {
-      if (findUserBySubject(db, query.data.subject) === undefined) {
+    if (request.query.subject !== undefined) {
+      if (findUserBySubject(db, request.query.subject) === undefined) {
         return reply.code(404).send({ error: "account_not_found" });
       }
-      return reply.code(200).send({ grants: listGrantsForSubject(db, query.data.subject).map(grantView) });
+      return reply.code(200).send({ grants: listGrantsForSubject(db, request.query.subject).map(grantView) });
     }
 
-    const slug = query.data.app;
+    const slug = request.query.app;
     // The refinement lets exactly one of `subject` and `app` through.
     if (slug === undefined) throw new Error("neither subject nor app passed the refinement");
     if (getApp(db, slug) === undefined) {
@@ -147,18 +142,13 @@ export const adminGrantsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = asyn
    * wrong, and the foreign-key violation is still caught: between the lookup and
    * the insert an app can be deleted, and only the database observes both.
    */
-  app.post("/console/grants", { schema: { response: grantSchema } }, async (request, reply) => {
-    const body = grantBody.safeParse(request.body);
-    if (!body.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
+  app.post("/console/grants", { schema: { body: grantBody, response: grantSchema } }, async (request, reply) => {
     const db = await database();
-    const account = findUserBySubject(db, body.data.subject);
+    const account = findUserBySubject(db, request.body.subject);
     if (account === undefined) {
       return reply.code(404).send({ error: "account_not_found" });
     }
-    if (getApp(db, body.data.appSlug) === undefined) {
+    if (getApp(db, request.body.appSlug) === undefined) {
       return reply.code(404).send({ error: "app_not_found" });
     }
 
@@ -171,7 +161,7 @@ export const adminGrantsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = asyn
      * live.
      */
     try {
-      const result = addGrant(db, consoleActor(request), body.data);
+      const result = addGrant(db, consoleActor(request), request.body);
       return reply.code(200).send({ grant: grantView(result.grant), created: result.created });
     } catch (error) {
       if (isForeignKeyViolation(error)) {
@@ -195,24 +185,19 @@ export const adminGrantsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = asyn
    * and a `404` here would be a slower way of saying `removed: 0` while also
    * confirming to a caller whether a given subject exists.
    */
-  app.delete("/console/grants", { schema: { response: revokeSchema } }, async (request, reply) => {
-    const body = revokeBody.safeParse(request.body);
-    if (!body.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
+  app.delete("/console/grants", { schema: { body: revokeBody, response: revokeSchema } }, async (request, reply) => {
     const db = await database();
     const actor = consoleActor(request);
 
-    if (body.data.role === undefined) {
+    if (request.body.role === undefined) {
       const result = removeAppAccess(db, actor, {
-        subject: body.data.subject,
-        appSlug: body.data.appSlug,
+        subject: request.body.subject,
+        appSlug: request.body.appSlug,
       });
       return reply.code(200).send({ removed: result.removed, roles: result.roles });
     }
 
-    const target = { ...body.data, role: body.data.role };
+    const target = { ...request.body, role: request.body.role };
     const result = removeGrant(db, actor, target);
     return reply.code(200).send({ removed: result.removed ? 1 : 0, roles: result.removed ? [target.role] : [] });
   });

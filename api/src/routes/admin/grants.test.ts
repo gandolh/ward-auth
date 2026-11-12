@@ -295,3 +295,22 @@ describe("listing grants", () => {
     expect(noApp.json()).toEqual({ error: "app_not_found" });
   });
 });
+
+/**
+ * The route's input is checked by its schema now, not by hand; a request that
+ * fails it gets exactly the body the hand-written check sent, with no issue
+ * list.
+ */
+it("answers a malformed query or body with exactly the old 400 body", async () => {
+  for (const init of [
+    { method: "GET", url: "/console/grants" },
+    { method: "GET", url: "/console/grants?subject=a&app=b" },
+    { method: "POST", url: "/console/grants", payload: { appSlug: "prm" } },
+    { method: "DELETE", url: "/console/grants", payload: { appSlug: "prm" } },
+    { method: "DELETE", url: "/console/grants" },
+  ] satisfies InjectOptions[]) {
+    const response = await asConsole(init);
+    expect(response.statusCode, `${init.method} ${init.url}`).toBe(400);
+    expect(response.body, `${init.method} ${init.url}`).toBe('{"error":"invalid_request"}');
+  }
+});

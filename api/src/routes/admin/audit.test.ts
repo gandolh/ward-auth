@@ -290,3 +290,20 @@ it("answers an empty log with an empty page rather than a 404", async () => {
   expect(response.statusCode).toBe(200);
   expect(response.json()).toEqual({ entries: [], total: 0, nextBeforeId: null });
 });
+
+/**
+ * The route's input is checked by its schema now, not by hand; a request that
+ * fails it gets exactly the body the hand-written check sent, with no issue
+ * list.
+ */
+it("answers a malformed query with exactly the old 400 body", async () => {
+  for (const init of [
+    { method: "GET", url: "/console/audit?limit=0" },
+    { method: "GET", url: "/console/audit?beforeId=abc" },
+    { method: "GET", url: "/console/audit?targetKind=robot" },
+  ] satisfies InjectOptions[]) {
+    const response = await asConsole(init);
+    expect(response.statusCode, `${init.method} ${init.url}`).toBe(400);
+    expect(response.body, `${init.method} ${init.url}`).toBe('{"error":"invalid_request"}');
+  }
+});

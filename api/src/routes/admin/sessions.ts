@@ -1,9 +1,10 @@
 import type Database from "better-sqlite3";
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
 import { recordConsoleAudit } from "../../audit.js";
 import { requireConsoleSession } from "../../auth/console-guard.js";
+import { errorReply } from "../../lib/replies.js";
 import {
   listLiveTokensForSubject,
   revokeAllForSubject,
@@ -121,7 +122,34 @@ function liveSessions(db: Database.Database, subject: string): SessionView[] {
   return sessions;
 }
 
-export async function adminSessionsRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
+/**
+ * The response schemas: each status the handlers send themselves, keys in the
+ * order they build them. No 401: `requireConsoleSession` sends it, and a
+ * declared status would encode the guard's reply too.
+ */
+const sessionViewSchema = z.object({
+  familyId: z.string(),
+  issuedAt: z.string(),
+  expiresAt: z.string(),
+  usedAt: z.string().nullable(),
+});
+const listSchema = {
+  200: z.object({ sessions: z.array(sessionViewSchema), total: z.number() }),
+  400: errorReply,
+  404: errorReply,
+};
+const revokeOneSchema = {
+  200: z.object({ subject: z.string(), familyId: z.string(), revoked: z.number(), changed: z.boolean() }),
+  400: errorReply,
+  404: errorReply,
+};
+const revokeAllSchema = {
+  200: z.object({ subject: z.string(), revoked: z.number(), tokensRevoked: z.number(), changed: z.boolean() }),
+  400: errorReply,
+  404: errorReply,
+};
+
+export const adminSessionsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async (app, options) => {
   const database = databaseResolver(options);
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`.
@@ -135,7 +163,7 @@ export async function adminSessionsRoutes(app: FastifyInstance, options: AdminRo
    * `200` with an empty list: "nobody is signed in" and "no such account" are
    * different facts and the console shows both differently.
    */
-  app.get("/console/accounts/:subject/sessions", async (request, reply) => {
+  app.get("/console/accounts/:subject/sessions", { schema: { response: listSchema } }, async (request, reply) => {
     const params = subjectParams.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -182,57 +210,61 @@ export async function adminSessionsRoutes(app: FastifyInstance, options: AdminRo
    * `revoked: 0` and writes no audit row, matching the admin routes' rule that a no-op
    * leaves no row (`changed: false` is how the UI still tells).
    */
-  app.delete("/console/accounts/:subject/sessions/:familyId", async (request, reply) => {
-    const params = familyParams.safeParse(request.params);
-    if (!params.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    reply.header("cache-control", "no-store");
-
-    const db = await database();
-    const account = findUserBySubject(db, params.data.subject);
-    if (account === undefined) {
-      return reply.code(404).send({ error: "account_not_found" });
-    }
-
-    /**
-     * Ownership is decided from the live rows for **this** subject rather than
-     * from `listFamily(familyId)`. Same answer, one query, and it cannot be
-     * read the wrong way round: there is no path here on which a family id from
-     * the URL selects the rows that then vouch for themselves.
-     */
-    const owned = liveSessions(db, account.subject).some((session) => session.familyId === params.data.familyId);
-    if (!owned) {
-      return reply.code(404).send({ error: "session_not_found" });
-    }
-
-    const revoked = db.transaction((): number => {
-      const count = revokeFamily(db, params.data.familyId, "admin");
-
-      if (count > 0) {
-        recordConsoleAudit(db, request, {
-          action: "session.revoke",
-          targetKind: "session",
-          targetId: params.data.familyId,
-          detail: {
-            subject: account.subject,
-            username: account.username,
-            tokensRevoked: count,
-          },
-        });
+  app.delete(
+    "/console/accounts/:subject/sessions/:familyId",
+    { schema: { response: revokeOneSchema } },
+    async (request, reply) => {
+      const params = familyParams.safeParse(request.params);
+      if (!params.success) {
+        return reply.code(400).send({ error: "invalid_request" });
       }
 
-      return count;
-    })();
+      reply.header("cache-control", "no-store");
 
-    return reply.code(200).send({
-      subject: account.subject,
-      familyId: params.data.familyId,
-      revoked,
-      changed: revoked > 0,
-    });
-  });
+      const db = await database();
+      const account = findUserBySubject(db, params.data.subject);
+      if (account === undefined) {
+        return reply.code(404).send({ error: "account_not_found" });
+      }
+
+      /**
+       * Ownership is decided from the live rows for **this** subject rather than
+       * from `listFamily(familyId)`. Same answer, one query, and it cannot be
+       * read the wrong way round: there is no path here on which a family id from
+       * the URL selects the rows that then vouch for themselves.
+       */
+      const owned = liveSessions(db, account.subject).some((session) => session.familyId === params.data.familyId);
+      if (!owned) {
+        return reply.code(404).send({ error: "session_not_found" });
+      }
+
+      const revoked = db.transaction((): number => {
+        const count = revokeFamily(db, params.data.familyId, "admin");
+
+        if (count > 0) {
+          recordConsoleAudit(db, request, {
+            action: "session.revoke",
+            targetKind: "session",
+            targetId: params.data.familyId,
+            detail: {
+              subject: account.subject,
+              username: account.username,
+              tokensRevoked: count,
+            },
+          });
+        }
+
+        return count;
+      })();
+
+      return reply.code(200).send({
+        subject: account.subject,
+        familyId: params.data.familyId,
+        revoked,
+        changed: revoked > 0,
+      });
+    },
+  );
 
   /**
    * `POST /console/accounts/:subject/sessions/revoke` — end every session, with
@@ -252,47 +284,51 @@ export async function adminSessionsRoutes(app: FastifyInstance, options: AdminRo
    * an operator reads is a number of devices. Idempotent, and a no-op writes no
    * audit row.
    */
-  app.post("/console/accounts/:subject/sessions/revoke", async (request, reply) => {
-    const params = subjectParams.safeParse(request.params);
-    if (!params.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    reply.header("cache-control", "no-store");
-
-    const db = await database();
-    const account = findUserBySubject(db, params.data.subject);
-    if (account === undefined) {
-      return reply.code(404).send({ error: "account_not_found" });
-    }
-
-    const result = db.transaction((): { revoked: number; tokensRevoked: number } => {
-      // Counted inside the transaction, before the write, so the number
-      // reported and the rows revoked cannot describe two different moments.
-      const families = liveSessions(db, account.subject).length;
-      const tokensRevoked = revokeAllForSubject(db, account.subject, "admin");
-
-      if (tokensRevoked > 0) {
-        recordConsoleAudit(db, request, {
-          action: "session.revoke_all",
-          targetKind: "user",
-          targetId: account.subject,
-          detail: {
-            username: account.username,
-            sessionsRevoked: families,
-            tokensRevoked,
-          },
-        });
+  app.post(
+    "/console/accounts/:subject/sessions/revoke",
+    { schema: { response: revokeAllSchema } },
+    async (request, reply) => {
+      const params = subjectParams.safeParse(request.params);
+      if (!params.success) {
+        return reply.code(400).send({ error: "invalid_request" });
       }
 
-      return { revoked: families, tokensRevoked };
-    })();
+      reply.header("cache-control", "no-store");
 
-    return reply.code(200).send({
-      subject: account.subject,
-      revoked: result.revoked,
-      tokensRevoked: result.tokensRevoked,
-      changed: result.tokensRevoked > 0,
-    });
-  });
-}
+      const db = await database();
+      const account = findUserBySubject(db, params.data.subject);
+      if (account === undefined) {
+        return reply.code(404).send({ error: "account_not_found" });
+      }
+
+      const result = db.transaction((): { revoked: number; tokensRevoked: number } => {
+        // Counted inside the transaction, before the write, so the number
+        // reported and the rows revoked cannot describe two different moments.
+        const families = liveSessions(db, account.subject).length;
+        const tokensRevoked = revokeAllForSubject(db, account.subject, "admin");
+
+        if (tokensRevoked > 0) {
+          recordConsoleAudit(db, request, {
+            action: "session.revoke_all",
+            targetKind: "user",
+            targetId: account.subject,
+            detail: {
+              username: account.username,
+              sessionsRevoked: families,
+              tokensRevoked,
+            },
+          });
+        }
+
+        return { revoked: families, tokensRevoked };
+      })();
+
+      return reply.code(200).send({
+        subject: account.subject,
+        revoked: result.revoked,
+        tokensRevoked: result.tokensRevoked,
+        changed: result.tokensRevoked > 0,
+      });
+    },
+  );
+};

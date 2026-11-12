@@ -15,6 +15,9 @@ was already near the corpus line cap when the first code landed. Foundational
 scope stays there; accounts in [decisions-accounts.md](./decisions-accounts.md),
 privilege in [decisions-admin.md](./decisions-admin.md).
 
+**The server's code structure (2026-11-12) lives in
+[decisions-structure.md](./decisions-structure.md).**
+
 **Session mechanics settled during the build live in
 [decisions-tokens.md](./decisions-tokens.md), not here** — the absolute refresh
 family lifetime, logout revoking rather than deleting, and the `sid` claim. They
@@ -87,13 +90,14 @@ true in the kernel rather than in a policy file. Widening it is still one
 explicit `HOST=` away for anyone who genuinely needs it.
 
 ## The database handle is closed on shutdown, and that is a backup decision
-_2026-09-02, the scaffold, found in review_ — `shutdown()` closes the SQLite handle
-before exit. This looks like ordinary cleanup before `process.exit` and is not.
+_2026-09-02, the scaffold, found in review_ — shutdown closes the SQLite handle
+before exit (since 2026-11-12 in `server.ts`'s `close-with-grace` callback,
+after `app.close()`). This looks like ordinary cleanup before `process.exit` and is not.
 
 SQLite in WAL mode runs its checkpoint **on close**. Without that close,
 committed data stays in `ward.db-wal` and the `ward.db` file itself can be
 empty — measured at 4096 bytes with **zero tables** after a full
-boot → serve → SIGTERM cycle, which is every pm2 restart and every deploy.
+boot → serve → SIGTERM cycle, which is every restart and every deploy.
 
 This matters because the operator is told, correctly, that the database "is the
 only copy of who anybody is — back it up." A backup that copies `ward.db` alone

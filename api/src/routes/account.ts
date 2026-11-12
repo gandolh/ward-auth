@@ -283,6 +283,8 @@ export const accountRoutes: FastifyPluginAsyncZod<AccountRoutesOptions> = async 
     const gate = checkLockout(target);
     if (!gate.allowed) return lockedOut(reply, gate.retryAfterSeconds ?? 1);
 
+    // Parsed by hand, not by a route schema: the session check and the lockout
+    // gate answer first, and a malformed body spends no lockout budget.
     const body = passwordBody.safeParse(request.body);
     if (!body.success) {
       // Not a lockout failure: a malformed body is a client bug, not a guess.

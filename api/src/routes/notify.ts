@@ -375,6 +375,8 @@ export const notifyRoutes: FastifyPluginAsyncZod<NotifyRoutesOptions> = async (a
 
       if (!limiter.take(slug)) return refuse("rate_limited");
 
+      // Parsed by hand, not by a route schema: a malformed body is a refusal
+      // (`invalid_body`), audited and counted against the limiter, never a 400.
       const parsed = notifyBody.safeParse(withoutCredentials(request.body));
       // zod's issues are not logged: they would echo the submitted text.
       if (!parsed.success) return refuse("invalid_body");

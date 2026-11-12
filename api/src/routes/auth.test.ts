@@ -300,6 +300,24 @@ describe("POST /login", () => {
     expect(good.statusCode).toBe(200);
   });
 
+  it("answers a malformed /refresh body as no credential, spending no /login budget", async () => {
+    for (const payload of [{ refreshToken: 5 }, { refreshToken: "" }, [1]]) {
+      for (let i = 0; i < 4; i += 1) {
+        const response = await app.inject({
+          method: "POST",
+          url: "/refresh",
+          headers: { "x-forwarded-for": "203.0.113.52" },
+          payload,
+        });
+        expect(response.statusCode).toBe(401);
+        expect(response.body).toBe('{"error":"invalid_refresh"}');
+      }
+    }
+
+    const good = await login({ username: "alice", password: PASSWORD }, "203.0.113.52");
+    expect(good.statusCode).toBe(200);
+  });
+
   it("does not echo the submitted password back in a validation error", async () => {
     const response = await app.inject({
       method: "POST",

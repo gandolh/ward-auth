@@ -175,6 +175,8 @@ export const sessionStatusRoutes: FastifyPluginAsyncZod<SessionStatusRoutesOptio
       // The answer is one app's view of one session; nothing may cache it.
       reply.header("cache-control", "no-store");
 
+      // Parsed by hand, not by a route schema: a malformed credential is a 401
+      // `invalid_client`, never a 400.
       const credentials = credentialBody.safeParse(request.body);
       const client = await verifyClientAssertion(
         await database(),
@@ -194,6 +196,8 @@ export const sessionStatusRoutes: FastifyPluginAsyncZod<SessionStatusRoutesOptio
         return reply.code(401).send({ error: "invalid_client" });
       }
 
+      // Parsed by hand, not by a route schema: a malformed body fails closed to
+      // `{ active: false }` with a 200, never a 400.
       const parsed = statusBody.safeParse(request.body);
       if (!parsed.success) {
         // Not echoed: zod's issues carry the submitted values.

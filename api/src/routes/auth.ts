@@ -210,6 +210,8 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
       return lockedOut(reply, gate.retryAfterSeconds ?? 1);
     }
 
+    // Parsed by hand, not by a route schema: the lockout gate answers first, and a
+    // malformed body gets its terse 400 without spending lockout budget.
     const parsed = loginBody.safeParse(request.body);
     if (!parsed.success) {
       // Deliberately NOT a lockout failure: a malformed body is a client bug,
@@ -367,6 +369,8 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
       return crossSite(reply);
     }
 
+    // Parsed by hand, not by a route schema: the body is optional (the cookie wins),
+    // and a malformed one is no credential, never a 400.
     const parsedBody = refreshBody.safeParse(request.body);
     const presented =
       readCookie(request.headers.cookie, REFRESH_COOKIE_NAME) ??
@@ -504,6 +508,8 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
       return crossSite(reply);
     }
 
+    // Parsed by hand, not by a route schema: the body is optional (the cookie wins),
+    // and a malformed one is no credential, never a 400.
     const parsedBody = refreshBody.safeParse(request.body);
     const presented =
       readCookie(request.headers.cookie, REFRESH_COOKIE_NAME) ??

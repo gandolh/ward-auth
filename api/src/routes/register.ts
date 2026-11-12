@@ -249,6 +249,8 @@ export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = asyn
       return lockedOut(reply, gate.retryAfterSeconds ?? 1);
     }
 
+    // Parsed by hand, not by a route schema: the lockout gate answers first, and a
+    // malformed body gets its terse 400 without spending the registration budget.
     const parsed = registerBody.safeParse(request.body);
     if (!parsed.success) {
       /**
@@ -529,6 +531,8 @@ export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = asyn
            */
           reply.header("referrer-policy", "no-referrer");
 
+          // Parsed by hand, not by a route schema: a bad query answers like any other
+          // bad link, with the page a browser asked for (or JSON), never a bare 400.
           const query = verifyQuery.safeParse(request.query);
           if (!query.success) {
             return verifyAnswer(request, reply, 400, "invalid_request");

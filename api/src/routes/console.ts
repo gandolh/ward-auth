@@ -228,6 +228,8 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
       return reply.code(429).send({ error: "too many attempts" });
     }
 
+    // Parsed by hand, not by a route schema: a malformed body writes its audit row
+    // (`console.login.failed`, reason `malformed`) before the 400.
     const body = loginBody.safeParse(request.body);
     if (!body.success) {
       recordAudit(db, {

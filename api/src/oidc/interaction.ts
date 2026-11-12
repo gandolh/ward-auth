@@ -64,6 +64,7 @@ export async function interactionRoutes(
    */
   async function loadInteraction(provider: Provider, request: FastifyRequest, reply: FastifyReply) {
     reply.header("cache-control", "no-store");
+    // Parsed by hand, not by a route schema: a bad uid renders the "expired" page.
     const params = uidParams.safeParse(request.params);
     if (!params.success) {
       await expired(reply);

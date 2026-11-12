@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
+import type { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import {
@@ -24,6 +25,7 @@ import {
 } from "../auth/superuser.js";
 import { recordAudit, SUPERUSER_LABEL } from "../db/audit-log.js";
 import { getDb } from "../db/connection.js";
+import { errorReply } from "../lib/replies.js";
 
 /**
  * The console **session** routes: `POST /console/login`, `POST /console/logout`,
@@ -150,7 +152,29 @@ function consoleLockoutTarget(address: string): LockoutTarget {
   return { surface: "console", address };
 }
 
-export async function consoleRoutes(app: FastifyInstance, options: ConsoleRoutesOptions = {}): Promise<void> {
+/** `ConsoleSessionView` as a response schema, in the order `sessionView` builds it. */
+const sessionViewReply = z.object({
+  session: z.object({
+    id: z.string(),
+    createdAt: z.string(),
+    lastSeenAt: z.string(),
+    idleExpiresAt: z.string(),
+    absoluteExpiresAt: z.string(),
+    idleTimeoutSeconds: z.number(),
+  }),
+});
+
+/**
+ * The statuses each handler sends itself. `GET /console/session`'s handler has
+ * an unreachable 401 of its own, so it declares one; a declared status encodes
+ * `requireConsoleSession`'s 401 too, which is why it is `errorReply`, which
+ * carries the guard's `{ "error": "unauthorized" }` through byte for byte.
+ */
+const loginSchema = { 200: sessionViewReply, 400: errorReply, 401: errorReply, 429: errorReply };
+const logoutSchema = { 204: z.null() };
+const sessionSchema = { 200: sessionViewReply, 401: errorReply };
+
+export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async (app, options) => {
   const resolveDb = async (): Promise<Database.Database> => options.db ?? (await getDb());
 
   /**
@@ -186,7 +210,7 @@ export async function consoleRoutes(app: FastifyInstance, options: ConsoleRoutes
    *     superuser has no account row; that is the decision, and it is asserted
    *     by a test against both tables.
    */
-  app.post("/console/login", async (request, reply) => {
+  app.post("/console/login", { schema: { response: loginSchema } }, async (request, reply) => {
     const db = await resolveDb();
     const ip = lockoutKey(request, trustedProxies);
 
@@ -279,7 +303,7 @@ export async function consoleRoutes(app: FastifyInstance, options: ConsoleRoutes
    * unauthenticated POST here is not an event, and auditing it would hand an
    * anonymous caller a way to fill the log.
    */
-  app.post("/console/logout", async (request, reply) => {
+  app.post("/console/logout", { schema: { response: logoutSchema } }, async (request, reply) => {
     const token = readConsoleCookie(request.headers.cookie);
     const closed = token === undefined ? undefined : closeConsoleSession(token);
 
@@ -295,7 +319,7 @@ export async function consoleRoutes(app: FastifyInstance, options: ConsoleRoutes
     }
 
     reply.header("set-cookie", consoleSessionClearCookie({ secure: await consoleCookieSecure() }));
-    return reply.code(204).send();
+    return reply.code(204).send(null);
   });
 
   /**
@@ -304,14 +328,18 @@ export async function consoleRoutes(app: FastifyInstance, options: ConsoleRoutes
    * on any other console route, and touching it slides the idle window (which is
    * what "idle" should mean for a UI that is genuinely in use).
    */
-  app.get("/console/session", { preHandler: requireConsoleSession }, async (request, reply) => {
-    const session = getConsoleSession(request);
-    if (session === undefined) {
-      // Unreachable: the guard admitted the request. Belt and braces, and it
-      // keeps the handler honest about the fact that it has no other identity
-      // source to fall back on.
-      return reply.code(401).send({ error: "unauthorized" });
-    }
-    return reply.code(200).send({ session: sessionView(session) });
-  });
-}
+  app.get(
+    "/console/session",
+    { preHandler: requireConsoleSession, schema: { response: sessionSchema } },
+    async (request, reply) => {
+      const session = getConsoleSession(request);
+      if (session === undefined) {
+        // Unreachable: the guard admitted the request. Belt and braces, and it
+        // keeps the handler honest about the fact that it has no other identity
+        // source to fall back on.
+        return reply.code(401).send({ error: "unauthorized" });
+      }
+      return reply.code(200).send({ session: sessionView(session) });
+    },
+  );
+};

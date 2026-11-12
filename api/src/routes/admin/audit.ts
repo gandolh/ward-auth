@@ -1,7 +1,8 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
 import { requireConsoleSession } from "../../auth/console-guard.js";
+import { errorReply } from "../../lib/replies.js";
 import { countAudit, listAudit, type AuditLogRow, type AuditQuery } from "../../db/audit-log.js";
 import { databaseResolver, type AdminRoutesOptions } from "./support.js";
 
@@ -120,13 +121,35 @@ function auditView(row: AuditLogRow): AuditRowView {
   };
 }
 
-export async function adminAuditRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
+/**
+ * The response schemas: each status the handlers send themselves, keys in the
+ * order they build them. No 401: `requireConsoleSession` sends it, and a
+ * declared status would encode the guard's reply too.
+ */
+const auditRowSchema = z.object({
+  id: z.number(),
+  at: z.string(),
+  actorKind: z.string(),
+  actorSubject: z.string().nullable(),
+  actorLabel: z.string(),
+  action: z.string(),
+  targetKind: z.string().nullable(),
+  targetId: z.string().nullable(),
+  // Each action's own fields, as written: passed through whole.
+  detail: z.unknown(),
+});
+const listSchema = {
+  200: z.object({ entries: z.array(auditRowSchema), total: z.number(), nextBeforeId: z.number().nullable() }),
+  400: errorReply,
+};
+
+export const adminAuditRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async (app, options) => {
   const database = databaseResolver(options);
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`.
   app.addHook("preHandler", requireConsoleSession);
 
-  app.get("/console/audit", async (request, reply) => {
+  app.get("/console/audit", { schema: { response: listSchema } }, async (request, reply) => {
     const parsed = auditQuery.safeParse(request.query);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -162,4 +185,4 @@ export async function adminAuditRoutes(app: FastifyInstance, options: AdminRoute
       nextBeforeId: oldest === undefined || rows.length < limit ? null : oldest.id,
     });
   });
-}
+};

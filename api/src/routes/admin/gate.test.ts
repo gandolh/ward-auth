@@ -15,7 +15,9 @@ import { freshDb, seedApps, seedUser } from "../../db/test-support.js";
 import { generateSigningKeyFile } from "../../tokens/keygen.js";
 import { adminAccountsRoutes } from "./accounts.js";
 import { adminAppsRoutes } from "./apps.js";
+import { adminAuditRoutes } from "./audit.js";
 import { adminGrantsRoutes } from "./grants.js";
+import { adminSessionsRoutes } from "./sessions.js";
 
 /**
  * **The single most important test of the admin surface.**
@@ -91,6 +93,8 @@ beforeAll(async () => {
   await app.register(adminAppsRoutes, { db });
   await app.register(adminGrantsRoutes, { db });
   await app.register(adminAccountsRoutes, { db });
+  await app.register(adminSessionsRoutes, { db });
+  await app.register(adminAuditRoutes, { db });
   await app.ready();
 
   db.exec("DELETE FROM audit_log");
@@ -137,6 +141,18 @@ const routes = [
     url: "/console/accounts/any/password",
     payload: { password: "a-long-enough-password" },
   },
+  { method: "GET" as const, url: "/console/accounts/any" },
+  { method: "POST" as const, url: "/console/accounts/any/username", payload: { username: "intruder" } },
+  { method: "DELETE" as const, url: "/console/accounts/any" },
+  { method: "GET" as const, url: "/console/accounts/any/sessions" },
+  { method: "DELETE" as const, url: "/console/accounts/any/sessions/any-family" },
+  { method: "POST" as const, url: "/console/accounts/any/sessions/revoke" },
+  {
+    method: "PUT" as const,
+    url: "/console/apps/prm/oidc",
+    payload: { redirectUris: ["https://app.example/cb"], postLogoutRedirectUris: [], jwks: null },
+  },
+  { method: "GET" as const, url: "/console/audit" },
 ];
 
 it("refuses an ordinary account's real access token, however it is presented", async () => {
@@ -180,5 +196,19 @@ it("answers the same 401 for a request with no credential at all", async () => {
     const response = await app.inject(route);
     expect(response.statusCode, `${route.method} ${route.url}`).toBe(401);
     expect(response.json()).toEqual({ error: "unauthorized" });
+  }
+});
+
+/**
+ * The guard's 401 goes out as the guard wrote it, on every admin route. A
+ * response schema encodes every reply on a status it declares, so a route that
+ * declared a 401 the guard sends would rewrite (or 500) the guard's body; none
+ * may, and this fails if one does.
+ */
+it("sends the guard's 401 byte for byte on every admin route", async () => {
+  for (const route of routes) {
+    const response = await app.inject(route);
+    expect(response.statusCode, `${route.method} ${route.url}`).toBe(401);
+    expect(response.body, `${route.method} ${route.url}`).toBe('{"error":"unauthorized"}');
   }
 });

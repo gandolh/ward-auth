@@ -101,7 +101,7 @@ export const adminGrantsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = asyn
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`. Every
   // route in this file changes or reveals who can reach what.
-  app.addHook("preHandler", requireConsoleSession);
+  app.addHook("preValidation", requireConsoleSession);
 
   /**
    * `GET /console/grants?subject=…` or `?app=…`

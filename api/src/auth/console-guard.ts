@@ -60,16 +60,18 @@ export function getConsoleSession(request: FastifyRequest): ConsoleSession | und
 }
 
 /**
- * Fastify `preHandler` hook: admit a live console session, or answer 401.
+ * Fastify hook: admit a live console session, or answer 401.
  *
- * Attach it either way round, whichever suits the plugin:
+ * Attach it either way round, whichever suits the plugin, and in
+ * `preValidation` wherever the route has request schemas, so a signed-out
+ * caller gets the 401 before its input is judged:
  *
  * ```ts
  * // every route in this plugin scope
- * app.addHook("preHandler", requireConsoleSession);
+ * app.addHook("preValidation", requireConsoleSession);
  *
  * // or one route at a time
- * app.post("/console/apps", { preHandler: requireConsoleSession }, handler);
+ * app.get("/console/session", { preHandler: requireConsoleSession }, handler);
  * ```
  *
  * ## The failure mode leaks nothing

@@ -147,7 +147,7 @@ export const adminAuditRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async
   const database = databaseResolver(options);
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`.
-  app.addHook("preHandler", requireConsoleSession);
+  app.addHook("preValidation", requireConsoleSession);
 
   app.get("/console/audit", { schema: { response: listSchema } }, async (request, reply) => {
     const parsed = auditQuery.safeParse(request.query);

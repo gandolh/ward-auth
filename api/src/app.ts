@@ -82,7 +82,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(notifyRoutes);
 
   // The five admin plugins each attach `requireConsoleSession` as a
-  // plugin-scope preHandler, so registering them here does not open anything —
+  // plugin-scope preValidation hook, so registering them here does not open anything —
   // they gate themselves. Their paths all sit under `/console/` and that is
   // functional rather than cosmetic: the `ward_console` cookie is scoped to
   // `Path=/ward-api/console`, so a route mounted anywhere else would simply

@@ -152,16 +152,22 @@ export const adminAppsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async 
    * The gate, for the whole plugin scope, in one line.
    *
    * There is no per-route opt-out and no unauthenticated route in this file. A
-   * `preHandler` on the plugin means a route added later is gated by default
-   * rather than by whoever remembers — the failure mode of per-route gating is
-   * an ungated route, and on this surface an ungated route hands out the
-   * estate's authority.
+   * hook on the plugin means a route added later is gated by default rather
+   * than by whoever remembers — the failure mode of per-route gating is an
+   * ungated route, and on this surface an ungated route hands out the estate's
+   * authority.
+   *
+   * `preValidation`, not `preHandler`: Fastify validates the request against
+   * the route's schemas between the two, so a guard in `preHandler` would
+   * answer a signed-out caller's malformed request with a 400 instead of the
+   * 401. A body that isn't JSON at all is still Fastify's 400 first, as it was
+   * when the guard ran in `preHandler` and the routes parsed by hand.
    *
    * Nothing here checks *which* identity got through, because there is only one:
    * `decisions-admin.md` records that console access cannot be delegated. There
    * is no `ward:admin` grant and nothing else opens this surface.
    */
-  app.addHook("preHandler", requireConsoleSession);
+  app.addHook("preValidation", requireConsoleSession);
 
   /** `GET /console/apps` — every app, slug order. The console's list. */
   app.get("/console/apps", { schema: { response: listSchema } }, async (_request, reply) => {

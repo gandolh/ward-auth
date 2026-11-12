@@ -212,3 +212,36 @@ it("sends the guard's 401 byte for byte on every admin route", async () => {
     expect(response.body, `${route.method} ${route.url}`).toBe('{"error":"unauthorized"}');
   }
 });
+
+/**
+ * The guard runs before the request is judged: a signed-out caller's malformed
+ * query, parameter or body is a 401, never a 400 that would tell it the route
+ * exists and what it expects. A body that isn't JSON at all stays Fastify's own
+ * 400, which comes before any hook, as it did when the routes parsed by hand.
+ */
+it("answers a signed-out caller's malformed request with the 401, not a 400", async () => {
+  const malformed = [
+    { method: "GET" as const, url: "/console/accounts?limit=0" },
+    { method: "GET" as const, url: `/console/accounts/${"s".repeat(65)}` },
+    { method: "POST" as const, url: "/console/accounts", payload: { username: 1 } },
+    { method: "POST" as const, url: "/console/apps", payload: { slug: "NOT A SLUG", name: "x" } },
+    { method: "PATCH" as const, url: "/console/apps/prm", payload: {} },
+    { method: "GET" as const, url: "/console/grants" },
+    { method: "DELETE" as const, url: "/console/grants" },
+    { method: "GET" as const, url: "/console/audit?actorKind=robot" },
+  ];
+  for (const route of malformed) {
+    const response = await app.inject(route);
+    expect(response.statusCode, `${route.method} ${route.url}`).toBe(401);
+    expect(response.body, `${route.method} ${route.url}`).toBe('{"error":"unauthorized"}');
+  }
+
+  const notJson = await app.inject({
+    method: "POST",
+    url: "/console/accounts",
+    payload: "{not json",
+    headers: { "content-type": "application/json" },
+  });
+  expect(notJson.statusCode).toBe(400);
+  expect(Object.keys(notJson.json<object>())).toEqual(["statusCode", "error", "message"]);
+});

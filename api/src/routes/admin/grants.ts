@@ -1,13 +1,20 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
 import { consoleActor } from "../../audit.js";
 import { requireConsoleSession } from "../../auth/console-guard.js";
+import { errorReply } from "../../lib/replies.js";
 import { getApp } from "../../db/apps.js";
 import { listGrantsForApp, listGrantsForSubject } from "../../db/grants.js";
 import { findUserBySubject } from "../../db/users.js";
 import { addGrant, removeAppAccess, removeGrant } from "../../grants/write.js";
-import { databaseResolver, grantView, isForeignKeyViolation, type AdminRoutesOptions } from "./support.js";
+import {
+  databaseResolver,
+  grantView,
+  grantViewSchema,
+  isForeignKeyViolation,
+  type AdminRoutesOptions,
+} from "./support.js";
 
 /**
  * The grant surface: `GET`, `POST`, `DELETE /console/grants`.
@@ -76,7 +83,20 @@ const listQuery = z
     message: "exactly one of subject or app",
   });
 
-export async function adminGrantsRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
+/**
+ * The response schemas: each status the handlers send themselves, keys in the
+ * order they build them. No 401: `requireConsoleSession` sends it, and a
+ * declared status would encode the guard's reply too.
+ */
+const listSchema = { 200: z.object({ grants: z.array(grantViewSchema) }), 400: errorReply, 404: errorReply };
+const grantSchema = {
+  200: z.object({ grant: grantViewSchema, created: z.boolean() }),
+  400: errorReply,
+  404: errorReply,
+};
+const revokeSchema = { 200: z.object({ removed: z.number(), roles: z.array(z.string()) }), 400: errorReply };
+
+export const adminGrantsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async (app, options) => {
   const database = databaseResolver(options);
 
   // The gate, for the whole plugin scope — see the note in `apps.ts`. Every
@@ -91,7 +111,7 @@ export async function adminGrantsRoutes(app: FastifyInstance, options: AdminRout
    * answer for "you mistyped the subject", and the console cannot tell them
    * apart.
    */
-  app.get("/console/grants", async (request, reply) => {
+  app.get("/console/grants", { schema: { response: listSchema } }, async (request, reply) => {
     const query = listQuery.safeParse(request.query);
     if (!query.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -127,7 +147,7 @@ export async function adminGrantsRoutes(app: FastifyInstance, options: AdminRout
    * wrong, and the foreign-key violation is still caught: between the lookup and
    * the insert an app can be deleted, and only the database observes both.
    */
-  app.post("/console/grants", async (request, reply) => {
+  app.post("/console/grants", { schema: { response: grantSchema } }, async (request, reply) => {
     const body = grantBody.safeParse(request.body);
     if (!body.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -175,7 +195,7 @@ export async function adminGrantsRoutes(app: FastifyInstance, options: AdminRout
    * and a `404` here would be a slower way of saying `removed: 0` while also
    * confirming to a caller whether a given subject exists.
    */
-  app.delete("/console/grants", async (request, reply) => {
+  app.delete("/console/grants", { schema: { response: revokeSchema } }, async (request, reply) => {
     const body = revokeBody.safeParse(request.body);
     if (!body.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -196,4 +216,4 @@ export async function adminGrantsRoutes(app: FastifyInstance, options: AdminRout
     const result = removeGrant(db, actor, target);
     return reply.code(200).send({ removed: result.removed ? 1 : 0, roles: result.removed ? [target.role] : [] });
   });
-}
+};

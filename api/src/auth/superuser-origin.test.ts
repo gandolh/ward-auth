@@ -6,7 +6,7 @@ import { join } from "node:path";
 /**
  * `consoleCookieSecure()` against a plain-HTTP origin on a **real hostname**.
  *
- * Its own file for the reason `routes/auth-loopback.test.ts` documents:
+ * Its own file for the reason `features/auth/loopback.test.ts` documents:
  * `config.ts` resolves its constants once per module registry and vitest gives
  * each test file its own, so a second `WARD_PUBLIC_ORIGIN` cannot be exercised
  * from `superuser.test.ts` (which runs at `https://gandolh.ro`).
@@ -22,7 +22,7 @@ import { join } from "node:path";
  * `Secure` at all. It now defers to `cookie.ts` rather than reimplementing it.
  *
  * The loopback exception itself is still asserted in `cookie.test.ts` and
- * `routes/auth-loopback.test.ts`; this file asserts the boundary the console
+ * `features/auth/loopback.test.ts`; this file asserts the boundary the console
  * cookie was on the wrong side of.
  */
 

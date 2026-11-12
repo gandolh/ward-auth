@@ -31,7 +31,7 @@ import { sessionStatusRoutes } from "./status.js";
  * Each "turns inactive" test ends a Ward session the way the real code does:
  * sign-out is `revokeFamily(.., "logout")`, a console revoke is the same with
  * `"admin"`, a password reset is `setPasswordHash` plus `revokeAllForSubject`
- * (`routes/admin/accounts.ts`, `routes/account.ts`).
+ * (`features/admin/accounts.ts`, `features/account/routes.ts`).
  */
 
 const ISSUER = "https://ward.test/ward-api/oidc";

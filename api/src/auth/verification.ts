@@ -17,7 +17,7 @@ import {
  * Email verification: minting a token, and spending it exactly once.
  *
  * The policy layer between `db/verification-tokens.ts` (statements, no rules)
- * and `routes/register.ts` (HTTP). Split out for the same reason
+ * and `features/register/routes.ts` (HTTP). Split out for the same reason
  * `auth/refresh.ts` is: the rules about lifetime, single use and what a spent
  * token *does* are worth reading without a Fastify handler around them, and a
  * later resend endpoint or a change-of-address flow will want them without

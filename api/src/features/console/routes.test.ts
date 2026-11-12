@@ -18,7 +18,7 @@ import { generateSigningKeyFile } from "../../tokens/keygen.js";
  *
  * ## Why this whole file is gated on a file existing
  *
- * `routes/console.ts` imports `api/src/auth/lockout.ts` — the IP lockout,
+ * `features/console/routes.ts` imports `api/src/auth/lockout.ts` — the IP lockout,
  * which this endpoint must apply. The two were built in parallel, so the
  * lockout module was not on disk when this suite was written. The contract was
  * pinned up front and is written against exactly:

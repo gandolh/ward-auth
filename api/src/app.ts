@@ -72,13 +72,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   /**
    * `GET /session` — "who am I" for Ward's own pages, from the `ward_session`
-   * cookie. Apps never call it; see `routes/session.ts`.
+   * cookie. Apps never call it; see `features/session/routes.ts`.
    */
   await app.register(sessionRoutes);
 
   /**
    * `POST /notify`: an app asks Ward to mail one of its own users,
-   * authenticated with its client assertion. See `routes/notify.ts`.
+   * authenticated with its client assertion. See `features/notify/routes.ts`.
    */
   await app.register(notifyRoutes);
 
@@ -105,7 +105,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
    * The self-service surface, authenticated as an **ordinary account** from the
    * `ward_session` cookie — emphatically not through the console, which is
    * superuser-only by decision and has no second path into it. See the header
-   * of `routes/account.ts`.
+   * of `features/account/routes.ts`.
    */
   await app.register(accountRoutes);
 
@@ -145,7 +145,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
    * `POST /session-status`: an app asks whether a Ward-originated
    * session is still live, authenticated with its client assertion. Registers
    * nothing when `WARD_OIDC_ISSUER` is unset, like the provider above. See
-   * `routes/session-status.ts`.
+   * `features/session/status.ts`.
    */
   await app.register(sessionStatusRoutes);
 

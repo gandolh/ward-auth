@@ -179,7 +179,7 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
 
   /**
    * The same trusted proxies `/login` uses, resolved once at registration
-   * through a dynamic import (see `routes/auth.ts`). One list for both is what
+   * through a dynamic import (see `features/auth/routes.ts`). One list for both is what
    * keeps the two surfaces agreeing on what an address is.
    */
   const trustedProxies = options.trustedProxies ?? (await import("../../config.js")).WARD_TRUSTED_PROXIES;

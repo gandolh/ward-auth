@@ -12,7 +12,7 @@ import { mailboxAddress, sendMail } from "./transport.js";
  * That is the whole point of `sendMail` taking the transport as a parameter:
  * these tests never import `config.ts`, never set `WARD_MAIL_*`, and therefore
  * cannot be the reason a config change breaks the suite. The route-level test
- * (`routes/register.test.ts`) exercises the other half — that the process-wide
+ * (`features/register/routes.test.ts`) exercises the other half — that the process-wide
  * `MAIL` reaches this function when nothing is passed.
  *
  * The `smtp` branch is deliberately not tested here: asserting it would mean

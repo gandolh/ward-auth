@@ -20,7 +20,7 @@ import type { AccessTokenClaims } from "./claims.js";
 
 /**
  * Loaded once per process and cached. The key file is read at boot (see
- * `routes/jwks.ts`, which awaits this during registration) and never again —
+ * `features/jwks/routes.ts`, which awaits this during registration) and never again —
  * so a rotation is picked up by restarting Ward, which is what step 3 of the
  * procedure in `keys.ts` says to do. Reloading on a file watch was considered
  * and rejected: a half-written key file appearing mid-flight would take the
@@ -35,7 +35,7 @@ let keyStore: WardKeyStore | undefined;
  *
  * Rejects with `SigningKeyError` if the key file is missing, unreadable, or not
  * an Ed25519 private key, and the message names `npm run keygen` as the fix.
- * Because `routes/jwks.ts` awaits this while `buildApp()` runs, that rejection
+ * Because `features/jwks/routes.ts` awaits this while `buildApp()` runs, that rejection
  * is a boot failure: Ward does not start without a key, in any environment.
  */
 export async function getKeySet(): Promise<WardKeySet> {

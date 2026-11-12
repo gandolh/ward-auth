@@ -46,7 +46,7 @@ import { sendMail } from "../../mail/transport.js";
  *
  * No cookie is set and no token is minted. A person who registers goes to the
  * login form like anybody else. This is a deliberate omission rather than a
- * gap: minting a session here would duplicate `routes/auth.ts`'s cookie logic
+ * gap: minting a session here would duplicate `features/auth/routes.ts`'s cookie logic
  * on the one route that anonymous callers can drive, in exchange for saving one
  * form submission.
  *
@@ -75,7 +75,7 @@ import { sendMail } from "../../mail/transport.js";
  *
  * ## Nothing sensitive travels in a URL — with one deliberate exception
  *
- * `routes/auth.ts` keeps every credential in a POST body because Fastify's
+ * `features/auth/routes.ts` keeps every credential in a POST body because Fastify's
  * default request log line includes `url`, and therefore the query string, at
  * info level. `GET /verify?token=` breaks that rule because it has to be
  * clickable out of a mail client, so the exception is paid for rather than
@@ -115,7 +115,7 @@ const appSlug = z.string().trim().min(1).max(64);
 
 /**
  * A username, with the same rule the console applies when the owner issues an
- * account (`routes/admin/accounts.ts`).
+ * account (`features/admin/accounts.ts`).
  *
  * The two must agree. `foldUsername` collapses case and Unicode *form*, so
  * `Alice` and `ａlice` cannot become two accounts; what it does not collapse is
@@ -155,7 +155,7 @@ const email = z.string().trim().max(254).pipe(z.email());
 
 /**
  * A password with **no length rule here at all** — the same call
- * `routes/admin/accounts.ts` makes on the other account-creating route, for the
+ * `features/admin/accounts.ts` makes on the other account-creating route, for the
  * same reason. `auth/password.ts` owns the policy and throws
  * `PasswordPolicyError` with a stable `code`; this route surfaces that code, so
  * a short password answers `password_too_short` rather than a generic
@@ -165,7 +165,7 @@ const email = z.string().trim().max(254).pipe(z.email());
  * That leaves nothing bounding the size of an anonymous caller's password, which
  * would matter if scrypt were reachable with a multi-megabyte string — but
  * Fastify's default body limit is 1 MiB and rejects the request long before this
- * schema sees it. The `MAX_PASSWORD_LENGTH` bound `routes/auth.ts` applies is on
+ * schema sees it. The `MAX_PASSWORD_LENGTH` bound `features/auth/routes.ts` applies is on
  * the *login* path, where there is no policy error to surface because a
  * too-long password simply cannot match a stored hash.
  */
@@ -217,7 +217,7 @@ export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = asyn
   /**
    * Resolved at registration through a **dynamic** import, so that merely
    * importing this module does not run `config.ts`'s validation (and its
-   * `process.exit(1)`) — the same reasoning `routes/auth.ts` records.
+   * `process.exit(1)`) — the same reasoning `features/auth/routes.ts` records.
    *
    * All four are process constants, and resolving them here rather than per
    * request means a misconfigured mail transport or origin is visible at boot
@@ -809,7 +809,7 @@ function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): st
  * A PRIMARY KEY or UNIQUE collision from better-sqlite3.
  *
  * Matched on `code` rather than on the message, for the reason
- * `routes/admin/support.ts` records: the messages name columns
+ * `features/admin/support.ts` records: the messages name columns
  * (`UNIQUE constraint failed: users.username_folded`), so a route that branches
  * on that string leaks the schema if it ever echoes it and breaks silently the
  * next time a migration renames anything. Duplicated here rather than imported

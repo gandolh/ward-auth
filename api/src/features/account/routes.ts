@@ -169,7 +169,7 @@ const revokeOthersSchema = {
 };
 
 export const accountRoutes: FastifyPluginAsyncZod<AccountRoutesOptions> = async (app, options) => {
-  /** Resolved once, at registration — see `routes/auth.ts` for both reasons. */
+  /** Resolved once, at registration — see `features/auth/routes.ts` for both reasons. */
   const secure = await wardSecureCookies();
   const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../../config.js");
   /** The lockout's trusted proxies — the same list `/login` uses. */
@@ -529,7 +529,7 @@ function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): st
 /**
  * Whether the request is same-origin enough to act on the session cookies.
  *
- * A deliberate duplicate of the predicate in `routes/auth.ts`, which does not
+ * A deliberate duplicate of the predicate in `features/auth/routes.ts`, which does not
  * export it. The rule is stated in one place
  * — that file's header — and both copies must agree; if a third surface ever
  * needs it, that is the moment to lift it into `auth/cookie.ts` rather than

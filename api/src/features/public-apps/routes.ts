@@ -68,7 +68,7 @@ export const PUBLIC_APPS_RESPONSE_SCHEMA = {
 };
 
 export const publicAppsRoutes: FastifyPluginAsyncZod<PublicAppsRoutesOptions> = async (app, options) => {
-  /** Lazy, for the reason `routes/auth.ts` gives. */
+  /** Lazy, for the reason `features/auth/routes.ts` gives. */
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
 
   app.get("/apps", { schema: { response: PUBLIC_APPS_RESPONSE_SCHEMA } }, async (_request, reply) => {

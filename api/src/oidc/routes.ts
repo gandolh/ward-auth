@@ -69,7 +69,7 @@ export async function oidcRoutes(app: FastifyInstance, options: OidcRoutesOption
    * Built on first use rather than at registration, for the reason `app.ts`
    * gives about `getDb`: `buildApp()` must stay callable with no database on
    * disk. The signing key, by contrast, is already loaded at registration by
-   * `routes/jwks.ts`, so `getKeySet()` here only reads its cache.
+   * `features/jwks/routes.ts`, so `getKeySet()` here only reads its cache.
    */
   let built: Promise<OidcBundle> | undefined;
   let sweeper: NodeJS.Timeout | undefined;
@@ -172,7 +172,7 @@ function sweep(db: Database.Database, app: FastifyInstance): void {
  * The provider's URLs carry things that should not sit in a log line: the
  * end-session endpoint takes an `id_token_hint` in the query, the authorization
  * endpoint a `state` and a `nonce`. The same move as `/verify`: the query string
- * is dropped from the request log wholesale. See `routes/register.ts` for why
+ * is dropped from the request log wholesale. See `features/register/routes.ts` for why
  * the return type has to be cast.
  */
 const oidcLogSerializers: Record<string, (value: unknown) => string> = {

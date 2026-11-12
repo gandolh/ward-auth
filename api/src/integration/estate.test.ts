@@ -25,7 +25,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * this suite is what actually exercises:
  *
  *  - `buildApp()` itself — the wiring in `app.ts`, not a stand-in for it;
- *  - the real JWKS load at registration (`routes/jwks.ts` awaits
+ *  - the real JWKS load at registration (`features/jwks/routes.ts` awaits
  *    `getKeySet()` while `buildApp()` runs), which needs a key genuinely on
  *    disk rather than one handed to a test fixture;
  *  - a real `WARD_DB_PATH` file, migrated with `runMigrations`, exactly the
@@ -48,7 +48,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * `config.ts` validates the environment at import time and calls
  * `process.exit(1)` on anything missing. A static import here would be
  * hoisted above the `process.env` assignments in `beforeAll` and take the
- * whole test worker with it — the same trap `routes/auth.test.ts` and
+ * whole test worker with it — the same trap `features/auth/routes.test.ts` and
  * `tokens/jwks-route.test.ts` document, and the one this file's own header
  * repeats because getting it wrong here kills every test in the suite at
  * once rather than just one file's worth.
@@ -108,7 +108,7 @@ beforeAll(async () => {
   const config = await import("../config.js");
 
   // A real generated Ed25519 key on disk. `buildApp()` registers
-  // `routes/jwks.ts`, which awaits `getKeySet()` at registration — so
+  // `features/jwks/routes.ts`, which awaits `getKeySet()` at registration — so
   // `buildApp()` below genuinely does not start without this existing first.
   const { generateSigningKeyFile } = await import("../tokens/keygen.js");
   await generateSigningKeyFile(config.WARD_SIGNING_KEY_PATH);
@@ -634,7 +634,7 @@ describe("flow 8 — the audit trail, read back after everything above", () => {
      * claimed and the disabled check running inside that same transaction.
      * Flow 4's ordinary case — the account was already disabled well before
      * `/refresh` is ever called — never reaches that code at all:
-     * `routes/auth.ts`'s `/refresh` handler calls `sessionForRefreshToken`
+     * `features/auth/routes.ts`'s `/refresh` handler calls `sessionForRefreshToken`
      * first, which itself excludes a disabled account's session, so the
      * request short-circuits to the generic "unknown" outcome and no audit
      * row is written for it specifically. Finding that distinction — that

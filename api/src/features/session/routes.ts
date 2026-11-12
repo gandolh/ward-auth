@@ -18,7 +18,7 @@ import { INACTIVE, type SessionResolution } from "../../grants/resolve.js";
  *
  * Apps never call this. They sign people in through OpenID Connect and ask
  * whether a Ward session is still live with `POST /session-status`
- * (`routes/session-status.ts`). Until 2026-10-13 apps also asked about Ward's
+ * (`features/session/status.ts`). Until 2026-10-13 apps also asked about Ward's
  * cookie through a server-to-server endpoint with the same answer shape; that
  * contract is retired.
  *

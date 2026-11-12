@@ -20,7 +20,7 @@ import { REFRESH_TOKEN_TTL_SECONDS } from "./cookie.js";
  * Refresh-token issuance, rotation, and reuse detection.
  *
  * This module is the estate's stolen-cookie alarm and it holds no HTTP types —
- * `routes/auth.ts` turns the outcomes below into status codes. Everything here
+ * `features/auth/routes.ts` turns the outcomes below into status codes. Everything here
  * takes its `Database` as a parameter, so the whole protocol is testable
  * against `openDatabase(":memory:")`.
  *
@@ -231,7 +231,7 @@ export interface RotationOptions {
  * so a rotation is all-or-nothing: there is no state in which `R1` is spent but
  * `R2` was never stored, which would silently log the person out. **The access
  * token must be minted by the caller *before* this is called** — see the note
- * on ordering in `routes/auth.ts`: a mint that fails after the claim has
+ * on ordering in `features/auth/routes.ts`: a mint that fails after the claim has
  * committed leaves the client still holding `R1`, and its next refresh burns the
  * family. Minting first wastes a JWS in the rare case the claim then fails,
  * which is cheap.
@@ -564,7 +564,7 @@ export function refreshCookieMaxAge(row: RefreshTokenRow, now: Date = new Date()
  * The subject a presented refresh token belongs to, whatever state its row is
  * in — spent, revoked, expired — or `undefined` if the hash is unknown.
  *
- * Exists so `routes/auth.ts` can mint the access token **before** opening the
+ * Exists so `features/auth/routes.ts` can mint the access token **before** opening the
  * rotation transaction without hashing the token itself. Emphatically **not** an
  * authorisation check: it says who a token names, not whether it may be used.
  * Only `rotateRefreshToken` decides that.

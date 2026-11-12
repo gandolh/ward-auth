@@ -63,7 +63,7 @@ import { findUserBySubject } from "../db/users.js";
  * whose `iat` is later than the newest live refresh row's `issued_at`, since a
  * token minted after every live family's last rotation cannot belong to one of
  * them. It is sound today and catches roughly half of the two-family orderings,
- * but it rests on `routes/auth.ts` minting the access token strictly *before*
+ * but it rests on `features/auth/routes.ts` minting the access token strictly *before*
  * inserting the refresh row — an invariant held in another file,
  * whose failure mode is spuriously signing a legitimate person out of six apps.
  * A rule that can log the owner out to close half of a stolen-token window is

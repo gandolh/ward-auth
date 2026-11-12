@@ -55,7 +55,7 @@ import { wardSecureCookies } from "./cookie.js";
  * of the break-glass design and not oversights:
  *
  * - The credential **cannot be revoked** without a redeploy. Its only
- *   observability is the audit trail `routes/console.ts` writes on every login
+ *   observability is the audit trail `features/console/routes.ts` writes on every login
  *   attempt, success or failure.
  * - A restart also drops every console session, because the store below is in
  *   memory. That is the desired behaviour: a rotation should end the sessions
@@ -70,7 +70,7 @@ export const CONSOLE_COOKIE_NAME = "ward_console";
  * The cookie's `Path`, in browser-visible terms.
  *
  * Ward is reverse-proxied at `/ward-api/*` and the prefix is stripped before
- * Fastify sees it, so the routes in `routes/console.ts` are registered at
+ * Fastify sees it, so the routes in `features/console/routes.ts` are registered at
  * `/console/...` while the browser sees `/ward-api/console/...`. This constant
  * is the browser's view, because `Path` is a browser-side matching rule.
  *

@@ -34,7 +34,7 @@ import { ACCESS_TOKEN_ALG, ACCESS_TOKEN_TTL_SECONDS, SIGNING_KEY_CURVE } from ".
  * assembled field by field from an explicit allowlist rather than by spreading
  * anything. `assertPublicJwk` is the belt to that pair of braces and throws at
  * load time — at boot, not at request time — if a private parameter ever
- * appears. The route (`routes/jwks.ts`) is never handed a `WardSigningKey` at
+ * appears. The route (`features/jwks/routes.ts`) is never handed a `WardSigningKey` at
  * all; it only ever sees the frozen `JSONWebKeySet`.
  *
  * ## Key rotation — the procedure

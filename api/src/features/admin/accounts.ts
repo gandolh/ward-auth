@@ -89,7 +89,7 @@ const subjectParams = z.object({
  * A username.
  *
  * Trimmed, because a trailing space in a username is invisible and never
- * intentional — the same rule `routes/auth.ts` applies on the login path, and
+ * intentional — the same rule `features/auth/routes.ts` applies on the login path, and
  * the two must agree or an account is created that cannot be logged into.
  * Uniqueness, case folding and Unicode form are `db/users.ts`'s job
  * (`foldUsername`, NFKC then lower case), not this schema's.

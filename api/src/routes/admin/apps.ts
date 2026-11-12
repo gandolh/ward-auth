@@ -1,8 +1,9 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
 import { recordConsoleAudit } from "../../audit.js";
 import { requireConsoleSession } from "../../auth/console-guard.js";
+import { errorReply } from "../../lib/replies.js";
 import {
   createApp,
   deleteApp,
@@ -18,6 +19,7 @@ import { parseClientRegistration } from "../../oidc/clients.js";
 import { listGrantsForApp } from "../../db/grants.js";
 import {
   appView,
+  appViewSchema,
   databaseResolver,
   isCheckViolation,
   isUniqueViolation,
@@ -123,7 +125,27 @@ interface FieldChange {
   to: unknown;
 }
 
-export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutesOptions = {}): Promise<void> {
+/**
+ * The response schemas: each status the handlers send themselves, keys in the
+ * order they build them. No 401: `requireConsoleSession` sends it, and a
+ * declared status would encode the guard's reply too.
+ */
+const appReply = z.object({ app: appViewSchema });
+const listSchema = { 200: z.object({ apps: z.array(appViewSchema) }) };
+const detailSchema = {
+  200: z.object({ app: appViewSchema, grantCount: z.number() }),
+  400: errorReply,
+  404: errorReply,
+};
+const createSchema = { 201: appReply, 400: errorReply, 409: errorReply };
+const updateSchema = { 200: appReply, 400: errorReply, 404: errorReply };
+const deleteSchema = {
+  200: z.object({ deleted: z.string(), grantsRevoked: z.number() }),
+  400: errorReply,
+  404: errorReply,
+};
+
+export const adminAppsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async (app, options) => {
   const database = databaseResolver(options);
 
   /**
@@ -142,13 +164,13 @@ export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutes
   app.addHook("preHandler", requireConsoleSession);
 
   /** `GET /console/apps` — every app, slug order. The console's list. */
-  app.get("/console/apps", async (_request, reply) => {
+  app.get("/console/apps", { schema: { response: listSchema } }, async (_request, reply) => {
     const db = await database();
     return reply.code(200).send({ apps: listApps(db).map(appView) });
   });
 
   /** `GET /console/apps/:slug` — one app, with everyone who can reach it. */
-  app.get("/console/apps/:slug", async (request, reply) => {
+  app.get("/console/apps/:slug", { schema: { response: detailSchema } }, async (request, reply) => {
     const params = slugParams.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -173,7 +195,7 @@ export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutes
    * PRIMARY KEY rather than by a `getApp` first: a check-then-insert has a race
    * between the two statements and the constraint does not.
    */
-  app.post("/console/apps", async (request, reply) => {
+  app.post("/console/apps", { schema: { response: createSchema } }, async (request, reply) => {
     const body = createAppBody.safeParse(request.body);
     if (!body.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -249,7 +271,7 @@ export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutes
    * The log records changes of authority; a form resubmitted unchanged is not
    * one, and auditing it would bury the rows an operator needs.
    */
-  app.patch("/console/apps/:slug", async (request, reply) => {
+  app.patch("/console/apps/:slug", { schema: { response: updateSchema } }, async (request, reply) => {
     const params = slugParams.safeParse(request.params);
     const body = patchAppBody.safeParse(request.body);
     if (!params.success || !body.success) {
@@ -348,7 +370,7 @@ export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutes
    * surface that silently removes rows the operator did not name, so the count
    * is the only trace left that they existed.
    */
-  app.put("/console/apps/:slug/oidc", async (request, reply) => {
+  app.put("/console/apps/:slug/oidc", { schema: { response: updateSchema } }, async (request, reply) => {
     const params = slugParams.safeParse(request.params);
     const body = putOidcBody.safeParse(request.body);
     if (!params.success || !body.success) {
@@ -399,7 +421,7 @@ export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutes
     return reply.code(200).send({ app: appView(after) });
   });
 
-  app.delete("/console/apps/:slug", async (request, reply) => {
+  app.delete("/console/apps/:slug", { schema: { response: deleteSchema } }, async (request, reply) => {
     const params = slugParams.safeParse(request.params);
     if (!params.success) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -432,4 +454,4 @@ export async function adminAppsRoutes(app: FastifyInstance, options: AdminRoutes
 
     return reply.code(200).send({ deleted: row.slug, grantsRevoked });
   });
-}
+};

@@ -260,7 +260,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
       const ACCOUNT_PASSWORD = "correct-horse-battery";
 
       async function buildBoth(): Promise<FastifyInstance> {
-        const { authRoutes } = await import("../auth/routes.js");
+        const { authRoutes } = await import("../auth/index.js");
         const { consoleRoutes } = await import("./routes.js");
         const both = await testFastify({ logger: false });
         await both.register(authRoutes, { db });

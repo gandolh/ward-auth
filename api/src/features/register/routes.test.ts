@@ -32,7 +32,7 @@ let app: FastifyInstance;
 
 let mod: {
   register: typeof import("./routes.js");
-  auth: typeof import("../auth/routes.js");
+  auth: typeof import("../auth/index.js");
   lockout: typeof import("../../auth/lockout.js");
   verification: typeof import("../../auth/verification.js");
   password: typeof import("../../auth/password.js");
@@ -69,7 +69,7 @@ beforeAll(async () => {
 
   mod = {
     register: await import("./routes.js"),
-    auth: await import("../auth/routes.js"),
+    auth: await import("../auth/index.js"),
     lockout: await import("../../auth/lockout.js"),
     verification: await import("../../auth/verification.js"),
     password: await import("../../auth/password.js"),

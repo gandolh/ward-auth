@@ -52,7 +52,7 @@ beforeAll(async () => {
   // Neither plugin is handed `trustedProxies`: both must find the same list in
   // `config.ts`, or `/login` and `/console/login` disagree about an address.
   const { authRoutes } = await import("./routes.js");
-  const { consoleRoutes } = await import("../console/routes.js");
+  const { consoleRoutes } = await import("../console/index.js");
   const { testFastify } = await import("../../testing/fastify.js");
   app = await testFastify({ logger: false });
   await app.register(authRoutes, { db });

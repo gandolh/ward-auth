@@ -1,21 +1,22 @@
 import { serializerCompiler, validatorCompiler } from "@fastify/type-provider-zod";
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from "fastify";
 import { errorsPlugin } from "./plugins/errors.js";
-import { healthRoutes } from "./features/health/routes.js";
-import { jwksRoutes } from "./features/jwks/routes.js";
-import { authRoutes } from "./features/auth/routes.js";
-import { consoleRoutes } from "./features/console/routes.js";
-import { notifyRoutes } from "./features/notify/routes.js";
-import { sessionRoutes } from "./features/session/routes.js";
-import { sessionStatusRoutes } from "./features/session/status.js";
-import { adminAppsRoutes } from "./features/admin/apps.js";
-import { adminGrantsRoutes } from "./features/admin/grants.js";
-import { adminAccountsRoutes } from "./features/admin/accounts.js";
-import { adminSessionsRoutes } from "./features/admin/sessions.js";
-import { adminAuditRoutes } from "./features/admin/audit.js";
-import { accountRoutes } from "./features/account/routes.js";
-import { publicAppsRoutes } from "./features/public-apps/routes.js";
-import { registerRoutes } from "./features/register/routes.js";
+import { accountRoutes } from "./features/account/index.js";
+import {
+  adminAccountsRoutes,
+  adminAppsRoutes,
+  adminAuditRoutes,
+  adminGrantsRoutes,
+  adminSessionsRoutes,
+} from "./features/admin/index.js";
+import { authRoutes } from "./features/auth/index.js";
+import { consoleRoutes } from "./features/console/index.js";
+import { healthRoutes } from "./features/health/index.js";
+import { jwksRoutes } from "./features/jwks/index.js";
+import { notifyRoutes } from "./features/notify/index.js";
+import { publicAppsRoutes } from "./features/public-apps/index.js";
+import { registerRoutes } from "./features/register/index.js";
+import { sessionRoutes, sessionStatusRoutes } from "./features/session/index.js";
 import { oidcRoutes } from "./oidc/routes.js";
 
 /**

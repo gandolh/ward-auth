@@ -27,7 +27,7 @@ let subject: string;
 
 let mod: {
   session: typeof import("./routes.js");
-  auth: typeof import("../auth/routes.js");
+  auth: typeof import("../auth/index.js");
   cookie: typeof import("../../auth/cookie.js");
   lockout: typeof import("../../auth/lockout.js");
   password: typeof import("../../auth/password.js");
@@ -104,7 +104,7 @@ beforeAll(async () => {
 
   mod = {
     session: await import("./routes.js"),
-    auth: await import("../auth/routes.js"),
+    auth: await import("../auth/index.js"),
     cookie: await import("../../auth/cookie.js"),
     lockout: await import("../../auth/lockout.js"),
     password: await import("../../auth/password.js"),

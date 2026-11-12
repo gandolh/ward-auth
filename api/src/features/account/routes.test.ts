@@ -34,8 +34,8 @@ let subject: string;
 
 let mod: {
   account: typeof import("./routes.js");
-  auth: typeof import("../auth/routes.js");
-  session: typeof import("../session/routes.js");
+  auth: typeof import("../auth/index.js");
+  session: typeof import("../session/index.js");
   cookie: typeof import("../../auth/cookie.js");
   lockout: typeof import("../../auth/lockout.js");
   password: typeof import("../../auth/password.js");
@@ -130,8 +130,8 @@ beforeAll(async () => {
 
   mod = {
     account: await import("./routes.js"),
-    auth: await import("../auth/routes.js"),
-    session: await import("../session/routes.js"),
+    auth: await import("../auth/index.js"),
+    session: await import("../session/index.js"),
     cookie: await import("../../auth/cookie.js"),
     lockout: await import("../../auth/lockout.js"),
     password: await import("../../auth/password.js"),

@@ -110,12 +110,6 @@ export {
   type WardIdentitiesOptions,
 } from "./ward/identities.js";
 export { InvalidClientKeyError } from "./ward/key.js";
-export {
-  requireRole,
-  wardAuth,
-  type AuthContext,
-  type SessionValidator,
-  type SessionVerdict,
-  type WardAuthOptions,
-} from "./fastify/plugin.js";
+export { requireRole, wardAuth, type AuthContext, type WardAuthOptions } from "./fastify/plugin.js";
+export type { SessionValidator, SessionVerdict } from "./fastify/session-validator.js";
 export { FRESH_SIGN_IN_SECONDS, type WardSignInOptions } from "./fastify/ward.js";

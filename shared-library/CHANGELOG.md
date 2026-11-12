@@ -7,6 +7,20 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 0.7.2 — 2026-11-12
+
+No change for apps. `SessionValidator` and `SessionVerdict` moved to a module
+of their own in the source, so the Fastify plugin and the Ward routes no
+longer import each other.
+
+- Both JavaScript bundles differ from 0.7.1's only in the version in their
+  banner. In `ward-auth.d.ts` the two types are declared earlier in the file,
+  unchanged; the React declarations differ only in the banner.
+
+Upgrade notes from 0.7.1:
+
+- Nothing to change, and no migration. Re-vendoring is optional.
+
 ## 0.7.1 — 2026-11-11
 
 No change for apps. The source moved to the estate's house style, and two

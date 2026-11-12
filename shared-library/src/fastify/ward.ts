@@ -19,7 +19,7 @@ import {
   type WardIdentities,
 } from "../ward/identities.js";
 import { crossSite, sameOrigin, tooManyAttempts } from "./http.js";
-import type { SessionValidator } from "./plugin.js";
+import type { SessionValidator } from "./session-validator.js";
 
 /**
  * "Sign in with Ward", linking, and the 30-second check, as Fastify routes.

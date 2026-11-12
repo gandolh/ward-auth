@@ -178,15 +178,10 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
   app.addHook("preValidation", requireConsoleSession);
 
   /** `GET /console/accounts` — the console's list, ordered the way a human scans it. */
-  app.get("/console/accounts", { schema: { response: listSchema } }, async (request, reply) => {
-    const query = listQuery.safeParse(request.query);
-    if (!query.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
+  app.get("/console/accounts", { schema: { querystring: listQuery, response: listSchema } }, async (request, reply) => {
     const db = await database();
     return reply.code(200).send({
-      accounts: listUsers(db, query.data.limit, query.data.offset).map(accountView),
+      accounts: listUsers(db, request.query.limit, request.query.offset).map(accountView),
       total: countUsers(db),
     });
   });
@@ -202,24 +197,23 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    * `liveSessions` is the count that makes "disabling ends live sessions"
    * visible in the UI — and the number an operator checks before believing it.
    */
-  app.get("/console/accounts/:subject", { schema: { response: detailSchema } }, async (request, reply) => {
-    const params = subjectParams.safeParse(request.params);
-    if (!params.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
+  app.get(
+    "/console/accounts/:subject",
+    { schema: { params: subjectParams, response: detailSchema } },
+    async (request, reply) => {
+      const db = await database();
+      const row = findUserBySubject(db, request.params.subject);
+      if (row === undefined) {
+        return reply.code(404).send({ error: "account_not_found" });
+      }
 
-    const db = await database();
-    const row = findUserBySubject(db, params.data.subject);
-    if (row === undefined) {
-      return reply.code(404).send({ error: "account_not_found" });
-    }
-
-    return reply.code(200).send({
-      account: accountView(row),
-      grants: listGrantsForSubject(db, row.subject).map(grantView),
-      liveSessions: listLiveTokensForSubject(db, row.subject).length,
-    });
-  });
+      return reply.code(200).send({
+        account: accountView(row),
+        grants: listGrantsForSubject(db, row.subject).map(grantView),
+        liveSessions: listLiveTokensForSubject(db, row.subject).length,
+      });
+    },
+  );
 
   /**
    * `POST /console/accounts` — create an account.
@@ -234,54 +228,53 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    * SELECT-then-INSERT has a race between the two statements and the constraint
    * does not.
    */
-  app.post("/console/accounts", { schema: { response: createSchema } }, async (request, reply) => {
-    const body = createAccountBody.safeParse(request.body);
-    if (!body.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    // Hashed before the transaction opens: `hashPassword` is async and scrypt
-    // takes tens of milliseconds, and better-sqlite3 transactions are
-    // synchronous — awaiting inside one is not possible, and holding a write
-    // transaction open across an await would be wrong even if it were.
-    let passwordHash: string;
-    try {
-      passwordHash = await hashPassword(body.data.password);
-    } catch (error) {
-      if (error instanceof PasswordPolicyError) {
-        // The stable `code`, never the message: the login UI and the console
-        // render these, and a message is prose that can be reworded.
-        return reply.code(400).send({ error: error.code });
+  app.post(
+    "/console/accounts",
+    { schema: { body: createAccountBody, response: createSchema } },
+    async (request, reply) => {
+      // Hashed before the transaction opens: `hashPassword` is async and scrypt
+      // takes tens of milliseconds, and better-sqlite3 transactions are
+      // synchronous — awaiting inside one is not possible, and holding a write
+      // transaction open across an await would be wrong even if it were.
+      let passwordHash: string;
+      try {
+        passwordHash = await hashPassword(request.body.password);
+      } catch (error) {
+        if (error instanceof PasswordPolicyError) {
+          // The stable `code`, never the message: the login UI and the console
+          // render these, and a message is prose that can be reworded.
+          return reply.code(400).send({ error: error.code });
+        }
+        throw error;
       }
-      throw error;
-    }
 
-    const db = await database();
+      const db = await database();
 
-    let created: UserRow;
-    try {
-      created = db.transaction((): UserRow => {
-        // `email` is not passed at all — an owner-issued account has none.
-        const row = createUser(db, { username: body.data.username, passwordHash });
+      let created: UserRow;
+      try {
+        created = db.transaction((): UserRow => {
+          // `email` is not passed at all — an owner-issued account has none.
+          const row = createUser(db, { username: request.body.username, passwordHash });
 
-        recordConsoleAudit(db, request, {
-          action: "user.create",
-          targetKind: "user",
-          targetId: row.subject,
-          detail: { username: row.username },
-        });
+          recordConsoleAudit(db, request, {
+            action: "user.create",
+            targetKind: "user",
+            targetId: row.subject,
+            detail: { username: row.username },
+          });
 
-        return row;
-      })();
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        return reply.code(409).send({ error: "username_taken" });
+          return row;
+        })();
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          return reply.code(409).send({ error: "username_taken" });
+        }
+        throw error;
       }
-      throw error;
-    }
 
-    return reply.code(201).send({ account: accountView(created) });
-  });
+      return reply.code(201).send({ account: accountView(created) });
+    },
+  );
 
   /**
    * `POST /console/accounts/:subject/disable`
@@ -297,45 +290,44 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    * repeat still closes anything that somehow survived — and an audit row is
    * written when either half actually changed something.
    */
-  app.post("/console/accounts/:subject/disable", { schema: { response: disableSchema } }, async (request, reply) => {
-    const params = subjectParams.safeParse(request.params);
-    if (!params.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    const db = await database();
-    const before = findUserBySubject(db, params.data.subject);
-    if (before === undefined) {
-      return reply.code(404).send({ error: "account_not_found" });
-    }
-
-    const alreadyDisabled = before.disabled_at !== null;
-
-    const result = db.transaction((): { account: UserRow | undefined; sessionsRevoked: number } => {
-      if (!alreadyDisabled) {
-        setDisabled(db, before.subject, true);
+  app.post(
+    "/console/accounts/:subject/disable",
+    { schema: { params: subjectParams, response: disableSchema } },
+    async (request, reply) => {
+      const db = await database();
+      const before = findUserBySubject(db, request.params.subject);
+      if (before === undefined) {
+        return reply.code(404).send({ error: "account_not_found" });
       }
 
-      const sessionsRevoked = revokeAllForSubject(db, before.subject, "admin");
+      const alreadyDisabled = before.disabled_at !== null;
 
-      if (!alreadyDisabled || sessionsRevoked > 0) {
-        recordConsoleAudit(db, request, {
-          action: "user.disable",
-          targetKind: "user",
-          targetId: before.subject,
-          detail: { username: before.username, sessionsRevoked, alreadyDisabled },
-        });
-      }
+      const result = db.transaction((): { account: UserRow | undefined; sessionsRevoked: number } => {
+        if (!alreadyDisabled) {
+          setDisabled(db, before.subject, true);
+        }
 
-      return { account: findUserBySubject(db, before.subject), sessionsRevoked };
-    })();
-    if (result.account === undefined) throw new Error("the account was gone after its own disable");
+        const sessionsRevoked = revokeAllForSubject(db, before.subject, "admin");
 
-    return reply.code(200).send({
-      account: accountView(result.account),
-      sessionsRevoked: result.sessionsRevoked,
-    });
-  });
+        if (!alreadyDisabled || sessionsRevoked > 0) {
+          recordConsoleAudit(db, request, {
+            action: "user.disable",
+            targetKind: "user",
+            targetId: before.subject,
+            detail: { username: before.username, sessionsRevoked, alreadyDisabled },
+          });
+        }
+
+        return { account: findUserBySubject(db, before.subject), sessionsRevoked };
+      })();
+      if (result.account === undefined) throw new Error("the account was gone after its own disable");
+
+      return reply.code(200).send({
+        account: accountView(result.account),
+        sessionsRevoked: result.sessionsRevoked,
+      });
+    },
+  );
 
   /**
    * `POST /console/accounts/:subject/enable`
@@ -346,38 +338,37 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    *
    * A no-op on an account that is already enabled: `200`, no audit row.
    */
-  app.post("/console/accounts/:subject/enable", { schema: { response: enableSchema } }, async (request, reply) => {
-    const params = subjectParams.safeParse(request.params);
-    if (!params.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
+  app.post(
+    "/console/accounts/:subject/enable",
+    { schema: { params: subjectParams, response: enableSchema } },
+    async (request, reply) => {
+      const db = await database();
+      const before = findUserBySubject(db, request.params.subject);
+      if (before === undefined) {
+        return reply.code(404).send({ error: "account_not_found" });
+      }
 
-    const db = await database();
-    const before = findUserBySubject(db, params.data.subject);
-    if (before === undefined) {
-      return reply.code(404).send({ error: "account_not_found" });
-    }
+      if (before.disabled_at === null) {
+        return reply.code(200).send({ account: accountView(before), changed: false });
+      }
 
-    if (before.disabled_at === null) {
-      return reply.code(200).send({ account: accountView(before), changed: false });
-    }
+      const after = db.transaction((): UserRow | undefined => {
+        setDisabled(db, before.subject, false);
 
-    const after = db.transaction((): UserRow | undefined => {
-      setDisabled(db, before.subject, false);
+        recordConsoleAudit(db, request, {
+          action: "user.enable",
+          targetKind: "user",
+          targetId: before.subject,
+          detail: { username: before.username, disabledSince: before.disabled_at },
+        });
 
-      recordConsoleAudit(db, request, {
-        action: "user.enable",
-        targetKind: "user",
-        targetId: before.subject,
-        detail: { username: before.username, disabledSince: before.disabled_at },
-      });
+        return findUserBySubject(db, before.subject);
+      })();
+      if (after === undefined) throw new Error("the account was gone after its own enable");
 
-      return findUserBySubject(db, before.subject);
-    })();
-    if (after === undefined) throw new Error("the account was gone after its own enable");
-
-    return reply.code(200).send({ account: accountView(after), changed: true });
-  });
+      return reply.code(200).send({ account: accountView(after), changed: true });
+    },
+  );
 
   /**
    * `POST /console/accounts/:subject/password` — rotate a password.
@@ -396,45 +387,43 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    * The new password is never logged, never audited and never echoed. The audit
    * row records that a rotation happened and how many sessions it ended.
    */
-  app.post("/console/accounts/:subject/password", { schema: { response: passwordSchema } }, async (request, reply) => {
-    const params = subjectParams.safeParse(request.params);
-    const body = passwordBody.safeParse(request.body);
-    if (!params.success || !body.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    const db = await database();
-    const account = findUserBySubject(db, params.data.subject);
-    if (account === undefined) {
-      return reply.code(404).send({ error: "account_not_found" });
-    }
-
-    let passwordHash: string;
-    try {
-      passwordHash = await hashPassword(body.data.password);
-    } catch (error) {
-      if (error instanceof PasswordPolicyError) {
-        return reply.code(400).send({ error: error.code });
+  app.post(
+    "/console/accounts/:subject/password",
+    { schema: { params: subjectParams, body: passwordBody, response: passwordSchema } },
+    async (request, reply) => {
+      const db = await database();
+      const account = findUserBySubject(db, request.params.subject);
+      if (account === undefined) {
+        return reply.code(404).send({ error: "account_not_found" });
       }
-      throw error;
-    }
 
-    const sessionsRevoked = db.transaction((): number => {
-      setPasswordHash(db, account.subject, passwordHash);
-      const revoked = revokeAllForSubject(db, account.subject, "admin");
+      let passwordHash: string;
+      try {
+        passwordHash = await hashPassword(request.body.password);
+      } catch (error) {
+        if (error instanceof PasswordPolicyError) {
+          return reply.code(400).send({ error: error.code });
+        }
+        throw error;
+      }
 
-      recordConsoleAudit(db, request, {
-        action: "user.password_rotate",
-        targetKind: "user",
-        targetId: account.subject,
-        detail: { username: account.username, sessionsRevoked: revoked },
-      });
+      const sessionsRevoked = db.transaction((): number => {
+        setPasswordHash(db, account.subject, passwordHash);
+        const revoked = revokeAllForSubject(db, account.subject, "admin");
 
-      return revoked;
-    })();
+        recordConsoleAudit(db, request, {
+          action: "user.password_rotate",
+          targetKind: "user",
+          targetId: account.subject,
+          detail: { username: account.username, sessionsRevoked: revoked },
+        });
 
-    return reply.code(200).send({ subject: account.subject, sessionsRevoked });
-  });
+        return revoked;
+      })();
+
+      return reply.code(200).send({ subject: account.subject, sessionsRevoked });
+    },
+  );
   /**
    * `POST /console/accounts/:subject/username` — rename an account.
    *
@@ -450,47 +439,45 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    * because the folded name still belongs to the same row. A name another
    * account holds is caught by the `UNIQUE` constraint, as on create.
    */
-  app.post("/console/accounts/:subject/username", { schema: { response: renameSchema } }, async (request, reply) => {
-    const params = subjectParams.safeParse(request.params);
-    const body = usernameBody.safeParse(request.body);
-    if (!params.success || !body.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    const db = await database();
-    const before = findUserBySubject(db, params.data.subject);
-    if (before === undefined) {
-      return reply.code(404).send({ error: "account_not_found" });
-    }
-
-    if (before.username === body.data.username) {
-      return reply.code(200).send({ account: accountView(before), changed: false });
-    }
-
-    let after: UserRow;
-    try {
-      after = db.transaction((): UserRow => {
-        const row = setUsername(db, before.subject, body.data.username);
-        if (row === undefined) throw new Error("the account was gone during its own rename");
-
-        recordConsoleAudit(db, request, {
-          action: "user.rename",
-          targetKind: "user",
-          targetId: before.subject,
-          detail: { from: before.username, to: row.username },
-        });
-
-        return row;
-      })();
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        return reply.code(409).send({ error: "username_taken" });
+  app.post(
+    "/console/accounts/:subject/username",
+    { schema: { params: subjectParams, body: usernameBody, response: renameSchema } },
+    async (request, reply) => {
+      const db = await database();
+      const before = findUserBySubject(db, request.params.subject);
+      if (before === undefined) {
+        return reply.code(404).send({ error: "account_not_found" });
       }
-      throw error;
-    }
 
-    return reply.code(200).send({ account: accountView(after), changed: true });
-  });
+      if (before.username === request.body.username) {
+        return reply.code(200).send({ account: accountView(before), changed: false });
+      }
+
+      let after: UserRow;
+      try {
+        after = db.transaction((): UserRow => {
+          const row = setUsername(db, before.subject, request.body.username);
+          if (row === undefined) throw new Error("the account was gone during its own rename");
+
+          recordConsoleAudit(db, request, {
+            action: "user.rename",
+            targetKind: "user",
+            targetId: before.subject,
+            detail: { from: before.username, to: row.username },
+          });
+
+          return row;
+        })();
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          return reply.code(409).send({ error: "username_taken" });
+        }
+        throw error;
+      }
+
+      return reply.code(200).send({ account: accountView(after), changed: true });
+    },
+  );
   /**
    * `DELETE /console/accounts/:subject` — delete an account outright.
    *
@@ -501,33 +488,32 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    * sessions end within 30 seconds. Each app keeps its own user and that user's
    * data; deleting those is the app's business.
    */
-  app.delete("/console/accounts/:subject", { schema: { response: deleteSchema } }, async (request, reply) => {
-    const params = subjectParams.safeParse(request.params);
-    if (!params.success) {
-      return reply.code(400).send({ error: "invalid_request" });
-    }
+  app.delete(
+    "/console/accounts/:subject",
+    { schema: { params: subjectParams, response: deleteSchema } },
+    async (request, reply) => {
+      const db = await database();
+      const row = findUserBySubject(db, request.params.subject);
+      if (row === undefined) {
+        return reply.code(404).send({ error: "account_not_found" });
+      }
 
-    const db = await database();
-    const row = findUserBySubject(db, params.data.subject);
-    if (row === undefined) {
-      return reply.code(404).send({ error: "account_not_found" });
-    }
+      const counts = db.transaction((): { grantsRevoked: number; sessionsRevoked: number } => {
+        const grantsRevoked = listGrantsForSubject(db, row.subject).length;
+        const sessionsRevoked = listLiveTokensForSubject(db, row.subject).length;
+        deleteUser(db, row.subject);
 
-    const counts = db.transaction((): { grantsRevoked: number; sessionsRevoked: number } => {
-      const grantsRevoked = listGrantsForSubject(db, row.subject).length;
-      const sessionsRevoked = listLiveTokensForSubject(db, row.subject).length;
-      deleteUser(db, row.subject);
+        recordConsoleAudit(db, request, {
+          action: "user.delete",
+          targetKind: "user",
+          targetId: row.subject,
+          detail: { username: row.username, grantsRevoked, sessionsRevoked },
+        });
 
-      recordConsoleAudit(db, request, {
-        action: "user.delete",
-        targetKind: "user",
-        targetId: row.subject,
-        detail: { username: row.username, grantsRevoked, sessionsRevoked },
-      });
+        return { grantsRevoked, sessionsRevoked };
+      })();
 
-      return { grantsRevoked, sessionsRevoked };
-    })();
-
-    return reply.code(200).send({ deleted: row.subject, username: row.username, ...counts });
-  });
+      return reply.code(200).send({ deleted: row.subject, username: row.username, ...counts });
+    },
+  );
 };

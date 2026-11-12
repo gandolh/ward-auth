@@ -577,3 +577,27 @@ describe("reading accounts", () => {
     expect(response.json()).toEqual({ error: "account_not_found" });
   });
 });
+
+/**
+ * The route's input is checked by its schema now, not by hand; a request that
+ * fails it gets exactly the body the hand-written check sent, with no issue
+ * list.
+ */
+it("answers a malformed query, parameter or body with exactly the old 400 body", async () => {
+  for (const init of [
+    { method: "GET", url: "/console/accounts?limit=0" },
+    { method: "GET", url: "/console/accounts?offset=-1" },
+    { method: "GET", url: `/console/accounts/${"s".repeat(65)}` },
+    { method: "POST", url: "/console/accounts", payload: { username: "jane" } },
+    { method: "POST", url: "/console/accounts" },
+    { method: "POST", url: `/console/accounts/${"s".repeat(65)}/disable` },
+    { method: "POST", url: `/console/accounts/${"s".repeat(65)}/enable` },
+    { method: "POST", url: "/console/accounts/any/password", payload: { password: 5 } },
+    { method: "POST", url: "/console/accounts/any/username", payload: { username: "" } },
+    { method: "DELETE", url: `/console/accounts/${"s".repeat(65)}` },
+  ] satisfies InjectOptions[]) {
+    const response = await asConsole(init);
+    expect(response.statusCode, `${init.method} ${init.url}`).toBe(400);
+    expect(response.body, `${init.method} ${init.url}`).toBe('{"error":"invalid_request"}');
+  }
+});

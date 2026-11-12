@@ -4,7 +4,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { recordAudit } from "../db/audit-log.js";
-import { errorReply } from "../lib/replies.js";
+import { errorReply, lockedOutReply } from "../lib/replies.js";
 import { getDb } from "../db/connection.js";
 import { findUserBySubject, foldUsername, setPasswordHash, type UserRow } from "../db/users.js";
 import {
@@ -148,6 +148,26 @@ interface Caller {
   familyId: string;
 }
 
+/** The other two routes' statuses, each sent by its handler; keys in the order the handlers build them. */
+const passwordSchema = {
+  200: z.object({
+    subject: z.string(),
+    sessionsRevoked: z.number(),
+    accessTokenExpiresAt: z.number(),
+    refreshTokenExpiresAt: z.string(),
+  }),
+  400: errorReply,
+  401: errorReply,
+  403: errorReply,
+  429: lockedOutReply,
+};
+
+const revokeOthersSchema = {
+  200: z.object({ revoked: z.number(), tokensRevoked: z.number(), spared: z.string() }),
+  401: errorReply,
+  403: errorReply,
+};
+
 export const accountRoutes: FastifyPluginAsyncZod<AccountRoutesOptions> = async (app, options) => {
   /** Resolved once, at registration — see `routes/auth.ts` for both reasons. */
   const secure = await wardSecureCookies();
@@ -243,7 +263,7 @@ export const accountRoutes: FastifyPluginAsyncZod<AccountRoutesOptions> = async 
    * that can is already the threat model — somebody holding a live session and
    * guessing at the password.
    */
-  app.post("/account/password", async (request, reply) => {
+  app.post("/account/password", { schema: { response: passwordSchema } }, async (request, reply) => {
     if (!sameOrigin(request, WARD_PUBLIC_ORIGIN)) return crossSite(reply);
 
     reply.header("cache-control", "no-store");
@@ -411,7 +431,7 @@ export const accountRoutes: FastifyPluginAsyncZod<AccountRoutesOptions> = async 
    * console's routes use `admin`; keeping the distinction means an operator
    * reading `refresh_tokens` can still tell which of the two happened.
    */
-  app.post("/account/sessions/revoke-others", async (request, reply) => {
+  app.post("/account/sessions/revoke-others", { schema: { response: revokeOthersSchema } }, async (request, reply) => {
     if (!sameOrigin(request, WARD_PUBLIC_ORIGIN)) return crossSite(reply);
 
     reply.header("cache-control", "no-store");

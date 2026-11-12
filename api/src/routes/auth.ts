@@ -1,8 +1,10 @@
 import type Database from "better-sqlite3";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { recordAudit } from "../db/audit-log.js";
+import { errorReply, lockedOutReply } from "../lib/replies.js";
 import { getDb } from "../db/connection.js";
 import { findUserByUsername, foldUsername } from "../db/users.js";
 import { mintAccessToken } from "../tokens/service.js";
@@ -125,7 +127,35 @@ const loginBody = z.object({
  */
 const refreshBody = z.object({ refreshToken: z.string().min(1).max(512).optional() }).optional();
 
-export async function authRoutes(app: FastifyInstance, options: AuthRoutesOptions = {}): Promise<void> {
+/**
+ * The response schemas: each status the handler sends itself, Ward's error
+ * bodies included. The success bodies are filters, as `GET /session`'s is.
+ * Their keys are listed in the order the handlers build them, so the bytes on
+ * the wire are what they were before the schemas.
+ */
+const loginSchema = {
+  200: z.object({
+    subject: z.string(),
+    username: z.string(),
+    emailVerified: z.boolean(),
+    accessTokenExpiresAt: z.number(),
+    refreshTokenExpiresAt: z.string(),
+  }),
+  400: errorReply,
+  401: errorReply,
+  403: errorReply,
+  429: lockedOutReply,
+};
+
+const refreshSchema = {
+  200: z.object({ subject: z.string(), accessTokenExpiresAt: z.number(), refreshTokenExpiresAt: z.string() }),
+  401: errorReply,
+  403: errorReply,
+};
+
+const logoutSchema = { 204: z.null(), 403: errorReply };
+
+export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, options) => {
   /**
    * Resolved once, at registration, because it never changes for the life of
    * the process — and resolving it here rather than per request means a
@@ -165,7 +195,7 @@ export async function authRoutes(app: FastifyInstance, options: AuthRoutesOption
    * a body carrying the access token would put it in reach of any script on the
    * page, which is the entire thing `HttpOnly` is for.
    */
-  app.post("/login", async (request, reply) => {
+  app.post("/login", { schema: { response: loginSchema } }, async (request, reply) => {
     const address = lockoutKey(request, trustedProxies);
 
     /**
@@ -332,7 +362,7 @@ export async function authRoutes(app: FastifyInstance, options: AuthRoutesOption
    * entirely. The replay response is the throttle that matters: a family dies
    * on the first reuse.
    */
-  app.post("/refresh", async (request, reply) => {
+  app.post("/refresh", { schema: { response: refreshSchema } }, async (request, reply) => {
     if (!sameOrigin(request, WARD_PUBLIC_ORIGIN)) {
       return crossSite(reply);
     }
@@ -505,9 +535,9 @@ export async function authRoutes(app: FastifyInstance, options: AuthRoutesOption
     clearSessionCookies(reply, secure);
     return reply.code(204).send();
   };
-  app.post("/logout", logout);
-  app.post("/refresh/logout", logout);
-}
+  app.post("/logout", { schema: { response: logoutSchema } }, logout);
+  app.post("/refresh/logout", { schema: { response: logoutSchema } }, logout);
+};
 
 /**
  * The lockout key for a request.

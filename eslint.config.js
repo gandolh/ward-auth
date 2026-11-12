@@ -44,13 +44,12 @@ export default [
     ignores: ["docs/**", "shared-library/.scratch/**"],
   }),
   {
-    // A warning for now (2026-11-11): the library reads the environment in two
-    // documented fallbacks, AUTH_TRUSTED_PROXIES in the Fastify plugin and the
-    // WARD_OIDC_* variables in wardClientOptionsFromEnv. When the library's own
-    // exceptions are recorded with its structure, this block goes: each read
-    // becomes a recorded exception or moves.
-    name: "ward/library-process-env-warns",
+    // The library's two documented fallback reads of the environment, AUTH_TRUSTED_PROXIES in the
+    // Fastify plugin and the WARD_OIDC_* variables in wardClientOptionsFromEnv. The library has no
+    // config.ts and apps vendor it as a bundle, so both are recorded exceptions (scripts/conventions.json,
+    // rule 3); everywhere else n/no-process-env is an error and only config.ts reads the environment.
+    name: "ward/library-process-env-exceptions",
     files: ["shared-library/src/fastify/plugin.ts", "shared-library/src/ward/client.ts"],
-    rules: { "n/no-process-env": "warn" },
+    rules: { "n/no-process-env": "off" },
   },
 ];

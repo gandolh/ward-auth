@@ -369,11 +369,9 @@ export const adminAppsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = async 
     "/console/apps/:slug/oidc",
     { schema: { params: slugParams, body: putOidcBody, response: updateSchema } },
     async (request, reply) => {
-      const registration = await parseClientRegistration({
-        redirectUris: request.body.redirectUris,
-        postLogoutRedirectUris: request.body.postLogoutRedirectUris,
-        jwks: request.body.jwks,
-      });
+      // The schema checked the shape; this checks the URIs and the keys themselves.
+      const { redirectUris, postLogoutRedirectUris, jwks } = request.body;
+      const registration = await parseClientRegistration({ redirectUris, postLogoutRedirectUris, jwks });
       if (typeof registration === "string") {
         return reply.code(400).send({ error: registration });
       }

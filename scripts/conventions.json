@@ -16,6 +16,117 @@
       "rule": 5,
       "path": "ui/src/styles/theme.css",
       "reason": "The @theme blocks, shared by both stylesheets: index.css emits them and console.css imports them as a reference."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/auth/routes.ts",
+      "match": "loginBody.safeParse(",
+      "reason": "Hand-parsed on purpose: the lockout gate answers first, and a malformed /login body gets a terse 400 that spends no lockout budget; zod's issue list would echo the submitted password."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/auth/routes.ts",
+      "match": "refreshBody.safeParse(",
+      "reason": "Hand-parsed on purpose, in /refresh and in the logout handler both routes share: the body is optional (the cookie wins), and a malformed one is no credential, a 401 or a 204, never a 400."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/register/routes.ts",
+      "match": "registerBody.safeParse(",
+      "reason": "Hand-parsed on purpose: the registration lockout gate answers first, and a malformed body gets a terse 400 that spends no registration budget."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/register/routes.ts",
+      "match": "verifyQuery.safeParse(",
+      "reason": "Hand-parsed on purpose: a bad /verify link answers with the HTML page a browser asked for (or JSON), never a bare 400."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/account/routes.ts",
+      "match": "passwordBody.safeParse(",
+      "reason": "Hand-parsed on purpose: the session check and the lockout gate answer first, and a malformed body spends no lockout budget."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/console/routes.ts",
+      "match": "loginBody.safeParse(",
+      "reason": "Hand-parsed on purpose: a malformed console login writes its audit row (console.login.failed, reason malformed) before the 400."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/session/status.ts",
+      "match": "credentialBody.safeParse(",
+      "reason": "Hand-parsed on purpose: a malformed client credential is a 401 invalid_client, never a 400."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/session/status.ts",
+      "match": "statusBody.safeParse(",
+      "reason": "Hand-parsed on purpose: a malformed body from an authenticated app fails closed to a 200 { active: false }, never a 400."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/notify/routes.ts",
+      "match": "notifyBody.safeParse(",
+      "reason": "Hand-parsed on purpose: a malformed body is a refusal (invalid_body), audited and counted against the notify limiter, answered 200 { sent: false }."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/oidc/interaction.ts",
+      "match": "uidParams.safeParse(",
+      "reason": "Hand-parsed on purpose: a bad interaction uid renders the provider's expired page, not a JSON 400; oidc/ keeps its shape."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/features/jwks/routes.ts",
+      "match": "GET /.well-known/jwks.json declares no schema",
+      "reason": "The JWKS is serialised once at boot and sent as a string with its own media type (application/jwk-set+json); Fastify never runs a response schema on a string reply."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/oidc/routes.ts",
+      "match": "route (computed url) declares no schema",
+      "reason": "The OpenID Connect provider's raw mount: the request is handed to oidc-provider through reply.hijack(), so no Fastify schema applies to it."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/oidc/routes.ts",
+      "match": "route ${OIDC_INTERNAL_PREFIX}/* declares no schema",
+      "reason": "The OpenID Connect provider's raw mount: the request is handed to oidc-provider through reply.hijack(), so no Fastify schema applies to it."
+    },
+    {
+      "check": "structure",
+      "rule": 3,
+      "path": "shared-library/src/fastify/plugin.ts",
+      "match": "reads process.env outside config.ts",
+      "reason": "The vendored library's one fallback read of AUTH_TRUSTED_PROXIES, only when the app passes no trustedProxies option; the library has no config.ts, and apps vendor it as a bundle."
+    },
+    {
+      "check": "structure",
+      "rule": 3,
+      "path": "shared-library/src/ward/client.ts",
+      "match": "reads process.env outside config.ts",
+      "reason": "The vendored library's wardClientOptionsFromEnv defaults its env argument to process.env, so an app that passes none reads its own WARD_OIDC_* settings; the library has no config.ts, and apps vendor it as a bundle."
+    },
+    {
+      "check": "structure",
+      "rule": 9,
+      "path": "api/src/testing/fastify.ts",
+      "reason": "No buildTestApp: the tests build the real app with buildApp() (decision: integration tests drive the real buildApp), and a feature's own tests build a bare Fastify through testFastify(), which sets the compilers and the error plugin as buildApp does."
     }
   ]
 }

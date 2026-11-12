@@ -730,3 +730,20 @@ decisions moved to `wiki/decisions-console.md`. No route, cookie or token
 touched. Not pushed; the board column is Ready for deploy.
 
 ## [2026-11-11] brief 05 | the UI moved to Tailwind 4.3.5 and the sign-in pages got a Light / Dark / System switch. Three stylesheets became two (`styles/index.css` for the sign-in pages at 4.9 kB gzip, `pages/console/console.css` for the lazy console chunk), sharing `styles/theme.css`; Ward's token names kept 1:1, the raw colours as variables with `@theme inline` over them. The console stays a dark surface (its block re-declares the palette on its own element), not a theme; the public pages follow `data-theme`, light first, kept in localStorage, with an inline boot script. Revised the 2026-10-23 decision "the console's widgets are Base UI; the public pages import none": styled with Tailwind now, and shadcn stays rejected for its own reason. `check-base-ui` strict, the Tailwind lint on. Entry chunk still has 0 Base UI sources. Screenshots at 1280 and 390 match before and after. No route, cookie or token touched. Local, not pushed.
+
+## [2026-11-12] done | Brief 06: the server in the house code structure
+
+`server.ts` (close-with-grace, keepAliveTimeout 125 s only) and `app.ts`
+(the zod compilers, the error plugin first, each feature through its index);
+`routes/` became `features/<name>/` beside the domain modules, which
+dependency-cruiser keeps from importing a feature. Every JSON route declares
+a zod response schema for the statuses its handler sends; the console's 24
+plain routes take request schemas, the 11 hand-parsed sites stay with a
+reason each; the console guard runs in `preValidation`. Before and after:
+282 replies through the real `buildApp()` (all 44 registrations, three
+callers, every error path, the lockouts, the audit rows), byte-identical
+after every step, and no field dropped. check-structure strict: 74 errors to
+0, 16 excepted. ward-auth 0.7.2 moves `SessionValidator` so `no-circular` is
+an error again. `npm run check` 73 files, 1273 tests. Decisions in
+`wiki/decisions-structure.md`. Not pushed; the board column is Ready for
+deploy (`node cli.ts ward server`).

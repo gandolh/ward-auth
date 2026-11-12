@@ -1,9 +1,9 @@
 ---
-summary: Dated snapshot (2026-11-11) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 11-04 (not deployed), the local seed's ten apps, the house style and npm run check (2026-11-11, not deployed), ward-auth 0.7.1 and which version each app vendors; the owner's next steps and known gaps.
-updated: 2026-11-11
+summary: Dated snapshot (2026-11-12) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 11-04 (not deployed), the local seed's ten apps, the house style and npm run check (2026-11-11, not deployed), the server in the code structure (2026-11-12, not deployed), ward-auth 0.7.2 and which version each app vendors; the owner's next steps and known gaps.
+updated: 2026-11-12
 ---
 
-# Status — 2026-11-11
+# Status — 2026-11-12
 
 `origin/main` is at `a5520e3`; the commits after it (briefs 01 and 02, built
 2026-11-04) are local. Brief numbering restarted at 01 on 2026-11-02
@@ -12,7 +12,8 @@ updated: 2026-11-11
 and not deployed), Base UI by the conventions (04, built 2026-11-11, local and
 not deployed), the UI to Tailwind (05, built 2026-11-11, local and
 not deployed)
-and the server in the house code structure (06). They follow the owner's estate calls of 2026-11-09
+and the server in the house code structure (06, built 2026-11-12, local and
+not deployed). They follow the owner's estate calls of 2026-11-09
 and were revised the same day to the answers of the grilling of 2026-11-10; a
 fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas waiting to be specced are in
 [../todos/](../todos/).
@@ -64,11 +65,18 @@ fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas 
   tsconfig flags and ESLint config from `vendor/house-style/` (1.1.0), and
   `npm run check` as the gate, with `check:fast` for the Stop hook
   ([decisions-implementation.md](decisions-implementation.md)). `check-base-ui` has run strict since the UI moved to
-  Tailwind (2026-11-11); `check-structure` runs `--warn-only` until the server work.
-- **ward-auth** (`shared-library/`, 0.7.1 on 2026-11-11). 0.4.0 renames a user,
+  Tailwind (2026-11-11), `check-structure` since the server moved (2026-11-12).
+- **The server in the code structure** (2026-11-12, not deployed). `server.ts`
+  and `app.ts`, `features/<name>/` beside the domain modules, one error
+  plugin, zod response schemas on every JSON route and request schemas on the
+  console's 24 plain routes; every reply byte-identical before and after
+  ([decisions-structure.md](decisions-structure.md)). The image starts
+  `api/dist/server.js`.
+- **ward-auth** (`shared-library/`, 0.7.2 on 2026-11-12). 0.4.0 renames a user,
   0.5.0 shapes a new Ward user's name, 0.6.0 disables a local user, 0.6.1
   exports the new names, 0.7.0 keeps a refused sign-in's return path, 0.7.1
-  is the house style with no change for apps. Vendored
+  is the house style and 0.7.2 a type moved to its own module, neither a
+  change for apps. Vendored
   (read 2026-11-02): 0.7.0 in sports-app, 0.4.0 in shelfmark, 0.3.1 in atrium,
   newspapper, prm, satchel and almanac. Each app adopts a version itself.
 
@@ -76,7 +84,9 @@ fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas 
 
 - **Deploy Ward** (`node cli.ts ward all` in `vps-deploy`): ships the console
   work and the docs site; `node cli.ts ward deploy` ships the house-style
-  commits.
+  commits; `node cli.ts ward server` ships the server's new structure. After
+  that one, check that the container turns healthy, that `docker stop` ends at
+  once, and that one sign-in through Ward from another app works.
 - **Have git blame skip the reformat:**
   `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 - **Re-vendor ward-auth** in the apps that want 0.4.0 to 0.7.0; the comment-only

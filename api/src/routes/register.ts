@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
@@ -16,6 +17,7 @@ import { grantTargetId, recordAudit } from "../db/audit-log.js";
 import { getDb } from "../db/connection.js";
 import { SELF_REGISTRATION_ACTOR, ensureGrant } from "../db/grants.js";
 import { createUser, foldUsername, type UserRow } from "../db/users.js";
+import { errorReply, lockedOutReply } from "../lib/replies.js";
 import { verificationLink, verificationMail } from "../mail/templates.js";
 import { sendMail } from "../mail/transport.js";
 
@@ -186,7 +188,32 @@ const verifyQuery = z.object({
     .regex(/^[0-9a-f]{64}$/, { message: "not a verification token" }),
 });
 
-export async function registerRoutes(app: FastifyInstance, options: RegisterRoutesOptions = {}): Promise<void> {
+/**
+ * The response schemas: each status the handlers send themselves, keys in the
+ * order the handlers build them. `/verify` answers JSON through its schemas,
+ * or an HTML page for a browser; a string reply skips the serializer, so the
+ * page goes out as written.
+ */
+const registerSchema = {
+  201: z.object({
+    subject: z.string(),
+    username: z.string(),
+    email: z.string().nullable(),
+    emailVerified: z.boolean(),
+    app: z.string(),
+    role: z.string(),
+    verificationSent: z.boolean(),
+    verificationExpiresAt: z.string(),
+  }),
+  400: errorReply,
+  403: errorReply,
+  409: errorReply,
+  429: lockedOutReply,
+};
+
+const verifySchema = { 200: z.object({ verified: z.literal(true) }), 400: errorReply };
+
+export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = async (app, options) => {
   /**
    * Resolved at registration through a **dynamic** import, so that merely
    * importing this module does not run `config.ts`'s validation (and its
@@ -212,7 +239,7 @@ export async function registerRoutes(app: FastifyInstance, options: RegisterRout
    * Body `{ app, username, email, password }`; `201` with the account and what
    * it was granted, or one of the refusals documented on each branch.
    */
-  app.post("/register", async (request, reply) => {
+  app.post("/register", { schema: { response: registerSchema } }, async (request, reply) => {
     reply.header("cache-control", "no-store");
 
     const address = lockoutKey(request, trustedProxies);
@@ -490,6 +517,7 @@ export async function registerRoutes(app: FastifyInstance, options: RegisterRout
            * only because verification is not a sign-in gate.)
            */
           exposeHeadRoute: false,
+          schema: { response: verifySchema },
         },
         async (request, reply) => {
           reply.header("cache-control", "no-store");
@@ -527,7 +555,7 @@ export async function registerRoutes(app: FastifyInstance, options: RegisterRout
     },
     { logSerializers: verifyLogSerializers },
   );
-}
+};
 
 /**
  * Build, send and account for the verification mail. Never throws.

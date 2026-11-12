@@ -164,8 +164,8 @@ beforeAll(async () => {
     passwordHash: await mod.password.hashPassword(PASSWORD),
   }).subject;
 
-  const Fastify = (await import("fastify")).default;
-  app = Fastify({ logger: false });
+  const { testFastify } = await import("../testing/fastify.js");
+  app = await testFastify({ logger: false });
   await app.register(mod.auth.authRoutes, { db });
   await app.ready();
 });
@@ -1212,9 +1212,9 @@ describe("the exported surface other modules consume", () => {
     // `WARD_DB_PATH` points at a file that is never created, so a
     // registration-time `getDb()` would leave one behind.
     const { existsSync } = await import("node:fs");
-    const Fastify = (await import("fastify")).default;
+    const { testFastify } = await import("../testing/fastify.js");
 
-    const bare = Fastify({ logger: false });
+    const bare = await testFastify({ logger: false });
     await bare.register(mod.auth.authRoutes);
     await bare.ready();
 

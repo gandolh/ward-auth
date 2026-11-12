@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Writable } from "node:stream";
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance, type LightMyRequestResponse } from "fastify";
+import type { FastifyInstance, LightMyRequestResponse } from "fastify";
+import { testFastify } from "../testing/fastify.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 /**
@@ -84,7 +85,7 @@ beforeAll(async () => {
   db = mod.testSupport.freshDb();
   mod.testSupport.seedApps(db);
 
-  app = Fastify({ logger: false });
+  app = await testFastify({ logger: false });
   await app.register(mod.register.registerRoutes, { db });
   await app.register(mod.auth.authRoutes, { db });
   await app.ready();
@@ -538,7 +539,7 @@ describe("the verification token never reaches the log", () => {
       },
     });
 
-    const logged = Fastify({ logger: { level: "info", stream } });
+    const logged = await testFastify({ logger: { level: "info", stream } });
     await logged.register(mod.register.registerRoutes, { db });
     await logged.ready();
 

@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
+import type { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import type { MailTransport } from "../config.js";
@@ -10,6 +11,7 @@ import { getDb } from "../db/connection.js";
 import { listRolesInApp } from "../db/grants.js";
 import { findUserBySubject } from "../db/users.js";
 import { appNotificationMail, NOTIFY_MAIL_SUBJECT_MAX, NOTIFY_TEXT_MAX } from "../mail/templates.js";
+import { errorReply } from "../lib/replies.js";
 import { sendMail } from "../mail/transport.js";
 import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-auth.js";
 
@@ -279,29 +281,18 @@ interface Caller {
   appSlug: string;
 }
 
-/** The serialisation schema. Also a filter: nothing else can reach the app. */
-const NOTIFY_ROUTE_SCHEMA = {
-  200: {
-    type: "object",
-    properties: { sent: { type: "boolean" } },
-    required: ["sent"],
-    additionalProperties: false,
-  },
-  401: {
-    type: "object",
-    properties: { error: { type: "string" } },
-    required: ["error"],
-    additionalProperties: false,
-  },
-  503: {
-    type: "object",
-    properties: { error: { type: "string" } },
-    required: ["error"],
-    additionalProperties: false,
-  },
-} as const;
+/**
+ * The response schemas. Also a filter: nothing but `sent` can reach the app.
+ * The 401s come from the route's own `preHandler`, so they are declared here.
+ * Exported so a test can push an over-full object through them.
+ */
+export const NOTIFY_ROUTE_SCHEMA = {
+  200: z.object({ sent: z.boolean() }),
+  401: errorReply,
+  503: errorReply,
+};
 
-export async function notifyRoutes(app: FastifyInstance, options: NotifyRoutesOptions = {}): Promise<void> {
+export const notifyRoutes: FastifyPluginAsyncZod<NotifyRoutesOptions> = async (app, options) => {
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
   const transport = async (): Promise<MailTransport> => options.transport ?? (await import("../config.js")).MAIL;
 
@@ -419,4 +410,4 @@ export async function notifyRoutes(app: FastifyInstance, options: NotifyRoutesOp
       return { sent: true };
     },
   );
-}
+};

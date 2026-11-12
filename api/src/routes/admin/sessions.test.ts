@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance, type InjectOptions, type LightMyRequestResponse } from "fastify";
+import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from "fastify";
+import { testFastify } from "../../testing/fastify.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { issueRefreshToken, rotateRefreshToken } from "../../auth/refresh.js";
@@ -29,7 +30,7 @@ beforeEach(async () => {
   seedApps(db);
   subject = seedUser(db, "cristian").subject;
 
-  app = Fastify({ logger: false });
+  app = await testFastify({ logger: false });
   await app.register(adminSessionsRoutes, { db });
   await app.ready();
 

@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
+import { testFastify } from "./testing/fastify.js";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { consoleActor, recordActorAudit, recordConsoleAudit, type AuditActor } from "./audit.js";
@@ -26,7 +27,7 @@ let sessionId: string;
 beforeEach(async () => {
   db = freshDb();
 
-  app = Fastify({ logger: false });
+  app = await testFastify({ logger: false });
   app.post("/console/probe", { preHandler: requireConsoleSession }, async (request, reply) => {
     const body = request.body as { action: string; detail?: Record<string, unknown> };
     const row = recordConsoleAudit(db, request, {

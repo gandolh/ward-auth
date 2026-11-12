@@ -146,8 +146,8 @@ beforeAll(async () => {
   db = mod.testSupport.freshDb();
   mod.testSupport.seedApps(db);
 
-  const Fastify = (await import("fastify")).default;
-  app = Fastify({ logger: false });
+  const { testFastify } = await import("../testing/fastify.js");
+  app = await testFastify({ logger: false });
   await app.register(mod.auth.authRoutes, { db });
   await app.register(mod.session.sessionRoutes, { db });
   await app.register(mod.account.accountRoutes, { db });
@@ -731,5 +731,23 @@ describe("POST /account/sessions/revoke-others", () => {
     await revokeOthers(mine.access);
 
     expect(mod.refreshTokens.findRefreshToken(db, bobSession.token_hash)!.revoked_at).toBeNull();
+  });
+});
+
+describe("the GET /account response schema", () => {
+  it("is a filter: an over-full row goes out with the five named fields only", async () => {
+    const { encodeReply } = await import("../testing/fastify.js");
+    const overFull = {
+      subject: "s-1",
+      username: "alice",
+      email: null,
+      emailVerified: false,
+      createdAt: "2026-11-12T10:00:00.000Z",
+      password_hash: "scrypt$secret",
+      disabled_at: null,
+    };
+    expect(encodeReply(mod.account.ACCOUNT_RESPONSE_SCHEMA[200], overFull)).toBe(
+      '{"subject":"s-1","username":"alice","email":null,"emailVerified":false,"createdAt":"2026-11-12T10:00:00.000Z"}',
+    );
   });
 });

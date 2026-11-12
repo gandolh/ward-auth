@@ -53,8 +53,8 @@ beforeAll(async () => {
   // `config.ts`, or `/login` and `/console/login` disagree about an address.
   const { authRoutes } = await import("./auth.js");
   const { consoleRoutes } = await import("./console.js");
-  const Fastify = (await import("fastify")).default;
-  app = Fastify({ logger: false });
+  const { testFastify } = await import("../testing/fastify.js");
+  app = await testFastify({ logger: false });
   await app.register(authRoutes, { db });
   await app.register(consoleRoutes, { db });
   await app.ready();

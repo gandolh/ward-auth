@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance, type LightMyRequestResponse } from "fastify";
+import type { FastifyInstance, LightMyRequestResponse } from "fastify";
+import { testFastify } from "../testing/fastify.js";
 import { SignJWT, importJWK, type JWK } from "jose";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -49,7 +50,7 @@ function fileTransport(target: string): MailTransport {
 }
 
 async function build(options: { transport?: MailTransport; limiter?: NotifyLimiter } = {}) {
-  const instance = Fastify({ logger: false });
+  const instance = await testFastify({ logger: false });
   await instance.register(notifyRoutes, {
     db,
     transport: options.transport ?? fileTransport(outbox),
@@ -570,5 +571,21 @@ describe("createNotifyLimiter with the production numbers", () => {
     expect(limiter.take("prm", 0)).toBe(true);
     for (let t = 1; t < 1_000; t += 1) expect(limiter.take("prm", t)).toBe(false);
     expect(limiter.take("prm", 1_000)).toBe(true);
+  });
+});
+
+describe("the response schemas", () => {
+  it("are filters: an over-full answer goes out with its named field only", async () => {
+    const { encodeReply } = await import("../testing/fastify.js");
+    const { NOTIFY_ROUTE_SCHEMA } = await import("./notify.js");
+    expect(encodeReply(NOTIFY_ROUTE_SCHEMA[200], { sent: true, messageId: "<m@x>", email: "a@example.com" })).toBe(
+      '{"sent":true}',
+    );
+    expect(encodeReply(NOTIFY_ROUTE_SCHEMA[401], { error: "invalid_client", reason: "expired" }, 401)).toBe(
+      '{"error":"invalid_client"}',
+    );
+    expect(encodeReply(NOTIFY_ROUTE_SCHEMA[503], { error: "mail_unavailable", host: "smtp.example" }, 503)).toBe(
+      '{"error":"mail_unavailable"}',
+    );
   });
 });

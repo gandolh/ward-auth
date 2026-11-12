@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
+import { z } from "zod";
 
 import { liveAccessSession } from "../auth/access-session.js";
 import { getDb } from "../db/connection.js";
@@ -38,42 +39,36 @@ import { INACTIVE, type SessionResolution } from "../grants/resolve.js";
  */
 
 /**
- * The response shape, as a Fastify serialisation schema.
+ * The response shape, as a zod response schema.
  *
- * This is not validation, it is a **filter**: `fast-json-stringify` emits only
- * the properties named below, so a future change that returned a whole
- * `UserRow` from `resolveSession` — with `password_hash` and `email` on it —
- * would serialise to exactly these four fields anyway. The comments in
- * `grants/resolve.ts` justify each one; this is the enforcement.
+ * This is not validation, it is a **filter**: the type provider encodes the
+ * reply through it, and a zod object emits only the properties it names, so a
+ * future change that returned a whole `UserRow` from `resolveSession` — with
+ * `password_hash` and `email` on it — would serialise to exactly these four
+ * fields anyway. The comments in `grants/resolve.ts` justify each one; this is
+ * the enforcement. Not strict on purpose: a strict object would turn an extra
+ * field into a 500 rather than drop it.
  *
  * `subject`, `username` and `grants` are absent from an inactive answer and are
- * therefore not `required`. Exported so a test can push a deliberately
- * over-full object through the real schema and prove the filter.
+ * therefore optional. Exported so a test can push a deliberately over-full
+ * object through the real schema and prove the filter.
  */
 export const SESSION_RESPONSE_SCHEMA = {
-  200: {
-    type: "object",
-    properties: {
-      active: { type: "boolean" },
-      subject: { type: "string" },
-      username: { type: "string" },
-      grants: {
-        type: "object",
-        // App slugs are data, so the keys cannot be enumerated in a schema. The
-        // value shape can be, and is: a set of opaque role strings.
-        additionalProperties: { type: "array", items: { type: "string" } },
-      },
-    },
-    required: ["active"],
-    additionalProperties: false,
-  },
-} as const;
+  200: z.object({
+    active: z.boolean(),
+    subject: z.string().optional(),
+    username: z.string().optional(),
+    // App slugs are data, so the keys cannot be enumerated in a schema. The
+    // value shape can be, and is: a set of opaque role strings.
+    grants: z.record(z.string(), z.array(z.string())).optional(),
+  }),
+};
 
 export interface SessionRoutesOptions {
   db?: Database.Database;
 }
 
-export async function sessionRoutes(app: FastifyInstance, options: SessionRoutesOptions = {}): Promise<void> {
+export const sessionRoutes: FastifyPluginAsyncZod<SessionRoutesOptions> = async (app, options) => {
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
 
   app.get(
@@ -90,4 +85,4 @@ export async function sessionRoutes(app: FastifyInstance, options: SessionRoutes
       return live?.resolution ?? INACTIVE;
     },
   );
-}
+};

@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance, type InjectOptions, type LightMyRequestResponse } from "fastify";
+import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from "fastify";
+import { testFastify } from "../../testing/fastify.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { CONSOLE_COOKIE_NAME, openConsoleSession, resetConsoleSessionsForTests } from "../../auth/superuser.js";
@@ -26,7 +27,7 @@ let sessionId: string;
 
 beforeEach(async () => {
   db = freshDb();
-  app = Fastify({ logger: false });
+  app = await testFastify({ logger: false });
   await app.register(adminAppsRoutes, { db });
   await app.ready();
 
@@ -46,7 +47,7 @@ const asConsole = (init: InjectOptions): Promise<LightMyRequestResponse> =>
 
 describe("the gate", () => {
   it("registers bare, the way app.ts will wire it", async () => {
-    const bare = Fastify({ logger: false });
+    const bare = await testFastify({ logger: false });
     await expect(bare.register(adminAppsRoutes)).resolves.toBeDefined();
     await bare.ready();
     await bare.close();

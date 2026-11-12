@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import Fastify, { type FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
+import { testFastify } from "../testing/fastify.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -48,7 +49,7 @@ beforeAll(async () => {
   guard = await import("./console-guard.js");
   ({ mintAccessToken } = await import("../tokens/service.js"));
 
-  app = Fastify({ logger: false });
+  app = await testFastify({ logger: false });
   // Stands in for the admin routes, attached exactly the way they attach.
   app.get("/console/probe", { preHandler: guard.requireConsoleSession }, async (request, reply) => {
     const session = guard.getConsoleSession(request);
@@ -195,7 +196,7 @@ describe("the console guard rejects everything else with one opaque 401", () => 
 
   it("does not attach a session when it refuses", async () => {
     let seen: unknown = "unset";
-    const probe = Fastify({ logger: false });
+    const probe = await testFastify({ logger: false });
     probe.get("/console/leak", async (request, reply) => {
       seen = guard.getConsoleSession(request);
       return reply.send({ ok: true });

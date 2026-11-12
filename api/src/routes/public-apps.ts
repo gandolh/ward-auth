@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
+import { z } from "zod";
 
 import { listOpenApps } from "../db/apps.js";
 import { getDb } from "../db/connection.js";
@@ -58,25 +59,15 @@ export interface PublicAppsRoutesOptions {
 }
 
 /**
- * The response filter. Two fields, and `additionalProperties: false` is what
- * makes that structural — see the header on `baselineRole`.
+ * The response filter. Two fields, and a zod object (not strict, so an extra
+ * field is dropped rather than a 500) is what makes that structural — see the
+ * header on `baselineRole`.
  */
 export const PUBLIC_APPS_RESPONSE_SCHEMA = {
-  200: {
-    type: "array",
-    items: {
-      type: "object",
-      properties: {
-        slug: { type: "string" },
-        name: { type: "string" },
-      },
-      required: ["slug", "name"],
-      additionalProperties: false,
-    },
-  },
-} as const;
+  200: z.array(z.object({ slug: z.string(), name: z.string() })),
+};
 
-export async function publicAppsRoutes(app: FastifyInstance, options: PublicAppsRoutesOptions = {}): Promise<void> {
+export const publicAppsRoutes: FastifyPluginAsyncZod<PublicAppsRoutesOptions> = async (app, options) => {
   /** Lazy, for the reason `routes/auth.ts` gives. */
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
 
@@ -93,4 +84,4 @@ export async function publicAppsRoutes(app: FastifyInstance, options: PublicApps
     const db = await database();
     return reply.code(200).send(listOpenApps(db).map((row) => ({ slug: row.slug, name: row.name })));
   });
-}
+};

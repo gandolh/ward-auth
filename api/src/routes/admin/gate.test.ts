@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
+import { testFastify } from "../../testing/fastify.js";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -86,7 +87,7 @@ beforeAll(async () => {
   const { mintAccessToken } = await import("../../tokens/service.js");
   ({ token: accessToken } = await mintAccessToken(subject, newFamilyId()));
 
-  app = Fastify({ logger: false });
+  app = await testFastify({ logger: false });
   await app.register(adminAppsRoutes, { db });
   await app.register(adminGrantsRoutes, { db });
   await app.register(adminAccountsRoutes, { db });

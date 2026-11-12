@@ -120,8 +120,8 @@ beforeAll(async () => {
   db = mod.testSupport.freshDb();
   mod.testSupport.seedApps(db);
 
-  const Fastify = (await import("fastify")).default;
-  app = Fastify({ logger: false });
+  const { testFastify } = await import("../testing/fastify.js");
+  app = await testFastify({ logger: false });
   await app.register(mod.auth.authRoutes, { db });
   await app.register(mod.session.sessionRoutes, { db });
   await app.ready();
@@ -312,5 +312,25 @@ describe("the token comes from the cookie and nowhere else", () => {
     });
 
     expect(response.body).toBe(JSON.stringify({ active: false }));
+  });
+});
+
+describe("the response schema", () => {
+  it("is a filter: an over-full answer goes out with the four named fields only", async () => {
+    const { encodeReply } = await import("../testing/fastify.js");
+    const overFull = {
+      active: true,
+      subject: "s-1",
+      username: "alice",
+      grants: { prm: ["user"] },
+      password_hash: "scrypt$secret",
+      email: "alice@example.com",
+    };
+    expect(encodeReply(mod.session.SESSION_RESPONSE_SCHEMA[200], overFull)).toBe(
+      '{"active":true,"subject":"s-1","username":"alice","grants":{"prm":["user"]}}',
+    );
+    expect(encodeReply(mod.session.SESSION_RESPONSE_SCHEMA[200], { active: false, reason: "revoked" })).toBe(
+      '{"active":false}',
+    );
   });
 });

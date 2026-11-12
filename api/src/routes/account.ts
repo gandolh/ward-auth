@@ -1,8 +1,10 @@
 import type Database from "better-sqlite3";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { recordAudit } from "../db/audit-log.js";
+import { errorReply } from "../lib/replies.js";
 import { getDb } from "../db/connection.js";
 import { findUserBySubject, foldUsername, setPasswordHash, type UserRow } from "../db/users.js";
 import {
@@ -116,7 +118,7 @@ const passwordBody = z.object({
 });
 
 /**
- * The response shape of `GET /account`, as a serialisation filter.
+ * The response shape of `GET /account`, as a zod response schema and a filter.
  *
  * Same technique and same purpose as `SESSION_RESPONSE_SCHEMA`: making the
  * omission of `password_hash` structural rather than careful.
@@ -129,19 +131,15 @@ const passwordBody = z.object({
  * state after a reload at all.
  */
 export const ACCOUNT_RESPONSE_SCHEMA = {
-  200: {
-    type: "object",
-    properties: {
-      subject: { type: "string" },
-      username: { type: "string" },
-      email: { type: ["string", "null"] },
-      emailVerified: { type: "boolean" },
-      createdAt: { type: "string" },
-    },
-    required: ["subject", "username", "email", "emailVerified", "createdAt"],
-    additionalProperties: false,
-  },
-} as const;
+  200: z.object({
+    subject: z.string(),
+    username: z.string(),
+    email: z.string().nullable(),
+    emailVerified: z.boolean(),
+    createdAt: z.string(),
+  }),
+  401: errorReply,
+};
 
 /** A live session, resolved from the request's cookie. */
 interface Caller {
@@ -150,7 +148,7 @@ interface Caller {
   familyId: string;
 }
 
-export async function accountRoutes(app: FastifyInstance, options: AccountRoutesOptions = {}): Promise<void> {
+export const accountRoutes: FastifyPluginAsyncZod<AccountRoutesOptions> = async (app, options) => {
   /** Resolved once, at registration — see `routes/auth.ts` for both reasons. */
   const secure = await wardSecureCookies();
   const { WARD_PUBLIC_ORIGIN, WARD_TRUSTED_PROXIES } = await import("../config.js");
@@ -469,7 +467,7 @@ export async function accountRoutes(app: FastifyInstance, options: AccountRoutes
       spared: caller.familyId,
     });
   });
-}
+};
 
 /**
  * `401` with no `WWW-Authenticate`, byte-identical for a missing, malformed,

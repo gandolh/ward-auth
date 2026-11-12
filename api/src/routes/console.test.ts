@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
+import { testFastify } from "../testing/fastify.js";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -83,7 +84,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
     db = freshDb();
 
     const { consoleRoutes } = await import("./console.js");
-    app = Fastify({ logger: false });
+    app = await testFastify({ logger: false });
     // Registered the way the controller will register it, options aside.
     await app.register(consoleRoutes, { db });
     await app.ready();
@@ -122,7 +123,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
      * registration cannot touch `WARD_DB_PATH` at boot).
      */
     const { consoleRoutes } = await import("./console.js");
-    const bare = Fastify({ logger: false });
+    const bare = await testFastify({ logger: false });
 
     await expect(bare.register(consoleRoutes)).resolves.toBeDefined();
     await bare.ready();
@@ -261,7 +262,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
       async function buildBoth(): Promise<FastifyInstance> {
         const { authRoutes } = await import("./auth.js");
         const { consoleRoutes } = await import("./console.js");
-        const both = Fastify({ logger: false });
+        const both = await testFastify({ logger: false });
         await both.register(authRoutes, { db });
         await both.register(consoleRoutes, { db });
         await both.ready();

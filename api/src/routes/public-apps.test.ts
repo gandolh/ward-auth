@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance, type LightMyRequestResponse } from "fastify";
+import type { FastifyInstance, LightMyRequestResponse } from "fastify";
+import { testFastify } from "../testing/fastify.js";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { createApp, setPublicRegistration } from "../db/apps.js";
@@ -17,7 +18,7 @@ let app: FastifyInstance;
 beforeEach(async () => {
   db = freshDb();
 
-  app = Fastify({ logger: false });
+  app = await testFastify({ logger: false });
   await app.register(publicAppsRoutes, { db });
   await app.ready();
 });
@@ -109,4 +110,11 @@ it("answers an empty estate with an empty array and a 200", async () => {
 it("sends no-store, so closing an app takes effect on the next request", async () => {
   const response = await app.inject({ method: "GET", url: "/apps" });
   expect(response.headers["cache-control"]).toBe("no-store");
+});
+
+it("the response schema is a filter: an over-full row goes out as slug and name only", async () => {
+  const { encodeReply } = await import("../testing/fastify.js");
+  const { PUBLIC_APPS_RESPONSE_SCHEMA } = await import("./public-apps.js");
+  const overFull = [{ slug: "prm", name: "Public Resource Map", baseline_role: "user", public_registration: 1 }];
+  expect(encodeReply(PUBLIC_APPS_RESPONSE_SCHEMA[200], overFull)).toBe('[{"slug":"prm","name":"Public Resource Map"}]');
 });

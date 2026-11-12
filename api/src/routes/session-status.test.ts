@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance, type LightMyRequestResponse } from "fastify";
+import type { FastifyInstance, LightMyRequestResponse } from "fastify";
+import { testFastify } from "../testing/fastify.js";
 import { SignJWT, importJWK, type JWK } from "jose";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -146,7 +147,7 @@ beforeAll(async () => {
     grantedBy: SUPERUSER_ACTOR,
   });
 
-  app = Fastify({ logger: false });
+  app = await testFastify({ logger: false });
   await app.register(sessionStatusRoutes, { db, issuer: ISSUER });
   await app.ready();
 });
@@ -387,5 +388,18 @@ describe("client authentication", () => {
   it("does not answer a GET", async () => {
     const response = await app.inject({ method: "GET", url: "/session-status" });
     expect(response.statusCode).toBe(404);
+  });
+});
+
+describe("the response schemas", () => {
+  it("are filters: an app learns active and role and nothing else", async () => {
+    const { encodeReply } = await import("../testing/fastify.js");
+    const { STATUS_ROUTE_SCHEMA } = await import("./session-status.js");
+    expect(encodeReply(STATUS_ROUTE_SCHEMA[200], { active: true, role: "user", subject: "s-1", email: "a@x" })).toBe(
+      '{"active":true,"role":"user"}',
+    );
+    expect(encodeReply(STATUS_ROUTE_SCHEMA[401], { error: "invalid_client", reason: "replayed" }, 401)).toBe(
+      '{"error":"invalid_client"}',
+    );
   });
 });

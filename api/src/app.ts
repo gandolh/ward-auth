@@ -1,3 +1,4 @@
+import { serializerCompiler, validatorCompiler } from "@fastify/type-provider-zod";
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from "fastify";
 import { errorsPlugin } from "./plugins/errors.js";
 import { healthRoutes } from "./routes/health.js";
@@ -53,6 +54,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     // a URL. Nothing here overrides the default; naming it so a future
     // change to `logger` doesn't casually turn body or header logging on.
   });
+
+  // The zod type provider's compilers, on the root before any plugin, so every scope inherits
+  // them: Fastify validates each request and encodes each reply through the route's zod schemas.
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
 
   // First, so it covers every route: a plugin registered before it would own its scope with
   // Fastify's default handler. See `plugins/errors.ts` for the four cases.

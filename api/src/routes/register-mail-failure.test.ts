@@ -2,7 +2,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
+import { testFastify } from "../testing/fastify.js";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
 /**
@@ -70,7 +71,7 @@ beforeAll(async () => {
 
   // `logger: false`, so the `error` line this path writes is a no-op here. It
   // is asserted where it matters — the audit row below outlives any log.
-  app = Fastify({ logger: false });
+  app = await testFastify({ logger: false });
   await app.register(mod.register.registerRoutes, { db });
   await app.ready();
 });

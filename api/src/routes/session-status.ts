@@ -1,9 +1,10 @@
 import type Database from "better-sqlite3";
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
 import { getDb } from "../db/connection.js";
 import { findUserBySubject } from "../db/users.js";
+import { errorReply } from "../lib/replies.js";
 import { hasLiveFamily } from "../grants/resolve.js";
 import { CLIENT_ASSERTION_TYPE, verifyClientAssertion } from "../oidc/client-auth.js";
 import { wardRole } from "../oidc/account.js";
@@ -109,20 +110,15 @@ const credentialBody = z.object({
   client_assertion: z.string(),
 });
 
-const STATUS_ROUTE_SCHEMA = {
-  200: {
-    type: "object",
-    properties: { active: { type: "boolean" }, role: { type: "string" } },
-    required: ["active"],
-    additionalProperties: false,
-  },
-  401: {
-    type: "object",
-    properties: { error: { type: "string" } },
-    required: ["error"],
-    additionalProperties: false,
-  },
-} as const;
+/**
+ * The response schemas, and a filter: an app learns `active` and `role` and
+ * nothing else. The handler sends both statuses itself. Exported so a test can
+ * push an over-full object through them.
+ */
+export const STATUS_ROUTE_SCHEMA = {
+  200: z.object({ active: z.boolean(), role: z.string().optional() }),
+  401: errorReply,
+};
 
 /** The single negative answer, shared and frozen so no branch can add a reason. */
 const INACTIVE = Object.freeze({ active: false });
@@ -151,10 +147,7 @@ export function sessionStatusFor(
   return { active: true, role };
 }
 
-export async function sessionStatusRoutes(
-  app: FastifyInstance,
-  options: SessionStatusRoutesOptions = {},
-): Promise<void> {
+export const sessionStatusRoutes: FastifyPluginAsyncZod<SessionStatusRoutesOptions> = async (app, options) => {
   const issuer = options.issuer ?? (await import("../config.js")).OIDC?.issuer;
   if (issuer === undefined) {
     app.log.info("WARD_OIDC_ISSUER is unset; POST /session-status is not mounted");
@@ -213,4 +206,4 @@ export async function sessionStatusRoutes(
       return answer;
     },
   );
-}
+};

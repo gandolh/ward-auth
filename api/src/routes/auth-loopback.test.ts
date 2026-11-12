@@ -68,8 +68,8 @@ beforeAll(async () => {
   createUser(db, { username: "alice", passwordHash: await hashPassword(PASSWORD) });
 
   const { authRoutes } = await import("./auth.js");
-  const Fastify = (await import("fastify")).default;
-  app = Fastify({ logger: false });
+  const { testFastify } = await import("../testing/fastify.js");
+  app = await testFastify({ logger: false });
   await app.register(authRoutes, { db });
   await app.ready();
 });
@@ -172,10 +172,10 @@ describe("a loopback caller with no X-Forwarded-For", () => {
 
     const { authRoutes } = await import("./auth.js");
     const { resetLockoutForTests } = await import("../auth/lockout.js");
-    const Fastify = (await import("fastify")).default;
+    const { testFastify } = await import("../testing/fastify.js");
 
     resetLockoutForTests();
-    const loud = Fastify({ logger: { level: "warn", stream } });
+    const loud = await testFastify({ logger: { level: "warn", stream } });
     await loud.register(authRoutes, { db });
     await loud.ready();
 

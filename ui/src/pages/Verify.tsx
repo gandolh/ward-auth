@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
-import { lede, link } from "../components/looks.js";
+import { footLink } from "../components/looks.js";
 import { WardApiError, verifyEmail, type WardErrorCode } from "../lib/api.js";
 import { onceByKey } from "../lib/once.js";
 
@@ -91,43 +91,34 @@ export function Verify(): React.JSX.Element {
   const outcome: Outcome | undefined = token === "" ? "invalid_request" : fetched;
 
   if (outcome === undefined) {
-    return (
-      <Threshold>
-        <h1>Checking your link</h1>
-        <p className={lede}>One moment.</p>
-      </Threshold>
-    );
+    return <Threshold heading="Checking your link" lede="One moment."></Threshold>;
   }
 
   if (outcome === "verified") {
     return (
       <Threshold
+        heading="Email confirmed"
+        lede="That's your address confirmed. Nothing else to do here — sign in and carry on."
         footer={
-          <Link className={link} to="/login">
+          <Link className={footLink} to="/login">
             Sign in
           </Link>
         }
-      >
-        <h1>Email confirmed</h1>
-        <p className={lede}>That's your address confirmed. Nothing else to do here — sign in and carry on.</p>
-      </Threshold>
+      />
     );
   }
 
   if (outcome === "expired_token") {
     return (
       <Threshold
+        heading="The link expired"
+        lede="Confirmation links last 24 hours and this one is past that. Your account still works exactly as before — confirming an address doesn't unlock anything, so nothing is waiting on it."
         footer={
-          <Link className={link} to="/login">
+          <Link className={footLink} to="/login">
             Sign in
           </Link>
         }
       >
-        <h1>The link expired</h1>
-        <p className={lede}>
-          Confirmation links last 24 hours and this one is past that. Your account still works exactly as before —
-          confirming an address doesn't unlock anything, so nothing is waiting on it.
-        </p>
         <Notice tone="info">
           {/*
             Stated rather than hidden. Ward has no way to send a second link, and
@@ -144,26 +135,23 @@ export function Verify(): React.JSX.Element {
 
   if (outcome === "unreachable") {
     return (
-      <Threshold>
-        <h1>Ward isn't answering</h1>
-        <p className={lede}>The link is probably fine. Reload this page in a moment to try again.</p>
-      </Threshold>
+      <Threshold
+        heading="Ward isn't answering"
+        lede="The link is probably fine. Reload this page in a moment to try again."
+      ></Threshold>
     );
   }
 
   return (
     <Threshold
+      heading="That link doesn't work"
+      lede="Most likely it's already been used, in which case your address is confirmed and there's nothing left to do. Otherwise check it was copied in full — they're long."
       footer={
-        <Link className={link} to="/login">
+        <Link className={footLink} to="/login">
           Sign in
         </Link>
       }
     >
-      <h1>That link doesn't work</h1>
-      <p className={lede}>
-        Most likely it's already been used, in which case your address is confirmed and there's nothing left to do.
-        Otherwise check it was copied in full — they're long.
-      </p>
       <Notice tone="info">Either way your account works. Confirming an address doesn't unlock anything.</Notice>
     </Threshold>
   );

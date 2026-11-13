@@ -2,12 +2,9 @@ import type { InputHTMLAttributes, Ref } from "react";
 
 import { hint as hintLook, hintError } from "./looks.js";
 
-const INPUT = [
-  "w-full rounded-ward border border-ward-border-strong bg-ward-surface p-3 text-ward-text",
-  "transition-[border-color] duration-120 ease-ward hover:enabled:border-ward-text-faint",
-  "focus-visible:border-ward-accent aria-invalid:border-ward-danger",
-  "disabled:bg-ward-surface-sunken disabled:text-ward-text-faint",
-].join(" ");
+/* A sunken well, 44 px tall (48 on a phone), text at 16 px so a phone doesn't zoom into it. */
+const INPUT =
+  "h-11 w-full rounded-ward border border-ward-border-strong bg-ward-surface-sunken px-3 text-base text-ward-text transition-[border-color] duration-120 ease-ward hover:enabled:border-ward-text-faint aria-invalid:border-ward-danger disabled:text-ward-text-faint max-sm:h-12";
 
 /**
  * A labelled text input, with the accessibility wiring done once.

@@ -5,7 +5,7 @@ import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
 import { ThemeSwitch } from "../components/ThemeSwitch.js";
-import { lede, prose, link, form, actions, button, hint } from "../components/looks.js";
+import { prose, link, form, actions, button, hint } from "../components/looks.js";
 import {
   WardApiError,
   changeOwnPassword,
@@ -105,19 +105,16 @@ export function Account(): React.JSX.Element {
   }, []);
 
   if (session.status === "loading") {
-    return (
-      <Threshold wide>
-        <h1>Your account</h1>
-        <p className={lede}>Loading.</p>
-      </Threshold>
-    );
+    return <Threshold heading="Your account" lede="Loading." wide></Threshold>;
   }
 
   if (session.status === "unreachable") {
     return (
-      <Threshold wide>
-        <h1>Ward isn't answering</h1>
-        <p className={lede}>Your session is probably fine — Ward just didn't respond. Try again.</p>
+      <Threshold
+        heading="Ward isn't answering"
+        lede="Your session is probably fine — Ward just didn't respond. Try again."
+        wide
+      >
         <div className={actions}>
           <button className={button()} type="button" onClick={load}>
             Try again
@@ -137,9 +134,11 @@ export function Account(): React.JSX.Element {
      * link carries `?next=/account`, so signing in comes back here.
      */
     return (
-      <Threshold wide>
-        <h1>You're signed out</h1>
-        <p className={lede}>Sessions end after a while, and this one has. Sign in to see your account.</p>
+      <Threshold
+        heading="You're signed out"
+        lede="Sessions end after a while, and this one has. Sign in to see your account."
+        wide
+      >
         <p className={prose}>
           <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in
@@ -221,10 +220,12 @@ function SignedIn({
   const unverified = account.state === "ready" && account.data.email !== null && !account.data.emailVerified;
 
   return (
-    <Threshold wide footer={<>Signed in as {session.username}. Ward keeps the estate's accounts.</>}>
-      <h1>Your account</h1>
-      <p className={lede}>One account for every app here. What you can reach in each of them is set per app, below.</p>
-
+    <Threshold
+      wide
+      heading="Your account"
+      lede="One account for every app here. What you can reach in each of them is set per app, below."
+      footer={<>Signed in as {session.username}. Ward keeps the estate's accounts.</>}
+    >
       {unverified && (
         <Notice tone="info">
           Your email address isn't confirmed. Nothing is blocked by that — confirming an address doesn't unlock anything

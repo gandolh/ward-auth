@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 
-import { lede, link, prose } from "./components/looks.js";
+import { link, prose } from "./components/looks.js";
 import { Threshold } from "./components/Threshold.js";
 import { WARD_BASENAME } from "./lib/next.js";
 import { Account } from "./pages/Account.js";
@@ -109,12 +109,10 @@ function ConsoleLoading(): React.JSX.Element {
  */
 function NotFound(): React.JSX.Element {
   return (
-    <Threshold>
-      <h1>Nothing here</h1>
-      <p className={lede}>
-        That address isn&apos;t one of Ward&apos;s pages. If you were on your way somewhere, sign in and you&apos;ll be
-        sent on.
-      </p>
+    <Threshold
+      heading="Nothing here"
+      lede="That address isn't one of Ward's pages. If you were on your way somewhere, sign in and you'll be sent on."
+    >
       <p className={prose}>
         <Link className={link} to="/login">
           Sign in

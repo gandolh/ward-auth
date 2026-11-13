@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
-import { lede, link, form, actions, button } from "../components/looks.js";
+import { button, doorCard, footLink, form } from "../components/looks.js";
 import { WardApiError, login, type WardErrorCode } from "../lib/api.js";
 import { resolveNext } from "../lib/next.js";
 import { interactionAbortUrl, interactionResumeUrl, oidcInteraction, useInteractionClient } from "../lib/oidc.js";
@@ -185,17 +185,23 @@ export function Login(): React.JSX.Element {
 
   return (
     <Threshold
+      heading={heading}
+      lede={
+        interaction !== undefined
+          ? "Sign in with your Ward account. You'll go straight back to the app."
+          : "Ward keeps the estate’s accounts. Sign in to see yours."
+      }
       footer={
         <>
           {interaction !== undefined ? (
             // A plain link, not a router one: it leaves the SPA for the API.
-            <a className={link} href={interactionAbortUrl(interaction)}>
+            <a className={footLink} href={interactionAbortUrl(interaction)}>
               Back to {interactionClient?.name ?? "the app"}
             </a>
           ) : (
             <>
               One sign-in for every app here.{" "}
-              <Link className={link} to="/account">
+              <Link className={footLink} to="/account">
                 Your account
               </Link>
             </>
@@ -203,87 +209,86 @@ export function Login(): React.JSX.Element {
         </>
       }
     >
-      <h1>{heading}</h1>
-      <p className={lede}>
-        {interaction !== undefined
-          ? "Sign in with your Ward account. You'll go straight back to the app."
-          : "Ward keeps the estate's accounts. Sign in to see yours."}
-      </p>
-
       {/*
-        The lockout comes first and is a `wait`, not an `error`. It is the only
-        failure on this page with a concrete next step, and the step is
-        "nothing, for this long" — so it reads as a clock, the number counts
-        down, and the button below is disabled until it runs out. A person who
-        sees "sign-in failed" tries again and extends their own lockout.
+        The form and its notices on one card, hung off the jamb under the heading: left-aligned, never centred.
       */}
-      {lockedOut && (
-        <Notice tone="wait">
-          Too many sign-in attempts from your network. Try again in <strong>{formatWait(waitLeft)}</strong>.
-        </Notice>
-      )}
-
-      {failure !== undefined && failure !== "too_many_attempts" && <Notice tone="error">{messageFor(failure)}</Notice>}
-
-      {/*
-        `noValidate` turns off the browser's own bubble validation in favour of
-        the inline messages below. The bubbles are not announced by every
-        screen reader, vanish on the next keystroke, and cannot be styled — and
-        `required` stays on the inputs regardless, because it is what tells
-        assistive technology the field is mandatory.
-
-      */}
-      <form
-        className={form}
-        noValidate
-        onSubmit={(event) => {
-          void onSubmit(event);
-        }}
-      >
-        <Field
-          id="ward-username"
-          label="Username"
-          name="username"
-          type="text"
-          autoComplete="username"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          required
-          inputRef={usernameRef}
-          value={username}
-          error={missing.username ? "Enter your username." : undefined}
-          disabled={submitting}
-          onChange={(event) => {
-            setUsername(event.target.value);
-          }}
-        />
-        <Field
-          id="ward-password"
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          inputRef={passwordRef}
-          value={password}
-          error={missing.password ? "Enter your password." : undefined}
-          disabled={submitting}
-          onChange={(event) => {
-            setPassword(event.target.value);
-          }}
-        />
+      <div className={doorCard}>
         {/*
-          No second copy of the wait beside the button. The notice above already
-          says how long, the disabled button already says "not yet", and a
-          countdown rendered twice on one screen reads as two different clocks.
+          The lockout comes first and is a `wait`, not an `error`. It is the only
+          failure on this page with a concrete next step, and the step is
+          "nothing, for this long" — so it reads as a clock, the number counts
+          down, and the button below is disabled until it runs out. A person who
+          sees "sign-in failed" tries again and extends their own lockout.
         */}
-        <div className={actions}>
-          <button className={button()} type="submit" disabled={submitting || lockedOut}>
+        {lockedOut && (
+          <Notice tone="wait">
+            Too many sign-in attempts from your network. Try again in <strong>{formatWait(waitLeft)}</strong>.
+          </Notice>
+        )}
+
+        {failure !== undefined && failure !== "too_many_attempts" && (
+          <Notice tone="error">{messageFor(failure)}</Notice>
+        )}
+
+        {/*
+          `noValidate` turns off the browser's own bubble validation in favour of
+          the inline messages below. The bubbles are not announced by every
+          screen reader, vanish on the next keystroke, and cannot be styled — and
+          `required` stays on the inputs regardless, because it is what tells
+          assistive technology the field is mandatory.
+
+        */}
+        <form
+          className={form}
+          noValidate
+          onSubmit={(event) => {
+            void onSubmit(event);
+          }}
+        >
+          <Field
+            id="ward-username"
+            label="Username"
+            name="username"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            required
+            inputRef={usernameRef}
+            value={username}
+            error={missing.username ? "Enter your username." : undefined}
+            disabled={submitting}
+            onChange={(event) => {
+              setUsername(event.target.value);
+            }}
+          />
+          <Field
+            id="ward-password"
+            label="Password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            inputRef={passwordRef}
+            value={password}
+            error={missing.password ? "Enter your password." : undefined}
+            disabled={submitting}
+            onChange={(event) => {
+              setPassword(event.target.value);
+            }}
+          />
+          {/*
+            No second copy of the wait beside the button. The notice above already
+            says how long, the disabled button already says "not yet", and a
+            countdown rendered twice on one screen reads as two different clocks.
+            The one primary, full width in the card.
+          */}
+          <button className={button("block")} type="submit" disabled={submitting || lockedOut}>
             {submitting ? "Signing in…" : "Sign in"}
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </Threshold>
   );
 }

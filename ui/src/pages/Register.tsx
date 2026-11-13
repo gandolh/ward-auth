@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
-import { lede, prose, proseSpaced, link, form, actions, button } from "../components/looks.js";
+import { button, doorCard, footLink, form, link, prose, proseSpaced } from "../components/looks.js";
 import { WardApiError, register, type RegisterResult, type WardErrorCode } from "../lib/api.js";
 import { DEFAULT_NEXT, loginRouteFor } from "../lib/next.js";
 import { useOpenApps } from "../lib/open-apps.js";
@@ -150,12 +150,10 @@ export function Register(): React.JSX.Element {
    */
   if (slug === "") {
     return (
-      <Threshold>
-        <h1>Which app?</h1>
-        <p className={lede}>
-          Signing up happens at an app, not at Ward — an account carries that app's starting role and nothing else.
-          Start from the app you want to join and it will send you back here.
-        </p>
+      <Threshold
+        heading="Which app?"
+        lede="Signing up happens at an app, not at Ward — an account carries that app's starting role and nothing else. Start from the app you want to join and it will send you back here."
+      >
         <p className={prose}>
           <Link className={link} to="/login">
             Already have an account? Sign in
@@ -168,20 +166,22 @@ export function Register(): React.JSX.Element {
   if (created !== undefined) {
     return (
       <Threshold
+        heading="Account created"
+        lede={
+          <>
+            You're registered at {name} as <strong>{created.username}</strong> with the {created.role} role. Signing up
+            doesn't sign you in: open {name} and sign in with Ward there.
+          </>
+        }
         footer={
           <>
             Signed up for {name}.{" "}
-            <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
+            <Link className={footLink} to={loginRouteFor(DEFAULT_NEXT)}>
               Sign in
             </Link>
           </>
         }
       >
-        <h1>Account created</h1>
-        <p className={lede}>
-          You're registered at {name} as <strong>{created.username}</strong> with the {created.role} role. Signing up
-          doesn't sign you in: open {name} and sign in with Ward there.
-        </p>
         {created.verificationSent ? (
           <Notice tone="info">
             {/*
@@ -211,12 +211,15 @@ export function Register(): React.JSX.Element {
 
   if (closed || knownClosed) {
     return (
-      <Threshold>
-        <h1>{name} isn't taking signups</h1>
-        <p className={lede}>
-          Accounts for {name} are handed out by whoever runs the estate rather than created here. Ask them for one — and
-          if you already have an account, it works everywhere.
-        </p>
+      <Threshold
+        heading={<>{name} isn't taking signups</>}
+        lede={
+          <>
+            Accounts for {name} are handed out by whoever runs the estate rather than created here. Ask them for one —
+            and if you already have an account, it works everywhere.
+          </>
+        }
+      >
         <p className={prose}>
           <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in instead
@@ -287,99 +290,102 @@ export function Register(): React.JSX.Element {
 
   return (
     <Threshold
+      heading={`Join ${name}`}
+      lede={
+        <>
+          This creates one Ward account, which signs you in to every app here. It gives you access to {name} and nothing
+          else until somebody grants more.
+        </>
+      }
       footer={
-        <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
+        <Link className={footLink} to={loginRouteFor(DEFAULT_NEXT)}>
           Already have an account? Sign in
         </Link>
       }
     >
-      <h1>Join {name}</h1>
-      <p className={lede}>
-        This creates one Ward account, which signs you in to every app here. It gives you access to {name} and nothing
-        else until somebody grants more.
-      </p>
+      <div className={doorCard}>
+        {lockedOut && (
+          <Notice tone="wait">
+            Too many signups from your network. Try again in <strong>{formatWait(waitLeft)}</strong>.
+          </Notice>
+        )}
+        {failure !== undefined && failure !== "too_many_attempts" && (
+          <Notice tone="error">{messageFor(failure)}</Notice>
+        )}
 
-      {lockedOut && (
-        <Notice tone="wait">
-          Too many signups from your network. Try again in <strong>{formatWait(waitLeft)}</strong>.
-        </Notice>
-      )}
-      {failure !== undefined && failure !== "too_many_attempts" && <Notice tone="error">{messageFor(failure)}</Notice>}
-
-      <form
-        className={form}
-        noValidate
-        onSubmit={(event) => {
-          void onSubmit(event);
-        }}
-      >
-        <Field
-          id="ward-reg-username"
-          label="Username"
-          name="username"
-          type="text"
-          autoComplete="username"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          required
-          inputRef={setUsernameRef}
-          value={username}
-          error={missing.username ? "Enter a username." : undefined}
-          hint="How you'll sign in. Letters, digits and single spaces."
-          disabled={submitting}
-          onChange={(event) => {
-            setUsername(event.target.value);
+        <form
+          className={form}
+          noValidate
+          onSubmit={(event) => {
+            void onSubmit(event);
           }}
-        />
-        <Field
-          id="ward-reg-email"
-          label="Email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          autoCapitalize="none"
-          spellCheck={false}
-          required
-          inputRef={setEmailRef}
-          value={email}
-          error={missing.email ? "Enter an email address." : undefined}
-          hint="For confirming the address. It isn't how you sign in."
-          disabled={submitting}
-          onChange={(event) => {
-            setEmail(event.target.value);
-          }}
-        />
-        <Field
-          id="ward-reg-password"
-          label="Password"
-          name="password"
-          type="password"
-          /*
-           * `new-password`, not `current-password`. It is what makes a password
-           * manager offer to generate one and save it — and on this page that
-           * matters more than usual, because Ward has no password reset: a
-           * forgotten password on an owner-issued account has no recovery
-           * channel at all.
-           */
-          autoComplete="new-password"
-          required
-          minLength={8}
-          inputRef={setPasswordRef}
-          value={password}
-          error={missing.password ? "Choose a password." : undefined}
-          hint="At least 8 characters."
-          disabled={submitting}
-          onChange={(event) => {
-            setPassword(event.target.value);
-          }}
-        />
-        <div className={actions}>
-          <button className={button()} type="submit" disabled={submitting || lockedOut}>
+        >
+          <Field
+            id="ward-reg-username"
+            label="Username"
+            name="username"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            required
+            inputRef={setUsernameRef}
+            value={username}
+            error={missing.username ? "Enter a username." : undefined}
+            hint="How you'll sign in. Letters, digits and single spaces."
+            disabled={submitting}
+            onChange={(event) => {
+              setUsername(event.target.value);
+            }}
+          />
+          <Field
+            id="ward-reg-email"
+            label="Email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            inputRef={setEmailRef}
+            value={email}
+            error={missing.email ? "Enter an email address." : undefined}
+            hint="For confirming the address. It isn't how you sign in."
+            disabled={submitting}
+            onChange={(event) => {
+              setEmail(event.target.value);
+            }}
+          />
+          <Field
+            id="ward-reg-password"
+            label="Password"
+            name="password"
+            type="password"
+            /*
+             * `new-password`, not `current-password`. It is what makes a password
+             * manager offer to generate one and save it — and on this page that
+             * matters more than usual, because Ward has no password reset: a
+             * forgotten password on an owner-issued account has no recovery
+             * channel at all.
+             */
+            autoComplete="new-password"
+            required
+            minLength={8}
+            inputRef={setPasswordRef}
+            value={password}
+            error={missing.password ? "Choose a password." : undefined}
+            hint="At least 8 characters."
+            disabled={submitting}
+            onChange={(event) => {
+              setPassword(event.target.value);
+            }}
+          />
+          <button className={button("block")} type="submit" disabled={submitting || lockedOut}>
             {submitting ? "Creating account…" : `Join ${name}`}
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </Threshold>
   );
 }

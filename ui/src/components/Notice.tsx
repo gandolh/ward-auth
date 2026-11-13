@@ -9,12 +9,10 @@ export type NoticeTone = "error" | "wait" | "info";
  * (a form, a heading), and butting straight up against a field label reads as part of the field. Whole class strings,
  * not built from the tone, so Tailwind's scanner sees them.
  */
-const BASE = "mb-6 rounded-ward border px-4 py-3 text-sm";
-
 const TONES: Record<NoticeTone, string> = {
-  error: `${BASE} border-ward-danger/35 bg-ward-danger-surface text-ward-danger`,
-  wait: `${BASE} border-ward-notice/35 bg-ward-notice-surface text-ward-notice`,
-  info: `${BASE} border-ward-border bg-ward-surface-sunken text-ward-text-muted`,
+  error: "mb-4 rounded-ward border border-ward-danger/35 bg-ward-danger-surface px-4 py-3 text-sm text-ward-danger",
+  wait: "mb-4 rounded-ward border border-ward-notice/35 bg-ward-notice-surface px-4 py-3 text-sm text-ward-notice",
+  info: "mb-4 rounded-ward border border-ward-border bg-ward-surface-sunken px-4 py-3 text-sm text-ward-text-muted",
 };
 
 /**

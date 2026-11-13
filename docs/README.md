@@ -2,7 +2,7 @@
 
 Start with the [main README](../README.md). This folder is the source of the docs site at
 `/ward/docs/` on the production site, plus the images the main README uses and the owner's cutover
-runbook. The site build ignores this file, `images/` and `cutover-oidc.md`.
+runbook. The site build ignores this file, `images/`, `cutover-oidc.md` and `design.md`.
 
 | Path | What it is |
 | --- | --- |
@@ -11,6 +11,7 @@ runbook. The site build ignores this file, `images/` and `cutover-oidc.md`.
 | [scripts/](scripts/) | `sync-corpus.mjs` copies the corpus wiki into the site; `build-diagrams.mjs` compiles the diagrams |
 | [images/](images/shots.md) | Screenshots used in the main README, and how each was made |
 | [cutover-oidc.md](cutover-oidc.md) | The owner's runbook for moving production to local accounts and "Sign in with Ward" (done 2026-10-13) |
+| [design.md](design.md) | The UI's design, The pass and its doors (2026-11-13): tokens, type, the screens, contrast |
 
 The rest (`docusaurus.config.ts`, `sidebars.ts`, `src/components/`, `src/css/`, `static/`) is the
 Docusaurus site's own setup and build output.

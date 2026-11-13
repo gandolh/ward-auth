@@ -1,6 +1,6 @@
 ---
-summary: The foundational calls for Ward — the one-origin topology and the isolation it costs, Ward's own host since 2026-10-22, what the service owns versus what apps keep, the single central login page, what the UI carries, Base UI in the console only, newspapper's move off loopback, the name, and the two inherited atrium decisions.
-updated: 2026-11-04
+summary: The foundational calls for Ward — the one-origin topology and the isolation it costs, Ward's own host since 2026-10-22, what the service owns versus what apps keep, the single central login page, what the UI carries, Base UI in the console only, the UI's visual direction (2026-11-13), newspapper's move off loopback, the name, and the two inherited atrium decisions.
+updated: 2026-11-13
 ---
 
 # Decisions
@@ -176,6 +176,11 @@ too, and putting it in six apps contradicts the decision above.
 _2026-10-23, owner_ — The console uses Base UI and the sign-in pages download
 none of it. The reasons, the wrappers' place, the native controls kept and
 Confirm's focus order are in [decisions-console.md](./decisions-console.md).
+
+## The pass and its doors: the UI's visual direction
+_2026-11-13, owner, on the estate redesign board_ — The account page is a pass (who you are and Sign out in one card beside a column of cards), sign-in hangs one card off the jamb, and the console stays its own dark building. The design as shipped is [docs/design.md](../../docs/design.md).
+
+**Changed**, each asked on the board and approved. "There is no webfont (a font on the login path is a render block on the one page whose whole job is to be over in four seconds)" became one self-hosted Albert Sans file (the variable latin subset) with `font-display: swap` and a fallback face matched to its metrics; Albert Sans only in the lazy console chunk was the option not taken. "Shadows, barely: depth here would make a door look like a dialog", and the shell's refusal of a centred card that "reads as a destination, a lobby you have arrived in", became cards with one elevation on the account page and one 416 px sign-in card. "A door, not a lobby" stands: the card hangs off the jamb, left-aligned, never centred. **Kept:** the two surfaces, the minimal self-service page, the dark console under `data-ward-surface="console"`, public pages free of Base UI, the `data-wc-focus` rule and the `--ward-*` names. **Rejected:** the runner-up "Dressed limestone", whose full-height rail narrowed every card on the phone; it lost on hierarchy and on using the width.
 
 ## Inherited — not ours to break quietly
 

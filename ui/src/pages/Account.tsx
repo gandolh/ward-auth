@@ -445,7 +445,7 @@ function ChangePassword({ onSignedOut }: { onSignedOut: () => void }): React.JSX
                 setCurrent(event.target.value);
               }}
             />
-            {/* The new password and its repeat side by side, one column at 640 px and under. */}
+            {/* The new password and its repeat side by side, one column below 640 px. */}
             <div className="grid grid-cols-2 items-start gap-4 max-sm:grid-cols-1">
               <Field
                 id="ward-new-password"

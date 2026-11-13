@@ -149,8 +149,8 @@ export const accountWhen = "font-ward-mono text-xs whitespace-nowrap text-ward-t
 export const accountList = "ward-list:hidden";
 
 /*
- * Below 1000 px each account is two lines: the name, created and state, then the subject and the link. At 640 px and
- * under, three: the name and state, the subject, created and the 48 px link.
+ * Below 1000 px each account is two lines: the name, created and state, then the subject and the link. Below 640 px,
+ * three: the name and state, the subject, created and the 48 px link.
  */
 export const accountRow =
   "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 border-b border-ward-border px-4 pt-2 pb-3 [grid-template-areas:'name_when_state'_'id_id_act'] last:border-b-0 max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-x-3 max-sm:pt-1 max-sm:[grid-template-areas:'name_state'_'id_id'_'when_act']";

@@ -6,12 +6,13 @@ import type { ReactNode } from "react";
  * a second element in the markup. The cap is a fixed 44 px, not the height of the heading: app names run from "Ward"
  * to "Public Resource Map", and a weight change that lands halfway down a two-line heading reads as a bug.
  *
- * On a sign-in page the rule runs beside the heading and the card under it. At 640 px and under (`max-sm:`) it stops
+ * On a sign-in page the rule runs beside the heading and the card under it. Below 640 px (`max-sm:`) it stops
  * under the lede, as the account page's does at every width, and the card takes the whole content width: a rail
- * beside the card would narrow every field on the phone.
+ * beside the card would narrow every field on the phone. The door is the card's width plus the jamb's 24 px, so a
+ * notice or a line of prose under the heading keeps the card's measure.
  */
 const DOOR =
-  "relative ml-[clamp(0rem,7vw,9rem)] pl-6 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-ward-border-strong after:absolute after:top-0 after:-left-px after:h-11 after:w-0.75 after:bg-ward-accent max-sm:ml-0 max-sm:pl-0 max-sm:before:hidden max-sm:after:hidden";
+  "relative ml-[clamp(0rem,7vw,9rem)] max-w-[calc(var(--container-ward)+1.5rem)] pl-6 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-ward-border-strong after:absolute after:top-0 after:-left-px after:h-11 after:w-0.75 after:bg-ward-accent max-sm:ml-0 max-sm:max-w-none max-sm:pl-0 max-sm:before:hidden max-sm:after:hidden";
 
 const DOOR_HEAD =
   "relative mb-6 max-sm:mb-4 max-sm:pl-4 max-sm:before:absolute max-sm:before:inset-y-0 max-sm:before:left-0 max-sm:before:w-px max-sm:before:bg-ward-border-strong max-sm:after:absolute max-sm:after:top-0 max-sm:after:-left-px max-sm:after:h-11 max-sm:after:w-0.75 max-sm:after:bg-ward-accent";

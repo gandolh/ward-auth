@@ -42,7 +42,11 @@ for (const screen of SCREENS) {
         // The reduced-motion rule leaves 0.01 ms, which no eye sees: anything up to a millisecond counts as still.
         const seconds = (value: string): number =>
           value.endsWith("ms") ? parseFloat(value) / 1000 : parseFloat(value);
-        const running = document.getAnimations().filter((animation) => animation.playState === "running");
+        // A transition the click just started is "running" for the one frame its 0.01 ms takes, so count by length.
+        const running = document.getAnimations().filter((animation) => {
+          const duration = animation.effect?.getComputedTiming().duration;
+          return animation.playState === "running" && typeof duration === "number" && duration > 1;
+        });
         const timed = [...document.querySelectorAll("*")].filter((element) => {
           const style = getComputedStyle(element);
           const transition = style.transitionDuration.split(",").some((value) => seconds(value.trim()) > 0.001);

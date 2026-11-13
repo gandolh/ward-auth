@@ -53,6 +53,9 @@
 /* The console's utilities are its own stylesheet (pages/console/console.css), which only the lazy console chunk
    loads, so the sign-in pages download only what they use. */
 @source not "../pages/console";
+/* The browser specs and their config sit in the Vite root too; their strings are no utilities a page uses. */
+@source not "../../e2e";
+@source not "../../playwright.config.ts";
 
 /* The sign-in pages' dark theme is a block of raw colours under data-theme (below), so most utilities follow with no
    dark: class at all. The variant is for what a colour cannot carry. */

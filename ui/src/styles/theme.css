@@ -24,57 +24,71 @@
   --color-ward-accent: var(--ward-accent);
   --color-ward-accent-hover: var(--ward-accent-hover);
   --color-ward-accent-text: var(--ward-accent-text);
+  --color-ward-accent-soft: var(--ward-accent-soft);
   --color-ward-danger: var(--ward-danger);
   --color-ward-danger-surface: var(--ward-danger-surface);
   --color-ward-notice: var(--ward-notice);
   --color-ward-notice-surface: var(--ward-notice-surface);
+  --color-ward-focus: var(--ward-focus);
 
   --shadow-ward: var(--ward-shadow);
   --shadow-ward-lg: var(--ward-shadow-lg);
-  --shadow-ward-focus: var(--ward-focus);
 
   --container-ward: var(--ward-max-width);
 }
 
 @theme {
-  /* A system stack on purpose: see the header. */
-  --font-ward: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-ward-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  /* Albert Sans and Fragment Mono, self-hosted (styles/index.css), with the matched fallback face before the system
+     stack. "Albert Sans Variable" is the file the app ships; "Albert Sans" is a copy the reader may have installed. */
+  --font-ward:
+    "Albert Sans Variable", "Albert Sans", "Albert Sans Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-ward-mono: "Fragment Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 
-  /* Ward's type scale. lg, xl and 2xl replace Tailwind's sizes of the same names
-     (1.125, 1.25 and 1.5rem). Every size inherits the body's 1.5 line height,
-     where Tailwind's own sizes each carry one. */
+  /* Ward's type scale, six sans sizes and one mono, each with a line height of its own (16, 20, 24, 24, 32 px). lg and
+     xl replace Tailwind's sizes of the same names (1.125 and 1.25rem). */
   --text-xs: 0.75rem;
-  --text-xs--line-height: 1.5;
+  --text-xs--line-height: 1.3333;
   --text-sm: 0.875rem;
-  --text-sm--line-height: 1.5;
+  --text-sm--line-height: 1.4286;
   --text-base: 1rem;
   --text-base--line-height: 1.5;
-  --text-lg: 1.25rem;
-  --text-lg--line-height: 1.5;
+  /* 18/24: card titles. */
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.3333;
+  /* 28/32: the username in the pass, the console's h1. */
   --text-xl: 1.75rem;
-  --text-xl--line-height: 1.5;
-  /* The destination line, the one piece of type on this surface allowed to be
-     large. */
-  --text-2xl: 2.375rem;
-  --text-2xl--line-height: 1.5;
-  /* Capped well below 2xl: at the form's 26rem measure a larger size breaks
-     "Continue to Atrium" across two lines and the heading starts to dominate a
-     screen whose job is the two fields under it. */
-  --text-ward-signpost: clamp(1.5rem, 1.1rem + 1.5vw, 2.125rem);
-  --text-ward-signpost--line-height: 1.12;
+  --text-xl--line-height: 1.1429;
+  /* The destination line, the one piece of type on this surface allowed to be large: 26 px on a phone, 32 from
+     1280. Capped there so "Continue to Atrium" stays on one line at the card's measure and the heading never
+     dominates a screen whose job is the two fields under it. */
+  --text-ward-signpost: clamp(1.625rem, 1.4rem + 0.9vw, 2rem);
+  --text-ward-signpost--line-height: 1.25;
+  /* 13/20 Fragment Mono, for ids and timestamps. */
+  --text-ward-mono: 0.8125rem;
+  --text-ward-mono--line-height: 1.5385;
 
-  --radius-ward: 6px;
+  /* A control, the Theme segment track and the console's dialog, a card (the pass and the sign-in card included). */
+  --radius-ward: 8px;
   --radius-lg: 10px;
+  --radius-ward-card: 14px;
 
   /* The one screen that is read rather than crossed (self-service) has room
      for a second column's worth of grants. */
   --container-ward-wide: 36rem;
+  /* The account page: a 320 px pass, a 24 px gap and a 640 px column. */
+  --container-ward-account: 65rem;
+  --container-ward-pass: 20rem;
+
+  /* The wordmark band on every public page (48 px on a phone). */
+  --height-ward-band: 3.5rem;
 
   --ease-ward: ease;
 
   /* The console's narrow layout: the rail becomes a row above the page. */
   --breakpoint-console: 60rem;
+  /* From 1000 px the console's account list is a full table; below it each account is a row of two lines. */
+  --breakpoint-ward-list: 62.5rem;
 
   /* The z scale. The confirmation's backdrop sits under its popup. */
   --z-index-overlay: 10;

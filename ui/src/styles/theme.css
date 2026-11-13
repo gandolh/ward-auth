@@ -73,9 +73,6 @@
   --radius-lg: 10px;
   --radius-ward-card: 14px;
 
-  /* The one screen that is read rather than crossed (self-service) has room
-     for a second column's worth of grants. */
-  --container-ward-wide: 36rem;
   /* The account page: a 320 px pass, a 24 px gap and a 640 px column. */
   --container-ward-account: 65rem;
   --container-ward-pass: 20rem;

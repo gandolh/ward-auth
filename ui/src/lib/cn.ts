@@ -15,7 +15,7 @@ const twMerge = extendTailwindMerge({
       text: ["ward-signpost", "ward-mono"],
       radius: ["ward", "ward-card"],
       shadow: ["ward", "ward-lg"],
-      container: ["ward", "ward-wide", "ward-account", "ward-pass"],
+      container: ["ward", "ward-account", "ward-pass"],
       font: ["ward", "ward-mono"],
       ease: ["ward"],
     },

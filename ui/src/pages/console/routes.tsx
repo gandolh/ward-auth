@@ -218,13 +218,13 @@ function TopBar({
           Ward console
         </Link>
       </p>
-      <span className={look.standing}>Break-glass credential — every route here changes authority</span>
-      <div className={look.topbarRight}>
-        {remaining === undefined ? null : (
-          <span className={look.countdown} data-low={remaining.low ? "true" : "false"}>
-            Session {remaining.text}
-          </span>
-        )}
+      <span className={look.standing}>Break-glass credential. Every route here changes authority</span>
+      {remaining === undefined ? null : (
+        <span className={look.countdown} data-low={remaining.low ? "true" : "false"}>
+          Session {remaining.text}
+        </span>
+      )}
+      <div className={look.topbarSignOut}>
         <button
           type="button"
           className={look.btn}

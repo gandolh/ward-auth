@@ -41,22 +41,29 @@ import { cn } from "../../lib/cn.js";
 /* --- Frame --------------------------------------------------------------- */
 
 /** The console's page: a column from the top bar to the end of the body. */
-export const frame = "flex min-h-screen flex-col bg-ward-bg font-ward text-ward-text";
+export const frame = "flex min-h-dvh flex-col bg-ward-bg font-ward text-ward-text";
 
-export const topbar = "flex flex-wrap items-baseline gap-4 bg-ward-surface-sunken px-6 pt-4 pb-3";
+/*
+ * The top bar: the wordmark, the standing line, the session clock and Sign out in one row. In the narrow layout
+ * (`max-console:`) Sign out stays beside the wordmark and the clock and the standing line take a row each, by `order`,
+ * so the markup (and the tab order) is the same at every width.
+ */
+export const topbar =
+  "flex min-h-16 flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3 max-console:gap-x-4 max-console:px-4";
 
 /** The wordmark is a heading on the gate and a way home in the top bar. */
-export const wordmark = "text-lg font-semibold tracking-[-0.01em]";
+export const wordmark = "text-lg font-bold tracking-[-0.01em]";
 
 /** The wordmark's link is a way home, not a call to action: no accent, no underline. */
 export const wordmarkLink = "text-ward-text no-underline hover:text-ward-text hover:underline";
 
 /** The framing, not an eyebrow label: a plain sentence fragment, sentence case. */
-export const standing = "text-sm text-ward-notice";
+export const standing = "min-w-0 flex-1 text-sm text-ward-notice max-console:order-4 max-console:basis-full";
 
-export const topbarRight = "ml-auto flex items-baseline gap-4";
+export const countdown =
+  "font-ward-mono text-ward-mono whitespace-nowrap text-ward-text-muted tabular-nums data-[low=true]:text-ward-notice max-console:order-3 max-console:basis-full";
 
-export const countdown = "font-ward-mono text-sm text-ward-text-muted tabular-nums data-[low=true]:text-ward-notice";
+export const topbarSignOut = "max-console:order-2 max-console:ml-auto";
 
 /** 6px of diagonal stripe, drawn from tokens. */
 export const hazard =
@@ -65,32 +72,32 @@ export const hazard =
 export const body = "flex min-h-0 flex-1 items-stretch max-console:flex-col";
 
 export const rail =
-  "flex w-48 flex-none flex-col gap-1 border-r border-ward-border bg-ward-surface-sunken px-3 py-6 " +
-  "max-console:w-auto max-console:flex-row max-console:flex-wrap max-console:border-r-0 max-console:border-b max-console:p-3";
+  "flex w-48 flex-none flex-col gap-1 border-r border-ward-border bg-ward-surface-sunken px-3 py-6 max-console:w-auto max-console:flex-row max-console:flex-wrap max-console:border-r-0 max-console:border-b max-console:px-3 max-console:py-2";
 
-/** A rail entry is navigation, not a link in prose. The accent's one appearance in the rail is which surface you are on. */
+/**
+ * A rail entry is navigation, not a link in prose, and a 44 px target. The accent's one appearance in the rail is
+ * which surface you are on: a 3 px edge on the current entry.
+ */
 export const railLink =
-  "block w-full rounded-ward bg-transparent px-3 py-2 text-left text-sm text-ward-text-muted no-underline " +
-  "hover:bg-ward-surface hover:text-ward-text " +
-  "aria-[current=page]:bg-ward-surface aria-[current=page]:text-ward-text aria-[current=page]:shadow-[inset_2px_0_0_var(--ward-accent)] " +
-  "max-console:w-auto max-console:aria-[current=page]:shadow-[inset_0_-2px_0_var(--ward-accent)]";
+  "flex min-h-11 w-full items-center rounded-ward bg-transparent px-3 text-left text-sm text-ward-text-muted no-underline hover:bg-ward-surface hover:text-ward-text aria-[current=page]:bg-ward-surface aria-[current=page]:text-ward-text aria-[current=page]:shadow-[inset_3px_0_0_var(--ward-accent)] max-console:w-auto";
 
 /*
  * `wc-main` is not a style: `focus-after-write.ts` finds the screen's heading with `.wc-main h1`, so the class stays on
  * the page's `<main>` as a hook.
  */
-export const main = "wc-main min-w-0 flex-1 px-6 pt-8 pb-12 max-console:px-4 max-console:pt-6";
+export const main = "wc-main min-w-0 flex-1 px-8 pt-8 pb-10 max-console:px-4 max-console:pt-5 max-console:pb-6";
 
 export const mainInner = "max-w-ward";
 
 /* --- Headings and prose --------------------------------------------------- */
 
 export const head =
-  "mb-6 flex flex-wrap items-end gap-4 [&>h1]:text-xl [&>h1]:font-semibold [&>h1]:tracking-[-0.015em]";
+  "mb-3 flex flex-wrap items-center gap-4 [&>h1]:text-xl [&>h1]:font-bold [&>h1]:tracking-[-0.01em] max-console:mb-2";
 
 export const headActions = "ml-auto flex gap-2";
 
-export const lede = "mb-6 max-w-[68ch] text-sm text-ward-text-muted";
+/** The line under a screen's heading, capped at 36rem so it reads as a sentence, not a banner. */
+export const lede = "mb-6 max-w-[36rem] text-sm text-ward-text-muted max-console:mb-4";
 
 export const back = "mb-3 inline-block text-sm";
 
@@ -121,6 +128,44 @@ export const table =
   "[&_tbody_tr:last-child_:is(th,td)]:border-b-0 [&_tbody_tr:hover]:bg-ward-surface-sunken";
 
 export const when = "font-ward-mono text-xs whitespace-nowrap text-ward-text-muted";
+
+/* --- The account list: a card holding a table from 1000 px, a list of two-line rows below it --- */
+
+export const listCard = "overflow-hidden rounded-ward-card border border-ward-border bg-ward-surface";
+
+/** The count, the card's first row. In the table it is the caption, in the list a paragraph. */
+export const listCount =
+  "border-b border-ward-border px-6 py-4 text-left text-sm text-ward-text-muted max-ward-list:px-4 max-ward-list:py-3";
+
+export const accountTable =
+  "w-full border-collapse text-sm max-ward-list:hidden [&_:is(th,td)]:px-2 [&_:is(th,td):first-child]:pl-6 [&_:is(th,td):last-child]:pr-6 [&_thead_th]:h-10 [&_thead_th]:border-b [&_thead_th]:border-ward-border [&_thead_th]:bg-ward-surface-sunken [&_thead_th]:text-left [&_thead_th]:font-normal [&_thead_th]:text-ward-text-faint [&_tbody_:is(th,td)]:h-16 [&_tbody_:is(th,td)]:border-b [&_tbody_:is(th,td)]:border-ward-border [&_tbody_th]:text-left [&_tbody_tr:last-child_:is(th,td)]:border-b-0";
+
+export const accountName = "font-bold";
+
+/** The subject, whole on one line: it is the string an operator quotes. */
+export const accountSubject = "font-ward-mono text-ward-mono whitespace-nowrap text-ward-text-muted";
+
+export const accountWhen = "font-ward-mono text-xs whitespace-nowrap text-ward-text-faint";
+
+export const accountList = "ward-list:hidden";
+
+/*
+ * Below 1000 px each account is two lines: the name, created and state, then the subject and the link. At 640 px and
+ * under, three: the name and state, the subject, created and the 48 px link.
+ */
+export const accountRow =
+  "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 border-b border-ward-border px-4 pt-2 pb-3 [grid-template-areas:'name_when_state'_'id_id_act'] last:border-b-0 max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-x-3 max-sm:pt-1 max-sm:[grid-template-areas:'name_state'_'id_id'_'when_act']";
+
+export const rowName = "flex min-h-11 items-center font-bold [grid-area:name]";
+
+export const rowState = "text-right [grid-area:state]";
+
+export const rowSubject =
+  "pb-2 font-ward-mono text-xs tracking-[-0.02em] text-ward-text-muted wrap-anywhere [grid-area:id]";
+
+export const rowWhen = "font-ward-mono text-xs whitespace-nowrap text-ward-text-faint [grid-area:when]";
+
+export const rowAction = "justify-self-end [grid-area:act]";
 
 /* --- State words ------------------------------------------------------------ */
 
@@ -195,13 +240,9 @@ export const rowActions = "flex flex-none gap-2";
 
 /* --- Buttons: one accent per region; danger only where something is destroyed - */
 
+/* A 44 px target (48 in the narrow layout); a disabled button never reacts to hover. */
 export const btn =
-  "inline-block cursor-pointer rounded-ward border border-ward-border-strong bg-ward-surface-sunken px-4 py-2 text-sm whitespace-nowrap text-ward-text no-underline " +
-  "hover:not-disabled:border-ward-text-faint disabled:cursor-default disabled:opacity-50 " +
-  "data-[tone=primary]:border-ward-accent data-[tone=primary]:bg-ward-accent data-[tone=primary]:font-semibold data-[tone=primary]:text-ward-accent-text " +
-  "data-[tone=primary]:hover:not-disabled:border-ward-accent-hover data-[tone=primary]:hover:not-disabled:bg-ward-accent-hover " +
-  "data-[tone=danger]:border-ward-danger data-[tone=danger]:bg-transparent data-[tone=danger]:text-ward-danger " +
-  "data-[tone=danger]:hover:not-disabled:bg-ward-danger-surface";
+  "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-ward border border-ward-border-strong bg-transparent px-4 text-sm font-semibold whitespace-nowrap text-ward-text no-underline hover:not-disabled:bg-ward-surface-sunken disabled:cursor-default disabled:opacity-50 max-console:min-h-12 data-[tone=danger]:border-ward-danger data-[tone=danger]:text-ward-danger data-[tone=danger]:hover:not-disabled:bg-ward-danger-surface data-[tone=primary]:border-ward-accent data-[tone=primary]:bg-ward-accent data-[tone=primary]:text-ward-accent-text data-[tone=primary]:hover:not-disabled:border-ward-accent-hover data-[tone=primary]:hover:not-disabled:bg-ward-accent-hover";
 
 /**
  * A button that is a link to another screen. The console's link colour is the accent, and a link beats a button's own

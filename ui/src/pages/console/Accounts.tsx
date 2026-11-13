@@ -70,7 +70,7 @@ export function AccountsScreen(): React.JSX.Element {
         result.data.accounts.length === 0 ? (
           <Empty title="No accounts yet">
             <p>
-              Ward holds no accounts. The break-glass credential you are signed in with is not one — it has no row in
+              Ward holds no accounts. The break-glass credential you are signed in with is not one. It has no row in
               this table by design.
             </p>
             <p>
@@ -95,13 +95,17 @@ function AccountTable({
   total: number;
   basePath: string;
 }): React.JSX.Element {
+  const count = `${plural(total, "account", "accounts")}${accounts.length < total ? `, showing the first ${String(accounts.length)}` : ""}.`;
+
+  /*
+   * One card, two drawings of the same rows: a real table from 1000 px, with its column headings, and below that a
+   * list of two-line rows that never scrolls sideways. The one not in use is `display: none`, so neither a screen
+   * reader nor the Tab key meets the rows twice. The subject is never truncated.
+   */
   return (
-    <div className={look.tableScroll}>
-      <table className={look.table}>
-        <caption>
-          {plural(total, "account", "accounts")}
-          {accounts.length < total ? `, showing the first ${String(accounts.length)}` : ""}.
-        </caption>
+    <section className={look.listCard} aria-label="Accounts">
+      <table className={look.accountTable}>
+        <caption className={look.listCount}>{count}</caption>
         <thead>
           <tr>
             <th scope="col">Username</th>
@@ -116,30 +120,23 @@ function AccountTable({
         <tbody>
           {accounts.map((account) => (
             <tr key={account.subject}>
-              <th scope="row">
+              <th scope="row" className={look.accountName}>
                 <Link to={consoleHref(basePath, { kind: "account", subject: account.subject })}>
                   {account.username}
                 </Link>
               </th>
               <td>
-                <span className={look.id}>{account.subject}</span>
+                <span className={look.accountSubject}>{account.subject}</span>
               </td>
               <td>
-                {account.disabled ? (
-                  <span className={look.state} data-state="disabled">
-                    Disabled
-                    {account.disabledAt === null ? "" : ` since ${formatWhen(account.disabledAt)}`}
-                  </span>
-                ) : (
-                  <span className={look.state}>Active</span>
-                )}
+                <AccountState account={account} />
               </td>
-              <td className={look.when}>
+              <td className={look.accountWhen}>
                 <time dateTime={account.createdAt} title={account.createdAt}>
                   {formatWhen(account.createdAt)}
                 </time>
               </td>
-              <td>
+              <td className="text-right">
                 <Link
                   className={look.btnAsLink}
                   to={consoleHref(basePath, { kind: "account", subject: account.subject })}
@@ -151,7 +148,48 @@ function AccountTable({
           ))}
         </tbody>
       </table>
-    </div>
+
+      <div className={look.accountList}>
+        <p className={look.listCount}>{count}</p>
+        <ul>
+          {accounts.map((account) => (
+            <li key={account.subject} className={look.accountRow}>
+              <span className={look.rowName}>
+                <Link to={consoleHref(basePath, { kind: "account", subject: account.subject })}>
+                  {account.username}
+                </Link>
+              </span>
+              <span className={look.rowState}>
+                <AccountState account={account} />
+              </span>
+              <span className={look.rowSubject}>{account.subject}</span>
+              <time className={look.rowWhen} dateTime={account.createdAt} title={account.createdAt}>
+                {formatWhen(account.createdAt)}
+              </time>
+              <span className={look.rowAction}>
+                <Link
+                  className={look.btnAsLink}
+                  to={consoleHref(basePath, { kind: "account", subject: account.subject })}
+                >
+                  Access and state
+                </Link>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function AccountState({ account }: { account: AccountView }): React.JSX.Element {
+  return account.disabled ? (
+    <span className={look.state} data-state="disabled">
+      Disabled
+      {account.disabledAt === null ? "" : ` since ${formatWhen(account.disabledAt)}`}
+    </span>
+  ) : (
+    <span className={look.state}>Active</span>
   );
 }
 

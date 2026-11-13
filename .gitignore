@@ -42,3 +42,7 @@ coverage/
 # Verification mail written by WARD_MAIL_TRANSPORT=file. Each message holds a
 # single-use verification token, so these are credentials on disk, not logs.
 api/mail-outbox/
+
+# Playwright's run output (ui/e2e): failure traces and reports, never source.
+test-results/
+playwright-report/

@@ -29,6 +29,8 @@ export default [
     web: ["ui/src", "shared-library/src/react"],
     // The sign-in pages' stylesheet is the entry point; the console's utilities sheet reads the same theme.
     tailwind: { css: "ui/src/styles/index.css", order: true },
+    // The UI's browser specs (Playwright, not vitest), with their stubs.
+    playwright: ["ui/e2e/**", "ui/playwright.config.ts"],
     server: "api/src",
     // Scripts run by hand, which print and read the environment directly: the
     // repo's own, the library's build and vendor scripts, and the local seed.

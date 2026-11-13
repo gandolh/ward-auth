@@ -766,6 +766,6 @@ the undrawn screens on the same looks. The approved copy edits only. Playwright
 1.62.0 specs on a stubbed Ward (the Floor on 16 screens and states, the theme
 switch) pass, and so does `npm run check`. No route, cookie or token format
 changed: 36 replies identical before and after, `api/` untouched, the entry
-chunk still free of Base UI. Sign-in CSS 6.1 kB gzip, past the 5 kB line
+chunk still free of Base UI. Sign-in CSS 6.0 kB gzip, past the 5 kB line
 (asked on the board). Not pushed; the board column is Ready for deploy
 (`node cli.ts ward deploy`).

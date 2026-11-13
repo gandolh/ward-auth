@@ -109,10 +109,9 @@ export const sr = "sr-only";
 
 /* --- Panels: one authority-changing concern each ---------------------------- */
 
+/** A card, as the accounts list is: the card radius, one border, the surface. */
 export const panel =
-  "mb-6 rounded-lg border border-ward-border bg-ward-surface p-6 " +
-  "data-[tone=danger]:border-ward-danger data-[tone=notice]:border-ward-notice " +
-  "[&>h2]:mb-2 [&>h2]:text-base [&>h2]:font-semibold";
+  "mb-6 rounded-ward-card border border-ward-border bg-ward-surface p-6 data-[tone=danger]:border-ward-danger data-[tone=notice]:border-ward-notice max-console:p-4 [&>h2]:mb-2 [&>h2]:text-lg [&>h2]:font-semibold";
 
 export const panelNote = "mb-4 max-w-[68ch] text-sm text-ward-text-muted last:mb-0";
 
@@ -124,7 +123,7 @@ export const table =
   "w-full border-collapse text-sm " +
   "[&_caption]:pb-2 [&_caption]:text-left [&_caption]:text-sm [&_caption]:text-ward-text-muted " +
   "[&_:is(th,td)]:border-b [&_:is(th,td)]:border-ward-border [&_:is(th,td)]:p-3 [&_:is(th,td)]:text-left [&_:is(th,td)]:align-baseline " +
-  "[&_thead_th]:border-ward-border-strong [&_thead_th]:font-medium [&_thead_th]:whitespace-nowrap [&_thead_th]:text-ward-text-faint " +
+  "[&_thead_th]:border-ward-border-strong [&_thead_th]:font-normal [&_thead_th]:whitespace-nowrap [&_thead_th]:text-ward-text-faint " +
   "[&_tbody_tr:last-child_:is(th,td)]:border-b-0 [&_tbody_tr:hover]:bg-ward-surface-sunken";
 
 export const when = "font-ward-mono text-xs whitespace-nowrap text-ward-text-muted";
@@ -190,9 +189,7 @@ export const appGrantMeta = "mb-3 text-xs text-ward-text-faint";
 /* --- Empty states: a designed sentence, never a grey dash --------------------- */
 
 export const empty =
-  "rounded-ward border border-dashed border-ward-border-strong bg-ward-surface-sunken p-6 " +
-  "[&_h3]:mb-2 [&_h3]:text-base [&_h3]:font-semibold " +
-  "[&_p]:max-w-[66ch] [&_p]:text-sm [&_p]:text-ward-text-muted [&_p+p]:mt-2";
+  "rounded-ward-card border border-dashed border-ward-border-strong bg-ward-surface p-6 max-console:p-4 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_p]:max-w-[66ch] [&_p]:text-sm [&_p]:text-ward-text-muted [&_p+p]:mt-3";
 
 /* --- Forms -------------------------------------------------------------------- */
 
@@ -215,7 +212,7 @@ export const grantAdd = "mt-6 flex flex-wrap items-end gap-3";
  */
 export const field = "flex min-w-0 flex-[1_1_12rem] flex-col gap-1";
 
-export const fieldLabel = "text-sm font-medium";
+export const fieldLabel = "text-sm font-semibold";
 
 export const fieldHint = "max-w-[60ch] text-xs text-ward-text-faint";
 
@@ -223,7 +220,7 @@ export const fieldError = "text-xs text-ward-danger";
 
 /** An input or a select. */
 export const control =
-  "w-full min-w-0 rounded-ward border border-ward-border-strong bg-ward-surface-sunken px-3 py-2 text-sm text-ward-text placeholder:text-ward-text-faint";
+  "min-h-11 w-full min-w-0 rounded-ward border border-ward-border-strong bg-ward-surface-sunken px-3 py-2 text-sm text-ward-text placeholder:text-ward-text-faint max-console:min-h-12";
 
 /** An opaque identifier is typed as well as read, so the field is mono too. */
 export const controlMono = `${control} font-ward-mono`;
@@ -258,7 +255,7 @@ export const actions = "flex flex-wrap items-center gap-3";
 
 export const alert =
   "mb-4 rounded-ward border border-ward-border-strong px-4 py-3 text-sm " +
-  "data-[tone=error]:border-ward-danger data-[tone=error]:bg-ward-danger-surface data-[tone=error]:text-ward-text " +
+  "data-[tone=error]:border-ward-danger/40 data-[tone=error]:bg-ward-danger-surface data-[tone=error]:text-ward-danger " +
   "data-[tone=notice]:border-ward-notice data-[tone=notice]:bg-ward-notice-surface " +
   "data-[tone=done]:bg-ward-surface-sunken data-[tone=done]:text-ward-text-muted " +
   "[&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-bold";
@@ -284,7 +281,7 @@ export const detail = "mt-1 font-ward-mono text-xs whitespace-pre-wrap text-ward
 export const gateInner =
   "mx-auto grid flex-1 grid-cols-[minmax(0,26rem)_minmax(0,30rem)] content-start gap-8 px-6 py-12 max-console:grid-cols-[minmax(0,34rem)]";
 
-export const gateHeading = "mb-3 text-xl font-semibold tracking-[-0.015em]";
+export const gateHeading = "mb-3 text-xl font-bold tracking-[-0.01em]";
 
 export const gateTerms =
   "text-sm text-ward-text-muted [&>dd]:mt-1 [&>dd]:max-w-[46ch] [&>dt]:mt-4 [&>dt]:font-semibold [&>dt]:text-ward-text";

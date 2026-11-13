@@ -747,3 +747,11 @@ after every step, and no field dropped. check-structure strict: 74 errors to
 an error again. `npm run check` 73 files, 1273 tests. Decisions in
 `wiki/decisions-structure.md`. Not pushed; the board column is Ready for
 deploy (`node cli.ts ward server`).
+
+## [2026-11-13] approval | Brief 07: the redesign direction approved
+
+The owner approved the redesign direction "The pass and its doors" on the
+estate redesign board, with every question on the board standing as
+proposed: a self-hosted Albert Sans on the sign-in path, cards on the public
+pages (the sign-in form on one card hung off the jamb, never centred), and
+direction B over the runner-up "Dressed limestone". The build follows.

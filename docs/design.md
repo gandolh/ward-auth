@@ -24,7 +24,7 @@ rule every public page hangs from. The console stays **its own dark building**.
 The raw `--ward-*` colours live in `ui/src/styles/index.css`, in three blocks: `:root` (public
 light), `:root[data-theme="dark"]` (public dark) and `[data-ward-surface="console"]`.
 `ui/src/styles/theme.css` maps them onto Tailwind's names with `@theme inline`. The names are the ones
-brief 05 set. Only the values changed, plus the few new names below.
+move to Tailwind of 2026-11-11 set. Only the values changed, plus the few new names below.
 
 | Token | Light | Dark | Console |
 | --- | --- | --- | --- |

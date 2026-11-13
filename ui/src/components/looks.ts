@@ -32,6 +32,9 @@ export const card = "rounded-ward-card border border-ward-border bg-ward-surface
 export const doorCard =
   "max-w-ward rounded-ward-card border border-ward-border bg-ward-surface p-6 shadow-ward max-sm:max-w-none max-sm:px-4 max-sm:py-5";
 
+/** A card's plain text: 14/20, 16/24 on a phone. */
+export const note = "text-sm text-ward-text-muted max-sm:text-base";
+
 /** A card's title. */
 export const cardTitle = "mb-2 text-lg font-semibold text-ward-text";
 
@@ -60,6 +63,8 @@ const BUTTONS = {
   /* The accent is spent once per screen, so every secondary action is an outline. */
   quiet:
     "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-ward border border-ward-border-strong bg-transparent px-5 py-3 text-center text-sm font-semibold whitespace-nowrap text-ward-text transition-[background-color,border-color,color] duration-120 ease-ward hover:enabled:bg-ward-surface-sunken disabled:cursor-not-allowed disabled:border-ward-border disabled:bg-ward-surface-sunken disabled:text-ward-text-faint max-sm:min-h-12",
+  /* Sign out in the pass: the outline, full width under its caption; beside it, at its own width, on a phone. */
+  pass: "mt-3 inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-ward border border-ward-border-strong bg-transparent px-5 py-3 text-center text-sm font-semibold whitespace-nowrap text-ward-text transition-[background-color,border-color,color] duration-120 ease-ward hover:enabled:bg-ward-surface-sunken disabled:cursor-not-allowed disabled:border-ward-border disabled:bg-ward-surface-sunken disabled:text-ward-text-faint max-sm:mt-0 max-sm:min-h-12 max-sm:w-auto max-sm:flex-none",
   danger:
     "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-ward border border-ward-danger bg-transparent px-5 py-3 text-center text-sm font-semibold whitespace-nowrap text-ward-danger transition-[background-color,border-color,color] duration-120 ease-ward hover:enabled:bg-ward-danger hover:enabled:text-ward-accent-text disabled:cursor-not-allowed disabled:border-ward-border disabled:bg-ward-surface-sunken disabled:text-ward-text-faint max-sm:min-h-12",
 } as const;

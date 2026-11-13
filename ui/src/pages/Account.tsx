@@ -5,7 +5,7 @@ import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
 import { ThemeSwitch } from "../components/ThemeSwitch.js";
-import { prose, link, form, actions, button, hint } from "../components/looks.js";
+import { actions, button, card, cardTitle, form, hint, note } from "../components/looks.js";
 import {
   WardApiError,
   changeOwnPassword,
@@ -21,6 +21,12 @@ import { CAN_CHANGE_OWN_PASSWORD, CAN_READ_OWN_EMAIL, CAN_REVOKE_OTHER_SESSIONS 
 import { deadlineIn, useCountdown } from "../lib/use-countdown.js";
 import { formatWait } from "../lib/wait.js";
 import { readSession, type Session } from "../lib/session.js";
+
+/** A label in the pass: small and faint, 4 px above its value. */
+const passLabel = "mb-1 block text-xs text-ward-text-faint";
+
+/** The pass's own titles sit a little tighter on a phone, where the pass wants the first screen. */
+const passTitle = "mb-2 text-lg font-semibold text-ward-text max-sm:mb-1";
 
 /**
  * `/account` — self-service, and deliberately minimal.
@@ -105,18 +111,18 @@ export function Account(): React.JSX.Element {
   }, []);
 
   if (session.status === "loading") {
-    return <Threshold heading="Your account" lede="Loading." wide></Threshold>;
+    return <Threshold heading="Your account" lede="Loading." wide />;
   }
 
   if (session.status === "unreachable") {
     return (
       <Threshold
         heading="Ward isn't answering"
-        lede="Your session is probably fine — Ward just didn't respond. Try again."
+        lede="Your session is probably fine. Ward just didn't respond. Try again."
         wide
       >
         <div className={actions}>
-          <button className={button()} type="button" onClick={load}>
+          <button className={button("quiet")} type="button" onClick={load}>
             Try again
           </button>
         </div>
@@ -139,11 +145,11 @@ export function Account(): React.JSX.Element {
         lede="Sessions end after a while, and this one has. Sign in to see your account."
         wide
       >
-        <p className={prose}>
-          <Link className={link} to={loginRouteFor(DEFAULT_NEXT)}>
+        <div className={actions}>
+          <Link className={button()} to={loginRouteFor(DEFAULT_NEXT)}>
             Sign in
           </Link>
-        </p>
+        </div>
       </Threshold>
     );
   }
@@ -224,70 +230,100 @@ function SignedIn({
       wide
       heading="Your account"
       lede="One account for every app here. What you can reach in each of them is set per app, below."
-      footer={<>Signed in as {session.username}. Ward keeps the estate's accounts.</>}
+      footer={<>Signed in as {session.username}. Ward keeps the estate’s accounts.</>}
     >
       {unverified && (
-        <Notice tone="info">
-          Your email address isn't confirmed. Nothing is blocked by that — confirming an address doesn't unlock anything
-          in Ward — but the confirmation link only lasts 24 hours and Ward can't send a new one.
-        </Notice>
+        <div className="max-w-[40rem]">
+          <Notice tone="info">
+            Your email address isn't confirmed. Nothing is blocked by that — confirming an address doesn't unlock
+            anything in Ward — but the confirmation link only lasts 24 hours and Ward can't send a new one.
+          </Notice>
+        </div>
       )}
 
-      <h2>Who you are</h2>
-      <dl className="grid grid-cols-[minmax(6rem,auto)_1fr] gap-x-5 gap-y-2 text-sm [&>dd]:text-ward-text [&>dt]:text-ward-text-faint">
-        <dt>Username</dt>
-        <dd>{session.username}</dd>
-        <dt>Account id</dt>
-        {/*
-          The subject. Shown because it is the id every app in the estate keys
-          your data on, so it is the one string worth quoting when something has
-          gone wrong somewhere else. Monospace because it is meant to be read
-          character by character.
-        */}
-        <dd className="font-ward-mono text-xs wrap-anywhere">{session.subject}</dd>
-        {account.state === "ready" && (
-          <>
-            <dt>Email</dt>
-            <dd>
-              {account.data.email === null
-                ? "None on record — this account was created from the console."
-                : `${account.data.email} ${account.data.emailVerified ? "(confirmed)" : "(unconfirmed)"}`}
+      {/*
+        The pass beside the page: who you are and Sign out in one card, held in view (sticky) while the column of
+        cards beside it scrolls. Below 900 px it is the first card of one column, and nothing is sticky.
+      */}
+      <div className="grid items-start gap-6 max-sm:gap-4 min-[56.25rem]:grid-cols-[var(--container-ward-pass)_minmax(0,40rem)]">
+        <section
+          aria-labelledby="ward-who"
+          className="rounded-ward-card border border-ward-border bg-ward-surface p-6 shadow-ward max-sm:p-4 min-[56.25rem]:sticky min-[56.25rem]:top-6"
+        >
+          <h2 id="ward-who" className={passTitle}>
+            Who you are
+          </h2>
+          <dl>
+            <dt className={passLabel}>Username</dt>
+            <dd className="mb-4 text-xl font-bold tracking-[-0.01em] wrap-anywhere max-sm:mb-3">{session.username}</dd>
+            <dt className={passLabel}>Account id</dt>
+            {/*
+              The subject. Shown because it is the id every app in the estate keys
+              your data on, so it is the one string worth quoting when something has
+              gone wrong somewhere else. Monospace because it is meant to be read
+              character by character.
+            */}
+            <dd className="mb-4 font-ward-mono text-ward-mono wrap-anywhere max-sm:mb-3 max-sm:text-xs max-sm:tracking-[-0.02em]">
+              {session.subject}
             </dd>
-          </>
-        )}
-      </dl>
+            {account.state === "ready" && (
+              <>
+                <dt className={passLabel}>Email</dt>
+                <dd className="text-sm max-sm:text-base">
+                  {account.data.email === null
+                    ? "None on record. This account was created from the console."
+                    : `${account.data.email} ${account.data.emailVerified ? "(confirmed)" : "(unconfirmed)"}`}
+                </dd>
+              </>
+            )}
+          </dl>
+          <hr className="mt-5 mb-4 border-ward-border max-sm:my-3" />
+          <SignOut username={session.username} />
+        </section>
 
-      <h2>What you can reach</h2>
-      {grants.length === 0 ? (
-        <p className={prose}>
-          No app access yet. Access is granted per app by whoever runs the estate — ask them, and it will appear here.
-        </p>
-      ) : (
-        <>
-          <p className={prose}>Read-only. Changing any of this is done by whoever runs the estate.</p>
-          <ul className="border-t border-ward-border">
-            {grants.map(([slug, roles]) => (
-              <li
-                key={slug}
-                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b border-ward-border py-3"
-              >
-                <span className="text-sm font-semibold">{appName(slug)}</span>
-                <span className="text-sm text-ward-text-muted">
-                  {roles.length === 0 ? "no roles" : roles.join(", ")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+        <div className="flex min-w-0 flex-col gap-4">
+          <section aria-labelledby="ward-reach" className={card}>
+            <h2 id="ward-reach" className={cardTitle}>
+              What you can reach
+            </h2>
+            {grants.length === 0 ? (
+              <p className={note}>
+                No app access yet. Access is granted per app by whoever runs the estate. Ask them, and it will appear
+                here.
+              </p>
+            ) : (
+              <>
+                <p className={note}>Read-only. Changing any of this is done by whoever runs the estate.</p>
+                {/* Read-only, so plain text: no chip, pill or edge on a role, nothing that looks clickable. */}
+                <ul className="mt-4 border-t border-ward-border max-sm:mt-3">
+                  {grants.map(([slug, roles]) => (
+                    <li
+                      key={slug}
+                      className="flex min-h-12 items-center justify-between gap-3 border-b border-ward-border last:border-b-0"
+                    >
+                      <span className="min-w-0 text-sm font-semibold wrap-anywhere">{appName(slug)}</span>
+                      <span className="text-right text-sm text-ward-text-muted">
+                        {roles.length === 0 ? "no roles" : roles.join(", ")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
 
-      <ChangePassword onSignedOut={onSignedOut} />
-      <OtherDevices onSignedOut={onSignedOut} />
-      <h2>Theme</h2>
-      <p className={prose}>Light, dark, or whatever your device uses. Kept on this device only.</p>
-      <ThemeSwitch />
+          <ChangePassword onSignedOut={onSignedOut} />
+          <OtherDevices onSignedOut={onSignedOut} />
 
-      <SignOut username={session.username} />
+          <section aria-labelledby="ward-theme" className={card}>
+            <h2 id="ward-theme" className={cardTitle}>
+              Theme
+            </h2>
+            <p className={note}>Light, dark, or whatever your device uses. Kept on this device only.</p>
+            <ThemeSwitch />
+          </section>
+        </div>
+      </div>
     </Threshold>
   );
 }
@@ -361,8 +397,10 @@ function ChangePassword({ onSignedOut }: { onSignedOut: () => void }): React.JSX
   }
 
   return (
-    <>
-      <h2>Password</h2>
+    <section aria-labelledby="ward-password-title" className={card}>
+      <h2 id="ward-password-title" className={cardTitle}>
+        Password
+      </h2>
       {!CAN_CHANGE_OWN_PASSWORD ? (
         <div className="rounded-ward border border-dashed border-ward-border-strong bg-ward-surface-sunken p-4 text-sm text-ward-text-muted">
           <p>
@@ -407,48 +445,51 @@ function ChangePassword({ onSignedOut }: { onSignedOut: () => void }): React.JSX
                 setCurrent(event.target.value);
               }}
             />
-            <Field
-              id="ward-new-password"
-              label="New password"
-              name="new-password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              hint="At least 8 characters."
-              value={next}
-              disabled={busy || lockedOut}
-              onChange={(event) => {
-                setNext(event.target.value);
-              }}
-            />
-            <Field
-              id="ward-confirm-password"
-              label="New password again"
-              name="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={confirm}
-              error={mismatch ? "The two new passwords don't match." : undefined}
-              disabled={busy || lockedOut}
-              onChange={(event) => {
-                setConfirm(event.target.value);
-              }}
-            />
-            <div className={actions}>
+            {/* The new password and its repeat side by side, one column at 640 px and under. */}
+            <div className="grid grid-cols-2 items-start gap-4 max-sm:grid-cols-1">
+              <Field
+                id="ward-new-password"
+                label="New password"
+                name="new-password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                hint="At least 8 characters."
+                value={next}
+                disabled={busy || lockedOut}
+                onChange={(event) => {
+                  setNext(event.target.value);
+                }}
+              />
+              <Field
+                id="ward-confirm-password"
+                label="New password again"
+                name="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirm}
+                error={mismatch ? "The two new passwords don't match." : undefined}
+                disabled={busy || lockedOut}
+                onChange={(event) => {
+                  setConfirm(event.target.value);
+                }}
+              />
+            </div>
+            <div className="flex flex-col items-start gap-3">
               <button className={button()} type="submit" disabled={busy || lockedOut}>
                 {busy ? "Changing…" : "Change password"}
               </button>
               <span className={hint}>
-                Signs out every other device that was signed in as you. This one stays signed in — it gets a fresh
+                Signs out every other device that was signed in as you. This one stays signed in. It gets a fresh
                 session automatically.
               </span>
             </div>
           </form>
         </>
       )}
-    </>
+    </section>
   );
 }
 
@@ -485,8 +526,10 @@ function OtherDevices({ onSignedOut }: { onSignedOut: () => void }): React.JSX.E
   }
 
   return (
-    <>
-      <h2>Other devices</h2>
+    <section aria-labelledby="ward-devices" className={card}>
+      <h2 id="ward-devices" className={cardTitle}>
+        Other devices
+      </h2>
       {!CAN_REVOKE_OTHER_SESSIONS ? (
         <div className="rounded-ward border border-dashed border-ward-border-strong bg-ward-surface-sunken p-4 text-sm text-ward-text-muted">
           <p>
@@ -497,38 +540,40 @@ function OtherDevices({ onSignedOut }: { onSignedOut: () => void }): React.JSX.E
         </div>
       ) : (
         <>
-          <p className={prose}>
+          <p className={note}>
             Ends every other signed-in session and leaves this one alone. Worth doing if you think somebody else has
             your session.
           </p>
-          {revoked !== undefined && (
-            <Notice tone="info" live="assertive">
-              {revoked === 0
-                ? "No other sessions were signed in."
-                : `${String(revoked)} other ${revoked === 1 ? "session" : "sessions"} signed out.`}
-            </Notice>
-          )}
-          {failure !== undefined && (
-            <Notice tone="error">
-              That didn&apos;t work. Try again, and if it keeps failing ask whoever runs the estate to revoke your
-              sessions.
-            </Notice>
-          )}
-          <div className={actions}>
-            <button
-              className={button("danger")}
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                void onClick();
-              }}
-            >
-              {busy ? "Signing out…" : "Sign out my other devices"}
-            </button>
+          <div className="mt-4">
+            {revoked !== undefined && (
+              <Notice tone="info" live="assertive">
+                {revoked === 0
+                  ? "No other sessions were signed in."
+                  : `${String(revoked)} other ${revoked === 1 ? "session" : "sessions"} signed out.`}
+              </Notice>
+            )}
+            {failure !== undefined && (
+              <Notice tone="error">
+                That didn&apos;t work. Try again, and if it keeps failing ask whoever runs the estate to revoke your
+                sessions.
+              </Notice>
+            )}
+            <div className={actions}>
+              <button
+                className={button("danger")}
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  void onClick();
+                }}
+              >
+                {busy ? "Signing out…" : "Sign out my other devices"}
+              </button>
+            </div>
           </div>
         </>
       )}
-    </>
+    </section>
   );
 }
 
@@ -560,11 +605,12 @@ function SignOut({ username }: { username: string }): React.JSX.Element {
 
   return (
     <>
-      <h2>Sign out</h2>
-      <p className={prose}>Ends this session only, on this device. Signed in as {username}.</p>
-      <div className={actions}>
+      <h2 className={passTitle}>Sign out</h2>
+      {/* On a phone the caption and the button share a row. */}
+      <div className="max-sm:flex max-sm:items-center max-sm:gap-3">
+        <p className={note}>Ends this session only, on this device. Signed in as {username}.</p>
         <button
-          className={button("quiet")}
+          className={button("pass")}
           type="button"
           disabled={busy}
           onClick={() => {

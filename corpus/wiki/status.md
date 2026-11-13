@@ -1,9 +1,9 @@
 ---
-summary: Dated snapshot (2026-11-12) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 11-04 (not deployed), the local seed's ten apps, the house style and npm run check (2026-11-11, not deployed), the server in the code structure (2026-11-12, not deployed), ward-auth 0.7.2 and which version each app vendors; the owner's next steps and known gaps.
-updated: 2026-11-12
+summary: Dated snapshot (2026-11-13) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 11-04 (not deployed), the local seed's ten apps, the house style and npm run check (2026-11-11, not deployed), the server in the code structure (2026-11-12, not deployed), the redesign The pass and its doors (2026-11-13, not deployed), ward-auth 0.7.2 and which version each app vendors; the owner's next steps and known gaps.
+updated: 2026-11-13
 ---
 
-# Status — 2026-11-12
+# Status — 2026-11-13
 
 `origin/main` is at `a5520e3`; the commits after it (briefs 01 and 02, built
 2026-11-04) are local. Brief numbering restarted at 01 on 2026-11-02
@@ -15,7 +15,8 @@ not deployed)
 and the server in the house code structure (06, built 2026-11-12, local and
 not deployed). They follow the owner's estate calls of 2026-11-09
 and were revised the same day to the answers of the grilling of 2026-11-10; a
-fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas waiting to be specced are in
+fifth, a redesign with Hallmark on the estate board (07), was added then, approved
+on the board and built on 2026-11-13 (local, not deployed). Ideas waiting to be specced are in
 [../todos/](../todos/).
 
 ## By area
@@ -72,6 +73,11 @@ fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas 
   console's 24 plain routes; every reply byte-identical before and after
   ([decisions-structure.md](decisions-structure.md)). The image starts
   `api/dist/server.js`.
+- **The redesign** (2026-11-13, not deployed). "The pass and its doors": the
+  account page as a pass beside a column of cards, sign-in on one card hung off
+  the jamb, the console's accounts a table from 1000 px; self-hosted Albert Sans
+  and Fragment Mono; Playwright specs on a stubbed Ward (`npm run e2e -w
+  @ward/ui`). No route, cookie or token changed ([../../docs/design.md](../../docs/design.md)).
 - **ward-auth** (`shared-library/`, 0.7.2 on 2026-11-12). 0.4.0 renames a user,
   0.5.0 shapes a new Ward user's name, 0.6.0 disables a local user, 0.6.1
   exports the new names, 0.7.0 keeps a refused sign-in's return path, 0.7.1
@@ -84,7 +90,8 @@ fifth, a redesign with Hallmark on the estate board (07), was added then. Ideas 
 
 - **Deploy Ward** (`node cli.ts ward all` in `vps-deploy`): ships the console
   work and the docs site; `node cli.ts ward deploy` ships the house-style
-  commits; `node cli.ts ward server` ships the server's new structure. After
+  commits and the redesign (then look at the sign-in and account pages on a
+  phone); `node cli.ts ward server` ships the server's new structure. After
   that one, check that the container turns healthy, that `docker stop` ends at
   once, and that one sign-in through Ward from another app works.
 - **Have git blame skip the reformat:**

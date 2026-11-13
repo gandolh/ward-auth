@@ -755,3 +755,17 @@ estate redesign board, with every question on the board standing as
 proposed: a self-hosted Albert Sans on the sign-in path, cards on the public
 pages (the sign-in form on one card hung off the jamb, never centred), and
 direction B over the runner-up "Dressed limestone". The build follows.
+
+## [2026-11-13] done | Brief 07: the redesign, The pass and its doors
+
+Built on the approved direction: the new tokens in all three blocks and a
+focus outline, self-hosted Albert Sans and Fragment Mono, the sign-in page on
+one card hung off the jamb, the account page as the pass beside a column of
+cards, the console's accounts as a table from 1000 px and rows below it, and
+the undrawn screens on the same looks. The approved copy edits only. Playwright
+1.62.0 specs on a stubbed Ward (the Floor on 16 screens and states, the theme
+switch) pass, and so does `npm run check`. No route, cookie or token format
+changed: 36 replies identical before and after, `api/` untouched, the entry
+chunk still free of Base UI. Sign-in CSS 6.1 kB gzip, past the 5 kB line
+(asked on the board). Not pushed; the board column is Ready for deploy
+(`node cli.ts ward deploy`).

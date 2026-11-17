@@ -761,6 +761,55 @@ describe("access_denied", () => {
     expect(landed.searchParams.get("error")).toBe("access_denied");
   });
 
+  describe("a cancel's row", () => {
+    const cancelRows = () =>
+      db
+        .prepare<[], { actor_kind: string; actor_subject: string | null; actor_label: string; detail: string }>(
+          "SELECT actor_kind, actor_subject, actor_label, detail FROM audit_log WHERE action = 'oidc.denied' ORDER BY id",
+        )
+        .all()
+        .filter((row) => JSON.parse(row.detail).reason === "cancelled");
+
+    async function cancel(browser: Browser): Promise<void> {
+      const started = startSignIn();
+      const interaction = location(await browser.request("GET", started.url));
+      await browser.request("GET", interaction);
+      const { landed } = await runFlow(browser, { ...started, url: `${interaction}/abort` });
+      expect(landed.searchParams.get("error")).toBe("access_denied");
+    }
+
+    beforeEach(async () => {
+      (await import("../audit.js")).resetRepeatedAuditForTests();
+      db.exec("DELETE FROM audit_log WHERE action = 'oidc.denied'");
+    });
+
+    it("is one per window for signed-out cancels, however many there are", async () => {
+      for (let i = 0; i < 4; i += 1) await cancel(new Browser());
+
+      const rows = cancelRows();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ actor_kind: "system", actor_subject: null, actor_label: "ward" });
+      expect(JSON.parse(rows[0]!.detail)).toEqual({ reason: "cancelled" });
+    });
+
+    it("is written every time, naming the account, when a Ward session cancels", async () => {
+      const subject = await newUser("quinn");
+      const browser = new Browser();
+      await browser.signIn("quinn");
+      ageSessions();
+
+      await cancel(browser);
+      await cancel(browser);
+
+      const rows = cancelRows();
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect(row).toMatchObject({ actor_kind: "account", actor_subject: subject, actor_label: "quinn" });
+        expect(JSON.parse(row.detail)).toMatchObject({ reason: "cancelled", family: expect.any(String) });
+      }
+    });
+  });
+
   it("never redirects to an unregistered redirect URI or for an unknown client", async () => {
     const browser = new Browser();
     for (const overrides of [

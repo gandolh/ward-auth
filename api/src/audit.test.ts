@@ -1,9 +1,17 @@
 import type Database from "better-sqlite3";
 import type { FastifyInstance } from "fastify";
 import { testFastify } from "./testing/fastify.js";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { consoleActor, recordActorAudit, recordConsoleAudit, type AuditActor } from "./audit.js";
+import {
+  consoleActor,
+  recordActorAudit,
+  recordConsoleAudit,
+  recordRepeatedAudit,
+  REPEAT_WINDOW_SECONDS,
+  resetRepeatedAuditForTests,
+  type AuditActor,
+} from "./audit.js";
 import { requireConsoleSession } from "./auth/console-guard.js";
 import { CONSOLE_COOKIE_NAME, openConsoleSession, resetConsoleSessionsForTests } from "./auth/superuser.js";
 import { listAudit } from "./db/audit-log.js";
@@ -129,5 +137,47 @@ it("still records an event when no session is attached, losing only the id", asy
     actorKind: "superuser",
     actorLabel: "superuser",
     detail: {},
+  });
+});
+
+describe("refusals with no credential: a row per window", () => {
+  const refusal = (ip: string) => ({
+    actorKind: "system" as const,
+    actorLabel: "console-login",
+    action: "console.login.failed",
+    detail: { ip, reason: "malformed" },
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    resetRepeatedAuditForTests();
+  });
+
+  it("writes the first of a kind, counts the rest of its window, and carries the count into the next row", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+
+    expect(recordRepeatedAudit(db, "console.login.malformed", refusal("203.0.113.1"))).toBeDefined();
+    for (let i = 0; i < 9; i += 1) {
+      expect(recordRepeatedAudit(db, "console.login.malformed", refusal("203.0.113.2"))).toBeUndefined();
+    }
+    expect(listAudit(db)).toHaveLength(1);
+
+    vi.setSystemTime(Date.now() + REPEAT_WINDOW_SECONDS * 1000);
+    const next = recordRepeatedAudit(db, "console.login.malformed", refusal("203.0.113.3"));
+    expect(JSON.parse(next!.detail!)).toEqual({ ip: "203.0.113.3", reason: "malformed", unrecorded: 9 });
+
+    // A quiet kind after a busy one: the next row has nothing to carry.
+    vi.setSystemTime(Date.now() + REPEAT_WINDOW_SECONDS * 1000);
+    const quiet = recordRepeatedAudit(db, "console.login.malformed", refusal("203.0.113.4"));
+    expect(JSON.parse(quiet!.detail!)).toEqual({ ip: "203.0.113.4", reason: "malformed" });
+    expect(listAudit(db)).toHaveLength(3);
+  });
+
+  it("keeps a window per kind, so one kind's noise does not hide another's first row", () => {
+    recordRepeatedAudit(db, "console.login.malformed", refusal("203.0.113.1"));
+    recordRepeatedAudit(db, "console.login.malformed", refusal("203.0.113.1"));
+    expect(recordRepeatedAudit(db, "console.login.locked-out", refusal("203.0.113.1"))).toBeDefined();
+    expect(recordRepeatedAudit(db, "oidc.cancelled", refusal("203.0.113.1"))).toBeDefined();
+    expect(listAudit(db)).toHaveLength(3);
   });
 });

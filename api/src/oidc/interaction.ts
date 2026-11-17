@@ -4,6 +4,7 @@ import type Provider from "oidc-provider";
 import { z } from "zod";
 
 import { REFRESH_COOKIE_NAME, readCookie } from "../auth/cookie.js";
+import { recordRepeatedAudit } from "../audit.js";
 import { recordAudit } from "../db/audit-log.js";
 import { getApp } from "../db/apps.js";
 import { wardRole, wardSessionFor, type WardBrowserSession } from "./account.js";
@@ -99,15 +100,19 @@ export async function interactionRoutes(
     reason: Denial,
     session?: WardBrowserSession,
   ) {
-    recordAudit(db, {
-      actorKind: session === undefined ? "system" : "account",
+    const event = {
+      actorKind: session === undefined ? ("system" as const) : ("account" as const),
       actorSubject: session?.subject ?? null,
       actorLabel: session?.user.username ?? "ward",
       action: "oidc.denied",
-      targetKind: "app",
+      targetKind: "app" as const,
       targetId: clientId,
       detail: { reason, ...(session === undefined ? {} : { family: session.familyId }) },
-    });
+    };
+    // A cancel with no Ward session names nobody: a row per window, the rest
+    // counted (`audit.ts`). Every denial that names an account writes its row.
+    if (session === undefined && reason === "cancelled") recordRepeatedAudit(db, "oidc.cancelled", event);
+    else recordAudit(db, event);
     const returnTo = await provider.interactionResult(
       request.raw,
       reply.raw,
@@ -220,12 +225,17 @@ export async function interactionRoutes(
    * gets `access_denied`, the same answer as a refusal, so it has one error
    * path rather than a person stranded at Ward. It is also the way out for a
    * disabled account, whose sign-in at Ward can only end in "account turned off".
+   *
+   * The row it writes names the Ward session's account when the browser has
+   * one, as the chooser's "Back to <app>" does. With none, it is a row per
+   * window and a count in between.
    */
   app.get(`${INTERACTION_INTERNAL_PREFIX}/:uid/abort`, { exposeHeadRoute: false }, async (request, reply) => {
     const { db, provider } = await resolve();
     const details = await loadInteraction(provider, request, reply);
     if (details === undefined) return reply;
-    return deny({ db, provider }, request, reply, String(details.params["client_id"]), "cancelled");
+    const session = wardSessionFor(db, readCookie(request.headers.cookie, REFRESH_COOKIE_NAME));
+    return deny({ db, provider }, request, reply, String(details.params["client_id"]), "cancelled", session);
   });
 }
 

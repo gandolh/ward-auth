@@ -137,8 +137,9 @@ export function recordConsoleAudit(
 /**
  * ## Refusals that carry no credential: a row per window, the rest counted
  *
- * Two refusals carry no credential: a malformed `/console/login` body, and a
- * `/console/login` from an address the lockout already refuses.
+ * Three refusals carry no credential: a malformed `/console/login` body, a
+ * `/console/login` from an address the lockout already refuses, and a
+ * signed-out "Back to <app>" on Ward's sign-in page (`oidc/interaction.ts`).
  * Each kind writes at most one row in `audit_log` per `REPEAT_WINDOW_SECONDS`,
  * process-wide rather than per address, so the table grows with time rather
  * than with traffic:
@@ -156,7 +157,7 @@ export function recordConsoleAudit(
  */
 
 /** The kinds of refusal recorded through `recordRepeatedAudit`. */
-export type RepeatedRefusal = "console.login.malformed" | "console.login.locked-out";
+export type RepeatedRefusal = "console.login.malformed" | "console.login.locked-out" | "oidc.cancelled";
 
 /** How long after a row the next row of the same kind waits. */
 export const REPEAT_WINDOW_SECONDS = 15 * 60;

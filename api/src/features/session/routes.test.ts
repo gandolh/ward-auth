@@ -236,7 +236,7 @@ describe("active is false", () => {
   });
 });
 
-describe("two ward_session cookies on one request (the legacy Path=/ copy)", () => {
+describe("two ward_session cookies on one request", () => {
   /** A token that verifies but whose family was signed out. */
   async function signedButRevoked(): Promise<string> {
     const session = await login();
@@ -253,32 +253,33 @@ describe("two ward_session cookies on one request (the legacy Path=/ copy)", () 
     return access;
   }
 
-  it("uses the live one whichever order the browser sends them in", async () => {
+  const inactive = JSON.stringify({ active: false });
+
+  it("is inactive whichever order they come in, even when one is a live session", async () => {
     grant("atrium", "admin");
     const live = cookieValue(await login(), mod.cookie.ACCESS_COOKIE_NAME);
-    const liveSid = (await mod.service.verifyWardAccessToken(live)).sid;
-    const expected = {
-      active: true,
-      subject,
-      username: "Alice",
-      grants: { atrium: ["admin"] },
-    };
-
-    expect((await readSessionWith(["not-a-token", live])).json()).toEqual(expected);
-    expect((await readSessionWith([live, "not-a-token"])).json()).toEqual(expected);
-    expect((await readSessionWith([live])).json()).toEqual(expected);
-
-    // A well-signed token for a signed-out family first is not enough to win:
-    // "validates" means a live session, not a good signature.
+    const alsoLive = cookieValue(await login(), mod.cookie.ACCESS_COOKIE_NAME);
     const dead = await signedButRevoked();
-    expect((await mod.service.verifyWardAccessToken(dead)).sid).not.toBe(liveSid);
-    expect((await readSessionWith([dead, live])).json()).toEqual(expected);
-    expect((await readSessionWith([live, dead])).json()).toEqual(expected);
+
+    // Each one alone is what it is.
+    expect((await readSessionWith([live])).json()).toMatchObject({ active: true, subject });
+    expect((await readSessionWith([alsoLive])).json()).toMatchObject({ active: true, subject });
+
+    // Two values: the browser's order cannot say which is Ward's, so neither counts.
+    for (const values of [
+      ["not-a-token", live],
+      [live, "not-a-token"],
+      [dead, live],
+      [live, dead],
+      [live, alsoLive],
+    ]) {
+      expect((await readSessionWith(values)).body, values.join(" / ")).toBe(inactive);
+    }
   });
 
-  it("is inactive when neither copy is a live session", async () => {
-    const dead = await signedButRevoked();
-    expect((await readSessionWith([dead, "not-a-token"])).body).toBe(JSON.stringify({ active: false }));
+  it("does not count a cleared copy as a second value", async () => {
+    const live = cookieValue(await login(), mod.cookie.ACCESS_COOKIE_NAME);
+    expect((await readSessionWith(["", live])).json()).toMatchObject({ active: true, subject });
   });
 });
 

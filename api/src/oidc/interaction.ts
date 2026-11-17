@@ -24,7 +24,9 @@ import { GRANT_TTL_SECONDS, ID_TOKEN_CLAIMS, plainPage } from "./provider.js";
  *     reads the cookie and never rotates it. No live Ward session, and the
  *     person goes to Ward's own login page (`?oidc=<uid>`), which signs them in
  *     the ordinary way — `POST /login`, an ordinary refresh family — and sends
- *     the browser back here.
+ *     the browser back here. A request carrying more than one refresh cookie
+ *     counts as no session on every route here (`readCookie`, `auth/cookie.ts`):
+ *     the form, never the chooser, and nothing finishes.
  *  2. **A session from before this sign-in is offered, not used.** The login
  *     page asks "Continue as <name>" or "Use another account" (`&choose=1`),
  *     as Google's account chooser does, so signing out of an app and pressing

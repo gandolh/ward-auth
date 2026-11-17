@@ -820,6 +820,110 @@ describe("POST /logout", () => {
   });
 });
 
+describe("a request carrying more than one ward_refresh value", () => {
+  let other: string;
+
+  beforeAll(async () => {
+    other = mod.users.createUser(db, {
+      username: "Bob",
+      passwordHash: await mod.password.hashPassword(PASSWORD),
+    }).subject;
+  });
+
+  /** Alice and Bob signed in afresh, each with a family of their own. */
+  async function twoSessions(ip: string): Promise<{ alice: string; bob: string }> {
+    const alice = await login({ username: "alice", password: PASSWORD }, ip);
+    const bob = await login({ username: "bob", password: PASSWORD }, ip);
+    return {
+      alice: setCookies(alice.headers).get("ward_refresh")!.value,
+      bob: setCookies(bob.headers).get("ward_refresh")!.value,
+    };
+  }
+
+  function familyOf(token: string): string {
+    return mod.refreshTokens.findRefreshToken(db, mod.refreshTokens.hashRefreshToken(token))!.family_id;
+  }
+
+  function liveRows(owner: string, family: string) {
+    return mod.refreshTokens.listLiveTokensForSubject(db, owner).filter((row) => row.family_id === family);
+  }
+
+  function refreshCookies(values: string[]): string {
+    return values.map((value) => `ward_refresh=${value}`).join("; ");
+  }
+
+  it("signing out ends the family of every value, whichever comes first", async () => {
+    for (const bobFirst of [true, false]) {
+      const { alice, bob } = await twoSessions("203.0.113.130");
+      const response = await app.inject({
+        method: "POST",
+        url: "/refresh/logout",
+        headers: { cookie: refreshCookies(bobFirst ? [bob, alice] : [alice, bob]) },
+      });
+
+      expect(response.statusCode).toBe(204);
+      // Ward's own three clears, host-only as they were set.
+      const raw = ([] as string[]).concat(response.headers["set-cookie"] as string | string[]);
+      expect(raw).toHaveLength(3);
+      for (const header of raw) expect(header.toLowerCase()).not.toContain("domain=");
+      expect(setCookies(response.headers).get("ward_refresh")!.maxAge).toBe("0");
+
+      expect(liveRows(subject, familyOf(alice)), `bob first: ${bobFirst}`).toEqual([]);
+      expect(liveRows(other, familyOf(bob)), `bob first: ${bobFirst}`).toEqual([]);
+    }
+  });
+
+  it("/refresh answers 401, rotates neither, and clears nothing, whichever comes first", async () => {
+    const { alice, bob } = await twoSessions("203.0.113.131");
+
+    for (const values of [
+      [bob, alice],
+      [alice, bob],
+    ]) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/refresh",
+        headers: { cookie: refreshCookies(values) },
+      });
+      expect(response.statusCode).toBe(401);
+      expect(response.json()).toEqual({ error: "invalid_refresh" });
+      // Nothing cleared: Ward cannot tell which copy is its own.
+      expect(response.headers["set-cookie"]).toBeUndefined();
+    }
+
+    // Neither token was spent: each still rotates when it is the only one.
+    for (const token of [alice, bob]) {
+      const alone = await app.inject({
+        method: "POST",
+        url: "/refresh",
+        headers: { cookie: refreshCookies([token]) },
+      });
+      expect(alone.statusCode).toBe(200);
+    }
+  });
+
+  it("/refresh answers 401 for two values from one family, rotated or not", async () => {
+    const loggedIn = await login({ username: "bob", password: PASSWORD }, "203.0.113.132");
+    const r1 = setCookies(loggedIn.headers).get("ward_refresh")!.value;
+    const rotated = await app.inject({ method: "POST", url: "/refresh", payload: { refreshToken: r1 } });
+    expect(rotated.statusCode).toBe(200);
+    const r2 = setCookies(rotated.headers).get("ward_refresh")!.value;
+
+    for (const values of [
+      [r1, r2],
+      [r2, r1],
+    ]) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/refresh",
+        headers: { cookie: refreshCookies(values) },
+      });
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["set-cookie"]).toBeUndefined();
+    }
+  });
+});
+
 describe("the same-token refresh race", () => {
   /**
    * The reviewers' own reproduction, at the HTTP level.

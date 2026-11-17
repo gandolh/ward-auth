@@ -12,7 +12,7 @@ import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
   clearedSessionCookies,
-  readCookie,
+  readCookies,
   sessionCookies,
   wardSecureCookies,
 } from "../../auth/cookie.js";
@@ -376,9 +376,17 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
     // Parsed by hand, not by a route schema: the body is optional (the cookie wins),
     // and a malformed one is no credential, never a 400.
     const parsedBody = refreshBody.safeParse(request.body);
-    const presented =
-      readCookie(request.headers.cookie, REFRESH_COOKIE_NAME) ??
-      (parsedBody.success ? parsedBody.data?.refreshToken : undefined);
+    const cookies = readCookies(request.headers.cookie, REFRESH_COOKIE_NAME);
+
+    if (cookies.length > 1) {
+      // More than one refresh cookie, and the browser's order cannot say which
+      // is Ward's (`auth/cookie.ts`): no token is looked up, nothing is
+      // rotated and nothing is cleared.
+      request.log.info({ outcome: "several_cookies" }, "refresh rejected");
+      return refreshRejected(reply, secure, { clearCookies: false });
+    }
+
+    const presented = cookies[0] ?? (parsedBody.success ? parsedBody.data?.refreshToken : undefined);
 
     if (presented === undefined) {
       // Nothing presented, so nothing to clear. Clearing here is what let a
@@ -488,7 +496,8 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
   });
 
   /**
-   * `POST /logout` — clear both cookies and kill the family.
+   * `POST /logout` — clear both cookies and kill the family of every refresh
+   * token presented.
    *
    * **Always `204`.** No branch on whether the token was real, present, or
    * already dead: logout answering differently for a valid token would make it
@@ -515,11 +524,15 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
     // Parsed by hand, not by a route schema: the body is optional (the cookie wins),
     // and a malformed one is no credential, never a 400.
     const parsedBody = refreshBody.safeParse(request.body);
-    const presented =
-      readCookie(request.headers.cookie, REFRESH_COOKIE_NAME) ??
-      (parsedBody.success ? parsedBody.data?.refreshToken : undefined);
+    const bodyToken = parsedBody.success ? parsedBody.data?.refreshToken : undefined;
+    // Every refresh cookie on the request, each one's family ended below: with
+    // more than one, the browser's order cannot say which is Ward's
+    // (`auth/cookie.ts`), and signing out has to end the person's own session
+    // whichever it is. The body counts only when no cookie came.
+    const cookies = readCookies(request.headers.cookie, REFRESH_COOKIE_NAME);
+    const presented = cookies.length > 0 ? [...new Set(cookies)] : bodyToken === undefined ? [] : [bodyToken];
 
-    if (presented === undefined) {
+    if (presented.length === 0) {
       /**
        * **Nothing presented, so nothing cleared.**
        *
@@ -534,12 +547,14 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
     }
 
     const db = await database();
-    const result = endSession(db, presented);
-    if (result.ended) {
-      request.log.info(
-        { subject: result.subject, family: result.familyId, tokensRevoked: result.revoked },
-        "logout revoked session family",
-      );
+    for (const token of presented) {
+      const result = endSession(db, token);
+      if (result.ended) {
+        request.log.info(
+          { subject: result.subject, family: result.familyId, tokensRevoked: result.revoked },
+          "logout revoked session family",
+        );
+      }
     }
 
     clearSessionCookies(reply, secure);
@@ -611,7 +626,9 @@ function lockedOut(reply: FastifyReply, retryAfterSeconds: number): FastifyReply
  * every failure — unknown, expired, revoked, raced or replayed — because the
  * wire must not confirm that a presented token was genuine.
  *
- * `clearCookies` is the one thing that varies, and only for a **race**.
+ * `clearCookies` is the one thing that varies: off for a **race**, below, and
+ * for a request carrying more than one refresh cookie, where Ward cannot tell
+ * which copy is its own (`auth/cookie.ts`).
  *
  * Clearing exists to stop a client looping on a token that is dead: it lands
  * them on the login page instead. In a race the session is **not** dead — the

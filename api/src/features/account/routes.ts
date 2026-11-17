@@ -194,10 +194,10 @@ export const accountRoutes: FastifyPluginAsyncZod<AccountRoutesOptions> = async 
    */
   async function callerFor(request: FastifyRequest): Promise<Caller | undefined> {
     const db = await database();
-    // Every `ward_session` value on the header, first live one wins — a
-    // browser may still hold the legacy `Path=/` cookie beside the current one
-    // (`auth/access-session.ts`). A console token fails verification there,
-    // which is why the superuser has no account to self-service.
+    // The one `ward_session` value on the header; a request carrying more
+    // than one is signed out (`auth/access-session.ts`). A console token
+    // fails verification there, which is why the superuser has no account to
+    // self-service.
     const live = await liveAccessSession(db, request.headers.cookie, request.log);
     if (live === undefined) return undefined;
 

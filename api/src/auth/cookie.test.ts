@@ -206,8 +206,17 @@ describe("readCookie", () => {
     expect(readCookie("ward_session_extra=nope", "ward_session")).toBeUndefined();
   });
 
-  it("takes the first occurrence — for the refresh cookie, which has one path", () => {
-    expect(readCookie("ward_refresh=real; ward_refresh=shadow", "ward_refresh")).toBe("real");
+  it("takes no value when the header carries the name more than once, in either order", () => {
+    // Ward expects one value per name; with two, the order decides nothing.
+    expect(readCookie("ward_refresh=one; ward_refresh=two", "ward_refresh")).toBeUndefined();
+    expect(readCookie("ward_refresh=two; ward_refresh=one", "ward_refresh")).toBeUndefined();
+    expect(readCookie("ward_session=a.b.c; theme=dark; ward_session=d.e.f", "ward_session")).toBeUndefined();
+    expect(readCookie(["ward_refresh=one", "ward_refresh=two"], "ward_refresh")).toBeUndefined();
+  });
+
+  it("does not count a cleared copy as a second value", () => {
+    expect(readCookie("ward_refresh=; ward_refresh=deadbeef", "ward_refresh")).toBe("deadbeef");
+    expect(readCookie("ward_refresh=deadbeef; ward_refresh=", "ward_refresh")).toBe("deadbeef");
   });
 
   it("handles a missing header and an array header", () => {
@@ -218,8 +227,7 @@ describe("readCookie", () => {
 
 describe("readCookies", () => {
   it("returns every value for a duplicated name, in header order", () => {
-    // The current Path=/ward-api cookie and the legacy Path=/ one, in either
-    // order — the browser chooses.
+    // Two copies of one name, in the order the header lists them.
     expect(readCookies("ward_session=new; theme=dark; ward_session=old", "ward_session")).toEqual(["new", "old"]);
     expect(readCookies("ward_session=old; ward_session=new", "ward_session")).toEqual(["old", "new"]);
   });

@@ -133,8 +133,14 @@ interface StoredCookie {
   path: string;
 }
 
+interface SecondCopy extends StoredCookie {
+  name: string;
+  first: boolean;
+}
+
 class Browser {
   private readonly jar = new Map<string, StoredCookie>();
+  private readonly secondCopies: SecondCopy[] = [];
 
   /** Requests an external URL on Ward's origin, as Caddy would forward it. */
   async request(method: "GET" | "POST", url: string, form?: Record<string, string>): Promise<LightMyRequestResponse> {
@@ -143,10 +149,13 @@ class Browser {
     if (target.origin !== ORIGIN) throw new Error(`the browser only talks to Ward here: ${url}`);
     if (!target.pathname.startsWith(`${STRIPPED}/`)) throw new Error(`an API URL: ${url}`);
 
-    const cookie = [...this.jar.entries()]
-      .filter(([, stored]) => pathMatches(target.pathname, stored.path))
-      .map(([name, stored]) => `${name}=${stored.value}`)
-      .join("; ");
+    const sent = (cookies: (StoredCookie & { name: string })[]) =>
+      cookies.filter((stored) => pathMatches(target.pathname, stored.path)).map((c) => `${c.name}=${c.value}`);
+    const cookie = [
+      ...sent(this.secondCopies.filter((copy) => copy.first)),
+      ...sent([...this.jar.entries()].map(([name, stored]) => ({ name, ...stored }))),
+      ...sent(this.secondCopies.filter((copy) => !copy.first)),
+    ].join("; ");
 
     const response = await app.inject({
       method,
@@ -180,6 +189,14 @@ class Browser {
 
   forget(name: string): void {
     this.jar.delete(name);
+  }
+
+  /**
+   * Send a second value for a cookie name beside the jar's own, which Ward's
+   * responses never replace. `first` puts it ahead on the header.
+   */
+  sendSecondCopy(name: string, value: string, path: string, first: boolean): void {
+    this.secondCopies.push({ name, value, path, first });
   }
 
   private store(response: LightMyRequestResponse): void {
@@ -822,6 +839,58 @@ describe("access_denied", () => {
       expect(response.statusCode, JSON.stringify(overrides)).toBe(400);
       expect(response.headers.location, JSON.stringify(overrides)).toBeUndefined();
     }
+  });
+});
+
+describe("a browser sending two ward_refresh values", () => {
+  beforeEach(() => {
+    db.exec("DELETE FROM refresh_tokens");
+  });
+
+  it("gets the form, never the chooser, and no code, whichever comes first", async () => {
+    await newUser("gwen");
+    await newUser("hugo");
+
+    for (const otherFirst of [true, false]) {
+      const elsewhere = new Browser();
+      expect((await elsewhere.signIn("hugo")).statusCode).toBe(200);
+      const browser = new Browser();
+      expect((await browser.signIn("gwen")).statusCode).toBe(200);
+      // Both sessions predate the sign-in, so one cookie alone would get the chooser.
+      ageSessions();
+      browser.sendSecondCopy(
+        "ward_refresh",
+        elsewhere.cookie("ward_refresh")!.value,
+        `${STRIPPED}/refresh`,
+        otherFirst,
+      );
+
+      const interaction = location(await browser.request("GET", startSignIn().url));
+      const form = `${UI}/login?oidc=${interaction.split("/").pop()}`;
+      const step = `other copy first: ${otherFirst}`;
+
+      expect(location(await browser.request("GET", interaction)), step).toBe(form);
+      const client = await browser.request("GET", `${interaction}/client`);
+      expect(client.json<{ account: string | null }>().account, step).toBeNull();
+      expect(location(await browser.request("GET", `${interaction}/continue`)), step).toBe(form);
+
+      // Signing in at the form again changes nothing while two values are
+      // sent: the resume and Continue still finish nothing.
+      expect((await browser.signIn("gwen")).statusCode).toBe(200);
+      expect(location(await browser.request("GET", interaction)), step).toBe(form);
+      expect(location(await browser.request("GET", `${interaction}/continue`)), step).toBe(form);
+    }
+  });
+
+  it("still offers the chooser with Ward's one cookie", async () => {
+    await newUser("ines");
+    const browser = new Browser();
+    await browser.signIn("ines");
+    ageSessions();
+    const interaction = location(await browser.request("GET", startSignIn().url));
+    expect(location(await browser.request("GET", interaction))).toBe(
+      `${UI}/login?oidc=${interaction.split("/").pop()}&choose=1`,
+    );
   });
 });
 

@@ -243,29 +243,33 @@ describe("GET /account", () => {
   });
 
   /**
-   * A browser that signed in before 2026-10-13 sends the legacy `Path=/`
-   * `ward_session` beside the current one, in an order nobody controls.
+   * Ward expects one `ward_session` value; with two, the order cannot say
+   * which is Ward's.
    */
-  it("finds the live session among duplicate ward_session cookies, in either order", async () => {
+  it("is signed out with two ward_session cookies, in either order, even when one is live", async () => {
     const stale = await login("203.0.113.30");
     mod.refreshTokens.revokeFamily(db, await familyOf(stale.access), "logout");
     const live = await login("203.0.113.31");
+    const alsoLive = await login("203.0.113.32");
 
     for (const values of [
       ["nonsense", live.access],
       [live.access, "nonsense"],
-      // Well signed but signed out: not enough to win.
       [stale.access, live.access],
       [live.access, stale.access],
+      [live.access, alsoLive.access],
     ]) {
       const response = await app.inject({
         method: "GET",
         url: "/account",
         headers: { cookie: values.map((value) => `ward_session=${value}`).join("; ") },
       });
-      expect(response.statusCode, values.join(" / ")).toBe(200);
-      expect(response.json().subject).toBe(subject);
+      expect(response.statusCode, values.join(" / ")).toBe(401);
+      expect(response.json()).toEqual({ error: "unauthorized" });
     }
+
+    // Alone, the live one still opens the account.
+    expect((await asAccount(live.access, { method: "GET", url: "/account" })).statusCode).toBe(200);
   });
 
   /**

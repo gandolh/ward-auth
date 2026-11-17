@@ -30,24 +30,38 @@ import { ACCESS_TOKEN_TTL_SECONDS } from "../tokens/claims.js";
  * it to the endpoints that consume it: `/refresh`, `/refresh/logout` and the
  * OIDC login step at `/refresh/oidc/:uid`.
  *
+ * ## One value per name, or Ward acts on none
+ *
+ * Both cookies are host-only and Ward sets each at one path, so Ward expects
+ * one value per name. When a request carries `ward_session` or `ward_refresh`
+ * more than once, the browser's order says nothing about which value is Ward's
+ * (RFC 6265 only recommends an order), so the request is acted on as if it
+ * carried none:
+ *
+ * - `POST /refresh` answers the ordinary `401`, rotates nothing and clears
+ *   nothing: Ward cannot tell which copy is its own.
+ * - `POST /refresh/logout` ends the family of **every** value it carries, then
+ *   clears Ward's cookies, so signing out ends the person's own session
+ *   whichever copy is theirs.
+ * - The OIDC interaction treats the browser as signed out: the login form,
+ *   never the account chooser, and no sign-in finishes.
+ * - `GET /session` and the `/account` routes treat the request as signed out
+ *   (`auth/access-session.ts`).
+ *
+ * `readCookie` is the one reader of that rule; `readCookies` returns every
+ * value, for logout. The names stay plain, not `__Host-`: that prefix needs
+ * `Path=/` and `Secure` on every origin, which would give up the
+ * `/ward-api/refresh` scoping below and the loopback exception in
+ * `secureCookiesFor`.
+ *
  * ## The legacy `Path=/` access cookie
  *
- * Browsers that signed in before the change still hold a `ward_session` at
- * `Path=/`. A cookie is identified by name, domain **and path**, so setting the
- * new one does not replace the old one: both are stored, and both are sent to
- * `/ward-api/...`, in an order no code should rely on. Two things follow:
- *
- * - Every response that sets or clears the session also expires the
- *   `Path=/` variant (`LEGACY_ACCESS_COOKIE_PATH`), so the duplicate disappears
- *   the next time the person touches Ward.
- * - Readers take **every** `ward_session` value (`readCookies`) and use the
- *   first one that is a live session (`auth/access-session.ts`), never simply
- *   the first one on the header.
- *
- * The refresh cookie never moved, so it has no legacy twin and is read with
- * `readCookie` (first wins) on purpose: trying a second refresh token after a
- * first one would present a rotated token, which is reuse detection's signal
- * and revokes the whole family.
+ * Until 2026-10-13 the access cookie sat at `Path=/`. Every response that sets
+ * or clears the session still expires that variant
+ * (`LEGACY_ACCESS_COOKIE_PATH`). It was set with the access token's 15-minute
+ * `Max-Age`, so no browser should still send it; one that does counts as
+ * signed out on `GET /session`, Ward's pages then refresh, and that response
+ * expires the old copy.
  *
  * ## `/ward-api/refresh` is the *browser's* path, not Fastify's
  *
@@ -222,11 +236,11 @@ function clearCookie(name: string, path: string, secure: boolean): string {
  * Every non-empty value a `Cookie` request header carries for `name`, in
  * header order.
  *
- * A browser sends every stored cookie whose path matches, so the same name can
- * appear more than once — today, a `ward_session` at `Path=/ward-api` next to
- * the legacy one at `Path=/`. RFC 6265 only *recommends* sending the longer
- * path first, so a reader that has to pick one picks by validity, not by
- * position (`auth/access-session.ts`).
+ * A browser sends every stored cookie whose path and domain match, so the same
+ * name can appear more than once. Nothing picks one of them by position: a
+ * reader that acts on one value goes through `readCookie`, which takes none
+ * when there are several, and `/refresh/logout` uses this list to end every
+ * family it names (see the header).
  *
  * A cleared cookie can still be presented by a client that ignored the
  * expiry; an empty value is treated as absent rather than as a token.
@@ -250,14 +264,18 @@ export function readCookies(header: string | string[] | undefined, name: string)
 }
 
 /**
- * The **first** value a `Cookie` request header carries for `name`.
+ * The value a `Cookie` request header carries for `name` when it carries
+ * exactly one, otherwise `undefined`.
  *
- * For a cookie with one path only — the refresh cookie — where a duplicate is a
- * client bug or a shadowing attempt and must not be tried twice (see the
- * header). The access cookie is read with `readCookies`.
+ * Ward sets each of its cookies once, at one path, so it expects one value;
+ * with more than one, the header's order says nothing about which is Ward's.
+ * Taking none is the rule every reader of
+ * `ward_session` and `ward_refresh` follows (see the header). A caller that has
+ * to tell "none" from "several" apart reads `readCookies`.
  */
 export function readCookie(header: string | string[] | undefined, name: string): string | undefined {
-  return readCookies(header, name)[0];
+  const values = readCookies(header, name);
+  return values.length === 1 ? values[0] : undefined;
 }
 
 /**

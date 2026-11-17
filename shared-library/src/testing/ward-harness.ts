@@ -372,6 +372,14 @@ export class Browser {
       if (at.origin === this.target.origin && !at.pathname.startsWith(`${this.target.apiPrefix}/`)) {
         return { landed: at, askedForPassword };
       }
+      // Ward's account chooser, offering a session from before this sign-in:
+      // the person picks "Continue as <name>". Whether it shows depends on
+      // the provider's whole-second clock, so a silent sign-in meets it only
+      // when the second ticks between the earlier sign-in and this one.
+      if (at.origin === WARD_ORIGIN && at.pathname === "/ward/login" && at.searchParams.get("choose") === "1") {
+        next = `${WARD_ORIGIN}${WARD_PREFIX}/refresh/oidc/${at.searchParams.get("oidc")}/continue`;
+        continue;
+      }
       if (at.origin === WARD_ORIGIN && at.pathname === "/ward/login") {
         askedForPassword = true;
         if (username === undefined) throw new Error("Ward asked for a password; no username given");

@@ -606,6 +606,38 @@ describe("trusted proxies", () => {
     expect(lockoutEntryCountForTests()).toBe(6);
   });
 
+  it("keys a trusted peer on itself when the last forwarded element is not an address", () => {
+    const warn = vi.fn();
+    const key = (header: string | string[]) => lockoutKeyFor("172.19.0.3", header, { trustedProxies: bridge, warn });
+
+    expect(key("not-an-ip")).toBe("172.19.0.3");
+    expect(key("unknown")).toBe("172.19.0.3");
+    expect(key("198.51.100.7:4711")).toBe("172.19.0.3");
+    expect(key("2001:db8::1:2::3")).toBe("172.19.0.3");
+    // The last element decides; an earlier address is never used instead.
+    expect(key("198.51.100.7, not-an-ip")).toBe("172.19.0.3");
+    expect(key(["198.51.100.7", "not-an-ip"])).toBe("172.19.0.3");
+    expect(lockoutKeyFor("127.0.0.1", "198.51.100.7, not-an-ip")).toBe("127.0.0.1");
+
+    // Said once, as the no-header case says it.
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect((warn.mock.calls[0] as [Record<string, unknown>, string])[0]).toEqual({
+      peer: "172.19.0.3",
+      bucket: "172.19.0.3",
+    });
+
+    // Addresses in every spelling the proxy may use still count.
+    expect(key("[2001:db8::1]:4711")).toBe("2001:db8::1");
+    expect(key("::ffff:198.51.100.7")).toBe("198.51.100.7");
+  });
+
+  it("still warns about any header from an untrusted peer, address or not", () => {
+    const warn = vi.fn();
+    expect(lockoutKeyFor("203.0.113.9", "not-an-ip", { warn })).toBe("203.0.113.9");
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect((warn.mock.calls[0] as [Record<string, unknown>, string])[1]).toContain("WARD_TRUSTED_PROXIES");
+  });
+
   it("still fails closed, and loudly, when a trusted peer forwards nothing", () => {
     const warn = vi.fn();
 

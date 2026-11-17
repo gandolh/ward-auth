@@ -649,21 +649,28 @@ export function lockoutKeyFor(
   options: LockoutKeyOptions = {},
 ): string {
   const peer = normaliseAddress(socketAddress);
-  const forwarded = lastForwardedAddress(forwardedFor);
+  const forwarded = lastForwardedElement(forwardedFor);
 
   if (peer !== undefined && !isTrustedPeer(peer, options.trustedProxies ?? [])) {
     if (forwarded !== undefined) warnIgnoredForwarded(options.warn, peer);
     return peer;
   }
 
-  if (forwarded !== undefined) {
+  // Only an address is a client. The proxy appends the address it saw, so a
+  // last element that is anything else (a name, `unknown`, a port glued on)
+  // did not come from it, and keying on it would let whoever wrote it name the
+  // counter and the `ip` every log row records. Such a request is keyed as if
+  // nothing was forwarded. Never an earlier element instead: those are the
+  // client's own.
+  if (forwarded !== undefined && isIP(forwarded) !== 0) {
     return forwarded;
   }
 
-  // No usable address at all — a trusted caller with no forwarding header, a
-  // Unix socket, or a peer the runtime did not report. One shared bucket is the
-  // safe fallback: it throttles rather than letting the attempt through
-  // uncounted. Say so, once per interval.
+  // No usable address at all — a trusted caller with no forwarding header or
+  // one whose last element is not an address, a Unix socket, or a peer the
+  // runtime did not report. One shared bucket is the safe fallback: it
+  // throttles rather than letting the attempt through uncounted. Say so, once
+  // per interval.
   const bucket = peer ?? "unknown";
   warnAmbiguousAddress(options.warn, peer, bucket);
   return bucket;
@@ -820,7 +827,7 @@ function warnAmbiguousAddress(warn: LockoutKeyOptions["warn"], peer: string | un
   warn(
     { peer: peer ?? null, bucket },
     "no client address available for the login lockout: the peer is loopback or a trusted " +
-      "proxy (or unreported) and no X-Forwarded-For arrived, so every caller now shares one " +
+      "proxy (or unreported) and no X-Forwarded-For address arrived, so every caller now shares one " +
       "failure counter and five failures anywhere will answer 429 to everybody. Check that " +
       "Caddy sets X-Forwarded-For and that nothing proxies in front of it.",
   );
@@ -844,7 +851,12 @@ function warnIgnoredForwarded(warn: LockoutKeyOptions["warn"], peer: string): vo
   );
 }
 
-function lastForwardedAddress(forwardedFor: string | string[] | undefined): string | undefined {
+/**
+ * The last non-blank `X-Forwarded-For` element, normalised. Not yet known to
+ * be an address: `lockoutKeyFor` checks that, so an untrusted peer that sent
+ * any header at all is still warned about.
+ */
+function lastForwardedElement(forwardedFor: string | string[] | undefined): string | undefined {
   if (forwardedFor === undefined) return undefined;
 
   // Node collapses repeated headers into an array for most headers; joining and

@@ -146,6 +146,46 @@ describe("a proxy inside WARD_TRUSTED_PROXIES", () => {
   });
 });
 
+describe("a trusted peer whose last forwarded element is not an address", () => {
+  it("is keyed on its socket peer, so names do not each get a budget", async () => {
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      const response = await badLogin(PROXY, `not-an-ip-${attempt}`, `user-${attempt}`);
+      expect(response.statusCode).toBe(401);
+    }
+
+    // A sixth name changes nothing: it is the proxy's own address that is spent.
+    expect((await badLogin(PROXY, "not-an-ip-6", "user-6")).statusCode).toBe(429);
+    expect((await badLogin(PROXY, "198.51.100.70, not-an-ip", "user-7")).statusCode).toBe(429);
+
+    // A real forwarded address behind the same proxy keeps its own budget.
+    expect((await badLogin(PROXY, "198.51.100.70", "user-8")).statusCode).toBe(401);
+  });
+
+  it("never writes a non-address into a row's ip", async () => {
+    const { createUser } = await import("../../db/users.js");
+    const { hashPassword } = await import("../../auth/password.js");
+    const { listAudit } = await import("../../db/audit-log.js");
+    createUser(db, { username: "carol", passwordHash: await hashPassword("carol-password-long") });
+    db.exec("DELETE FROM audit_log");
+
+    expect((await badLogin(PROXY, "not-an-ip", "carol")).statusCode).toBe(401);
+    const consoleAttempt = await app.inject({
+      method: "POST",
+      url: "/console/login",
+      remoteAddress: PROXY,
+      headers: { "x-forwarded-for": "not-an-ip" },
+      payload: { username: "test-superuser", password: "wrong" },
+    });
+    expect(consoleAttempt.statusCode).toBe(401);
+
+    const ips = [
+      ...listAudit(db, { action: "session.login_failed" }),
+      ...listAudit(db, { action: "console.login.failed" }),
+    ].map((row) => (JSON.parse(row.detail!) as { ip: string }).ip);
+    expect(ips).toEqual([PROXY, PROXY]);
+  });
+});
+
 describe("a peer outside WARD_TRUSTED_PROXIES", () => {
   it("is keyed on itself, whatever it forwards", async () => {
     // Exactly the 2026-10-13 outage, reproduced on purpose: an unlisted proxy puts

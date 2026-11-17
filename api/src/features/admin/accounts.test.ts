@@ -92,6 +92,58 @@ it("answers 401 with no console session, on every route", async () => {
   expect(listAudit(db)).toHaveLength(0);
 });
 
+/**
+ * A write whose browser says it came from another origin. `Sec-Fetch-Site` is
+ * not `same-origin`, so the guard answers without reading the config, which
+ * this suite does not set.
+ */
+const FROM_ANOTHER_ORIGIN = {
+  origin: "https://app.example.test",
+  "sec-fetch-site": "same-site",
+  "sec-fetch-mode": "no-cors",
+  "content-length": "0",
+};
+
+describe("a write from another origin", () => {
+  it("cannot disable an account", async () => {
+    const subject = await createAccount();
+    issueRefreshToken(db, subject);
+    db.exec("DELETE FROM audit_log");
+
+    const response = await asConsole({
+      method: "POST",
+      url: `/console/accounts/${subject}/disable`,
+      headers: FROM_ANOTHER_ORIGIN,
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "cross_site" });
+    expect(findUserBySubject(db, subject)!.disabled_at).toBeNull();
+    expect(listLiveTokensForSubject(db, subject)).toHaveLength(1);
+    expect(listAudit(db)).toHaveLength(0);
+  });
+
+  it("cannot re-enable a disabled account, with no body or a text/plain one", async () => {
+    const subject = await createAccount();
+    await asConsole({ method: "POST", url: `/console/accounts/${subject}/disable` });
+    const disabledAt = findUserBySubject(db, subject)!.disabled_at;
+    expect(disabledAt).not.toBeNull();
+    db.exec("DELETE FROM audit_log");
+
+    for (const init of [
+      { headers: FROM_ANOTHER_ORIGIN },
+      { headers: { ...FROM_ANOTHER_ORIGIN, "content-type": "text/plain", "content-length": "1" }, payload: "x" },
+    ]) {
+      const response = await asConsole({ method: "POST", url: `/console/accounts/${subject}/enable`, ...init });
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toEqual({ error: "cross_site" });
+    }
+
+    expect(findUserBySubject(db, subject)!.disabled_at).toBe(disabledAt);
+    expect(listAudit(db)).toHaveLength(0);
+  });
+});
+
 describe("creating an account", () => {
   it("stores the account with no email, a real hash, and no grants at all", async () => {
     const response = await asConsole({

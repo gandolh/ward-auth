@@ -37,8 +37,10 @@ paths:
   refusal, a page); each says why, and each is an exception in
   `scripts/conventions.json`.
 - The console guard runs in `preValidation`, so a signed-out caller's
-  malformed request is a 401, not a 400.
-- The lazy `await import("../../config.js")` (18 sites) is deliberate:
+  malformed request is a 401, not a 400. For every method but GET and HEAD
+  it first asks `sameOrigin` (`auth/same-origin.ts`, the one copy of the
+  rule), and another origin is `403 { error: "cross_site" }`.
+- The lazy `await import("../../config.js")` (19 sites) is deliberate:
   `buildApp()` must not touch the database or the config before `server.ts`
   has migrated. Don't hoist them to static imports.
 - A malformed body is a client bug, not a lockout failure: it gets a 400 and

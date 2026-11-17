@@ -32,6 +32,7 @@ import {
   rotateRefreshToken,
   sessionForRefreshToken,
 } from "../../auth/refresh.js";
+import { sameOrigin } from "../../auth/same-origin.js";
 import { newFamilyId } from "../../db/refresh-tokens.js";
 
 /**
@@ -72,6 +73,9 @@ import { newFamilyId } from "../../db/refresh-tokens.js";
  * server-side callers send neither, and rejecting a header-less
  * request would break every non-browser caller to defend against a browser-only
  * attack.
+ *
+ * The predicate is `sameOrigin` in `auth/same-origin.ts`, which the account
+ * and console routes share.
  *
  * `/logout` still answers `204` for every request that presented a token, valid
  * or not; that oracle property is a recorded acceptance criterion. The
@@ -566,41 +570,6 @@ function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): st
       request.log.warn(detail, message);
     },
   });
-}
-
-/**
- * Whether the request is same-origin enough to act on the session cookies.
- *
- * **Absent headers pass.** `Sec-Fetch-Site` and `Origin` are set by browsers;
- * server-side callers send neither, and refusing a header-less
- * request would break every non-browser caller in order to defend against a
- * browser-only attack. What the check catches is the case that actually exists:
- * a browser that *did* send them and said the request came from somewhere else.
- *
- * `Sec-Fetch-Site` must be exactly `same-origin` — not `same-site`, because the
- * estate is one origin and there is no sibling origin a legitimate request could
- * come from, and not `none`, because nothing navigates directly into these two
- * endpoints. An unparseable `Origin` (including the literal `null` some
- * cross-origin contexts send) is a mismatch, which is the direction to fail in.
- */
-function sameOrigin(request: FastifyRequest, publicOrigin: string): boolean {
-  const fetchSite = request.headers["sec-fetch-site"];
-  if (typeof fetchSite === "string" && fetchSite.length > 0 && fetchSite !== "same-origin") {
-    return false;
-  }
-
-  const origin = request.headers.origin;
-  if (origin !== undefined && origin.length > 0) {
-    let parsed: URL;
-    try {
-      parsed = new URL(origin);
-    } catch {
-      return false;
-    }
-    if (parsed.origin !== publicOrigin) return false;
-  }
-
-  return true;
 }
 
 /**

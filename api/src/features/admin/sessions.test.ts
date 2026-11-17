@@ -70,6 +70,28 @@ it("answers 401 with no console session, on every route", async () => {
   expect(listAudit(db)).toHaveLength(0);
 });
 
+it("takes no revoke-all from another origin, and revokes nothing", async () => {
+  signIn();
+  signIn();
+
+  const response = await asConsole({
+    method: "POST",
+    url: `/console/accounts/${subject}/sessions/revoke`,
+    // A browser that says the request came from another origin.
+    headers: {
+      origin: "https://app.example.test",
+      "sec-fetch-site": "same-site",
+      "sec-fetch-mode": "no-cors",
+      "content-length": "0",
+    },
+  });
+
+  expect(response.statusCode).toBe(403);
+  expect(response.json()).toEqual({ error: "cross_site" });
+  expect(listLiveTokensForSubject(db, subject)).toHaveLength(2);
+  expect(listAudit(db)).toHaveLength(0);
+});
+
 describe("GET .../sessions", () => {
   it("projects one row per family with no token hash anywhere", async () => {
     const first = signIn();

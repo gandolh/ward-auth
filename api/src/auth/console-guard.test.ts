@@ -55,6 +55,9 @@ beforeAll(async () => {
     const session = guard.getConsoleSession(request);
     return reply.code(200).send({ reached: true, sessionId: session?.id ?? null });
   });
+  app.post("/console/probe", { preValidation: guard.requireConsoleSession }, async (_request, reply) =>
+    reply.code(200).send({ reached: true }),
+  );
   await app.ready();
 });
 
@@ -209,5 +212,69 @@ describe("the console guard rejects everything else with one opaque 401", () => 
 
     expect(response.statusCode).toBe(401);
     expect(seen).toBe("unset");
+  });
+});
+
+describe("the console guard takes writes only from Ward's own pages", () => {
+  const FOREIGN = "https://app.example.test";
+
+  async function post(headers: Record<string, string>, withCookie = true) {
+    const { token } = superuser.openConsoleSession();
+    return app.inject({
+      method: "POST",
+      url: "/console/probe",
+      headers: { ...headers, ...(withCookie ? { cookie: cookie(token) } : {}) },
+      ...(headers["content-type"] === "application/json" ? { payload: "{}" } : {}),
+    });
+  }
+
+  it("admits the console UI's own request: Ward's origin, same-origin fetch, JSON", async () => {
+    const response = await post({
+      origin: ORIGIN,
+      "sec-fetch-site": "same-origin",
+      "sec-fetch-mode": "cors",
+      "content-type": "application/json",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ reached: true });
+  });
+
+  it("admits a caller that sends neither header, as a script does", async () => {
+    expect((await post({})).statusCode).toBe(200);
+  });
+
+  it("refuses another origin with 403 cross_site and never runs the handler", async () => {
+    const refused: Record<string, string>[] = [
+      { origin: FOREIGN, "sec-fetch-site": "same-site", "sec-fetch-mode": "no-cors" },
+      { origin: FOREIGN, "sec-fetch-site": "cross-site" },
+      { origin: FOREIGN },
+      { origin: "null" },
+      { "sec-fetch-site": "same-site" },
+      { "sec-fetch-site": "none" },
+      { origin: ORIGIN, "sec-fetch-site": "same-site" },
+    ];
+    for (const headers of refused) {
+      const response = await post(headers);
+      expect(response.statusCode, JSON.stringify(headers)).toBe(403);
+      expect(response.json()).toEqual({ error: "cross_site" });
+      expect(response.headers["cache-control"]).toBe("no-store");
+      expect(response.body).not.toContain("reached");
+    }
+  });
+
+  it("decides on headers before the cookie, so a signed-out request from another origin is a 403 too", async () => {
+    const response = await post({ origin: FOREIGN, "sec-fetch-site": "same-site" }, false);
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "cross_site" });
+  });
+
+  it("leaves reads alone: a GET from another origin with a live session is admitted", async () => {
+    const { token } = superuser.openConsoleSession();
+    const response = await app.inject({
+      method: "GET",
+      url: "/console/probe",
+      headers: { cookie: cookie(token), origin: FOREIGN, "sec-fetch-site": "same-site" },
+    });
+    expect(response.statusCode).toBe(200);
   });
 });

@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { sameOriginAsWard } from "./same-origin.js";
 import { readConsoleCookie, resolveConsoleSession, type ConsoleSession } from "./superuser.js";
 
 /**
@@ -59,8 +60,12 @@ export function getConsoleSession(request: FastifyRequest): ConsoleSession | und
   return attached.get(request);
 }
 
+/** The methods that only read. Every other method on the console changes something. */
+const READS = new Set(["GET", "HEAD"]);
+
 /**
- * Fastify hook: admit a live console session, or answer 401.
+ * Fastify hook: admit a live console session, or answer 401. A request that
+ * changes something must also come from Ward's own pages, or it is a 403.
  *
  * Attach it either way round, whichever suits the plugin, and in
  * `preValidation` wherever the route has request schemas, so a signed-out
@@ -73,6 +78,16 @@ export function getConsoleSession(request: FastifyRequest): ConsoleSession | und
  * // or one route at a time
  * app.get("/console/session", { preHandler: requireConsoleSession }, handler);
  * ```
+ *
+ * ## Writes come from Ward's own pages
+ *
+ * For every method but `GET` and `HEAD`, the request must pass `sameOrigin`
+ * (`same-origin.ts`) against `WARD_PUBLIC_ORIGIN`, or it is
+ * `403 { "error": "cross_site" }`, the body the account routes send for the
+ * same case. The 403 is decided on headers alone, before the cookie is read,
+ * so it says nothing about whether a session exists. The console UI is served
+ * from Ward's origin and calls the API there with relative URLs, so its own
+ * requests pass.
  *
  * ## The failure mode leaks nothing
  *
@@ -93,6 +108,10 @@ export async function requireConsoleSession(
   reply: FastifyReply,
 ): Promise<FastifyReply | undefined> {
   reply.header("cache-control", "no-store");
+
+  if (!READS.has(request.method) && !(await sameOriginAsWard(request))) {
+    return reply.code(403).send({ error: "cross_site" });
+  }
 
   const token = readConsoleCookie(request.headers.cookie);
   const session = token === undefined ? undefined : resolveConsoleSession(token);

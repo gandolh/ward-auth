@@ -432,6 +432,64 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
     });
   });
 
+  describe("only Ward's own pages sign in or out", () => {
+    const FOREIGN = { origin: "https://app.example.test", "sec-fetch-site": "same-site" };
+
+    it("signs in from the console UI's own page", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/console/login",
+        remoteAddress: "203.0.113.7",
+        headers: { origin: ORIGIN, "sec-fetch-site": "same-origin", "content-type": "application/json" },
+        payload: JSON.stringify({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD }),
+      });
+      expect(response.statusCode).toBe(200);
+      expect(consoleCookie(response)).toContain("ward_console=wcs_");
+    });
+
+    it("refuses a sign-in from another origin before the lockout, the body or a log row", async () => {
+      for (const headers of [FOREIGN, { origin: "https://app.example.test" }, { origin: "null" }]) {
+        const response = await app.inject({
+          method: "POST",
+          url: "/console/login",
+          remoteAddress: "203.0.113.7",
+          headers,
+          payload: { username: ADMIN_USERNAME, password: ADMIN_PASSWORD },
+        });
+        expect(response.statusCode, JSON.stringify(headers)).toBe(403);
+        expect(response.json()).toEqual({ error: "cross_site" });
+        expect(consoleCookie(response)).toBeUndefined();
+      }
+      // A refused bodiless one too.
+      const bodiless = await app.inject({ method: "POST", url: "/console/login", headers: FOREIGN });
+      expect(bodiless.statusCode).toBe(403);
+
+      expect(listAudit(db)).toHaveLength(0);
+      expect(superuser.activeConsoleSessionCount()).toBe(0);
+    });
+
+    it("refuses a sign-out from another origin and leaves the session live", async () => {
+      const signedIn = await login({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD });
+      const cookie = consoleCookie(signedIn)!.split(";")[0]!;
+      db.exec("DELETE FROM audit_log");
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/console/logout",
+        headers: { ...FOREIGN, cookie },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toEqual({ error: "cross_site" });
+      expect(consoleCookie(response)).toBeUndefined();
+      expect(superuser.activeConsoleSessionCount()).toBe(1);
+      expect(listAudit(db)).toHaveLength(0);
+
+      const still = await app.inject({ method: "GET", url: "/console/session", headers: { cookie } });
+      expect(still.statusCode).toBe(200);
+    });
+  });
+
   describe("no console route is reachable with an ordinary account's token", () => {
     it("refuses a valid Ward access token on the console", async () => {
       const { mintAccessToken } = await import("../../tokens/service.js");

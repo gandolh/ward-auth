@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
-import type { FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import {
@@ -12,6 +12,7 @@ import {
   type TrustedProxies,
 } from "../../auth/lockout.js";
 import { requireConsoleSession, getConsoleSession } from "../../auth/console-guard.js";
+import { sameOriginAsWard } from "../../auth/same-origin.js";
 import {
   checkSuperuserCredentials,
   closeConsoleSession,
@@ -152,6 +153,14 @@ function consoleLockoutTarget(address: string): LockoutTarget {
   return { surface: "console", address };
 }
 
+/**
+ * `403`, decided on headers alone and before the cookie, the lockout or the
+ * body is read. The account routes send the same body for the same case.
+ */
+function crossSite(reply: FastifyReply): FastifyReply {
+  return reply.code(403).send({ error: "cross_site" });
+}
+
 /** `ConsoleSessionView` as a response schema, in the order `sessionView` builds it. */
 const sessionViewReply = z.object({
   session: z.object({
@@ -170,8 +179,8 @@ const sessionViewReply = z.object({
  * `requireConsoleSession`'s 401 too, which is why it is `errorReply`, which
  * carries the guard's `{ "error": "unauthorized" }` through byte for byte.
  */
-const loginSchema = { 200: sessionViewReply, 400: errorReply, 401: errorReply, 429: errorReply };
-const logoutSchema = { 204: z.null() };
+const loginSchema = { 200: sessionViewReply, 400: errorReply, 401: errorReply, 403: errorReply, 429: errorReply };
+const logoutSchema = { 204: z.null(), 403: errorReply };
 const sessionSchema = { 200: sessionViewReply, 401: errorReply };
 
 export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async (app, options) => {
@@ -196,6 +205,9 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
    *
    * The order of operations is the security-relevant part:
    *
+   *  0. **Ward's own pages only.** A request from another origin is
+   *     `403 { "error": "cross_site" }` on headers alone (`auth/same-origin.ts`),
+   *     before the lockout, the body or a row in `audit_log`.
    *  1. **Lockout first.** A locked-out caller never reaches the comparison, so
    *     the endpoint costs nothing to refuse. No artificial delay is added
    *     anywhere — `/login`'s reasoning holds here too: holding a connection
@@ -211,6 +223,8 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
    *     by a test against both tables.
    */
   app.post("/console/login", { schema: { response: loginSchema } }, async (request, reply) => {
+    if (!(await sameOriginAsWard(request))) return crossSite(reply);
+
     const db = await resolveDb();
     const ip = lockoutKey(request, trustedProxies);
 
@@ -298,7 +312,8 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
   /**
    * `POST /console/logout`
    *
-   * Ungated and idempotent: it clears the cookie whatever happens, so a caller
+   * Ungated and idempotent: past the same-origin check `/console/login` makes
+   * first, it clears the cookie whatever happens, so a caller
    * holding a session that expired minutes ago still ends up in a clean state
    * rather than staring at a 401 with a dead cookie it cannot remove. An audit
    * row is written only when a live session was actually closed — an
@@ -306,6 +321,8 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
    * anonymous caller a way to fill the log.
    */
   app.post("/console/logout", { schema: { response: logoutSchema } }, async (request, reply) => {
+    if (!(await sameOriginAsWard(request))) return crossSite(reply);
+
     const token = readConsoleCookie(request.headers.cookie);
     const closed = token === undefined ? undefined : closeConsoleSession(token);
 

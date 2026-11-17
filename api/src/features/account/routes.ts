@@ -26,6 +26,7 @@ import {
 } from "../../auth/lockout.js";
 import { hashPassword, MAX_PASSWORD_LENGTH, PasswordPolicyError, verifyPassword } from "../../auth/password.js";
 import { issueRefreshToken } from "../../auth/refresh.js";
+import { sameOrigin } from "../../auth/same-origin.js";
 
 /**
  * `/account` — the self-service surface. `GET /account`,
@@ -524,42 +525,4 @@ function lockoutKey(request: FastifyRequest, trustedProxies: TrustedProxies): st
       request.log.warn(detail, message);
     },
   });
-}
-
-/**
- * Whether the request is same-origin enough to act on the session cookies.
- *
- * A deliberate duplicate of the predicate in `features/auth/routes.ts`, which does not
- * export it. The rule is stated in one place
- * — that file's header — and both copies must agree; if a third surface ever
- * needs it, that is the moment to lift it into `auth/cookie.ts` rather than
- * write it a third time.
- *
- * **Absent headers pass.** `Sec-Fetch-Site` and `Origin` are set by browsers,
- * and a server-side caller sends neither; refusing a header-less
- * request would break every non-browser caller to defend against a browser-only
- * attack. `Sec-Fetch-Site` must be exactly `same-origin` — not `same-site`
- * (the estate is one origin, so there is no sibling a legitimate request could
- * come from) and not `none` (nothing navigates directly into these endpoints).
- * An unparseable `Origin`, including the literal `null` some cross-origin
- * contexts send, is a mismatch, which is the direction to fail in.
- */
-function sameOrigin(request: FastifyRequest, publicOrigin: string): boolean {
-  const fetchSite = request.headers["sec-fetch-site"];
-  if (typeof fetchSite === "string" && fetchSite.length > 0 && fetchSite !== "same-origin") {
-    return false;
-  }
-
-  const origin = request.headers.origin;
-  if (origin !== undefined && origin.length > 0) {
-    let parsed: URL;
-    try {
-      parsed = new URL(origin);
-    } catch {
-      return false;
-    }
-    if (parsed.origin !== publicOrigin) return false;
-  }
-
-  return true;
 }

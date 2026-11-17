@@ -9,7 +9,7 @@ import { getApp } from "../db/apps.js";
 import { wardRole, wardSessionFor, type WardBrowserSession } from "./account.js";
 import { epochNow } from "./adapter.js";
 import { recordAuthorization } from "./authorizations.js";
-import { INTERACTION_INTERNAL_PREFIX, loginUrlFor, type OidcLayout } from "./layout.js";
+import { INTERACTION_INTERNAL_PREFIX, chooserUrlFor, loginUrlFor, type OidcLayout } from "./layout.js";
 import { GRANT_TTL_SECONDS, ID_TOKEN_CLAIMS, plainPage } from "./provider.js";
 
 /**
@@ -24,10 +24,18 @@ import { GRANT_TTL_SECONDS, ID_TOKEN_CLAIMS, plainPage } from "./provider.js";
  *     person goes to Ward's own login page (`?oidc=<uid>`), which signs them in
  *     the ordinary way — `POST /login`, an ordinary refresh family — and sends
  *     the browser back here.
- *  2. **The account must be usable and hold a grant for the client's app.**
+ *  2. **A session from before this sign-in is offered, not used.** The login
+ *     page asks "Continue as <name>" or "Use another account" (`&choose=1`),
+ *     as Google's account chooser does, so signing out of an app and pressing
+ *     "Sign in with Ward" again can end in a different account. Continue is
+ *     `GET /refresh/oidc/:uid/continue`; another account is the ordinary form.
+ *     A session born during this interaction was just chosen by typing a
+ *     password, so it finishes without asking twice. `interactionMode` is the
+ *     one place that decides.
+ *  3. **The account must be usable and hold a grant for the client's app.**
  *     Otherwise the app gets `access_denied` at its redirect URI, which is what
  *     it shows its own message for (decisions-oidc.md).
- *  3. **First-party clients never see a consent screen.** The route grants the
+ *  4. **First-party clients never see a consent screen.** The route grants the
  *     `openid` scope itself and finishes the interaction in one step.
  *
  * Nothing here compares an `Origin` with Ward's, or sets a cookie the flow
@@ -109,10 +117,13 @@ export async function interactionRoutes(
     return reply.redirect(returnTo, 303);
   }
 
-  // No HEAD twins for the two routes that finish an interaction: Fastify would
-  // run the same handler for HEAD, and finishing a sign-in is not something a
-  // link checker should be able to do. `/verify` made the same call.
-  app.get(`${INTERACTION_INTERNAL_PREFIX}/:uid`, { exposeHeadRoute: false }, async (request, reply) => {
+  /**
+   * `GET /refresh/oidc/:uid` (`chose` false), where the provider and the login
+   * form send the browser, and `GET /refresh/oidc/:uid/continue` (`chose`
+   * true), the chooser's "Continue as <name>". Continue only skips the
+   * chooser: an interaction that needs the password still gets the form.
+   */
+  async function resume(request: FastifyRequest, reply: FastifyReply, chose: boolean) {
     const { db, provider } = await resolve();
     const details = await loadInteraction(provider, request, reply);
     if (details === undefined) return reply;
@@ -120,9 +131,10 @@ export async function interactionRoutes(
     const clientId = String(details.params["client_id"]);
     const session = wardSessionFor(db, readCookie(request.headers.cookie, REFRESH_COOKIE_NAME));
 
-    if (session === undefined || needsFreshSignIn(details, session)) {
-      return reply.redirect(loginUrlFor(layout, details.uid), 303);
-    }
+    const mode = interactionMode(details, session, chose);
+    // `session === undefined` is always `form`; restated so the type narrows.
+    if (session === undefined || mode === "form") return reply.redirect(loginUrlFor(layout, details.uid), 303);
+    if (mode === "choose") return reply.redirect(chooserUrlFor(layout, details.uid), 303);
 
     if (session.user.disabled_at !== null) {
       return deny({ db, provider }, request, reply, clientId, "account_disabled", session);
@@ -171,13 +183,25 @@ export async function interactionRoutes(
       { mergeWithLastSubmission: false },
     );
     return reply.redirect(returnTo, 303);
-  });
+  }
+
+  // No HEAD twins for the routes that finish an interaction: Fastify would
+  // run the same handler for HEAD, and finishing a sign-in is not something a
+  // link checker should be able to do. `/verify` made the same call.
+  app.get(`${INTERACTION_INTERNAL_PREFIX}/:uid`, { exposeHeadRoute: false }, (request, reply) =>
+    resume(request, reply, false),
+  );
+  app.get(`${INTERACTION_INTERNAL_PREFIX}/:uid/continue`, { exposeHeadRoute: false }, (request, reply) =>
+    resume(request, reply, true),
+  );
 
   /**
    * `GET /refresh/oidc/:uid/client` — which app the login page is signing
-   * someone in to, so it can say "Continue to Atrium". The display name is not
-   * a secret, and the interaction cookie is still required, so this names the
-   * app only to the browser already in the flow.
+   * someone in to, so it can say "Continue to Atrium", and, when the page is
+   * the chooser, whose session it offers (`account`, otherwise `null`). Neither
+   * is a secret from this browser: the interaction cookie is still required,
+   * so this answers only the browser already in the flow, about its own
+   * session.
    */
   app.get(`${INTERACTION_INTERNAL_PREFIX}/:uid/client`, async (request, reply) => {
     const { db, provider } = await resolve();
@@ -185,7 +209,10 @@ export async function interactionRoutes(
     if (details === undefined) return reply;
     const clientId = String(details.params["client_id"]);
     const row = getApp(db, clientId);
-    return reply.code(200).send({ clientId, name: row?.name ?? clientId });
+    const session = wardSessionFor(db, readCookie(request.headers.cookie, REFRESH_COOKIE_NAME));
+    const account =
+      session !== undefined && interactionMode(details, session, false) === "choose" ? session.user.username : null;
+    return reply.code(200).send({ clientId, name: row?.name ?? clientId, account });
   });
 
   /**
@@ -200,6 +227,25 @@ export async function interactionRoutes(
     if (details === undefined) return reply;
     return deny({ db, provider }, request, reply, String(details.params["client_id"]), "cancelled");
   });
+}
+
+/**
+ * What an interaction gets from this browser's Ward session:
+ *
+ *  - `form`: no session, or one too old for `prompt=login` / `max_age`.
+ *  - `finish`: the person chose it, on the chooser (`chose`) or by typing a
+ *    password during this interaction (the family was born no earlier than the
+ *    interaction, in the provider's whole seconds).
+ *  - `choose`: a session from before this sign-in, offered on the chooser.
+ */
+export function interactionMode(
+  details: { iat?: number; params: Record<string, unknown> },
+  session: WardBrowserSession | undefined,
+  chose: boolean,
+): "form" | "finish" | "choose" {
+  if (session === undefined || needsFreshSignIn(details, session)) return "form";
+  if (chose) return "finish";
+  return details.iat !== undefined && session.authTime >= details.iat ? "finish" : "choose";
 }
 
 /**

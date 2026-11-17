@@ -74,3 +74,8 @@ export function interactionUrl(layout: OidcLayout, uid: string): string {
 export function loginUrlFor(layout: OidcLayout, uid: string): string {
   return `${layout.loginUrl}?oidc=${encodeURIComponent(uid)}`;
 }
+
+/** The login page as the account chooser: `<ui>/login?oidc=<uid>&choose=1`. */
+export function chooserUrlFor(layout: OidcLayout, uid: string): string {
+  return `${loginUrlFor(layout, uid)}&choose=1`;
+}

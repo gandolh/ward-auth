@@ -67,6 +67,25 @@ This revises the roles clause of [decisions.md](./decisions.md)'s "Ward owns
 access grants". Ward still decides *whether* a Ward account may get in, not
 what it may do once inside.
 
+## Ward asks which account before using a session from earlier
+_2026-11-17, owner answer_ — When the browser already has a Ward session from
+before the sign-in started, Ward no longer finishes on its own. The login page
+asks "Continue as <name>" or "Use another account", every time, as Google's
+account chooser does: signing out of an app ends the app's session, not
+Ward's, so without the question the same account came straight back. A
+session born during the sign-in (the person just typed the password) finishes
+without asking twice, and `prompt=login` / `max_age` still demand the form.
+One function in `api/src/oidc/interaction.ts`, `interactionMode`, decides
+`form`, `finish` or `choose`; Continue is `GET /refresh/oidc/:uid/continue`,
+and `GET /refresh/oidc/:uid/client` names the offered account (`account`).
+
+"Use another account" is the ordinary form. Signing in there replaces the
+refresh cookie and leaves the earlier session live, exactly as signing in at
+Ward as someone else always has. The chooser is Ward's alone: no app and no
+`ward-auth` version changed. **Rejected: only after an app sign-out** (the app
+sending `prompt=select_account`), which would have meant a library version
+and a re-vendor in every app for the one case the chooser exists for.
+
 ## A first Ward sign-in creates the local user; linking never guesses
 _2026-10-13, owner answer 1(a)_ — When a Ward sign-in arrives for a subject the
 app has never seen and Ward vouched for a grant, the app creates a local user

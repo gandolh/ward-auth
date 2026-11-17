@@ -114,6 +114,12 @@ async function walkToCallback(b: Browser, url: string, username?: string): Promi
   for (let hop = 0; hop < 10; hop += 1) {
     const at = new URL(next);
     if (at.origin === APP_ORIGIN) return next;
+    // Ward's account chooser, offering a session from before this sign-in:
+    // the person picks "Continue as <name>".
+    if (at.pathname === "/ward/login" && at.searchParams.get("choose") === "1") {
+      next = `${WARD_ORIGIN}${WARD_PREFIX}/refresh/oidc/${at.searchParams.get("oidc")}/continue`;
+      continue;
+    }
     if (at.pathname === "/ward/login") {
       if (username === undefined) throw new Error("Ward asked for a password");
       await b.signInAtWard(username);

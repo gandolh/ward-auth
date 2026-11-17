@@ -769,3 +769,14 @@ changed: 36 replies identical before and after, `api/` untouched, the entry
 chunk still free of Base UI. Sign-in CSS 6.0 kB gzip, past the 5 kB line
 (asked on the board). Not pushed; the board column is Ready for deploy
 (`node cli.ts ward deploy`).
+
+## [2026-11-17] done | Brief 08: Continue as, or use another account
+
+"Sign in with Ward" with a Ward session from before the sign-in now stops at
+the login page's account chooser: "Continue as <name>" (a new
+`GET /refresh/oidc/:uid/continue`) or "Use another account" (the form).
+`/client` gains `account`. Asked by the owner after signing out of Shelfmark
+put the same account straight back in; "every time" was the owner's pick.
+No app, cookie, token or library change. `npm run check` 73 files, 1276
+tests, and a browser walk on a dev Ward (form, chooser, another account,
+Continue by Enter, Back to the app). Decision in `wiki/decisions-oidc.md`.

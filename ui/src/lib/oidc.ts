@@ -34,6 +34,11 @@ export function interactionResumeUrl(uid: string): string {
   return `${WARD_API}/refresh/oidc/${uid}`;
 }
 
+/** "Continue as <name>" on the account chooser: finish with the session Ward already has. */
+export function interactionContinueUrl(uid: string): string {
+  return `${WARD_API}/refresh/oidc/${uid}/continue`;
+}
+
 /** "Back to <app>": the app gets `access_denied` and shows its own message. */
 export function interactionAbortUrl(uid: string): string {
   return `${WARD_API}/refresh/oidc/${uid}/abort`;
@@ -42,16 +47,19 @@ export function interactionAbortUrl(uid: string): string {
 export interface InteractionClient {
   clientId: string;
   name: string;
+  /** The Ward account the chooser offers, or `null` when the page is not the chooser. */
+  account: string | null;
 }
 
 /**
  * Which app the interaction is for, fetched once per mount, so the heading can
- * say "Continue to Atrium". `undefined` while loading and when the interaction
- * is unknown or expired; the page then says "Sign in", and the resume route
- * explains the expiry if the person goes on.
+ * say "Continue to Atrium", and whose session the account chooser offers.
+ * `undefined` while loading; `null` when the interaction is unknown or expired,
+ * and the page then says "Sign in", and the resume route explains the expiry
+ * if the person goes on.
  */
-export function useInteractionClient(uid: string | undefined): InteractionClient | undefined {
-  const [client, setClient] = useState<InteractionClient | undefined>();
+export function useInteractionClient(uid: string | undefined): InteractionClient | null | undefined {
+  const [client, setClient] = useState<InteractionClient | null | undefined>();
 
   useEffect(() => {
     if (uid === undefined) return;
@@ -63,7 +71,7 @@ export function useInteractionClient(uid: string | undefined): InteractionClient
       .then(async (response) => (response.ok ? parseClient(await response.json()) : undefined))
       .catch(() => undefined)
       .then((found) => {
-        if (live) setClient(found);
+        if (live) setClient(found ?? null);
       });
     return () => {
       live = false;
@@ -76,7 +84,7 @@ export function useInteractionClient(uid: string | undefined): InteractionClient
 /** Narrow the `/client` body; anything else is "unknown". */
 export function parseClient(body: unknown): InteractionClient | undefined {
   if (typeof body !== "object" || body === null) return undefined;
-  const { clientId, name } = body as { clientId?: unknown; name?: unknown };
+  const { clientId, name, account } = body as { clientId?: unknown; name?: unknown; account?: unknown };
   if (typeof clientId !== "string" || typeof name !== "string" || name === "") return undefined;
-  return { clientId, name };
+  return { clientId, name, account: typeof account === "string" && account !== "" ? account : null };
 }

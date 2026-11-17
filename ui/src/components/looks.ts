@@ -60,6 +60,11 @@ const BUTTONS = {
   /* The primary, full width in its card: the sign-in and registration forms. */
   block:
     "mt-1 inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-ward border border-ward-accent bg-ward-accent px-5 py-3 text-center text-sm font-semibold whitespace-nowrap text-ward-accent-text transition-[background-color,border-color,color] duration-120 ease-ward hover:enabled:border-ward-accent-hover hover:enabled:bg-ward-accent-hover disabled:cursor-not-allowed disabled:border-ward-border disabled:bg-ward-surface-sunken disabled:text-ward-text-faint max-sm:min-h-12",
+  /* The account chooser's pair, full width: the name may be long, so these wrap where the others never do. */
+  choose:
+    "mt-1 inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-ward border border-ward-accent bg-ward-accent px-5 py-3 text-center text-sm font-semibold [overflow-wrap:anywhere] text-ward-accent-text transition-[background-color,border-color,color] duration-120 ease-ward hover:enabled:border-ward-accent-hover hover:enabled:bg-ward-accent-hover disabled:cursor-not-allowed disabled:border-ward-border disabled:bg-ward-surface-sunken disabled:text-ward-text-faint max-sm:min-h-12",
+  chooseOther:
+    "inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-ward border border-ward-border-strong bg-transparent px-5 py-3 text-center text-sm font-semibold text-ward-text transition-[background-color,border-color,color] duration-120 ease-ward hover:enabled:bg-ward-surface-sunken disabled:cursor-not-allowed disabled:border-ward-border disabled:bg-ward-surface-sunken disabled:text-ward-text-faint max-sm:min-h-12",
   /* The accent is spent once per screen, so every secondary action is an outline. */
   quiet:
     "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-ward border border-ward-border-strong bg-transparent px-5 py-3 text-center text-sm font-semibold whitespace-nowrap text-ward-text transition-[background-color,border-color,color] duration-120 ease-ward hover:enabled:bg-ward-surface-sunken disabled:cursor-not-allowed disabled:border-ward-border disabled:bg-ward-surface-sunken disabled:text-ward-text-faint max-sm:min-h-12",

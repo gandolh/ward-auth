@@ -4,10 +4,16 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Field } from "../components/Field.js";
 import { Notice } from "../components/Notice.js";
 import { Threshold } from "../components/Threshold.js";
-import { button, doorCard, footLink, form } from "../components/looks.js";
+import { button, doorCard, footLink, form, note } from "../components/looks.js";
 import { WardApiError, login, type WardErrorCode } from "../lib/api.js";
 import { resolveNext } from "../lib/next.js";
-import { interactionAbortUrl, interactionResumeUrl, oidcInteraction, useInteractionClient } from "../lib/oidc.js";
+import {
+  interactionAbortUrl,
+  interactionContinueUrl,
+  interactionResumeUrl,
+  oidcInteraction,
+  useInteractionClient,
+} from "../lib/oidc.js";
 import { deadlineIn, useCountdown } from "../lib/use-countdown.js";
 import { formatWait } from "../lib/wait.js";
 
@@ -47,6 +53,16 @@ import { formatWait } from "../lib/wait.js";
  * byte-identical body — an account-enumeration oracle closed at real expense in
  * the API. A UI that rendered "no such user" would reopen it from the outside
  * with no way for the API to stop it.
+ *
+ * ## The account chooser
+ *
+ * When the browser already has a Ward session from before this sign-in, the
+ * provider sends it here with `&choose=1` instead of finishing on its own, as
+ * Google's account chooser does: "Continue as <name>" goes to the interaction's
+ * `/continue` route, and "Use another account" shows the form. The page shows
+ * neither the chooser nor the form until `/client` says whose session it is,
+ * so the form never flashes up first; if the session ended meanwhile, the
+ * answer has no account and the form appears.
  *
  * ## The unverified-email prompt is deliberately not here
  *
@@ -98,6 +114,14 @@ export function Login(): React.JSX.Element {
   const interaction = useMemo(() => oidcInteraction(params.get("oidc")), [params]);
   const interactionClient = useInteractionClient(interaction);
 
+  /** The account chooser, until the person picks "Use another account". */
+  const [another, setAnother] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+  const choosing = interaction !== undefined && params.get("choose") === "1" && !another;
+  const offered = choosing ? (interactionClient?.account ?? null) : null;
+  const waiting = choosing && interactionClient === undefined;
+  const showForm = !waiting && offered === null;
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -112,6 +136,7 @@ export function Login(): React.JSX.Element {
   const lockedOut = lockedUntil !== undefined && waitLeft > 0;
   const usernameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const continueRef = useRef<HTMLButtonElement>(null);
 
   /**
    * Focus the first field on arrival.
@@ -122,11 +147,15 @@ export function Login(): React.JSX.Element {
    * register or account pages, where there is something to read first.
    */
   useEffect(() => {
-    usernameRef.current?.focus();
-  }, []);
+    if (showForm) usernameRef.current?.focus();
+  }, [showForm]);
 
-  const heading =
-    interaction !== undefined && interactionClient !== undefined ? `Continue to ${interactionClient.name}` : "Sign in";
+  /** On the chooser, focus starts on Continue, so Enter takes the account offered. */
+  useEffect(() => {
+    if (offered !== null) continueRef.current?.focus();
+  }, [offered]);
+
+  const heading = interaction !== undefined && interactionClient ? `Continue to ${interactionClient.name}` : "Sign in";
 
   async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -187,9 +216,11 @@ export function Login(): React.JSX.Element {
     <Threshold
       heading={heading}
       lede={
-        interaction !== undefined
-          ? "Sign in with your Ward account. You'll go straight back to the app."
-          : "Ward keeps the estate’s accounts. Sign in to see yours."
+        offered !== null
+          ? "Choose the Ward account to use. You'll go straight back to the app."
+          : interaction !== undefined
+            ? "Sign in with your Ward account. You'll go straight back to the app."
+            : "Ward keeps the estate’s accounts. Sign in to see yours."
       }
       footer={
         <>
@@ -209,28 +240,65 @@ export function Login(): React.JSX.Element {
         </>
       }
     >
+      {offered !== null && interaction !== undefined && (
+        <div className={doorCard}>
+          <p className={note}>
+            Signed in to Ward as <strong className="[overflow-wrap:anywhere] text-ward-text">{offered}</strong>.
+          </p>
+          <div className={form}>
+            {/*
+              Buttons, not links: both looks react to hover only on `enabled`, and Continue stays pressed while the
+              browser leaves, as the form's submit does.
+            */}
+            <button
+              ref={continueRef}
+              className={button("choose")}
+              type="button"
+              disabled={continuing}
+              onClick={() => {
+                setContinuing(true);
+                window.location.assign(interactionContinueUrl(interaction));
+              }}
+            >
+              {continuing ? "Continuing…" : `Continue as ${offered}`}
+            </button>
+            <button
+              className={button("chooseOther")}
+              type="button"
+              disabled={continuing}
+              onClick={() => {
+                setAnother(true);
+              }}
+            >
+              Use another account
+            </button>
+          </div>
+        </div>
+      )}
+
       {/*
         The form and its notices on one card, hung off the jamb under the heading: left-aligned, never centred.
       */}
-      <div className={doorCard}>
-        {/*
+      {showForm && (
+        <div className={doorCard}>
+          {/*
           The lockout comes first and is a `wait`, not an `error`. It is the only
           failure on this page with a concrete next step, and the step is
           "nothing, for this long" — so it reads as a clock, the number counts
           down, and the button below is disabled until it runs out. A person who
           sees "sign-in failed" tries again and extends their own lockout.
         */}
-        {lockedOut && (
-          <Notice tone="wait">
-            Too many sign-in attempts from your network. Try again in <strong>{formatWait(waitLeft)}</strong>.
-          </Notice>
-        )}
+          {lockedOut && (
+            <Notice tone="wait">
+              Too many sign-in attempts from your network. Try again in <strong>{formatWait(waitLeft)}</strong>.
+            </Notice>
+          )}
 
-        {failure !== undefined && failure !== "too_many_attempts" && (
-          <Notice tone="error">{messageFor(failure)}</Notice>
-        )}
+          {failure !== undefined && failure !== "too_many_attempts" && (
+            <Notice tone="error">{messageFor(failure)}</Notice>
+          )}
 
-        {/*
+          {/*
           `noValidate` turns off the browser's own bubble validation in favour of
           the inline messages below. The bubbles are not announced by every
           screen reader, vanish on the next keystroke, and cannot be styled — and
@@ -238,57 +306,58 @@ export function Login(): React.JSX.Element {
           assistive technology the field is mandatory.
 
         */}
-        <form
-          className={form}
-          noValidate
-          onSubmit={(event) => {
-            void onSubmit(event);
-          }}
-        >
-          <Field
-            id="ward-username"
-            label="Username"
-            name="username"
-            type="text"
-            autoComplete="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            required
-            inputRef={usernameRef}
-            value={username}
-            error={missing.username ? "Enter your username." : undefined}
-            disabled={submitting}
-            onChange={(event) => {
-              setUsername(event.target.value);
+          <form
+            className={form}
+            noValidate
+            onSubmit={(event) => {
+              void onSubmit(event);
             }}
-          />
-          <Field
-            id="ward-password"
-            label="Password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            inputRef={passwordRef}
-            value={password}
-            error={missing.password ? "Enter your password." : undefined}
-            disabled={submitting}
-            onChange={(event) => {
-              setPassword(event.target.value);
-            }}
-          />
-          {/*
+          >
+            <Field
+              id="ward-username"
+              label="Username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              required
+              inputRef={usernameRef}
+              value={username}
+              error={missing.username ? "Enter your username." : undefined}
+              disabled={submitting}
+              onChange={(event) => {
+                setUsername(event.target.value);
+              }}
+            />
+            <Field
+              id="ward-password"
+              label="Password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              inputRef={passwordRef}
+              value={password}
+              error={missing.password ? "Enter your password." : undefined}
+              disabled={submitting}
+              onChange={(event) => {
+                setPassword(event.target.value);
+              }}
+            />
+            {/*
             No second copy of the wait beside the button. The notice above already
             says how long, the disabled button already says "not yet", and a
             countdown rendered twice on one screen reads as two different clocks.
             The one primary, full width in the card.
           */}
-          <button className={button("block")} type="submit" disabled={submitting || lockedOut}>
-            {submitting ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
-      </div>
+            <button className={button("block")} type="submit" disabled={submitting || lockedOut}>
+              {submitting ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+        </div>
+      )}
     </Threshold>
   );
 }

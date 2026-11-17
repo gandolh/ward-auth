@@ -302,16 +302,48 @@ function location(response: LightMyRequestResponse): string {
  * origin, signing in at Ward's login page if it gets there. Returns the URL the
  * browser lands on at the app, and whether a password was asked for.
  */
+/**
+ * Make every live Ward session a minute old: born before any authorization
+ * the test starts next, so the provider's whole-second clock cannot count it
+ * as signed in during that one.
+ */
+function ageSessions(): void {
+  db.prepare("UPDATE refresh_tokens SET issued_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 seconds')").run();
+}
+
+/**
+ * Follow a sign-in until it leaves Ward. At the account chooser, `chooser`
+ * says what the person picks: `continue` ("Continue as <name>"), `another`
+ * (the form, signed in as `username`), or nothing, when the test expects no
+ * chooser at all.
+ */
 async function runFlow(
   browser: Browser,
   started: Started,
   username?: string,
-): Promise<{ landed: URL; askedForPassword: boolean }> {
+  chooser?: "continue" | "another",
+): Promise<{ landed: URL; askedForPassword: boolean; offered?: string | null }> {
   let url = started.url;
   let askedForPassword = false;
+  let offered: string | null | undefined;
   for (let hop = 0; hop < 10; hop += 1) {
     const at = new URL(url);
-    if (at.origin !== ORIGIN) return { landed: at, askedForPassword };
+    if (at.origin !== ORIGIN) return { landed: at, askedForPassword, offered };
+
+    if (at.pathname === "/ward/login" && at.searchParams.get("choose") === "1") {
+      expect(chooser, "the flow showed the account chooser").toBeDefined();
+      const uid = at.searchParams.get("oidc")!;
+      const resume = `${ORIGIN}${STRIPPED}/refresh/oidc/${uid}`;
+      // What Login.tsx reads to say "Continue as <name>".
+      offered = (await browser.request("GET", `${resume}/client`)).json<{ account: string | null }>().account;
+      if (chooser === "continue") {
+        url = `${resume}/continue`;
+        continue;
+      }
+      // "Use another account" is the plain form, handled below.
+      url = `${ORIGIN}/ward/login?oidc=${uid}`;
+      continue;
+    }
 
     if (at.pathname === "/ward/login") {
       askedForPassword = true;
@@ -431,8 +463,10 @@ describe("sign in with Ward: code + PKCE", () => {
     const browser = new Browser();
     const started = startSignIn();
 
-    const { landed, askedForPassword } = await runFlow(browser, started, "alice");
+    const { landed, askedForPassword, offered } = await runFlow(browser, started, "alice");
     expect(askedForPassword).toBe(true);
+    // Signed in during this sign-in: no chooser after typing the password.
+    expect(offered).toBeUndefined();
     expect(`${landed.origin}${landed.pathname}`).toBe(REDIRECT_URI);
     expect(landed.searchParams.get("state")).toBe(started.state);
     expect(landed.searchParams.get("iss")).toBe(ISSUER);
@@ -464,14 +498,16 @@ describe("sign in with Ward: code + PKCE", () => {
     expect(typeof payload["ward_role"]).toBe("string");
   });
 
-  it("with a live Ward session, completes without a password prompt and names that session", async () => {
+  it("with a Ward session from before, offers it, and Continue names that session", async () => {
     const browser = new Browser();
     await browser.signIn("alice");
+    ageSessions();
     const family = mod.refresh.listLiveTokensForSubject(db, subject)[0]!.family_id;
 
     const started = startSignIn();
-    const { landed, askedForPassword } = await runFlow(browser, started);
+    const { landed, askedForPassword, offered } = await runFlow(browser, started, undefined, "continue");
     expect(askedForPassword).toBe(false);
+    expect(offered).toBe("alice");
 
     const token = await exchange(landed.searchParams.get("code")!, started.verifier);
     expect(token.statusCode, token.body).toBe(200);
@@ -486,11 +522,41 @@ describe("sign in with Ward: code + PKCE", () => {
     // Someone else signs in at Ward in the same browser, inside the provider
     // session's lifetime. The provider's session still names alice.
     await browser.signIn("alice2");
+    ageSessions();
     const started = startSignIn();
-    const { landed } = await runFlow(browser, started);
+    const { landed, offered } = await runFlow(browser, started, undefined, "continue");
+    expect(offered).toBe("alice2");
     const token = await exchange(landed.searchParams.get("code")!, started.verifier);
     expect(token.statusCode, token.body).toBe(200);
     expect(decodeJwt(token.json<{ id_token: string }>().id_token).sub).toBe(other);
+  });
+
+  it("signs in another account from the chooser, through the form", async () => {
+    const other = await newUser("alice3");
+    const browser = new Browser();
+    await browser.signIn("alice");
+    ageSessions();
+
+    const started = startSignIn();
+    const { landed, askedForPassword, offered } = await runFlow(browser, started, "alice3", "another");
+    expect(offered).toBe("alice");
+    expect(askedForPassword).toBe(true);
+    const token = await exchange(landed.searchParams.get("code")!, started.verifier);
+    expect(token.statusCode, token.body).toBe(200);
+    expect(decodeJwt(token.json<{ id_token: string }>().id_token).sub).toBe(other);
+  });
+
+  it("does not let Continue skip the password prompt=login asks for", async () => {
+    const browser = new Browser();
+    await browser.signIn("alice");
+    ageSessions();
+    const started = startSignIn({ prompt: "login" });
+    const interaction = location(await browser.request("GET", started.url));
+    const client = await browser.request("GET", `${interaction}/client`);
+    expect(client.json<{ account: string | null }>().account).toBeNull();
+
+    const skipped = await browser.request("GET", `${interaction}/continue`);
+    expect(location(skipped)).toBe(`${UI}/login?oidc=${interaction.split("/").pop()}`);
   });
 
   it("asks again for prompt=login even with a live session", async () => {
@@ -498,7 +564,7 @@ describe("sign in with Ward: code + PKCE", () => {
     await browser.signIn("alice");
     // Signed in a minute ago: before the authorization began, which is what
     // `prompt=login` refuses. (Its resolution is the provider's, one second.)
-    db.prepare("UPDATE refresh_tokens SET issued_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-60 seconds')").run();
+    ageSessions();
     const { askedForPassword } = await runFlow(browser, startSignIn({ prompt: "login" }), "alice");
     expect(askedForPassword).toBe(true);
   });
@@ -530,7 +596,7 @@ describe("sign in with Ward: code + PKCE", () => {
     await app.ready();
 
     await browser.signIn("alice");
-    const { landed } = await runFlow(browser, { ...started, url: interaction });
+    const { landed } = await runFlow(browser, { ...started, url: interaction }, undefined, "continue");
     const token = await exchange(landed.searchParams.get("code")!, started.verifier);
     expect(token.statusCode, token.body).toBe(200);
   });
@@ -545,11 +611,16 @@ describe("sign in with Ward: code + PKCE", () => {
     expect(wrong.statusCode).toBe(400);
     expect(wrong.json()).toMatchObject({ error: "invalid_grant" });
 
-    const noPkce = await runFlow(browser, startSignIn({ code_challenge: undefined, code_challenge_method: undefined }));
+    const noPkce = await runFlow(
+      browser,
+      startSignIn({ code_challenge: undefined, code_challenge_method: undefined }),
+      undefined,
+      "continue",
+    );
     expect(noPkce.landed.searchParams.get("error")).toBe("invalid_request");
 
     const second = startSignIn();
-    const again = await runFlow(browser, second);
+    const again = await runFlow(browser, second, undefined, "continue");
     const secondCode = again.landed.searchParams.get("code")!;
     expect((await exchange(secondCode, second.verifier)).statusCode).toBe(200);
     const replay = await exchange(secondCode, second.verifier);
@@ -585,7 +656,7 @@ describe("sign in with Ward: code + PKCE", () => {
 
     // And the other way round: spent at the token endpoint, refused by Ward's.
     const next = startSignIn();
-    const second = await runFlow(browser, next);
+    const second = await runFlow(browser, next, undefined, "continue");
     const fresh = await clientAssertion();
     expect((await exchange(second.landed.searchParams.get("code")!, next.verifier, fresh)).statusCode).toBe(200);
     expect(await verifyClientAssertion(db, fresh, { audience: ISSUER })).toEqual({
@@ -614,7 +685,7 @@ describe("sign in with Ward: code + PKCE", () => {
     const assertion = await clientAssertion();
     expect((await exchange(code, started.verifier, assertion)).statusCode).toBe(200);
     const next = startSignIn();
-    const second = await runFlow(browser, next);
+    const second = await runFlow(browser, next, undefined, "continue");
     const replayed = await exchange(second.landed.searchParams.get("code")!, next.verifier, assertion);
     expect(replayed.json()).toMatchObject({ error: "invalid_client" });
   });
@@ -658,9 +729,21 @@ describe("access_denied", () => {
     const subject = await newUser("carol");
     const browser = new Browser();
     await browser.signIn("carol");
+    ageSessions();
     mod.users.setDisabled(db, subject, true);
 
-    const { landed } = await runFlow(browser, startSignIn());
+    const { landed, offered } = await runFlow(browser, startSignIn(), undefined, "continue");
+    expect(offered).toBe("carol");
+    expect(landed.searchParams.get("error")).toBe("access_denied");
+  });
+
+  it("for an account with no grant, after Continue on the chooser", async () => {
+    await newUser("bea", []);
+    const browser = new Browser();
+    await browser.signIn("bea");
+    ageSessions();
+    const { landed, offered } = await runFlow(browser, startSignIn(), undefined, "continue");
+    expect(offered).toBe("bea");
     expect(landed.searchParams.get("error")).toBe("access_denied");
   });
 
@@ -672,7 +755,7 @@ describe("access_denied", () => {
     expect(location(toLogin).startsWith(`${UI}/login?oidc=`)).toBe(true);
 
     const client = await browser.request("GET", `${interaction}/client`);
-    expect(client.json()).toEqual({ clientId: "atrium", name: "Atrium" });
+    expect(client.json()).toEqual({ clientId: "atrium", name: "Atrium", account: null });
 
     const { landed } = await runFlow(browser, { ...started, url: `${interaction}/abort` });
     expect(landed.searchParams.get("error")).toBe("access_denied");

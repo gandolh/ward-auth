@@ -502,6 +502,26 @@ describe("POST /account/password", () => {
     expect(stillWorks.statusCode).toBe(200);
   });
 
+  it("counts attempts still in flight: twenty at once get five 401s and fifteen 429s", async () => {
+    const session = await login("192.0.2.51");
+
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        asAccount(session.access, {
+          method: "POST",
+          url: "/account/password",
+          headers: { "x-forwarded-for": "192.0.2.51" },
+          payload: { currentPassword: `wrong-${i}`, newPassword: NEW_PASSWORD },
+        }),
+      ),
+    );
+    const statuses = responses.map((response) => response.statusCode);
+
+    expect(statuses.filter((status) => status === 401)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(15);
+    expect(mod.auditLog.listAudit(db, { action: "user.password_change_failed" })).toHaveLength(5);
+  });
+
   it("refuses a cross-site request before reading the body", async () => {
     const session = await login();
 

@@ -12,7 +12,9 @@ import {
   lockoutKeyFor,
   parseTrustedProxies,
   recordFailure,
+  reserveAttempt,
   resetLockoutForTests,
+  type LockoutAttempt,
   type LockoutTarget,
 } from "./lockout.js";
 
@@ -93,6 +95,89 @@ describe("checkLockout / recordFailure", () => {
     }
 
     expect(checkLockout(login("203.0.113.9", "someone-else")).allowed).toBe(false);
+  });
+});
+
+describe("reserveAttempt", () => {
+  /** Reserve, and fail the test if the gate refused. */
+  function reserve(target: LockoutTarget): LockoutAttempt {
+    const gate = reserveAttempt(target);
+    if (!gate.allowed) throw new Error(`refused ${target.address}`);
+    return gate.attempt;
+  }
+
+  it("counts attempts in flight against the same five as recorded failures", () => {
+    const held = Array.from({ length: LOCKOUT_MAX_FAILURES }, () => reserve(login("203.0.113.9")));
+
+    // Five still running: the sixth is refused before any of them has failed.
+    expect(reserveAttempt(login("203.0.113.9"))).toEqual({ allowed: false, retryAfterSeconds: 1 });
+    expect(checkLockout(login("203.0.113.9")).allowed).toBe(false);
+    // Another address, and another surface from this one, are untouched.
+    expect(checkLockout(login("198.51.100.4")).allowed).toBe(true);
+    expect(checkLockout(console_("203.0.113.9")).allowed).toBe(true);
+
+    for (const attempt of held) attempt.fail("alice");
+
+    // Five failures now: the refusal carries the whole window.
+    const refused = reserveAttempt(login("203.0.113.9"));
+    expect(refused.allowed).toBe(false);
+    expect(refused.allowed === false && refused.retryAfterSeconds).toBeGreaterThan(LOCKOUT_WINDOW_SECONDS - 5);
+  });
+
+  it("frees the slot of an attempt released without a verdict, and counts nothing", () => {
+    for (let i = 0; i < 20; i += 1) reserve(login("203.0.113.9")).release();
+
+    expect(lockoutEntryCountForTests()).toBe(0);
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES; i += 1) reserve(login("203.0.113.9")).fail("alice");
+    expect(checkLockout(login("203.0.113.9")).allowed).toBe(false);
+  });
+
+  it("forgives only the proved account's failures on success, and frees the slot", () => {
+    reserve(login("203.0.113.9")).fail("alice");
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 2; i += 1) reserve(login("203.0.113.9")).fail("bob");
+    reserve(login("203.0.113.9")).succeed("alice");
+
+    // Alice's one is forgiven and the slot is free; bob's three still count,
+    // so two more failures trip the 429.
+    reserve(login("203.0.113.9")).fail("bob");
+    expect(checkLockout(login("203.0.113.9")).allowed).toBe(true);
+    reserve(login("203.0.113.9")).fail("bob");
+    expect(checkLockout(login("203.0.113.9")).allowed).toBe(false);
+  });
+
+  it("ends an attempt once: a second end, or a release after a verdict, does nothing", () => {
+    const failed = reserve(login("203.0.113.9"));
+    failed.fail("alice");
+    failed.fail("alice");
+    failed.release();
+
+    const succeeded = reserve(login("203.0.113.9"));
+    succeeded.succeed("carol");
+    succeeded.release();
+
+    // One failure recorded, no slot still taken: four more attempts get in.
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 1; i += 1) reserve(login("203.0.113.9")).fail("alice");
+    expect(checkLockout(login("203.0.113.9")).allowed).toBe(false);
+  });
+
+  it("takes no place under the entry cap and does not slide the window while in flight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-04T12:00:00Z"));
+
+    recordFailure(login("203.0.113.9", "alice"));
+    const recordedAt = Date.now();
+    expect(lockoutEntryCountForTests()).toBe(1);
+
+    vi.setSystemTime(recordedAt + (LOCKOUT_WINDOW_SECONDS - 10) * 1000);
+    const pending = reserve(login("203.0.113.9"));
+    reserve(login("198.51.100.4")).release();
+    expect(lockoutEntryCountForTests()).toBe(1);
+
+    // The window still ends where the one recorded failure put it.
+    vi.setSystemTime(recordedAt + LOCKOUT_WINDOW_SECONDS * 1000 + 1);
+    pending.release();
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 1; i += 1) recordFailure(login("203.0.113.9", "alice"));
+    expect(checkLockout(login("203.0.113.9")).allowed).toBe(true);
   });
 });
 

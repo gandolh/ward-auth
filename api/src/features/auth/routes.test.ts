@@ -453,6 +453,41 @@ describe("the IP lockout", () => {
 
     expect(spoofed.statusCode).toBe(429);
   });
+
+  it("counts attempts still in flight: twenty at once from one address get five 401s and fifteen 429s", async () => {
+    const ip = "198.51.100.200";
+
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, (_, i) => login({ username: "alice", password: `wrong-${i}` }, ip)),
+    );
+    const statuses = responses.map((response) => response.statusCode);
+
+    expect(statuses.filter((status) => status === 401)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(15);
+
+    // The five that were judged are now five recorded failures: the next
+    // attempt from that address, the right password included, is refused.
+    expect((await login({ username: "alice", password: PASSWORD }, ip)).statusCode).toBe(429);
+  });
+
+  it("frees the slot of an attempt that succeeded or never parsed", async () => {
+    const ip = "198.51.100.201";
+
+    // A right password and a malformed body, each sent many times at once,
+    // leave the whole budget behind them.
+    const settled = await Promise.all([
+      ...Array.from({ length: 3 }, () => login({ username: "alice", password: PASSWORD }, ip)),
+      ...Array.from({ length: 2 }, () =>
+        app.inject({ method: "POST", url: "/login", headers: { "x-forwarded-for": ip }, payload: { username: "" } }),
+      ),
+    ]);
+    expect(settled.map((response) => response.statusCode).sort()).toEqual([200, 200, 200, 400, 400]);
+
+    for (let i = 0; i < 5; i += 1) {
+      expect((await login({ username: "alice", password: "wrong" }, ip)).statusCode).toBe(401);
+    }
+    expect((await login({ username: "alice", password: "wrong" }, ip)).statusCode).toBe(429);
+  });
 });
 
 describe("timing: an unknown username costs the same as a wrong password", () => {

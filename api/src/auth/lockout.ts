@@ -182,6 +182,33 @@ export interface LockoutDecision {
   retryAfterSeconds?: number;
 }
 
+/**
+ * An attempt `reserveAttempt` let through, holding one in-flight slot until it
+ * ends. Exactly one of the three ends it; the other two, and a second call of
+ * the same one, do nothing after that.
+ */
+export interface LockoutAttempt {
+  /**
+   * The credential was wrong: the slot becomes one counted failure, attributed
+   * to `account` (folded) exactly as `recordFailure` attributes it.
+   */
+  fail(account?: string): void;
+  /**
+   * The credential was right: forgive `account`'s failures as `clearFailures`
+   * does, and free the slot.
+   */
+  succeed(account?: string): void;
+  /**
+   * The attempt ended without a verdict (a malformed body, a thrown error):
+   * free the slot, count nothing. Every caller calls it in a `finally`, so a
+   * slot is never left behind; after `fail` or `succeed` it does nothing.
+   */
+  release(): void;
+}
+
+/** What `reserveAttempt` answers: a slot, or the refusal `checkLockout` would give. */
+export type LockoutGate = { allowed: true; attempt: LockoutAttempt } | { allowed: false; retryAfterSeconds: number };
+
 interface Entry {
   /** The number the `429` decision reads. Always the sum of `byAccount`. */
   failures: number;
@@ -199,6 +226,18 @@ interface Entry {
  * on the iterator rather than a scan for the oldest key.
  */
 const entries = new Map<string, Entry>();
+
+/**
+ * Attempts let through by `reserveAttempt` that have not ended yet, by the
+ * same key as `entries`.
+ *
+ * Kept apart from `entries` on purpose: a slot is not a failure, so it never
+ * slides a window, never takes a place under `LOCKOUT_MAX_ENTRIES`, and
+ * evicting or expiring a failure entry cannot lose one. A key is here only
+ * while a request holding it is running, so the map is never larger than the
+ * number of requests in flight.
+ */
+const inFlight = new Map<string, number>();
 
 /** Epoch milliseconds of the last "no client address" warning. */
 let lastAmbiguousWarnAt = 0;
@@ -237,23 +276,36 @@ const OVERFLOW_ACCOUNT_KEY = "+";
  * route may call it as its first line without that itself counting as an
  * attempt. It does drop the entry if the window has passed, which is the lazy
  * half of expiry (`recordFailure` does the bulk sweep).
+ *
+ * The budget is recorded failures **plus attempts still in flight**
+ * (`reserveAttempt`): five slots taken by five requests still hashing refuse a
+ * sixth just as five recorded failures do.
+ *
+ * A route whose verdict comes after an `await` must gate with `reserveAttempt`,
+ * not with this: between this check and a later `recordFailure` the event loop
+ * runs other requests' checks, and none of them would see this attempt.
+ * `/register` uses this directly because it records before its first `await`.
  */
 export function checkLockout(target: LockoutTarget): LockoutDecision {
   const now = Date.now();
   const key = bucketKey(target);
-  const entry = entries.get(key);
+  let entry = entries.get(key);
 
-  if (entry === undefined) {
-    return { allowed: true };
-  }
-
-  if (entry.expiresAt <= now) {
+  if (entry !== undefined && entry.expiresAt <= now) {
     entries.delete(key);
+    entry = undefined;
+  }
+
+  const failures = entry?.failures ?? 0;
+  if (failures + (inFlight.get(key) ?? 0) < LOCKOUT_MAX_FAILURES) {
     return { allowed: true };
   }
 
-  if (entry.failures < LOCKOUT_MAX_FAILURES) {
-    return { allowed: true };
+  // Refused only because of attempts still running: they end in tens of
+  // milliseconds, and if they fail the next request meets the full window
+  // anyway, so a second is the honest wait.
+  if (entry === undefined || failures < LOCKOUT_MAX_FAILURES) {
+    return { allowed: false, retryAfterSeconds: 1 };
   }
 
   // `Math.max(1, ...)` because `Retry-After: 0` reads as "retry immediately",
@@ -261,6 +313,75 @@ export function checkLockout(target: LockoutTarget): LockoutDecision {
   // sub-second remainder floors to zero.
   const retryAfterSeconds = Math.max(1, Math.ceil((entry.expiresAt - now) / 1000));
   return { allowed: false, retryAfterSeconds };
+}
+
+/**
+ * `checkLockout` and the count, as one synchronous step: if the attempt is
+ * allowed, it takes one of the address's slots before this returns, and holds
+ * it until the attempt ends through `fail`, `succeed` or `release`.
+ *
+ * This is what keeps the budget at five when requests arrive together. A
+ * check that reserved nothing let every request that reached it before the
+ * fifth failure was **recorded** through, and recording waits on a password
+ * hash; twenty requests sent at once from one address all had their passwords
+ * judged. With a slot taken at the gate, the sixth concurrent request is
+ * refused at once and the five already admitted finish as before.
+ *
+ * The caller ends the attempt in a `finally` (`release`), so a thrown error
+ * cannot leave a slot taken.
+ *
+ * @example
+ * const gate = reserveAttempt({ surface: "login", address });
+ * if (!gate.allowed) return lockedOut(reply, gate.retryAfterSeconds);
+ * try {
+ *   if (!(await verify())) {
+ *     gate.attempt.fail(account);
+ *     return reply.code(401).send(...);
+ *   }
+ *   gate.attempt.succeed(account);
+ * } finally {
+ *   gate.attempt.release();
+ * }
+ */
+export function reserveAttempt(target: LockoutTarget): LockoutGate {
+  const decision = checkLockout(target);
+  if (!decision.allowed) return { allowed: false, retryAfterSeconds: decision.retryAfterSeconds ?? 1 };
+
+  const key = bucketKey(target);
+  inFlight.set(key, (inFlight.get(key) ?? 0) + 1);
+
+  const { surface, address } = target;
+  const withAccount = (account: string | undefined): LockoutTarget =>
+    account === undefined ? { surface, address } : { surface, address, account };
+
+  let open = true;
+  // Gives the slot back, once. The bookkeeping lives here so `fail` and
+  // `succeed` cannot double-count it either.
+  const end = (): boolean => {
+    if (!open) return false;
+    open = false;
+    const remaining = (inFlight.get(key) ?? 0) - 1;
+    if (remaining > 0) inFlight.set(key, remaining);
+    else inFlight.delete(key);
+    return true;
+  };
+
+  return {
+    allowed: true,
+    attempt: {
+      fail: (account) => {
+        // Slot out, failure in, in one synchronous step: the budget the next
+        // check reads never dips in between.
+        if (end()) recordFailure(withAccount(account));
+      },
+      succeed: (account) => {
+        if (end()) clearFailures(withAccount(account));
+      },
+      release: () => {
+        end();
+      },
+    },
+  };
 }
 
 /**
@@ -372,6 +493,7 @@ export function clearFailures(target: LockoutTarget): void {
  */
 export function resetLockoutForTests(): void {
   entries.clear();
+  inFlight.clear();
   lastAmbiguousWarnAt = 0;
   lastIgnoredForwardedWarnAt = 0;
 }

@@ -291,6 +291,19 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
       });
     });
 
+    it("counts attempts still in flight: twenty at once from one address get five 401s and fifteen 429s", async () => {
+      const responses = await Promise.all(
+        Array.from({ length: 20 }, (_, i) => login({ username: ADMIN_USERNAME, password: `wrong-${i}` })),
+      );
+      const statuses = responses.map((response) => response.statusCode);
+
+      expect(statuses.filter((status) => status === 401)).toHaveLength(5);
+      expect(statuses.filter((status) => status === 429)).toHaveLength(15);
+
+      // The right credential from that address waits out the window too.
+      expect((await login({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD })).statusCode).toBe(429);
+    });
+
     it("applies the IP lockout, and only to the offending address", async () => {
       let locked: Injected | undefined;
       let attempts = 0;

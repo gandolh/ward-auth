@@ -16,14 +16,7 @@ import {
 import { mintAccessToken } from "../../tokens/service.js";
 import { liveAccessSession } from "../../auth/access-session.js";
 import { sessionCookies, wardSecureCookies } from "../../auth/cookie.js";
-import {
-  checkLockout,
-  clearFailures,
-  lockoutKeyFor,
-  recordFailure,
-  type LockoutTarget,
-  type TrustedProxies,
-} from "../../auth/lockout.js";
+import { lockoutKeyFor, reserveAttempt, type LockoutTarget, type TrustedProxies } from "../../auth/lockout.js";
 import { hashPassword, MAX_PASSWORD_LENGTH, PasswordPolicyError, verifyPassword } from "../../auth/password.js";
 import { issueRefreshToken } from "../../auth/refresh.js";
 import { sameOrigin } from "../../auth/same-origin.js";
@@ -281,126 +274,135 @@ export const accountRoutes: FastifyPluginAsyncZod<AccountRoutesOptions> = async 
       account: foldUsername(caller.row.username),
     };
 
-    const gate = checkLockout(target);
-    if (!gate.allowed) return lockedOut(reply, gate.retryAfterSeconds ?? 1);
+    // The gate takes one of the address's slots until this attempt ends, so
+    // requests sent together cannot all reach the hash (`reserveAttempt`).
+    const gate = reserveAttempt(target);
+    if (!gate.allowed) return lockedOut(reply, gate.retryAfterSeconds);
+    const { attempt } = gate;
 
-    // Parsed by hand, not by a route schema: the session check and the lockout
-    // gate answer first, and a malformed body spends no lockout budget.
-    const body = passwordBody.safeParse(request.body);
-    if (!body.success) {
-      // Not a lockout failure: a malformed body is a client bug, not a guess.
-      // Also deliberately terse — zod's issue list would echo both passwords.
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    const ok = await verifyPassword(body.data.currentPassword, caller.row.password_hash);
-    if (!ok) {
-      recordFailure(target);
-      recordAudit(await database(), {
-        actorKind: "account",
-        actorSubject: caller.row.subject,
-        actorLabel: caller.row.username,
-        action: "user.password_change_failed",
-        targetKind: "user",
-        targetId: caller.row.subject,
-        detail: { ip: target.address, session: caller.familyId },
-      });
-      // The same code `/login` answers for a wrong password, so the UI has one
-      // sentence for "that password is not right" wherever it is typed.
-      return reply.code(401).send({ error: "invalid_credentials" });
-    }
-
-    clearFailures(target);
-
-    let passwordHash: string;
+    // Every way out below ends the attempt; this frees the slot of the ones
+    // that end without a verdict (a malformed body, a thrown error).
     try {
-      passwordHash = await hashPassword(body.data.newPassword);
-    } catch (error) {
-      if (error instanceof PasswordPolicyError) {
-        // The stable `code`, never the message — the login UI renders these.
-        return reply.code(400).send({ error: error.code });
+      // Parsed by hand, not by a route schema: the session check and the lockout
+      // gate answer first, and a malformed body spends no lockout budget.
+      const body = passwordBody.safeParse(request.body);
+      if (!body.success) {
+        // Not a lockout failure: a malformed body is a client bug, not a guess.
+        // Also deliberately terse — zod's issue list would echo both passwords.
+        return reply.code(400).send({ error: "invalid_request" });
       }
-      throw error;
-    }
 
-    const db = await database();
+      const ok = await verifyPassword(body.data.currentPassword, caller.row.password_hash);
+      if (!ok) {
+        attempt.fail(target.account);
+        recordAudit(await database(), {
+          actorKind: "account",
+          actorSubject: caller.row.subject,
+          actorLabel: caller.row.username,
+          action: "user.password_change_failed",
+          targetKind: "user",
+          targetId: caller.row.subject,
+          detail: { ip: target.address, session: caller.familyId },
+        });
+        // The same code `/login` answers for a wrong password, so the UI has one
+        // sentence for "that password is not right" wherever it is typed.
+        return reply.code(401).send({ error: "invalid_credentials" });
+      }
 
-    /**
-     * **Minted before the transaction opens**, and the ordering is the same fix
-     * `/login` and `/refresh` document: a mint failure after the commit would
-     * leave the password changed, every family revoked, and no cookie in the
-     * response — signing the person out of an account whose new password they
-     * only think they set. Minting first means a failure here changes nothing.
-     */
-    const familyId = newFamilyId();
-    const access = await mintAccessToken(caller.row.subject, familyId);
+      attempt.succeed(target.account);
 
-    const result = db.transaction((): { sessionsRevoked: number; refreshToken: string; refreshExpiresAt: string } => {
-      setPasswordHash(db, caller.row.subject, passwordHash);
+      let passwordHash: string;
+      try {
+        passwordHash = await hashPassword(body.data.newPassword);
+      } catch (error) {
+        if (error instanceof PasswordPolicyError) {
+          // The stable `code`, never the message — the login UI renders these.
+          return reply.code(400).send({ error: error.code });
+        }
+        throw error;
+      }
 
-      // Counted before the write for the same reason `admin/sessions.ts` does
-      // it: the number reported must describe the same moment as the rows.
-      const families = new Set(listLiveTokensForSubject(db, caller.row.subject).map((row) => row.family_id));
-      revokeAllForSubject(db, caller.row.subject, "admin");
+      const db = await database();
 
       /**
-       * Issued **after** the sweep, so the caller's new family survives it.
-       * Doing it the other way round would revoke the pair that was just
-       * minted and sign the person out of the browser they changed their
-       * password in.
+       * **Minted before the transaction opens**, and the ordering is the same fix
+       * `/login` and `/refresh` document: a mint failure after the commit would
+       * leave the password changed, every family revoked, and no cookie in the
+       * response — signing the person out of an account whose new password they
+       * only think they set. Minting first means a failure here changes nothing.
        */
-      const issued = issueRefreshToken(db, caller.row.subject, { familyId });
+      const familyId = newFamilyId();
+      const access = await mintAccessToken(caller.row.subject, familyId);
 
-      recordAudit(db, {
-        actorKind: "account",
-        actorSubject: caller.row.subject,
-        actorLabel: caller.row.username,
-        action: "user.password_change",
-        targetKind: "user",
-        targetId: caller.row.subject,
-        detail: {
+      const result = db.transaction((): { sessionsRevoked: number; refreshToken: string; refreshExpiresAt: string } => {
+        setPasswordHash(db, caller.row.subject, passwordHash);
+
+        // Counted before the write for the same reason `admin/sessions.ts` does
+        // it: the number reported must describe the same moment as the rows.
+        const families = new Set(listLiveTokensForSubject(db, caller.row.subject).map((row) => row.family_id));
+        revokeAllForSubject(db, caller.row.subject, "admin");
+
+        /**
+         * Issued **after** the sweep, so the caller's new family survives it.
+         * Doing it the other way round would revoke the pair that was just
+         * minted and sign the person out of the browser they changed their
+         * password in.
+         */
+        const issued = issueRefreshToken(db, caller.row.subject, { familyId });
+
+        recordAudit(db, {
+          actorKind: "account",
+          actorSubject: caller.row.subject,
+          actorLabel: caller.row.username,
+          action: "user.password_change",
+          targetKind: "user",
+          targetId: caller.row.subject,
+          detail: {
+            sessionsRevoked: families.size,
+            // The family that was replaced, and the one that replaced it.
+            // Neither is a secret — a family id is a handle, never a
+            // credential.
+            previousSession: caller.familyId,
+            session: familyId,
+            ip: target.address,
+          },
+        });
+
+        return {
           sessionsRevoked: families.size,
-          // The family that was replaced, and the one that replaced it.
-          // Neither is a secret — a family id is a handle, never a
-          // credential.
-          previousSession: caller.familyId,
-          session: familyId,
-          ip: target.address,
-        },
+          refreshToken: issued.token,
+          refreshExpiresAt: issued.row.expires_at,
+        };
+      })();
+
+      for (const cookie of sessionCookies({
+        accessToken: access.token,
+        refreshToken: result.refreshToken,
+        secure,
+      })) {
+        reply.header("set-cookie", cookie);
+      }
+
+      request.log.info(
+        { subject: caller.row.subject, family: familyId, sessionsRevoked: result.sessionsRevoked },
+        "self-service password change rotated the session",
+      );
+
+      return reply.code(200).send({
+        subject: caller.row.subject,
+        /**
+         * How many sessions the change ended, **including the caller's own old
+         * one** — it was revoked and replaced. So a person with one device sees
+         * `1`, which is honest: the credential they were holding a moment ago is
+         * dead.
+         */
+        sessionsRevoked: result.sessionsRevoked,
+        accessTokenExpiresAt: access.expiresAt,
+        refreshTokenExpiresAt: result.refreshExpiresAt,
       });
-
-      return {
-        sessionsRevoked: families.size,
-        refreshToken: issued.token,
-        refreshExpiresAt: issued.row.expires_at,
-      };
-    })();
-
-    for (const cookie of sessionCookies({
-      accessToken: access.token,
-      refreshToken: result.refreshToken,
-      secure,
-    })) {
-      reply.header("set-cookie", cookie);
+    } finally {
+      attempt.release();
     }
-
-    request.log.info(
-      { subject: caller.row.subject, family: familyId, sessionsRevoked: result.sessionsRevoked },
-      "self-service password change rotated the session",
-    );
-
-    return reply.code(200).send({
-      subject: caller.row.subject,
-      /**
-       * How many sessions the change ended, **including the caller's own old
-       * one** — it was revoked and replaced. So a person with one device sees
-       * `1`, which is honest: the credential they were holding a moment ago is
-       * dead.
-       */
-      sessionsRevoked: result.sessionsRevoked,
-      accessTokenExpiresAt: access.expiresAt,
-      refreshTokenExpiresAt: result.refreshExpiresAt,
-    });
   });
 
   /**

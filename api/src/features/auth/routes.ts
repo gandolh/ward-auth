@@ -16,14 +16,7 @@ import {
   sessionCookies,
   wardSecureCookies,
 } from "../../auth/cookie.js";
-import {
-  checkLockout,
-  clearFailures,
-  lockoutKeyFor,
-  recordFailure,
-  type LockoutTarget,
-  type TrustedProxies,
-} from "../../auth/lockout.js";
+import { lockoutKeyFor, reserveAttempt, type TrustedProxies } from "../../auth/lockout.js";
 import { MAX_PASSWORD_LENGTH, spendDummyHash, verifyPassword } from "../../auth/password.js";
 import {
   endSession,
@@ -204,157 +197,169 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, 
 
     /**
      * The gate reads the **address** budget for this surface and nothing else —
-     * `checkLockout` ignores `account`, deliberately, so five failures from one
-     * address still earn the sixth request a `429` whatever usernames they
-     * targeted. The account only matters for `recordFailure` and
-     * `clearFailures` below, and it is not known until the body parses.
+     * it ignores `account`, deliberately, so five failures from one address
+     * still earn the sixth request a `429` whatever usernames they targeted.
+     * The account only matters for `fail` and `succeed` below, and it is not
+     * known until the body parses.
+     *
+     * It also takes one of the address's five slots until this attempt ends,
+     * so requests sent together cannot all reach the hash before the first
+     * failure is recorded (`reserveAttempt`).
      */
-    const gate = checkLockout({ surface: "login", address });
+    const gate = reserveAttempt({ surface: "login", address });
     if (!gate.allowed) {
-      return lockedOut(reply, gate.retryAfterSeconds ?? 1);
+      return lockedOut(reply, gate.retryAfterSeconds);
     }
+    const { attempt } = gate;
 
-    // Parsed by hand, not by a route schema: the lockout gate answers first, and a
-    // malformed body gets its terse 400 without spending lockout budget.
-    const parsed = loginBody.safeParse(request.body);
-    if (!parsed.success) {
-      // Deliberately NOT a lockout failure: a malformed body is a client bug,
-      // not a guess, and counting it means one broken integration locks its own
-      // users out. Also deliberately terse — zod's issue list would echo the
-      // submitted field values back, and one of them is the password.
-      return reply.code(400).send({ error: "invalid_request" });
-    }
-
-    const { username, password } = parsed.data;
-
-    /**
-     * Folded, and folded from the **submitted** name rather than from a row, so
-     * that a guess at an account that does not exist still gets its own bucket
-     * — an attacker's success on their own account must not forgive it.
-     */
-    const target: LockoutTarget = { surface: "login", address, account: foldUsername(username) };
-
-    const db = await database();
-    const user = findUserByUsername(db, username);
-
-    /**
-     * **The unknown-username branch spends a hash.** Atrium does the same, and
-     * without it this endpoint answers in under a millisecond for a name that
-     * does not exist and in ~50 ms for one that does — an account-enumeration
-     * oracle that needs no error message and leaves nothing unusual in a log.
-     * The two branches below must stay symmetric in cost; that is the whole
-     * reason `spendDummyHash` exists as a named function rather than as a
-     * comment saying "remember to hash anyway".
-     */
-    const ok = user === undefined ? await spendDummyHash(password) : await verifyPassword(password, user.password_hash);
-
-    // `user === undefined` is repeated rather than inferred from `ok`: the
-    // compiler cannot see that `spendDummyHash` returns the literal `false`
-    // through the ternary above, and the alternative — asserting the narrowing —
-    // would let a future edit that makes the dummy path succeed type-check.
-    if (user === undefined || !ok) {
-      recordFailure(target);
-      if (user !== undefined) {
-        /**
-         * Failures are audited **only for an account that exists**.
-         *
-         * Not squeamishness about enumeration — the audit log is not readable
-         * by the attacker — but growth. Auditing every unknown username makes
-         * this table a write amplifier driven entirely by anonymous input;
-         * bounding it to real accounts keeps the rows an operator actually
-         * wants ("somebody is guessing at *this* account") without handing a
-         * wordlist a way to fill the disk.
-         */
-        recordAudit(db, {
-          actorKind: "account",
-          actorSubject: user.subject,
-          actorLabel: user.username,
-          action: "session.login_failed",
-          targetKind: "user",
-          targetId: user.subject,
-          detail: { ip: address },
-        });
+    // Every way out below ends the attempt; this frees the slot of the ones
+    // that end without a verdict (a malformed body, a thrown error).
+    try {
+      // Parsed by hand, not by a route schema: the lockout gate answers first, and a
+      // malformed body gets its terse 400 without spending lockout budget.
+      const parsed = loginBody.safeParse(request.body);
+      if (!parsed.success) {
+        // Deliberately NOT a lockout failure: a malformed body is a client bug,
+        // not a guess, and counting it means one broken integration locks its own
+        // users out. Also deliberately terse — zod's issue list would echo the
+        // submitted field values back, and one of them is the password.
+        return reply.code(400).send({ error: "invalid_request" });
       }
-      // One answer for "no such username" and "wrong password". The client is
-      // told which *half* was wrong by nothing at all — the login UI renders this
-      // as "check your username and password".
-      return reply.code(401).send({ error: "invalid_credentials" });
-    }
 
-    if (user.disabled_at !== null) {
+      const { username, password } = parsed.data;
+
       /**
-       * Answered **after** the password verified, and with its own code.
-       *
-       * Order matters: checking `disabled_at` before verifying would let anyone
-       * discover that a given username exists *and* is disabled without knowing
-       * the password. Checking it after means the caller has already proved they
-       * are the account holder, so telling them plainly is not a leak — and it
-       * saves a person whose account was disabled from retyping a password that
-       * was correct all along.
+       * Folded, and folded from the **submitted** name rather than from a row, so
+       * that a guess at an account that does not exist still gets its own bucket
+       * — an attacker's success on their own account must not forgive it.
        */
-      recordFailure(target);
-      return reply.code(403).send({ error: "account_disabled" });
+      const account = foldUsername(username);
+
+      const db = await database();
+      const user = findUserByUsername(db, username);
+
+      /**
+       * **The unknown-username branch spends a hash.** Atrium does the same, and
+       * without it this endpoint answers in under a millisecond for a name that
+       * does not exist and in ~50 ms for one that does — an account-enumeration
+       * oracle that needs no error message and leaves nothing unusual in a log.
+       * The two branches below must stay symmetric in cost; that is the whole
+       * reason `spendDummyHash` exists as a named function rather than as a
+       * comment saying "remember to hash anyway".
+       */
+      const ok =
+        user === undefined ? await spendDummyHash(password) : await verifyPassword(password, user.password_hash);
+
+      // `user === undefined` is repeated rather than inferred from `ok`: the
+      // compiler cannot see that `spendDummyHash` returns the literal `false`
+      // through the ternary above, and the alternative — asserting the narrowing —
+      // would let a future edit that makes the dummy path succeed type-check.
+      if (user === undefined || !ok) {
+        attempt.fail(account);
+        if (user !== undefined) {
+          /**
+           * Failures are audited **only for an account that exists**.
+           *
+           * Not squeamishness about enumeration — the audit log is not readable
+           * by the attacker — but growth. Auditing every unknown username makes
+           * this table a write amplifier driven entirely by anonymous input;
+           * bounding it to real accounts keeps the rows an operator actually
+           * wants ("somebody is guessing at *this* account") without handing a
+           * wordlist a way to fill the disk.
+           */
+          recordAudit(db, {
+            actorKind: "account",
+            actorSubject: user.subject,
+            actorLabel: user.username,
+            action: "session.login_failed",
+            targetKind: "user",
+            targetId: user.subject,
+            detail: { ip: address },
+          });
+        }
+        // One answer for "no such username" and "wrong password". The client is
+        // told which *half* was wrong by nothing at all — the login UI renders this
+        // as "check your username and password".
+        return reply.code(401).send({ error: "invalid_credentials" });
+      }
+
+      if (user.disabled_at !== null) {
+        /**
+         * Answered **after** the password verified, and with its own code.
+         *
+         * Order matters: checking `disabled_at` before verifying would let anyone
+         * discover that a given username exists *and* is disabled without knowing
+         * the password. Checking it after means the caller has already proved they
+         * are the account holder, so telling them plainly is not a leak — and it
+         * saves a person whose account was disabled from retyping a password that
+         * was correct all along.
+         */
+        attempt.fail(account);
+        return reply.code(403).send({ error: "account_disabled" });
+      }
+
+      /**
+       * Only this account's failures, from this address, on this surface.
+       *
+       * The old address-wide clear meant one valid account bought unlimited
+       * guessing at every other: four wrong guesses at a victim, one correct login
+       * as yourself, counter back to zero, repeat — 40 wrong guesses from one
+       * address with no `429` at all, at roughly 35 a second. A success explains
+       * the failures aimed at *the account it proved* and nothing else.
+       */
+      attempt.succeed(account);
+
+      /**
+       * **Minted before the refresh row is written, and that order is the fix.**
+       *
+       * With `issueRefreshToken` first, a mint failure — an unreadable signing
+       * key, say — answered `500` after a live 30-day refresh row had already been
+       * stored for a client that never received it. Minting first means a failure
+       * here leaves nothing behind at all: no row, no cookie, no session the
+       * console would list.
+       */
+      /**
+       * The family id is generated here rather than inside `issueRefreshToken`,
+       * because the access token's `sid` claim has to carry it and the token is
+       * minted first (see above). `newFamilyId()` is pure — it allocates an id
+       * without touching the database — so a mint failure after this line still
+       * leaves nothing behind.
+       */
+      const familyId = newFamilyId();
+      const access = await mintAccessToken(user.subject, familyId);
+      const issued = issueRefreshToken(db, user.subject, { familyId });
+
+      recordAudit(db, {
+        actorKind: "account",
+        actorSubject: user.subject,
+        actorLabel: user.username,
+        action: "session.login",
+        targetKind: "session",
+        targetId: issued.row.family_id,
+        detail: { jti: access.jti, ip: address },
+      });
+
+      // No `refreshMaxAgeSeconds` override: the row was created a millisecond
+      // ago, so the flat 30-day constant is both correct and exact. The override
+      // exists for a *rotation*, where R2 inherits an expiry already partly spent.
+      setSessionCookies(reply, {
+        accessToken: access.token,
+        refreshToken: issued.token,
+        secure,
+      });
+
+      request.log.info({ subject: user.subject, jti: access.jti, family: issued.row.family_id }, "login succeeded");
+
+      return reply.code(200).send({
+        subject: user.subject,
+        username: user.username,
+        emailVerified: user.email_verified === 1,
+        accessTokenExpiresAt: access.expiresAt,
+        refreshTokenExpiresAt: issued.row.expires_at,
+      });
+    } finally {
+      attempt.release();
     }
-
-    /**
-     * Only this account's failures, from this address, on this surface.
-     *
-     * The old address-wide clear meant one valid account bought unlimited
-     * guessing at every other: four wrong guesses at a victim, one correct login
-     * as yourself, counter back to zero, repeat — 40 wrong guesses from one
-     * address with no `429` at all, at roughly 35 a second. A success explains
-     * the failures aimed at *the account it proved* and nothing else.
-     */
-    clearFailures(target);
-
-    /**
-     * **Minted before the refresh row is written, and that order is the fix.**
-     *
-     * With `issueRefreshToken` first, a mint failure — an unreadable signing
-     * key, say — answered `500` after a live 30-day refresh row had already been
-     * stored for a client that never received it. Minting first means a failure
-     * here leaves nothing behind at all: no row, no cookie, no session the
-     * console would list.
-     */
-    /**
-     * The family id is generated here rather than inside `issueRefreshToken`,
-     * because the access token's `sid` claim has to carry it and the token is
-     * minted first (see above). `newFamilyId()` is pure — it allocates an id
-     * without touching the database — so a mint failure after this line still
-     * leaves nothing behind.
-     */
-    const familyId = newFamilyId();
-    const access = await mintAccessToken(user.subject, familyId);
-    const issued = issueRefreshToken(db, user.subject, { familyId });
-
-    recordAudit(db, {
-      actorKind: "account",
-      actorSubject: user.subject,
-      actorLabel: user.username,
-      action: "session.login",
-      targetKind: "session",
-      targetId: issued.row.family_id,
-      detail: { jti: access.jti, ip: address },
-    });
-
-    // No `refreshMaxAgeSeconds` override: the row was created a millisecond
-    // ago, so the flat 30-day constant is both correct and exact. The override
-    // exists for a *rotation*, where R2 inherits an expiry already partly spent.
-    setSessionCookies(reply, {
-      accessToken: access.token,
-      refreshToken: issued.token,
-      secure,
-    });
-
-    request.log.info({ subject: user.subject, jti: access.jti, family: issued.row.family_id }, "login succeeded");
-
-    return reply.code(200).send({
-      subject: user.subject,
-      username: user.username,
-      emailVerified: user.email_verified === 1,
-      accessTokenExpiresAt: access.expiresAt,
-      refreshTokenExpiresAt: issued.row.expires_at,
-    });
   });
 
   /**

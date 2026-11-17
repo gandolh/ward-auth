@@ -3,14 +3,7 @@ import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import {
-  checkLockout,
-  clearFailures,
-  lockoutKeyFor,
-  recordFailure,
-  type LockoutTarget,
-  type TrustedProxies,
-} from "../../auth/lockout.js";
+import { lockoutKeyFor, reserveAttempt, type LockoutTarget, type TrustedProxies } from "../../auth/lockout.js";
 import { requireConsoleSession, getConsoleSession } from "../../auth/console-guard.js";
 import { sameOriginAsWard } from "../../auth/same-origin.js";
 import {
@@ -234,7 +227,9 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
     const db = await resolveDb();
     const ip = lockoutKey(request, trustedProxies);
 
-    const lockout = checkLockout(consoleLockoutTarget(ip));
+    // The gate takes one of the address's slots until this attempt ends, so
+    // requests sent together cannot all reach the comparison (`reserveAttempt`).
+    const lockout = reserveAttempt(consoleLockoutTarget(ip));
     if (!lockout.allowed) {
       // A row per window, the rest counted (`recordRepeatedAudit`), so the
       // table grows with time, not with traffic.
@@ -244,77 +239,82 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
         action: "console.login.failed",
         detail: { ip, reason: "locked-out" },
       });
-      if (lockout.retryAfterSeconds !== undefined) {
-        reply.header("retry-after", String(lockout.retryAfterSeconds));
-      }
+      reply.header("retry-after", String(lockout.retryAfterSeconds));
       return reply.code(429).send({ error: "too many attempts" });
     }
+    const { attempt } = lockout;
 
-    // Parsed by hand, not by a route schema: a malformed body is logged
-    // (`console.login.failed`, reason `malformed`, a row per window) before the 400.
-    const body = loginBody.safeParse(request.body);
-    if (!body.success) {
-      recordRepeatedAudit(db, "console.login.malformed", {
-        actorKind: "system",
-        actorLabel: "console-login",
-        action: "console.login.failed",
-        detail: { ip, reason: "malformed" },
-      });
-      return reply.code(400).send({ error: "username and password are required" });
-    }
+    // Every way out below ends the attempt; this frees the slot of the ones
+    // that end without a verdict (a malformed body, a thrown error).
+    try {
+      // Parsed by hand, not by a route schema: a malformed body is logged
+      // (`console.login.failed`, reason `malformed`, a row per window) before the 400.
+      const body = loginBody.safeParse(request.body);
+      if (!body.success) {
+        recordRepeatedAudit(db, "console.login.malformed", {
+          actorKind: "system",
+          actorLabel: "console-login",
+          action: "console.login.failed",
+          detail: { ip, reason: "malformed" },
+        });
+        return reply.code(400).send({ error: "username and password are required" });
+      }
 
-    const ok = await checkSuperuserCredentials(body.data.username, body.data.password);
+      const ok = await checkSuperuserCredentials(body.data.username, body.data.password);
 
-    if (!ok) {
-      recordFailure(consoleLockoutTarget(ip));
+      if (!ok) {
+        attempt.fail();
+        /**
+         * The submitted username is deliberately **not** recorded. There is
+         * exactly one console credential, so "which username was tried" has one
+         * interesting answer and the boolean above already gives it; meanwhile a
+         * username field is where a mistyped password lands, and `audit_log` is
+         * rendered in the console. `reason` is enough to reconstruct the attempt.
+         */
+        recordAudit(db, {
+          actorKind: "system",
+          actorLabel: "console-login",
+          action: "console.login.failed",
+          detail: { ip, reason: "credentials" },
+        });
+        // Same body as a wrong username and a wrong password. No oracle.
+        return reply.code(401).send({ error: "invalid credentials" });
+      }
+
+      attempt.succeed();
+      const { token, session } = openConsoleSession();
+
       /**
-       * The submitted username is deliberately **not** recorded. There is
-       * exactly one console credential, so "which username was tried" has one
-       * interesting answer and the boolean above already gives it; meanwhile a
-       * username field is where a mistyped password lands, and `audit_log` is
-       * rendered in the console. `reason` is enough to reconstruct the attempt.
+       * `actorKind: "superuser"` with a null `actor_subject` — the shape
+       * `audit-log.ts` documents for exactly this actor, and the reason that table
+       * has no foreign keys. Do not invent a sentinel subject to put here; the
+       * superuser has none, and a placeholder would be the rejected sentinel
+       * arriving through the audit log.
+       *
+       * A failed attempt above is `system` instead, because nothing has proved the
+       * superuser was involved — attributing a wrong password to the superuser
+       * would make the log claim an identity the request never established.
        */
       recordAudit(db, {
-        actorKind: "system",
-        actorLabel: "console-login",
-        action: "console.login.failed",
-        detail: { ip, reason: "credentials" },
+        actorKind: "superuser",
+        actorLabel: SUPERUSER_LABEL,
+        action: "console.login",
+        targetKind: "session",
+        targetId: session.id,
+        detail: { ip },
       });
-      // Same body as a wrong username and a wrong password. No oracle.
-      return reply.code(401).send({ error: "invalid credentials" });
+
+      /**
+       * The token goes in the `HttpOnly` cookie and **nowhere else** — never in
+       * the response body, which would hand it to any script on the origin and
+       * make `HttpOnly` decorative. The body carries only the non-secret session
+       * view the console UI needs to show a countdown.
+       */
+      reply.header("set-cookie", consoleSessionSetCookie(token, { secure: await consoleCookieSecure() }));
+      return reply.code(200).send({ session: sessionView(session) });
+    } finally {
+      attempt.release();
     }
-
-    clearFailures(consoleLockoutTarget(ip));
-    const { token, session } = openConsoleSession();
-
-    /**
-     * `actorKind: "superuser"` with a null `actor_subject` — the shape
-     * `audit-log.ts` documents for exactly this actor, and the reason that table
-     * has no foreign keys. Do not invent a sentinel subject to put here; the
-     * superuser has none, and a placeholder would be the rejected sentinel
-     * arriving through the audit log.
-     *
-     * A failed attempt above is `system` instead, because nothing has proved the
-     * superuser was involved — attributing a wrong password to the superuser
-     * would make the log claim an identity the request never established.
-     */
-    recordAudit(db, {
-      actorKind: "superuser",
-      actorLabel: SUPERUSER_LABEL,
-      action: "console.login",
-      targetKind: "session",
-      targetId: session.id,
-      detail: { ip },
-    });
-
-    /**
-     * The token goes in the `HttpOnly` cookie and **nowhere else** — never in
-     * the response body, which would hand it to any script on the origin and
-     * make `HttpOnly` decorative. The body carries only the non-secret session
-     * view the console UI needs to show a countdown.
-     */
-    reply.header("set-cookie", consoleSessionSetCookie(token, { secure: await consoleCookieSecure() }));
-    return reply.code(200).send({ session: sessionView(session) });
   });
 
   /**

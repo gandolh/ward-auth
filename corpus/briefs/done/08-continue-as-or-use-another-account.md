@@ -52,7 +52,7 @@ One function decides what an interaction gets, from the interaction and the brow
 
 ## Outcome
 
-Built 2026-11-17 on `main`, committed, not pushed.
+Built 2026-11-17 on `main` (706ce13), not pushed; the board column is Ready for deploy (`node cli.ts ward deploy`).
 
 - **API.** `interactionMode` in `api/src/oidc/interaction.ts` decides `form`, `finish` or `choose`; `GET /refresh/oidc/:uid` and the new `GET /refresh/oidc/:uid/continue` share one handler (`resume`). `chooserUrlFor` in `layout.ts` builds `/login?oidc=<uid>&choose=1`. `/client` answers `account` (the username in `choose` mode, else `null`).
 - **UI.** `Login.tsx` under `choose=1` renders nothing until `/client` answers, then "Signed in to Ward as <name>" with "Continue as <name>" (focused, so Enter continues) and "Use another account" (shows the form). Two new full-width looks, `choose` and `chooseOther`, wrap a long name instead of overflowing.

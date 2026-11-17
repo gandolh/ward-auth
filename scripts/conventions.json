@@ -57,7 +57,7 @@
       "rule": 6,
       "path": "api/src/features/console/routes.ts",
       "match": "loginBody.safeParse(",
-      "reason": "Hand-parsed on purpose: a malformed console login writes its audit row (console.login.failed, reason malformed) before the 400."
+      "reason": "Hand-parsed on purpose: a malformed console login is logged (console.login.failed, reason malformed, a row per window) before the 400."
     },
     {
       "check": "structure",

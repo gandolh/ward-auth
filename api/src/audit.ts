@@ -2,7 +2,14 @@ import type Database from "better-sqlite3";
 import type { FastifyRequest } from "fastify";
 
 import { getConsoleSession } from "./auth/console-guard.js";
-import { recordAudit, SUPERUSER_LABEL, type ActorKind, type AuditLogRow, type TargetKind } from "./db/audit-log.js";
+import {
+  recordAudit,
+  SUPERUSER_LABEL,
+  type ActorKind,
+  type AuditEvent,
+  type AuditLogRow,
+  type TargetKind,
+} from "./db/audit-log.js";
 
 /**
  * The one place the console's admin routes turn "who is acting" into the three
@@ -125,4 +132,70 @@ export function recordConsoleAudit(
   event: ActorAuditEvent,
 ): AuditLogRow {
   return recordActorAudit(db, consoleActor(request), event);
+}
+
+/**
+ * ## Refusals that carry no credential: a row per window, the rest counted
+ *
+ * Two refusals carry no credential: a malformed `/console/login` body, and a
+ * `/console/login` from an address the lockout already refuses.
+ * Each kind writes at most one row in `audit_log` per `REPEAT_WINDOW_SECONDS`,
+ * process-wide rather than per address, so the table grows with time rather
+ * than with traffic:
+ *
+ *  - the first refusal of a kind writes its row, exactly as it always did;
+ *  - every later one within the window of that row is counted in memory;
+ *  - the first one after the window writes the next row, and its `detail`
+ *    carries `unrecorded`: how many of that kind were counted since the
+ *    previous row.
+ *
+ * So a quiet kind costs one row per event, and a busy one a row every fifteen
+ * minutes. A count still in memory when the process stops is lost, as the
+ * lockout's counters are. Refusals that carry a credential, or that a signed-in
+ * account causes, never come through here: they write a row every time.
+ */
+
+/** The kinds of refusal recorded through `recordRepeatedAudit`. */
+export type RepeatedRefusal = "console.login.malformed" | "console.login.locked-out";
+
+/** How long after a row the next row of the same kind waits. */
+export const REPEAT_WINDOW_SECONDS = 15 * 60;
+
+interface RepeatWindow {
+  /** `Date.now()` from which the next refusal of this kind writes a row. */
+  nextRowAt: number;
+  /** Refusals of this kind counted, not written, since the last row. */
+  unrecorded: number;
+}
+
+/** One entry per kind of refusal, and no more. */
+const repeatWindows = new Map<RepeatedRefusal, RepeatWindow>();
+
+/**
+ * Write `event` if no row of this `kind` was written in the last
+ * `REPEAT_WINDOW_SECONDS`, adding `unrecorded` to its `detail` when any were
+ * counted since; otherwise count it. Returns the row, or `undefined` when the
+ * refusal was only counted.
+ */
+export function recordRepeatedAudit(
+  db: Database.Database,
+  kind: RepeatedRefusal,
+  event: AuditEvent & { detail: Record<string, unknown> },
+): AuditLogRow | undefined {
+  const now = Date.now();
+  const window = repeatWindows.get(kind);
+  if (window !== undefined && now < window.nextRowAt) {
+    window.unrecorded += 1;
+    return undefined;
+  }
+
+  const unrecorded = window?.unrecorded ?? 0;
+  const row = recordAudit(db, unrecorded === 0 ? event : { ...event, detail: { ...event.detail, unrecorded } });
+  repeatWindows.set(kind, { nextRowAt: now + REPEAT_WINDOW_SECONDS * 1000, unrecorded: 0 });
+  return row;
+}
+
+/** Forget every window and count. Tests only. */
+export function resetRepeatedAuditForTests(): void {
+  repeatWindows.clear();
 }

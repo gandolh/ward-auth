@@ -8,7 +8,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { listAudit } from "../../db/audit-log.js";
+import { REPEAT_WINDOW_SECONDS, resetRepeatedAuditForTests } from "../../audit.js";
+import { countAudit, listAudit } from "../../db/audit-log.js";
 import { newFamilyId } from "../../db/refresh-tokens.js";
 import { freshDb } from "../../db/test-support.js";
 import { generateSigningKeyFile } from "../../tokens/keygen.js";
@@ -94,6 +95,7 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
     vi.useRealTimers();
     superuser.resetConsoleSessionsForTests();
     resetLockout();
+    resetRepeatedAuditForTests();
     db.exec("DELETE FROM audit_log");
   });
 
@@ -216,6 +218,77 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
       for (let i = 0; i < 20; i += 1) await login({ nonsense: true });
       const good = await login({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD });
       expect(good.statusCode).toBe(200);
+    });
+
+    describe("refusals that carry no credential write a row per window, not per request", () => {
+      type Reason = "malformed" | "locked-out" | "credentials";
+      const rowsFor = (reason: Reason) =>
+        listAudit(db, { action: "console.login.failed", limit: 500 }).filter(
+          (row) => JSON.parse(row.detail!).reason === reason,
+        );
+      // Only the clock is faked: a faked timer queue stalls `inject`.
+      const later = (ms: number) => vi.setSystemTime(Date.now() + ms);
+      const bodiless = () => app.inject({ method: "POST", url: "/console/login", remoteAddress: "203.0.113.7" });
+
+      it("writes one malformed row for fifty malformed requests, then a counted one after the window", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        const before = countAudit(db);
+
+        for (let i = 0; i < 25; i += 1) expect((await login({})).statusCode).toBe(400);
+        for (let i = 0; i < 25; i += 1) expect((await bodiless()).statusCode).toBe(400);
+
+        expect(countAudit(db)).toBe(before + 1);
+        expect(JSON.parse(rowsFor("malformed")[0]!.detail!)).toEqual({ ip: "203.0.113.7", reason: "malformed" });
+
+        // Still inside the window: counted, not written.
+        later(REPEAT_WINDOW_SECONDS * 1000 - 1_000);
+        expect((await login({})).statusCode).toBe(400);
+        expect(countAudit(db)).toBe(before + 1);
+
+        // The window is over: the next one is written, with the fifty it stands for.
+        later(2_000);
+        expect((await login({}, "198.51.100.9")).statusCode).toBe(400);
+        expect(countAudit(db)).toBe(before + 2);
+        expect(JSON.parse(rowsFor("malformed")[0]!.detail!)).toEqual({
+          ip: "198.51.100.9",
+          reason: "malformed",
+          unrecorded: 50,
+        });
+      });
+
+      it("keeps a row for every wrong credential, and one locked-out row per window", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        const before = countAudit(db);
+
+        const statuses: number[] = [];
+        for (let i = 0; i < 50; i += 1) {
+          statuses.push((await login({ username: ADMIN_USERNAME, password: "wrong" })).statusCode);
+        }
+        expect(statuses.slice(0, 5)).toEqual([401, 401, 401, 401, 401]);
+        expect(statuses.slice(5).every((status) => status === 429)).toBe(true);
+
+        expect(rowsFor("credentials")).toHaveLength(5);
+        expect(rowsFor("locked-out")).toHaveLength(1);
+        expect(countAudit(db)).toBe(before + 6);
+
+        // The right credential from another address still opens the console.
+        expect((await login({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD }, "198.51.100.9")).statusCode).toBe(
+          200,
+        );
+
+        // Past the window the lockout has cleared too; five more wrong guesses
+        // lock the address again, and the next refusal carries the count.
+        later(REPEAT_WINDOW_SECONDS * 1000 + 1_000);
+        for (let i = 0; i < 5; i += 1) {
+          expect((await login({ username: ADMIN_USERNAME, password: "wrong" })).statusCode).toBe(401);
+        }
+        expect((await login({ username: ADMIN_USERNAME, password: "wrong" })).statusCode).toBe(429);
+
+        expect(rowsFor("credentials")).toHaveLength(10);
+        const lockedRows = rowsFor("locked-out");
+        expect(lockedRows).toHaveLength(2);
+        expect(JSON.parse(lockedRows[0]!.detail!)).toEqual({ ip: "203.0.113.7", reason: "locked-out", unrecorded: 44 });
+      });
     });
 
     it("applies the IP lockout, and only to the offending address", async () => {

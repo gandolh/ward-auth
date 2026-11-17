@@ -24,6 +24,7 @@ import {
   readConsoleCookie,
   type ConsoleSession,
 } from "../../auth/superuser.js";
+import { recordRepeatedAudit } from "../../audit.js";
 import { recordAudit, SUPERUSER_LABEL } from "../../db/audit-log.js";
 import { getDb } from "../../db/connection.js";
 import { errorReply } from "../../lib/replies.js";
@@ -55,8 +56,12 @@ import { errorReply } from "../../lib/replies.js";
  * to the operator.
  *
  * Because the credential cannot be revoked or rotated without a redeploy, the
- * `audit_log` rows this file writes are its **only** observability. Every attempt
- * is recorded, successful or not, before the response is sent.
+ * `audit_log` rows this file writes are its **only** observability. Every
+ * attempt that reaches the credential comparison gets its row, successful or
+ * not, before the response is sent. A malformed body and a request from an
+ * address the lockout refuses carry no credential: they get a row per kind
+ * per window and a count in between (`recordRepeatedAudit` in `audit.ts`),
+ * so the table grows with time, not with traffic.
  */
 
 /**
@@ -212,12 +217,13 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
    *     the endpoint costs nothing to refuse. No artificial delay is added
    *     anywhere — `/login`'s reasoning holds here too: holding a connection
    *     open *is* the denial of service the measure exists to prevent.
-   *  2. **Shape next**, and a malformed body is a 400 that is audited but does
-   *     **not** count toward the lockout. It carries no credential guess, and
-   *     counting it would let a bug in the console UI lock the operator out of
-   *     the one credential that still works when everything else is broken.
+   *  2. **Shape next**, and a malformed body is a 400 that is logged (a row per
+   *     window, the rest counted) but does **not** count toward the lockout.
+   *     It carries no credential guess, and counting it would let a bug in the
+   *     console UI lock the operator out of the one credential that still
+   *     works when everything else is broken.
    *  3. **Credentials last**, against the environment only. Nothing is read from
-   *     the database on this path except the audit insert, and **no row is
+   *     the database on this path except the `audit_log` insert, and **no row is
    *     created in `users` or `grants` — not on success, not ever.** The
    *     superuser has no account row; that is the decision, and it is asserted
    *     by a test against both tables.
@@ -230,7 +236,9 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
 
     const lockout = checkLockout(consoleLockoutTarget(ip));
     if (!lockout.allowed) {
-      recordAudit(db, {
+      // A row per window, the rest counted (`recordRepeatedAudit`), so the
+      // table grows with time, not with traffic.
+      recordRepeatedAudit(db, "console.login.locked-out", {
         actorKind: "system",
         actorLabel: "console-login",
         action: "console.login.failed",
@@ -242,11 +250,11 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
       return reply.code(429).send({ error: "too many attempts" });
     }
 
-    // Parsed by hand, not by a route schema: a malformed body writes its audit row
-    // (`console.login.failed`, reason `malformed`) before the 400.
+    // Parsed by hand, not by a route schema: a malformed body is logged
+    // (`console.login.failed`, reason `malformed`, a row per window) before the 400.
     const body = loginBody.safeParse(request.body);
     if (!body.success) {
-      recordAudit(db, {
+      recordRepeatedAudit(db, "console.login.malformed", {
         actorKind: "system",
         actorLabel: "console-login",
         action: "console.login.failed",

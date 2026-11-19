@@ -35,6 +35,7 @@ export {
   hashSessionToken,
   normaliseUsername,
 } from "./core/identifiers.js";
+export { usernameSkeleton } from "./core/username-skeleton.js";
 export {
   LOCKOUT_MAX_FAILURES,
   LOCKOUT_WINDOW_SECONDS,

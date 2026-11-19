@@ -65,16 +65,18 @@ describe("the vendored copy", () => {
    * also use the reserved `example.com` and `localhost` in examples, and
    * nothing else.
    *
-   * One exception, in the server bundle's third-party code: `openid-client`
+   * Two exceptions, both third-party, in the server bundle. `openid-client`
    * compares an issuer against Microsoft's login host to switch on its Entra
-   * ID quirks. It is the library's code, not configuration, and names nothing
-   * of the estate's.
+   * ID quirks: the library's code, not configuration. And the confusables
+   * table the username key maps through names its source at Unicode, under
+   * the licence notice that travels with the data. Neither names anything of
+   * the estate's.
    */
   it("names no local path and no domain other than the source repository's", async () => {
     const examples = ["github.com", "example.com", "localhost"];
     const allowed: Record<string, string[]> = {
       "README.md": [],
-      "ward-auth.js": [...examples, "login.microsoftonline.com"],
+      "ward-auth.js": [...examples, "login.microsoftonline.com", "www.unicode.org"],
       "ward-auth-react.js": examples,
       "ward-auth.d.ts": examples,
       "ward-auth-react.d.ts": examples,

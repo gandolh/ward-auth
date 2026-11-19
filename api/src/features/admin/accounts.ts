@@ -16,6 +16,7 @@ import {
   setDisabled,
   setPasswordHash,
   setUsername,
+  UsernameLookalikeError,
   type UserRow,
 } from "../../db/users.js";
 import {
@@ -106,7 +107,10 @@ const subjectParams = z.object({
  * `cristian ` with a no-break space — are a way to be granted the wrong person's
  * access by clicking the wrong row. `foldUsername` collapses case and Unicode
  * *form* (NFKC), which handles a full-width `ａlice`; it does not collapse
- * whitespace, so this is the half it does not cover.
+ * whitespace, so this is the half it does not cover. A name that passes this
+ * and still reads the same as another account's (a Cyrillic `а` for a Latin
+ * `a`, an invisible mark) is taken: `createUser` and `setUsername` compare
+ * skeletons (`usernameSkeleton` in `db/users.ts`).
  */
 const username = z
   .string()
@@ -226,7 +230,8 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    * `409` on a username taken in any casing, decided by the
    * `users.username_folded` UNIQUE constraint rather than by a lookup first — a
    * SELECT-then-INSERT has a race between the two statements and the constraint
-   * does not.
+   * does not — and on one that reads the same as another account's, which
+   * `createUser` refuses inside the same transaction as its insert.
    */
   app.post(
     "/console/accounts",
@@ -266,7 +271,7 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
           return row;
         })();
       } catch (error) {
-        if (isUniqueViolation(error)) {
+        if (isUniqueViolation(error) || error instanceof UsernameLookalikeError) {
           return reply.code(409).send({ error: "username_taken" });
         }
         throw error;
@@ -437,7 +442,8 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
    * The exact same name is a no-op: `200`, `changed: false`, no audit row. A new
    * case of the account's own name is a change, and the constraint allows it,
    * because the folded name still belongs to the same row. A name another
-   * account holds is caught by the `UNIQUE` constraint, as on create.
+   * account holds is caught by the `UNIQUE` constraint, and one that reads the
+   * same as another account's by `setUsername`, as on create.
    */
   app.post(
     "/console/accounts/:subject/username",
@@ -469,7 +475,7 @@ export const adminAccountsRoutes: FastifyPluginAsyncZod<AdminRoutesOptions> = as
           return row;
         })();
       } catch (error) {
-        if (isUniqueViolation(error)) {
+        if (isUniqueViolation(error) || error instanceof UsernameLookalikeError) {
           return reply.code(409).send({ error: "username_taken" });
         }
         throw error;

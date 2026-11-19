@@ -16,7 +16,7 @@ import { getApp } from "../../db/apps.js";
 import { grantTargetId, recordAudit } from "../../db/audit-log.js";
 import { getDb } from "../../db/connection.js";
 import { SELF_REGISTRATION_ACTOR, ensureGrant } from "../../db/grants.js";
-import { createUser, foldUsername, type UserRow } from "../../db/users.js";
+import { createUser, UsernameLookalikeError, usernameSkeleton, type UserRow } from "../../db/users.js";
 import { errorReply, lockedOutReply } from "../../lib/replies.js";
 import { verificationLink, verificationMail } from "../../mail/templates.js";
 import { sendMail } from "../../mail/transport.js";
@@ -122,7 +122,10 @@ const appSlug = z.string().trim().min(1).max(64);
  * whitespace, and two accounts that render identically in the console account
  * list are a way to be granted the wrong person's access by clicking the wrong
  * row. Control characters and non-ASCII space-likes are therefore refused, and
- * runs of visible characters are joined by single spaces or nothing.
+ * runs of visible characters are joined by single spaces or nothing. A name
+ * that passes this and still reads the same as another account's (a Cyrillic
+ * `а` for a Latin `a`, an invisible mark) is taken: `createUser` compares
+ * skeletons (`usernameSkeleton` in `db/users.ts`).
  *
  * This matters more on the public path than on the console one: here the name
  * is chosen by a stranger rather than typed by the operator.
@@ -227,8 +230,8 @@ export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = asyn
   /** The lockout's trusted proxies — the same list `/login` uses. */
   const trustedProxies = options.trustedProxies ?? WARD_TRUSTED_PROXIES;
 
-  /** The break-glass username, folded once. See `usernameIsReserved`. */
-  const reservedUsername = foldUsername(WARD_ADMIN_USERNAME);
+  /** The break-glass username's skeleton, computed once. See the reserved-name check below. */
+  const reservedSkeleton = usernameSkeleton(WARD_ADMIN_USERNAME);
 
   /** Lazy, and memoised by `getDb()` itself — never resolved at registration. */
   const database = async (): Promise<Database.Database> => options.db ?? (await getDb());
@@ -336,7 +339,9 @@ export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = asyn
     }
 
     /**
-     * The break-glass username is not available to strangers.
+     * The break-glass username is not available to strangers, nor is any name
+     * that reads the same: the comparison is skeleton to skeleton, so a
+     * Cyrillic or invisible-mark variant of it is refused too.
      *
      * The superuser has no `users` row and never will
      * ([decisions-admin.md](../../../corpus/wiki/decisions-admin.md)), so an
@@ -351,7 +356,7 @@ export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = asyn
      * `WARD_ADMIN_USERNAME`: a prober cannot tell "that name is the superuser's"
      * from "somebody already has that name".
      */
-    if (foldUsername(body.username) === reservedUsername) {
+    if (usernameSkeleton(body.username) === reservedSkeleton) {
       return usernameTaken(reply);
     }
 
@@ -361,9 +366,12 @@ export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = asyn
      * what registration confers, or nothing happened.
      *
      * `createUser` throws on a taken username rather than this code checking
-     * first, because a SELECT-then-INSERT has a race between the two statements
-     * and the UNIQUE constraint on `username_folded` does not. Collisions are
-     * the *ordinary* case on this endpoint, not an edge case.
+     * first: the UNIQUE constraint on `username_folded` refuses a name taken in
+     * any casing, and `createUser`'s skeleton lookup, which runs after its
+     * insert inside this transaction, refuses one that reads the same as
+     * another account's. A separate SELECT before the insert would leave a gap
+     * between the two statements. Collisions are the *ordinary* case on this
+     * endpoint, not an edge case.
      */
     let created: { user: UserRow; token: string; expiresAt: string };
     try {
@@ -438,7 +446,7 @@ export const registerRoutes: FastifyPluginAsyncZod<RegisterRoutesOptions> = asyn
         return { user, token: issued.token, expiresAt: issued.row.expires_at };
       })();
     } catch (error) {
-      if (isUniqueViolation(error)) {
+      if (isUniqueViolation(error) || error instanceof UsernameLookalikeError) {
         return usernameTaken(reply);
       }
       throw error;

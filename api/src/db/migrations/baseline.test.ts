@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { openDatabase } from "../connection.js";
 import { runMigrations } from "../migrate.js";
 import { MIGRATIONS } from "./index.js";
@@ -74,6 +74,71 @@ describe("baseline migration", () => {
     expect(schemaSnapshot(db).some((entry) => entry.name.startsWith("app_keys"))).toBe(false);
     // Nothing else went with it.
     expect(db.prepare<[], number>("SELECT count(*) FROM apps").pluck().get()).toBeGreaterThan(0);
+
+    db.close();
+  });
+
+  it("fills username_skeleton for accounts that predate it, and keeps two that read the same", () => {
+    // A production database before 2026-11-19: users has no username_skeleton.
+    // Rebuild that state on a fresh one, write three accounts the old way, and
+    // migrate again as a deploy would.
+    const db = freshDb();
+    db.exec("DROP INDEX users_username_skeleton_idx; ALTER TABLE users DROP COLUMN username_skeleton");
+    const insert = db.prepare<[string, string, string, string]>(
+      `INSERT INTO users (subject, username, username_folded, password_hash, created_at, updated_at)
+       VALUES (?, ?, ?, 'scrypt$not-a-real-hash', ?, '2026-01-01T00:00:00.000Z')`,
+    );
+    insert.run("s-alice", "alice", "alice", "2026-01-01T00:00:00.000Z");
+    insert.run("s-cyrillic", "\u0430lice", "\u0430lice", "2026-01-02T00:00:00.000Z");
+    insert.run("s-bob", "Bob", "bob", "2026-01-03T00:00:00.000Z");
+    db.prepare("DELETE FROM ward_migrations WHERE name = ?").run("20261119000000-username-skeleton");
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      runMigrations(db);
+
+      expect(
+        db
+          .prepare<[], { subject: string; username_skeleton: string; updated_at: string }>(
+            "SELECT subject, username_skeleton, updated_at FROM users ORDER BY created_at",
+          )
+          .all(),
+      ).toEqual([
+        { subject: "s-alice", username_skeleton: "alice", updated_at: "2026-01-01T00:00:00.000Z" },
+        { subject: "s-cyrillic", username_skeleton: "alice", updated_at: "2026-01-01T00:00:00.000Z" },
+        { subject: "s-bob", username_skeleton: "bob", updated_at: "2026-01-01T00:00:00.000Z" },
+      ]);
+      expect(schemaSnapshot(db).some((entry) => entry.name === "users_username_skeleton_idx")).toBe(true);
+
+      // Both accounts that share a skeleton are named once in the boot log.
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]?.[0]).toContain("s-alice, s-cyrillic");
+    } finally {
+      warn.mockRestore();
+    }
+
+    db.close();
+  });
+
+  it("writes nothing to the log when no two accounts read the same", () => {
+    const db = freshDb();
+    db.exec("DROP INDEX users_username_skeleton_idx; ALTER TABLE users DROP COLUMN username_skeleton");
+    db.exec(
+      `INSERT INTO users (subject, username, username_folded, password_hash)
+       VALUES ('s-alice', 'alice', 'alice', 'x'), ('s-bob', 'bob', 'bob', 'x')`,
+    );
+    db.prepare("DELETE FROM ward_migrations WHERE name = ?").run("20261119000000-username-skeleton");
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      runMigrations(db);
+      expect(warn).not.toHaveBeenCalled();
+      expect(db.prepare<[], number>("SELECT count(*) FROM users WHERE username_skeleton IS NULL").pluck().get()).toBe(
+        0,
+      );
+    } finally {
+      warn.mockRestore();
+    }
 
     db.close();
   });

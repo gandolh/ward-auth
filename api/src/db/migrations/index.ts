@@ -6,6 +6,7 @@ import * as baseline from "./20260902000000-baseline.js";
 import * as appKeys from "./20260906000000-app-keys.js";
 import * as oidc from "./20261013000000-oidc.js";
 import * as dropAppKeys from "./20261013120000-drop-app-keys.js";
+import * as usernameSkeleton from "./20261119000000-username-skeleton.js";
 
 /**
  * The migration list, as **static imports** rather than a directory the runner
@@ -89,4 +90,5 @@ export const MIGRATIONS: Migration[] = [
   { name: "20260906000000-app-keys", up: appKeys.up },
   { name: "20261013000000-oidc", up: oidc.up },
   { name: "20261013120000-drop-app-keys", up: dropAppKeys.up },
+  { name: "20261119000000-username-skeleton", up: usernameSkeleton.up },
 ];

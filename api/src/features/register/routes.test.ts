@@ -413,6 +413,42 @@ describe("username collisions — the ordinary case, not an edge case", () => {
   });
 
   /**
+   * Names that differ from an existing one only by a character from another
+   * script, a full-width form, or a mark that renders as nothing get the same
+   * answer as the name itself. Each call has its own address, because the
+   * registration budget is per address.
+   */
+  it("answers 409 username_taken for a name that reads the same as an existing one", async () => {
+    expect((await register(goodBody({ username: "alice" }))).statusCode).toBe(201);
+
+    const lookalikes = ["аlice", "ａlice", "alice͏", "aliceㅤ", "alice⠀", "alice️"];
+    for (const [index, username] of lookalikes.entries()) {
+      const response = await register(goodBody({ username, email: "other@example.com" }), `198.51.100.${40 + index}`);
+      expect(response.statusCode, JSON.stringify(username)).toBe(409);
+      expect(response.json()).toEqual({ error: "username_taken" });
+    }
+    expect(mod.users.countUsers(db)).toBe(1);
+  });
+
+  it("refuses a name that reads the same as the break-glass username, with the same answer", async () => {
+    for (const [index, username] of ["tеst-superuser", "test-superuser͏", "ｔest-superuser"].entries()) {
+      const response = await register(goodBody({ username }), `198.51.100.${50 + index}`);
+      expect(response.statusCode, JSON.stringify(username)).toBe(409);
+      expect(response.json()).toEqual({ error: "username_taken" });
+    }
+    expect(mod.users.countUsers(db)).toBe(0);
+  });
+
+  it("registers an unrelated name beside an existing one", async () => {
+    expect((await register(goodBody({ username: "alice" }))).statusCode).toBe(201);
+
+    const response = await register(goodBody({ username: "bob", email: "bob@example.com" }), "198.51.100.60");
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({ username: "bob" });
+    expect(mod.users.countUsers(db)).toBe(2);
+  });
+
+  /**
    * The enumeration Ward does **not** offer. `users.email` has no uniqueness
    * constraint — username is the canonical identifier — so registration never
    * confirms or denies that an address is known to the estate. prm answers

@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type Database from "better-sqlite3";
+import { CONFUSABLES } from "./confusables.js";
 import { prepareOnce, requireRow } from "./prepared.js";
 
 /**
@@ -24,6 +25,8 @@ export interface UserRow {
   username: string;
   /** `foldUsername(username)`. Carries the uniqueness constraint. */
   username_folded: string;
+  /** `usernameSkeleton(username)`: what the name looks like. Indexed, not unique; see `createUser`. */
+  username_skeleton: string;
   /** scrypt, per `corpus/wiki/decisions-implementation.md`. Opaque here. */
   password_hash: string;
   /** Null for owner-issued accounts; those have no recovery channel by design. */
@@ -84,25 +87,85 @@ export function generateSubject(): string {
  * compatibility forms — a full-width `ａlice` folds onto `alice` — which is the
  * cheap half of not letting two accounts look identical in a console listing.
  *
- * This is the only fold in Ward. Anything that writes `users` directly must
- * call it; `username_folded` is NOT NULL precisely so that forgetting fails at
- * the insert instead of quietly switching the uniqueness constraint off.
+ * This is the one fold in Ward, and `usernameSkeleton` starts from it. Anything
+ * that writes `users` directly must call both; `username_folded` is NOT NULL
+ * precisely so that forgetting fails at the insert instead of quietly switching
+ * the uniqueness constraint off.
  */
 export function foldUsername(username: string): string {
   return username.normalize("NFKC").toLowerCase();
 }
 
+/** Each confusable character and the prototype it reads as, from `./confusables.ts`. */
+const PROTOTYPES: ReadonlyMap<string, string> = new Map(
+  CONFUSABLES.split("\n").map((line): [string, string] => {
+    const [from = "", to = ""] = line.split(";");
+    const codePoints = (hex: string): number[] => hex.split(" ").map((point) => Number.parseInt(point, 16));
+    return [String.fromCodePoint(...codePoints(from)), String.fromCodePoint(...codePoints(to))];
+  }),
+);
+
+/**
+ * Characters that render as nothing, or as a blank, and so drop out of a
+ * skeleton: Unicode's default-ignorable code points (a combining grapheme
+ * joiner, a variation selector, the Hangul fillers), plus U+2800 BRAILLE
+ * PATTERN BLANK, which renders as a blank and which Unicode lists as neither
+ * ignorable nor confusable.
+ */
+const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\u2800]/gu;
+
+/**
+ * What a username looks like, as a key: two names with the same skeleton read
+ * the same in the console's account list, so the second one is taken
+ * (`createUser`, `setUsername`).
+ *
+ * Unicode's skeleton (UTS #39) of the folded name: NFD, the invisible
+ * characters above removed, each character replaced by its prototype from
+ * Unicode's confusables table, then NFD again. A Cyrillic `аlice`, an `alice`
+ * with a combining grapheme joiner after it and a full-width `ａlice` all come
+ * out as `alice`. The table maps some plain ASCII too: `m` reads as `rn` and
+ * `1` as `l`, so `modern` and `rnodern` share a skeleton, as do `alice1` and
+ * `alicel`.
+ *
+ * Never shown to anyone and never compared with anything but another skeleton.
+ * The table's version decides some skeletons, so a new one ships with a
+ * migration that recomputes `users.username_skeleton`.
+ */
+export function usernameSkeleton(username: string): string {
+  let skeleton = "";
+  for (const char of foldUsername(username).normalize("NFD").replace(INVISIBLE, "")) {
+    skeleton += PROTOTYPES.get(char) ?? char;
+  }
+  return skeleton.normalize("NFD");
+}
+
+/**
+ * Thrown by `createUser` and `setUsername` when another account's username has
+ * the same skeleton. Routes answer it exactly as they answer a name taken in
+ * another casing: `409 { error: "username_taken" }`.
+ */
+export class UsernameLookalikeError extends Error {
+  constructor() {
+    super("another account's username has the same skeleton");
+    this.name = "UsernameLookalikeError";
+  }
+}
+
 const stmts = prepareOnce((db: Database.Database) => ({
   insert: db.prepare<
-    [string, string, string, string, string | null, number],
+    [string, string, string, string, string, string | null, number],
     UserRow
-  >(`INSERT INTO users (subject, username, username_folded, password_hash, email, email_verified)
-     VALUES (?, ?, ?, ?, ?, ?)
+  >(`INSERT INTO users (subject, username, username_folded, username_skeleton, password_hash, email, email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      RETURNING *`),
 
   bySubject: db.prepare<[string], UserRow>(`SELECT * FROM users WHERE subject = ?`),
 
   byFolded: db.prepare<[string], UserRow>(`SELECT * FROM users WHERE username_folded = ?`),
+
+  otherWithSkeleton: db.prepare<[string, string], number>(
+    `SELECT 1 FROM users WHERE username_skeleton = ? AND subject <> ? LIMIT 1`,
+  ),
 
   byEmail: db.prepare<[string], UserRow>(`SELECT * FROM users WHERE email = ? ORDER BY created_at, subject`),
 
@@ -112,9 +175,9 @@ const stmts = prepareOnce((db: Database.Database) => ({
       WHERE subject = ?`,
   ),
 
-  setUsername: db.prepare<[string, string, string], UserRow>(
+  setUsername: db.prepare<[string, string, string, string], UserRow>(
     `UPDATE users
-        SET username = ?, username_folded = ?,
+        SET username = ?, username_folded = ?, username_skeleton = ?,
             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
       WHERE subject = ?
       RETURNING *`,
@@ -151,17 +214,45 @@ const stmts = prepareOnce((db: Database.Database) => ({
  * Insert an account and return the stored row.
  *
  * Throws `SqliteError: UNIQUE constraint failed: users.username_folded` if the
- * username is taken in any casing. Callers translate that into a 409 rather
- * than checking first — a SELECT-then-INSERT has a race between the two
- * statements, and the constraint does not.
+ * username is taken in any casing, and `UsernameLookalikeError` if another
+ * account's name has the same skeleton. Callers translate both into a 409
+ * rather than checking first.
+ *
+ * The insert goes first and the skeleton lookup second, in one transaction (a
+ * savepoint inside a caller's). The insert takes SQLite's write lock, so no
+ * other write lands between the two statements, and a refusal rolls the insert
+ * back. The skeleton column is indexed but not UNIQUE because two existing
+ * accounts may already share one, and the migration that adds the column
+ * (`20261119000000-username-skeleton`) keeps both; the lookup refuses a new
+ * name that matches any of them.
  */
 export function createUser(db: Database.Database, input: NewUser): UserRow {
   const subject = input.subject ?? generateSubject();
   const email = input.email ?? null;
+  const skeleton = usernameSkeleton(input.username);
 
-  return requireRow(
-    stmts(db).insert.get(subject, input.username, foldUsername(input.username), input.passwordHash, email, 0),
-  );
+  return db.transaction((): UserRow => {
+    const row = requireRow(
+      stmts(db).insert.get(
+        subject,
+        input.username,
+        foldUsername(input.username),
+        skeleton,
+        input.passwordHash,
+        email,
+        0,
+      ),
+    );
+    refuseLookalike(db, skeleton, subject);
+    return row;
+  })();
+}
+
+/** Throws `UsernameLookalikeError` if an account other than `subject` has this skeleton. */
+function refuseLookalike(db: Database.Database, skeleton: string, subject: string): void {
+  if (stmts(db).otherWithSkeleton.pluck().get(skeleton, subject) !== undefined) {
+    throw new UsernameLookalikeError();
+  }
 }
 
 /** The account a `sub` claim or a grant row points at. */
@@ -195,10 +286,17 @@ export function setPasswordHash(db: Database.Database, subject: string, password
  * Rename an account. **The subject does not change**, which is the entire point
  * of having one: every app's rows stay attached across a rename.
  *
- * Throws on a collision, exactly like `createUser`.
+ * Throws on a collision, exactly like `createUser`. The account's own skeleton
+ * is not a collision, so a new case of its own name goes through.
  */
 export function setUsername(db: Database.Database, subject: string, username: string): UserRow | undefined {
-  return stmts(db).setUsername.get(username, foldUsername(username), subject);
+  const skeleton = usernameSkeleton(username);
+
+  return db.transaction((): UserRow | undefined => {
+    const row = stmts(db).setUsername.get(username, foldUsername(username), skeleton, subject);
+    if (row !== undefined) refuseLookalike(db, skeleton, subject);
+    return row;
+  })();
 }
 
 /**

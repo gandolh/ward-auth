@@ -9,7 +9,7 @@ import { CONSOLE_COOKIE_NAME, openConsoleSession, resetConsoleSessionsForTests }
 import { listAudit } from "../../db/audit-log.js";
 import { grantRole, listGrantsForSubject, SUPERUSER_ACTOR } from "../../db/grants.js";
 import { listFamily, listLiveTokensForSubject } from "../../db/refresh-tokens.js";
-import { findUserBySubject, findUserByUsername } from "../../db/users.js";
+import { countUsers, findUserBySubject, findUserByUsername } from "../../db/users.js";
 import { freshDb, seedApps } from "../../db/test-support.js";
 import { adminAccountsRoutes } from "./accounts.js";
 
@@ -201,6 +201,21 @@ describe("creating an account", () => {
     });
     expect(again.statusCode).toBe(409);
     expect(again.json()).toEqual({ error: "username_taken" });
+  });
+
+  it("answers 409 for a name that reads the same as another account's", async () => {
+    await createAccount("alice");
+
+    for (const username of ["\u0430lice", "alice\u034f"]) {
+      const again = await asConsole({
+        method: "POST",
+        url: "/console/accounts",
+        payload: { username, password: PASSWORD },
+      });
+      expect(again.statusCode, JSON.stringify(username)).toBe(409);
+      expect(again.json()).toEqual({ error: "username_taken" });
+    }
+    expect(countUsers(db)).toBe(1);
   });
 
   /** Surface `PasswordPolicyError.code`, not its message. */
@@ -507,6 +522,18 @@ describe("renaming an account", () => {
     db.exec("DELETE FROM audit_log");
 
     const response = await rename(bob, "ALICE");
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ error: "username_taken" });
+    expect(findUserBySubject(db, bob)?.username).toBe("bob");
+    expect(listAudit(db)).toHaveLength(0);
+  });
+
+  it("refuses a name that reads the same as another account's, and changes nothing", async () => {
+    await createAccount("alice");
+    const bob = await createAccount("bob");
+    db.exec("DELETE FROM audit_log");
+
+    const response = await rename(bob, "\u0430lice");
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({ error: "username_taken" });
     expect(findUserBySubject(db, bob)?.username).toBe("bob");

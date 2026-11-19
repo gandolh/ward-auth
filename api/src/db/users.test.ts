@@ -16,6 +16,8 @@ import {
   setEmail,
   setPasswordHash,
   setUsername,
+  UsernameLookalikeError,
+  usernameSkeleton,
 } from "./users.js";
 
 let db: Database.Database;
@@ -151,6 +153,63 @@ describe("username is the canonical identifier", () => {
     const bob = seedUser(db, "bob");
 
     expect(() => setUsername(db, bob.subject, "ALICE")).toThrowError(/UNIQUE constraint failed/);
+  });
+});
+
+describe("a name that reads the same as another account's is taken", () => {
+  /** Escaped, so each fixture says which character it carries. */
+  const lookalikes = {
+    "Cyrillic а": "\u0430lice",
+    "full-width ａ": "\uff41lice",
+    "combining grapheme joiner": "alice\u034f",
+    "variation selector": "alice\ufe0f",
+    "Hangul filler": "alice\u3164",
+    "halfwidth Hangul filler": "alice\uffa0",
+    "braille blank": "alice\u2800",
+  };
+
+  it("gives every look-alike of alice the skeleton alice", () => {
+    for (const [label, name] of Object.entries(lookalikes)) {
+      expect(usernameSkeleton(name), label).toBe("alice");
+    }
+    expect(usernameSkeleton("Alice")).toBe("alice");
+  });
+
+  it("gives unrelated names their own skeletons", () => {
+    expect(usernameSkeleton("bob")).toBe("bob");
+    expect(usernameSkeleton("alicia")).not.toBe(usernameSkeleton("alice"));
+    expect(usernameSkeleton("cristian g")).toBe("cristian g");
+  });
+
+  it("refuses a look-alike at creation and leaves no row behind", () => {
+    seedUser(db, "alice");
+
+    for (const [label, name] of Object.entries(lookalikes)) {
+      // The full-width one folds onto `alice` (NFKC), so the UNIQUE constraint refuses it first.
+      const refusal = label === "full-width ａ" ? /UNIQUE constraint failed/ : UsernameLookalikeError;
+      expect(() => createUser(db, { username: name, passwordHash: "scrypt$y" }), label).toThrowError(refusal);
+    }
+    expect(countUsers(db)).toBe(1);
+  });
+
+  it("refuses a rename onto another account's look-alike and keeps the old name", () => {
+    seedUser(db, "alice");
+    const bob = seedUser(db, "bob");
+
+    expect(() => setUsername(db, bob.subject, "\u0430lice")).toThrowError(UsernameLookalikeError);
+    expect(findUserBySubject(db, bob.subject)?.username).toBe("bob");
+  });
+
+  it("lets an account take a look-alike of its own name", () => {
+    const alice = seedUser(db, "alice");
+
+    expect(setUsername(db, alice.subject, "\u0430lice")?.username_skeleton).toBe("alice");
+  });
+
+  it("accepts an unrelated name beside an existing one", () => {
+    seedUser(db, "alice");
+
+    expect(createUser(db, { username: "bob", passwordHash: "scrypt$y" }).username_skeleton).toBe("bob");
   });
 });
 

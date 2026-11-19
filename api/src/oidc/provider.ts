@@ -4,6 +4,7 @@ import Provider, { interactionPolicy, type Configuration, type KoaContextWithOID
 
 import { recordAudit } from "../db/audit-log.js";
 import { listFamily, revokeFamily } from "../db/refresh-tokens.js";
+import { escapeHtml, pageShell } from "../lib/page-shell.js";
 import type { WardKeySet, WardSigningKey } from "../tokens/keys.js";
 import { wardFindAccount } from "./account.js";
 import { sqliteAdapterFactory } from "./adapter.js";
@@ -92,37 +93,9 @@ function cookieKeys(keySet: WardKeySet): string[] {
   return keys;
 }
 
-const HTML_ESCAPES: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
-
-export function escapeHtml(value: unknown): string {
-  return String(value).replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
-}
-
-/**
- * A bare page in Ward's register. No external fonts or styles: the provider's
- * defaults pull a Google font, which would tell a third party every time
- * someone hits an error at Ward.
- */
+/** A bare page in Ward's register: the shared shell, with the document title suffixed "· Ward". */
 export function plainPage(title: string, body: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escapeHtml(title)} · Ward</title>
-  <style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;color:#1d1d1b;background:#f4f2ec}h1{font-size:1.4rem;font-weight:600}code{font-size:.9em}</style>
-</head>
-<body>
-  <h1>${escapeHtml(title)}</h1>
-  ${body}
-</body>
-</html>`;
+  return pageShell({ title, documentTitle: `${title} · Ward`, body });
 }
 
 export interface WardProviderOptions {

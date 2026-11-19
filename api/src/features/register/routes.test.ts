@@ -562,6 +562,11 @@ describe("the file transport, end to end, with no SMTP credentials", () => {
     expect(page.statusCode).toBe(200);
     expect(page.headers["content-type"]).toContain("text/html");
     expect(page.body).toContain("<h1>Email confirmed</h1>");
+    expect(page.body).toContain("<title>Email confirmed</title>");
+    expect(page.body).toContain('<meta name="referrer" content="no-referrer">');
+    expect(page.body).toContain('<meta name="color-scheme" content="light">');
+    expect(page.body).toContain('localStorage.getItem("theme")');
+    expect(page.body).toContain(':root[data-theme="dark"]');
     // The page interpolates nothing, so no address or token can reach it.
     expect(page.body).not.toContain("alice@example.com");
     expect(page.body).not.toContain(new URL(link).searchParams.get("token")!);

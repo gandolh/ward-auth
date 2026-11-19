@@ -17,6 +17,7 @@ import { grantTargetId, recordAudit } from "../../db/audit-log.js";
 import { getDb } from "../../db/connection.js";
 import { SELF_REGISTRATION_ACTOR, ensureGrant } from "../../db/grants.js";
 import { createUser, UsernameLookalikeError, usernameSkeleton, type UserRow } from "../../db/users.js";
+import { pageShell } from "../../lib/page-shell.js";
 import { errorReply, lockedOutReply } from "../../lib/replies.js";
 import { verificationLink, verificationMail } from "../../mail/templates.js";
 import { sendMail } from "../../mail/transport.js";
@@ -748,19 +749,11 @@ function verifyPage(outcome: VerifyOutcome): string {
     },
   }[outcome];
 
-  return [
-    "<!doctype html>",
-    '<html lang="en"><head><meta charset="utf-8">',
-    '<meta name="viewport" content="width=device-width,initial-scale=1">',
-    '<meta name="referrer" content="no-referrer">',
-    `<title>${title}</title>`,
-    "<style>body{font:16px/1.5 system-ui,sans-serif;margin:4rem auto;max-width:32rem;padding:0 1rem}</style>",
-    "</head><body>",
-    `<h1>${title}</h1>`,
-    `<p>${message}</p>`,
-    "</body></html>",
-    "",
-  ].join("\n");
+  return pageShell({
+    title,
+    body: `<p>${message}</p>`,
+    headExtra: '<meta name="referrer" content="no-referrer">\n  ',
+  });
 }
 
 /**

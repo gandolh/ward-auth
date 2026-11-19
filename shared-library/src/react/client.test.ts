@@ -411,7 +411,7 @@ describe("the hooks", () => {
 
   it("take the account's password to link and unlink", () => {
     // Checked by the typecheck: an app's `onClick={link.link}` or a call
-    // with no password no longer compiles.
+    // with no password does not compile.
     expectTypeOf<ReturnType<typeof useWardLink>["link"]>().parameters.toEqualTypeOf<[currentPassword: string]>();
     expectTypeOf<ReturnType<typeof useWardUnlink>["unlink"]>().parameters.toEqualTypeOf<[currentPassword: string]>();
   });

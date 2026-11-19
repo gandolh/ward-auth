@@ -509,6 +509,49 @@ describe.skipIf(!HAVE_LOCKOUT)("the console session routes", () => {
       expect(after.statusCode).toBe(401);
     });
 
+    it("treats a request carrying two console cookies as signed out, even when one is live", async () => {
+      const live = await openSession();
+
+      for (const cookie of [`${live}; ward_console=wcs_unknown`, `ward_console=wcs_unknown; ${live}`]) {
+        const response = await app.inject({ method: "GET", url: "/console/session", headers: { cookie } });
+        expect(response.statusCode, cookie).toBe(401);
+        expect(response.json()).toEqual({ error: "unauthorized" });
+      }
+
+      // Refused, not ended: the cookie alone still opens the console.
+      const alone = await app.inject({ method: "GET", url: "/console/session", headers: { cookie: live } });
+      expect(alone.statusCode).toBe(200);
+    });
+
+    it("logs out every session the request's console cookies name, then clears the cookie", async () => {
+      const first = await openSession();
+      const second = await openSession();
+      expect(superuser.activeConsoleSessionCount()).toBe(2);
+      db.exec("DELETE FROM audit_log");
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/console/logout",
+        headers: { cookie: `${first}; ward_console=%zz; ${second}` },
+      });
+
+      expect(response.statusCode).toBe(204);
+      const cleared = consoleCookie(response)!;
+      expect(cleared).toContain("ward_console=;");
+      expect(cleared).toContain("Max-Age=0");
+      expect(cleared).toContain("Path=/ward-api/console");
+
+      const rows = listAudit(db);
+      expect(rows.map((row) => row.action)).toEqual(["console.logout", "console.logout"]);
+      expect(new Set(rows.map((row) => row.target_id)).size).toBe(2);
+      expect(superuser.activeConsoleSessionCount()).toBe(0);
+
+      for (const cookie of [first, second]) {
+        const after = await app.inject({ method: "GET", url: "/console/session", headers: { cookie } });
+        expect(after.statusCode).toBe(401);
+      }
+    });
+
     it("logs out idempotently without auditing an anonymous caller", async () => {
       const response = await app.inject({ method: "POST", url: "/console/logout" });
 

@@ -14,7 +14,7 @@ import {
   consoleSessionSetCookie,
   CONSOLE_SESSION_IDLE_TIMEOUT_SECONDS,
   openConsoleSession,
-  readConsoleCookie,
+  readConsoleCookies,
   type ConsoleSession,
 } from "../../auth/superuser.js";
 import { recordRepeatedAudit } from "../../audit.js";
@@ -327,14 +327,18 @@ export const consoleRoutes: FastifyPluginAsyncZod<ConsoleRoutesOptions> = async 
    * row is written only when a live session was actually closed — an
    * unauthenticated POST here is not an event, and auditing it would hand an
    * anonymous caller a way to fill the log.
+   *
+   * It ends the session of **every** console cookie the request carries, one
+   * `console.logout` row per session closed: with more than one, the browser's
+   * order says nothing about which copy is the operator's (`readConsoleCookie`),
+   * and signing out ends theirs whichever it is.
    */
   app.post("/console/logout", { schema: { response: logoutSchema } }, async (request, reply) => {
     if (!(await sameOriginAsWard(request))) return crossSite(reply);
 
-    const token = readConsoleCookie(request.headers.cookie);
-    const closed = token === undefined ? undefined : closeConsoleSession(token);
-
-    if (closed !== undefined) {
+    for (const token of readConsoleCookies(request.headers.cookie)) {
+      const closed = closeConsoleSession(token);
+      if (closed === undefined) continue;
       recordAudit(await resolveDb(), {
         actorKind: "superuser",
         actorLabel: SUPERUSER_LABEL,

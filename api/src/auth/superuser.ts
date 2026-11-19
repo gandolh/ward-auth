@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
-import { wardSecureCookies } from "./cookie.js";
+import { readCookie, readCookies, wardSecureCookies } from "./cookie.js";
 
 /**
  * The break-glass superuser and the console session it opens.
@@ -381,30 +381,50 @@ export function resetConsoleSessionsForTests(): void {
 }
 
 /**
- * Read the console cookie out of a raw `Cookie` header.
+ * The console cookie on a raw `Cookie` header, decoded, when the header carries
+ * exactly one; otherwise `undefined`, and the request is signed out.
  *
- * Hand-rolled because Ward has no cookie plugin and adds no dependency for
- * one — and because the job is genuinely this small. It reads **only**
- * `ward_console` and ignores every other cookie on the header, which matters:
- * the access-token cookie (`Path=/ward-api`) reaches the console's paths too,
- * and the guard must never be able to see it, let alone act on it.
+ * Ward sets `ward_console` once, at one path, so it expects one value. With
+ * more than one, the browser's order says nothing about which copy is Ward's,
+ * so the console acts on none of them: the guard answers as for no cookie.
+ * Values are counted as `readCookie` counts them (`auth/cookie.ts`), the rule
+ * Ward's session cookies follow: a cleared copy with an empty value does not
+ * count, and a copy that does not decode does. A single value with a malformed
+ * percent escape is not a console token, and reads as absent.
+ *
+ * It reads **only** `ward_console` and ignores every other cookie on the
+ * header, which matters: the access-token cookie (`Path=/ward-api`) reaches the
+ * console's paths too, and the guard must never be able to see it, let alone
+ * act on it.
  */
 export function readConsoleCookie(cookieHeader: string | undefined): string | undefined {
-  if (!cookieHeader) return undefined;
+  const raw = readCookie(cookieHeader, CONSOLE_COOKIE_NAME);
+  return raw === undefined ? undefined : decodeConsoleValue(raw);
+}
 
-  for (const part of cookieHeader.split(";")) {
-    const separator = part.indexOf("=");
-    if (separator === -1) continue;
-    if (part.slice(0, separator).trim() !== CONSOLE_COOKIE_NAME) continue;
-    const raw = part.slice(separator + 1).trim();
-    try {
-      return decodeURIComponent(raw);
-    } catch {
-      // A malformed percent escape is not our cookie. Treat it as absent.
-      return undefined;
-    }
+/**
+ * Every console cookie on a raw `Cookie` header, decoded, in header order.
+ *
+ * For `POST /console/logout`, which ends the session of each value it can
+ * resolve, whichever copy is the operator's own. Empty values and values that
+ * do not decode are left out.
+ */
+export function readConsoleCookies(cookieHeader: string | undefined): string[] {
+  const values: string[] = [];
+  for (const raw of readCookies(cookieHeader, CONSOLE_COOKIE_NAME)) {
+    const value = decodeConsoleValue(raw);
+    if (value !== undefined) values.push(value);
   }
-  return undefined;
+  return values;
+}
+
+/** A console cookie's value, percent-decoded, or `undefined` when it does not decode. */
+function decodeConsoleValue(raw: string): string | undefined {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return undefined;
+  }
 }
 
 function attributes(secure: boolean): string {

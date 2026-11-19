@@ -148,6 +148,35 @@ describe("the console guard rejects everything else with one opaque 401", () => 
     expect(new Set(responses.map((response) => response.body)).size).toBe(1);
   });
 
+  it("answers a request carrying two console cookies as signed out, even when one or both are live", async () => {
+    const { token: live } = superuser.openConsoleSession();
+    const { token: otherLive } = superuser.openConsoleSession();
+    const signedOut = await app.inject({ method: "GET", url: "/console/probe" });
+
+    const pairs = [
+      `${cookie(live)}; ${cookie("wcs_not-a-real-token")}`,
+      `${cookie("wcs_not-a-real-token")}; ${cookie(live)}`,
+      `${cookie(live)}; ${cookie(otherLive)}`,
+      `${cookie(live)}; ${cookie(live)}`,
+      `${cookie(live)}; ward_console=%zz`,
+    ];
+
+    for (const pair of pairs) {
+      for (const method of ["GET", "POST"] as const) {
+        const response = await app.inject({ method, url: "/console/probe", headers: { cookie: pair } });
+        expect(response.statusCode, `${method} ${pair}`).toBe(401);
+        expect(response.body).toBe(signedOut.body);
+        expect(response.body).not.toContain("reached");
+      }
+    }
+
+    // Refused, not ended: each cookie alone still opens the console.
+    for (const token of [live, otherLive]) {
+      const alone = await app.inject({ method: "GET", url: "/console/probe", headers: { cookie: cookie(token) } });
+      expect(alone.statusCode).toBe(200);
+    }
+  });
+
   it("rejects an ordinary account's access token, in either cookie", async () => {
     /**
      * The first of the two directions the gate must hold. An ordinary account's

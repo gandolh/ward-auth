@@ -93,11 +93,13 @@ const READS = new Set(["GET", "HEAD"]);
  *
  * One status, one body, for every reason: no cookie, an unparseable cookie, an
  * unknown token, an expired token, a token from before the last restart, an
- * access token in the wrong cookie. The caller cannot tell whether a console
- * credential exists, whether a session ever existed, or whether one just timed
- * out — and it deliberately does not send `WWW-Authenticate`, both because there
- * is no HTTP auth scheme in play and because a browser would answer it with a
- * native credential prompt on a service whose login is a form.
+ * access token in the wrong cookie, more than one console cookie on the request
+ * (even when one is live: `readConsoleCookie` takes none). The caller cannot
+ * tell whether a console credential exists, whether a session ever existed, or
+ * whether one just timed out — and it deliberately does not send
+ * `WWW-Authenticate`, both because there is no HTTP auth scheme in play and
+ * because a browser would answer it with a native credential prompt on a
+ * service whose login is a form.
  *
  * `no-store` goes on the response either way: everything behind this gate is
  * administrative, per-operator and stale the moment it is written, and a shared

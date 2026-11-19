@@ -330,6 +330,25 @@ describe("the console cookie", () => {
     expect(superuser.readConsoleCookie("ward_console=%zz")).toBeUndefined();
     expect(superuser.readConsoleCookie("ward_console=wcs%5Fx")).toBe("wcs_x");
   });
+
+  it("takes no value when the header carries more than one console cookie", () => {
+    expect(superuser.readConsoleCookie("ward_console=wcs_a; ward_console=wcs_b")).toBeUndefined();
+    expect(superuser.readConsoleCookie("ward_console=wcs_a; ward_console=wcs_a")).toBeUndefined();
+    // A copy that does not decode is still a second copy.
+    expect(superuser.readConsoleCookie("ward_console=wcs_a; ward_console=%zz")).toBeUndefined();
+    // A cleared copy, with an empty value, does not count.
+    expect(superuser.readConsoleCookie("ward_console=; ward_console=wcs_a")).toBe("wcs_a");
+  });
+
+  it("lists every console cookie on the header, decoded, for sign-out", () => {
+    expect(superuser.readConsoleCookies("ward_console=wcs_a; ward_session=x; ward_console=wcs%5Fb")).toEqual([
+      "wcs_a",
+      "wcs_b",
+    ]);
+    expect(superuser.readConsoleCookies("ward_console=%zz; ward_console=wcs_a; ward_console=")).toEqual(["wcs_a"]);
+    expect(superuser.readConsoleCookies("ward_session=a.jwt.value")).toEqual([]);
+    expect(superuser.readConsoleCookies(undefined)).toEqual([]);
+  });
 });
 
 describe("the audit shape for a console event", () => {

@@ -122,12 +122,10 @@ export function clearedCookie(name: string, path: string, secure: boolean): stri
  * header order.
  *
  * A browser sends every stored cookie whose path and domain match, so the same
- * name can appear more than once: a cookie of the same name set at a broader
- * path, or for a parent domain, travels beside the library's own. Nothing
- * picks one of them by position. A reader that acts on one value goes through
- * `readCookie`, which takes none when there are several, and
- * `POST <prefix>/logout` uses this list to end every session it names (see the
- * header).
+ * name can appear more than once. Nothing picks one of them by position: a
+ * reader that acts on one value goes through `readCookie`, which takes none
+ * when there are several, and `POST <prefix>/logout` uses this list to end
+ * every session it names (see the header).
  *
  * A cleared cookie can still be presented by a client that ignored the
  * expiry; an empty value is treated as absent rather than as a token.

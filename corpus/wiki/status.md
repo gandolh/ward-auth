@@ -1,6 +1,6 @@
 ---
 summary: Dated snapshot (2026-11-13) of Ward, per area — the service (2026-09-04), in production since 2026-10-04, POST /notify (2026-10-07), the OIDC redesign and the old contract's retirement (2026-10-13, deployed), its own host (2026-10-22, live), the docs site on Docusaurus and the console work of 2026-10-23 to 11-04 (not deployed), the local seed's ten apps, the house style and npm run check (2026-11-11, not deployed), the server in the code structure (2026-11-12, not deployed), the redesign The pass and its doors (2026-11-13, not deployed), ward-auth 0.7.2 and which version each app vendors; the owner's next steps and known gaps.
-updated: 2026-11-13
+updated: 2026-11-19
 ---
 
 # Status — 2026-11-13
@@ -78,6 +78,9 @@ on the board and built on 2026-11-13 (local, not deployed). Ideas waiting to be 
   the jamb, the console's accounts a table from 1000 px; self-hosted Albert Sans
   and Fragment Mono; Playwright specs on a stubbed Ward (`npm run e2e -w
   @ward/ui`). No route, cookie or token changed ([../../docs/design.md](../../docs/design.md)).
+- **The API's own pages** (2026-11-19, not deployed). The OIDC error, signed-out and
+  expired pages and the email confirmation page share one shell that reads the
+  saved Light / Dark / System choice before the first paint.
 - **ward-auth** (`shared-library/`, 0.7.2 on 2026-11-12). 0.4.0 renames a user,
   0.5.0 shapes a new Ward user's name, 0.6.0 disables a local user, 0.6.1
   exports the new names, 0.7.0 keeps a refused sign-in's return path, 0.7.1

@@ -4,7 +4,7 @@
 
 **Before you start:** run `brief-board guide` ([CLAUDE.md](../../CLAUDE.md)).
 
-Promoted 2026-11-19 from the todo of 2026-11-11 ([todos/the-oidc-pages-follow-the-theme.md](../../todos/the-oidc-pages-follow-the-theme.md)), in the owner's backlog grill. The calls are technical defaults settled on 2026-11-13 (the backlog grill, answer 3) and 2026-11-19.
+Promoted 2026-11-19 from the todo of 2026-11-11 (a todo, deleted at closeout), in the owner's backlog grill. The calls are technical defaults settled on 2026-11-13 (the backlog grill, answer 3) and 2026-11-19.
 
 ## Context
 
@@ -44,3 +44,12 @@ The API and the sign-in pages share an origin (`config.ts` requires `WARD_UI_URL
 - [ ] Both pages follow the saved choice before the first paint, light on a first visit.
 - [ ] The tests above pass; `npm run check` exit 0; `bash corpus/lint.sh` OK.
 - [ ] End move `ready_for_deploy`, owner step `node cli.ts ward server`.
+
+## Outcome
+
+Built 2026-11-19 on `main` (f3a56da), not pushed; the board column is Ready for deploy (`node cli.ts ward server`: the API changed).
+
+- **Shell.** `api/src/lib/page-shell.ts` holds `escapeHtml` and `pageShell`: the sign-in pages' light and dark `--ward-*` colours as custom properties, the `color-scheme` meta and the boot script of `ui/index.html`. A comment beside the script says a future `script-src` needs a hash or a file for both scripts.
+- **Pages.** `plainPage` (OIDC error, signed-out and expired pages) and the email confirmation page use it. The confirmation page keeps its `no-referrer` meta, its title and its body.
+- **Tests.** `page-shell.test.ts`, `oidc/plain-page.test.ts` and the confirmation test check the script, both palettes, the meta and the escaping. `npm run check` exit 0 (1421 tests; two earlier runs failed one `oidc.test.ts` flow each on a busy machine, and the file passes alone).
+- **Shots.** Headless Chromium on both pages at 1280 and 390: unset is limestone, Dark and System with a dark system are near-black with light text.

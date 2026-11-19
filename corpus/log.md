@@ -780,3 +780,11 @@ put the same account straight back in; "every time" was the owner's pick.
 No app, cookie, token or library change. `npm run check` 73 files, 1276
 tests, and a browser walk on a dev Ward (form, chooser, another account,
 Continue by Enter, Back to the app). Decision in `wiki/decisions-oidc.md`.
+
+## [2026-11-19] done | Brief 09: The server-rendered pages follow the theme
+
+The OIDC error, signed-out and expired pages and the email confirmation page
+share one shell (`api/src/lib/page-shell.ts`) with the sign-in pages' light and
+dark colours and their boot script, so a saved Dark choice meets no light page
+mid-sign-in. Light on a first visit. No route, cookie, token or body change
+beyond the pages' HTML. `npm run check` 1421 tests; shots at 1280 and 390.

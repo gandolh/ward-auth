@@ -7,6 +7,107 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 1.0.0 — 2026-11-19
+
+Linking and unlinking Ward ask for the account's password, the plugin acts
+on a cookie only when a request carries one copy of it, and the sign-in
+budget counts attempts still running. A major version: the browser bundle's
+link and unlink calls take an argument they did not take before.
+
+Linking and unlinking Ward:
+
+- `POST <routePrefix>/ward/link` and `POST <routePrefix>/ward/unlink` take
+  `{ currentPassword }`, the account's local password, as
+  `POST <routePrefix>/password` does: `400 invalid_request` without it,
+  `401 invalid_credentials` when it is wrong. Both run under the
+  password-change budget that `/password` and `/ward/set-password` share, so
+  five wrong passwords from one address in 15 minutes earn
+  `429 too_many_attempts`, on all four routes.
+- The `409`s come first, before the body is read, and are the ones apps
+  know: link answers `already_linked` (a user created from Ward is linked),
+  unlink `not_linked` and `no_local_password`. Link also answers
+  `no_local_password` for a user with no local password and no link, which
+  only an app that creates such a user can have.
+- The link callback finishes a link only for a start that `POST /ward/link`
+  held after the password, for the same session, once, within ten minutes.
+  Any other link flow lands on `settingsPath?ward_error=invalid_callback`.
+  The starts are held in the app's memory, so a link still waiting for Ward
+  when the app restarts lands there too, and the person starts it again.
+- `Accounts` gains `checkPassword(userId, password)`, the password check by
+  user id. It changes nothing, and answers `false` for an unknown id, a user
+  with no local password, a disabled user or a wrong password, at one scrypt
+  cost each.
+- The browser bundle: `startWardLink(currentPassword)`,
+  `unlinkWard(currentPassword)`, `useWardLink().link(currentPassword)` and
+  `useWardUnlink().unlink(currentPassword)`. The argument is required. An
+  optional one would compile into a call the server always refuses, and
+  `onClick={link.link}` would send the click event as the password; a
+  required one shows every call site at the next typecheck.
+
+One copy of a cookie, or none:
+
+- `readCookie(header, name)` answers a value only when the header carries
+  exactly one non-empty copy of `name`, and `undefined` when it carries
+  several. An empty copy (a cleared cookie) does not count. The plugin reads
+  its session cookie and its Ward flow cookie this way.
+- A request carrying the session cookie more than once is signed out. The
+  guard answers `401 { error: "unauthorized" }` (`POST /ward/logout` too),
+  `GET <routePrefix>/session` answers `user: null`, and nothing is cleared.
+  `POST <routePrefix>/login` and a Ward sign-in start a new session and end
+  no earlier one. While the other copy stays in the browser, its requests
+  stay signed out, after a new sign-in too.
+- A link or reauthentication callback carrying the session cookie more than
+  once lands on `settingsPath?ward_error=unauthorized`. One carrying the flow
+  cookie (`<cookieName>_ward`) more than once lands on
+  `loginPath?ward_error=invalid_callback`.
+- `POST <routePrefix>/logout` ends the session of every copy it carries,
+  then clears the cookie.
+
+The sign-in budget:
+
+- Attempts still running count against the five. `/login`, `/password`,
+  `/username`, `/ward/set-password`, `/ward/link` and `/ward/unlink` each
+  hold one of the address's slots until the attempt ends, so requests sent
+  together from one address get five verdicts and then `429`. A refusal
+  caused only by attempts still running says `Retry-After: 1`
+  (`retryAfterSeconds: 1`).
+- `Lockout` gains the required member `reserveAttempt(target)`, answering a
+  `LockoutGate`; its `LockoutAttempt` ends with `fail(account?)`,
+  `succeed(account?)` or `release()`. Both types are exported.
+- An IPv6 client is counted by its /64, and an IPv4-mapped address, in
+  either spelling, as the IPv4 address it carries. `lockoutKeyFor` still
+  answers the full address, and now answers a hex-spelled IPv4-mapped one
+  (`::ffff:7f00:1`) in dotted form (`127.0.0.1`), as it did the dotted
+  spelling.
+- A trusted peer whose last `X-Forwarded-For` element is not an IP address
+  is keyed on the peer, with the throttled warning, which now reads "no
+  X-Forwarded-For address arrived".
+- Each account's share of a counter is filed under a 24-character digest of
+  its folded name, so a long name takes no more memory than a short one.
+
+Upgrade notes from 0.7.2:
+
+- **Re-vendor the server and the web package together**
+  (`npm run vendor -- <app>/vendor/ward`, once for each). No migration. The
+  new server copy alone refuses every link and unlink from the old web copy
+  as `invalid_request`.
+- **The settings page needs a password field on Link Ward and on Unlink
+  Ward**, passed as `link(currentPassword)` and `unlink(currentPassword)` (or
+  `startWardLink` and `unlinkWard`). Show `invalid_credentials` and
+  `too_many_attempts` (with `retryAfterSeconds`) beside the button: a
+  refused link stays on the page. A user with no local password
+  (`!user.hasPassword`) has nothing to type; offer "Set a local password"
+  first, as before, and the server answers `no_local_password` whatever is
+  sent.
+- A test or a client of the app's own that posts to `/ward/link` or
+  `/ward/unlink` sends `{ "currentPassword": ... }` as a JSON body.
+- An `Accounts` built by hand (not `createAccounts`) must implement
+  `checkPassword`; a `Lockout` built by hand must implement
+  `reserveAttempt`.
+- Nothing else to change for the cookie and budget items. An app that reads
+  a cookie of its own with `readCookie` now gets `undefined` for a name sent
+  more than once.
+
 ## 0.7.2 — 2026-11-12
 
 No change for apps. `SessionValidator` and `SessionVerdict` moved to a module

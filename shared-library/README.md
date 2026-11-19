@@ -468,10 +468,10 @@ function Settings() {
 ```
 
 - **Link Ward**: show it when `ward.enabled && !ward.linked`, with a field for
-  the account's password. `link(currentPassword)` asks for it again, as a
-  password change does, and under the same budget: a wrong one stays on the
-  page as `invalid_credentials`, and five from one address in 15 minutes earn
-  `too_many_attempts`. Then it goes to Ward and comes back to
+  the account's password (1.0.0). `link(currentPassword)` asks for it again,
+  as a password change does, and under the same budget: a wrong one stays on
+  the page as `invalid_credentials`, and five from one address in 15 minutes
+  earn `too_many_attempts`. Then it goes to Ward and comes back to
   `settingsPath?ward=linked`, or with `already_linked`, `ward_account_in_use`,
   `access_denied`, `invalid_callback` or `unauthorized`. A link finishes only
   in the app process that took the password: one waiting for Ward when the

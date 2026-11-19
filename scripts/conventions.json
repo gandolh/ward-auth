@@ -90,6 +90,34 @@
     {
       "check": "structure",
       "rule": 6,
+      "path": "api/src/oidc/interaction.ts",
+      "match": "GET `${INTERACTION_INTERNAL_PREFIX}/:uid` declares no schema",
+      "reason": "The handler validates the uid with uidParams.safeParse."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/oidc/interaction.ts",
+      "match": "GET `${INTERACTION_INTERNAL_PREFIX}/:uid/continue` declares no schema",
+      "reason": "The handler validates the uid with uidParams.safeParse."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/oidc/interaction.ts",
+      "match": "GET `${INTERACTION_INTERNAL_PREFIX}/:uid/client` declares no schema",
+      "reason": "The handler validates the uid with uidParams.safeParse."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
+      "path": "api/src/oidc/interaction.ts",
+      "match": "GET `${INTERACTION_INTERNAL_PREFIX}/:uid/abort` declares no schema",
+      "reason": "The handler validates the uid with uidParams.safeParse."
+    },
+    {
+      "check": "structure",
+      "rule": 6,
       "path": "api/src/features/jwks/routes.ts",
       "match": "GET /.well-known/jwks.json declares no schema",
       "reason": "The JWKS is serialised once at boot and sent as a string with its own media type (application/jwk-set+json); Fastify never runs a response schema on a string reply."

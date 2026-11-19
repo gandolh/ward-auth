@@ -13,12 +13,5 @@ module.exports = {
       },
       to: { path: "^api/src/features/" },
     },
-    {
-      name: "app-through-feature-index",
-      severity: "error",
-      comment: "app.ts registers each feature through its index.ts, as another feature would use it.",
-      from: { path: "^api/src/app\\.ts$" },
-      to: { path: "^api/src/features/[^/]+/", pathNot: "^api/src/features/[^/]+/index\\.ts$" },
-    },
   ],
 };

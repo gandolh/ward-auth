@@ -161,7 +161,11 @@ export type LockoutSurface = "login" | "console" | "register" | "account_passwor
 export interface LockoutTarget {
   /** `/login` and `/console/login` hold independent budgets. */
   surface: LockoutSurface;
-  /** From `lockoutKeyFor(...)`. The counter the `429` decision is keyed on. */
+  /**
+   * From `lockoutKeyFor(...)`, the full address. The counter the `429`
+   * decision reads is keyed on it grouped: an IPv4 address whole, an IPv6
+   * address by its /64 (`addressGroup`).
+   */
   address: string;
   /**
    * The account the attempt was aimed at, **folded** (`foldUsername`), so that
@@ -251,7 +255,35 @@ let lastIgnoredForwardedWarnAt = 0;
  * surface's bucket.
  */
 function bucketKey(target: LockoutTarget): string {
-  return `${target.surface}\u0000${target.address}`;
+  return `${target.surface}\u0000${addressGroup(target.address)}`;
+}
+
+/**
+ * The part of an address its budget belongs to: an IPv4 address whole, an
+ * IPv6 address by its /64.
+ *
+ * One IPv6 host is routinely handed a whole /64 and picks its own address
+ * inside it (privacy addresses rotate on their own), so keyed on all 128 bits
+ * one machine could give every request a fresh address and never meet the
+ * fifth failure. A /64 is the smallest subnet address autoconfiguration
+ * works in, so a home or a server that has IPv6 at all holds at least one.
+ * Every address in it shares one budget, in whatever spelling it
+ * arrives (`2001:db8:1:2::a` and `2001:0db8:1:2:0:0:0:a` are one key).
+ *
+ * Only the counter is grouped. `lockoutKeyFor` still returns the full address,
+ * which is what the trusted-peer check compares and what every row's `ip`
+ * records. An IPv4-mapped address is the IPv4 address it carries, never the
+ * mapped prefix's /64: grouped by that, every IPv4 client would share one
+ * budget. A string that is not an address is its own key, unchanged.
+ */
+function addressGroup(address: string): string {
+  const bytes = addressBytes(address);
+  if (bytes === undefined) return address;
+
+  const ipv4 = bytes.length === 4 ? bytes : mappedIpv4(bytes);
+  if (ipv4 !== undefined) return ipv4.join(".");
+
+  return `${formatBytes(bytes.slice(0, 8))}::/64`;
 }
 
 /**
@@ -750,8 +782,8 @@ function isTrustedPeer(peer: string, trusted: TrustedProxies): boolean {
   // A peer that is not an address at all (a runtime oddity) is trusted by
   // nobody; it becomes its own bucket, which is the behaviour from before trusted proxies.
   if (parsed === undefined) return false;
-  // `normaliseAddress` already unwraps the dotted mapped form Node reports;
-  // this catches the hex spelling (`::ffff:ac13:3`) of the same address.
+  // `normaliseAddress` already unwraps both mapped spellings; this keeps the
+  // check right for a peer that did not come through it.
   const bytes = mappedIpv4(parsed) ?? parsed;
   return LOOPBACK.some((range) => inRange(bytes, range)) || trusted.some((range) => inRange(bytes, range));
 }
@@ -871,11 +903,15 @@ function lastForwardedElement(forwardedFor: string | string[] | undefined): stri
 }
 
 /**
- * Trim, strip an IPv6 zone or an IPv4-mapped prefix, lowercase.
+ * Trim, lowercase, strip brackets and an IPv6 zone, and unwrap an IPv4-mapped
+ * address in either spelling.
  *
- * `::ffff:127.0.0.1` and `127.0.0.1` are the same address and must not be two
- * counters — otherwise an attacker gets 2× the attempts by picking a stack. The
- * same normalisation is why an IPv4-mapped peer matches an IPv4 trusted range.
+ * `::ffff:127.0.0.1`, `::ffff:7f00:1` and `127.0.0.1` are the same address and
+ * must not be three counters, or one client gets three budgets by choosing how
+ * to write its address. The same normalisation is why an IPv4-mapped peer
+ * matches an IPv4 trusted range. Anything else keeps its full text: an IPv6
+ * address is grouped into its /64 only where the counter is keyed
+ * (`addressGroup`), never here.
  */
 function normaliseAddress(address: string | undefined | null): string | undefined {
   if (address === undefined || address === null) return undefined;
@@ -887,13 +923,16 @@ function normaliseAddress(address: string | undefined | null): string | undefine
   const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(value);
   if (bracketed?.[1] !== undefined) value = bracketed[1];
 
-  // Only the dotted spelling is unwrapped here; slicing the prefix off the hex
-  // one (`::ffff:ac13:3`) would leave something that is not an address at all.
-  if (/^::ffff:\d+\.\d+\.\d+\.\d+$/.test(value)) value = value.slice("::ffff:".length);
-
   // An IPv6 scope id (`fe80::1%eth0`) is not part of the address identity.
+  // Stripped before the mapped check, so a mapped address with a zone unwraps.
   const percent = value.indexOf("%");
   if (percent !== -1) value = value.slice(0, percent);
+
+  // Read as bytes, so the dotted (`::ffff:203.0.113.9`) and the hex
+  // (`::ffff:cb00:7109`) spellings unwrap alike.
+  const bytes = addressBytes(value);
+  const mapped = bytes === undefined ? undefined : mappedIpv4(bytes);
+  if (mapped !== undefined) value = mapped.join(".");
 
   return value.length > 0 ? value : undefined;
 }

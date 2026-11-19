@@ -470,6 +470,21 @@ describe("the IP lockout", () => {
     expect((await login({ username: "alice", password: PASSWORD }, ip)).statusCode).toBe(429);
   });
 
+  it("counts every address in one IPv6 /64 against one budget", async () => {
+    for (let i = 0; i < 5; i += 1) {
+      expect((await login({ username: "alice", password: "wrong" }, "2001:db8:1:2::a")).statusCode).toBe(401);
+    }
+
+    // Another address in the same /64 is the same client...
+    expect((await login({ username: "alice", password: "wrong" }, "2001:db8:1:2::b")).statusCode).toBe(429);
+    // ...the neighbouring /64 is not.
+    expect((await login({ username: "alice", password: "wrong" }, "2001:db8:1:3::b")).statusCode).toBe(401);
+
+    // A row still names the full address the proxy saw.
+    const failure = mod.auditLog.listAudit(db, { action: "session.login_failed", limit: 1 })[0]!;
+    expect(JSON.parse(failure.detail!)).toMatchObject({ ip: "2001:db8:1:3::b" });
+  });
+
   it("frees the slot of an attempt that succeeded or never parsed", async () => {
     const ip = "198.51.100.201";
 

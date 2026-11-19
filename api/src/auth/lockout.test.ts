@@ -459,6 +459,20 @@ describe("lockoutKeyFor", () => {
     expect(lockoutKeyFor("::ffff:203.0.113.9", undefined)).toBe("203.0.113.9");
   });
 
+  it("unwraps the hex spelling of an IPv4-mapped address too", () => {
+    expect(lockoutKeyFor("127.0.0.1", "::ffff:cb00:7109")).toBe("203.0.113.9");
+    expect(lockoutKeyFor("127.0.0.1", "[::FFFF:CB00:7109]:4711")).toBe("203.0.113.9");
+    expect(lockoutKeyFor("::ffff:cb00:7109", undefined)).toBe("203.0.113.9");
+    expect(lockoutKeyFor("127.0.0.1", "::ffff:203.0.113.9%eth0")).toBe("203.0.113.9");
+  });
+
+  it("returns an IPv6 client's full address, not its /64", () => {
+    // The grouping belongs to the counter alone; every row's `ip` keeps the
+    // address the proxy saw.
+    expect(lockoutKeyFor("127.0.0.1", "2001:db8:1:2::a")).toBe("2001:db8:1:2::a");
+    expect(lockoutKeyFor("2001:db8:1:2::a", undefined)).toBe("2001:db8:1:2::a");
+  });
+
   it("normalises brackets, ports and IPv6 zone ids", () => {
     expect(lockoutKeyFor("127.0.0.1", "[2001:db8::1]:4711")).toBe("2001:db8::1");
     expect(lockoutKeyFor("fe80::1%eth0", undefined)).toBe("fe80::1");
@@ -539,6 +553,58 @@ describe("the shared-bucket fallback is loud", () => {
     vi.setSystemTime(new Date(Date.now() + 2_000));
     lockoutKeyFor("127.0.0.1", undefined, { warn });
     expect(warn).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("an IPv6 client's budget is its /64", () => {
+  it("counts two addresses in one /64 against one budget, in any spelling", () => {
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES; i += 1) {
+      recordFailure(login("2001:db8:1:2::a", "alice"));
+    }
+
+    expect(checkLockout(login("2001:db8:1:2::a")).allowed).toBe(false);
+    expect(checkLockout(login("2001:db8:1:2::b")).allowed).toBe(false);
+    expect(checkLockout(login("2001:0DB8:0001:0002:ffff:ffff:ffff:ffff")).allowed).toBe(false);
+    expect(lockoutEntryCountForTests()).toBe(1);
+
+    // The neighbouring /64 is another client.
+    expect(checkLockout(login("2001:db8:1:3::a")).allowed).toBe(true);
+  });
+
+  it("counts attempts in flight from one /64 together", () => {
+    for (let i = 1; i <= LOCKOUT_MAX_FAILURES; i += 1) {
+      expect(reserveAttempt(login(`2001:db8:1:2::${i}`)).allowed).toBe(true);
+    }
+    expect(reserveAttempt(login("2001:db8:1:2::6")).allowed).toBe(false);
+    expect(reserveAttempt(login("2001:db8:1:3::6")).allowed).toBe(true);
+  });
+
+  it("forgives the proved account's failures from anywhere in the /64", () => {
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 1; i += 1) {
+      recordFailure(login("2001:db8:1:2::a", "alice"));
+    }
+    clearFailures(login("2001:db8:1:2::b", "alice"));
+    expect(lockoutEntryCountForTests()).toBe(0);
+  });
+
+  it("keys a mapped address as the IPv4 address it carries, never as a /64", () => {
+    const hex = lockoutKeyFor("127.0.0.1", "::ffff:cb00:7109");
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES; i += 1) {
+      recordFailure(login(hex, "alice"));
+    }
+
+    // The dotted spelling, mapped or not, is the same client...
+    expect(checkLockout(login("203.0.113.9")).allowed).toBe(false);
+    expect(checkLockout(login("::ffff:203.0.113.9")).allowed).toBe(false);
+    // ...and its IPv4 neighbour, in either spelling, is not.
+    expect(checkLockout(login("203.0.113.10")).allowed).toBe(true);
+    expect(checkLockout(login("::ffff:cb00:710a")).allowed).toBe(true);
+  });
+
+  it("checks a trusted peer on its full address, not its /64", () => {
+    const proxy = { trustedProxies: parseTrustedProxies("2001:db8:1:2::1") };
+    expect(lockoutKeyFor("2001:db8:1:2::1", "198.51.100.7", proxy)).toBe("198.51.100.7");
+    expect(lockoutKeyFor("2001:db8:1:2::2", "198.51.100.7", proxy)).toBe("2001:db8:1:2::2");
   });
 });
 

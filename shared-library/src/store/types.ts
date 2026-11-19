@@ -125,10 +125,11 @@ export interface AuthStore {
   setRole(userId: string, role: string, now: number): Awaitable<void>;
   /**
    * Rename a user (0.4.0). Throws `UsernameTakenError` when another user holds
-   * the folded name or, since 1.1.0, the key. The user's own folded name and
-   * own key are not taken, so a new case of the name, or a name that reads the
-   * same as it, goes through. The check and the write are one step, as in
-   * `createUser`.
+   * the folded name or, since 1.1.0, the key. The user's own folded name is not
+   * taken, nor is a key no other user holds, so a new case of the name, or a
+   * name that reads the same as it, goes through. A user in a group migration 5
+   * kept shares the key with the others, so each rename of theirs that keeps it
+   * is taken. The check and the write are one step, as in `createUser`.
    */
   setUsername(
     userId: string,

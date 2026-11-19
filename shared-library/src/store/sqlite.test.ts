@@ -129,6 +129,13 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
       // All three stay, and the group takes no new member.
       expect(store.findUsersByUsernameSkeleton("alice").map((found) => found.id)).toEqual(["u-1", "u-2", "u-3"]);
       expect(() => store.createUser(user({ id: "u-5", username: "alice\u034f" }))).toThrow(UsernameTakenError);
+      // Its members share the key, so a rename that keeps it is taken, a new case of one's own name included.
+      expect(() => store.setUsername("u-1", "Alice", "alice", usernameSkeleton("Alice"), 5)).toThrow(
+        UsernameTakenError,
+      );
+      expect(store.findUserById("u-1")).toMatchObject({ username: "alice", updatedAt: 1 });
+      store.setUsername("u-1", "alicia", "alicia", usernameSkeleton("alicia"), 5);
+      expect(store.findUsersByUsernameSkeleton("alice").map((found) => found.id)).toEqual(["u-2", "u-3"]);
 
       // The migration ran once: a second boot fills and warns nothing.
       createSqliteStore(db);

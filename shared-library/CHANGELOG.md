@@ -29,8 +29,11 @@ A username that reads the same as another user's is taken.
     `WardIdentities.createLinkedUser` throw `UsernameTakenError`.
     `seedUsers` skips a user whose name exists in any case; a seed name
     that only reads the same as another user's throws.
-  - A user's own key is never taken, so a rename onto a name that reads the
-    same as one's own goes through.
+  - A key no other user holds is not taken, so a rename onto a name that
+    reads the same as one's own goes through. A user in a group migration 5
+    kept (below) shares the key with the others, so each rename of theirs
+    that keeps it, a new case of their own name included, is taken; a name
+    that reads differently goes through.
 - **Migration 5**, `username_skeleton`: an indexed, nullable
   `auth_users.username_skeleton`, filled for every existing user by the boot
   that applies it. Users that already share a key all stay as they are, and

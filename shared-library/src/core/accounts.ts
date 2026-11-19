@@ -104,8 +104,9 @@ export interface Accounts {
    * (`UsernamePolicyError`), and is taken (`UsernameTakenError`) when another
    * user holds it in any case or holds a name that reads the same, as in
    * `createUser`. The user's own name in another case, or one that reads the
-   * same as it, is free. The id stays, and so does every session: a rename is
-   * not a credential change. `undefined` when there is no such user.
+   * same as it, is free unless another user shares its key (a group migration
+   * 5 kept). The id stays, and so does every session: a rename is not a
+   * credential change. `undefined` when there is no such user.
    */
   renameUser(userId: string, username: string): Promise<AuthUser | undefined>;
   /**

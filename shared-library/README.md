@@ -262,7 +262,9 @@ another user holds it in any case, or holds a name that reads the same.
 Unicode's confusables table decides, as it does for Ward's own accounts:
 `AIice` (a capital I) is taken while `alice` exists, `b0b` while `bob` does,
 `MODERN` while `rnodern` does, and a Cyrillic `а` reads as a Latin `a`. A
-user's own name never counts against them.
+user's own name counts against them only in a group the 1.1.0 migration kept
+([section 2](#2-hand-over-the-sqlite-handle)), where other users share its
+key: there, a rename into a name that reads differently goes through.
 
 Every `POST` refuses a browser request whose `Origin` or `Sec-Fetch-Site` says
 it came from another origin (`403 cross_site`). The hooks send exactly what

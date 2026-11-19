@@ -119,24 +119,44 @@ const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\u2800]/gu;
  * the same in the console's account list, so the second one is taken
  * (`createUser`, `setUsername`).
  *
- * Unicode's skeleton (UTS #39) of the folded name: NFD, the invisible
- * characters above removed, each character replaced by its prototype from
- * Unicode's confusables table, then NFD again. A Cyrillic `аlice`, an `alice`
- * with a combining grapheme joiner after it and a full-width `ａlice` all come
- * out as `alice`. The table maps some plain ASCII too: `m` reads as `rn` and
- * `1` as `l`, so `modern` and `rnodern` share a skeleton, as do `alice1` and
- * `alicel`.
+ * Three steps, each on the output of the one before:
+ *
+ *  1. Unicode's skeleton (UTS #39) of the name **as typed**, because Ward shows
+ *     the name as typed: a capital `I` reads as `l` there, and a digit `0` as
+ *     `O`, so `AIice` reads as `alice` and `b0b` as `bOb`.
+ *  2. The fold (`foldUsername`), because case alone never makes two names in
+ *     Ward: `bOb` becomes `bob`, so `b0b` and `bob` meet.
+ *  3. The skeleton again, because lower-casing can make a new look-alike: a
+ *     capital `M` becomes `m`, which reads as `rn`, so `MODERN` and `rnodern`
+ *     meet.
+ *
+ * A skeleton is NFD, the invisible characters above removed, each character
+ * replaced by its prototype from Unicode's confusables table, then NFD again.
+ * A Cyrillic `аlice`, an `alice` with a combining grapheme joiner after it and
+ * a full-width `ａlice` all come out as `alice`. In plain ASCII, `I`, `l`, `1`
+ * and `|` read the same, `0` reads as `o`, `m` as `rn`, a backtick as `'` and
+ * `"` as `''`.
+ *
+ * Because step 1 sees the capitals, the same name in two cases can have two
+ * keys: `Ivan` has `lvan`, and `ivan` has `ivan`. A new `lvan` is taken while
+ * `Ivan` exists and not while `ivan` does, which is what each list shows. The
+ * two cases themselves are one name either way, through `username_folded`.
  *
  * Never shown to anyone and never compared with anything but another skeleton.
  * The table's version decides some skeletons, so a new one ships with a
  * migration that recomputes `users.username_skeleton`.
  */
 export function usernameSkeleton(username: string): string {
-  let skeleton = "";
-  for (const char of foldUsername(username).normalize("NFD").replace(INVISIBLE, "")) {
-    skeleton += PROTOTYPES.get(char) ?? char;
+  return skeleton(foldUsername(skeleton(username)));
+}
+
+/** UTS #39's skeleton of `text`, with the invisible characters above dropped. */
+function skeleton(text: string): string {
+  let mapped = "";
+  for (const char of text.normalize("NFD").replace(INVISIBLE, "")) {
+    mapped += PROTOTYPES.get(char) ?? char;
   }
-  return skeleton.normalize("NFD");
+  return mapped.normalize("NFD");
 }
 
 /**

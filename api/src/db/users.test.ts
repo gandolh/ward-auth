@@ -175,6 +175,19 @@ describe("a name that reads the same as another account's is taken", () => {
     expect(usernameSkeleton("Alice")).toBe("alice");
   });
 
+  it("reads the name as typed, so a capital I or a zero standing in for a letter meets it", () => {
+    expect(usernameSkeleton("AIice")).toBe(usernameSkeleton("alice"));
+    expect(usernameSkeleton("b0b")).toBe(usernameSkeleton("bob"));
+    expect(usernameSkeleton("B0B")).toBe(usernameSkeleton("bob"));
+    expect(usernameSkeleton("MODERN")).toBe(usernameSkeleton("rnodern"));
+    expect(usernameSkeleton("\u0410lice")).toBe(usernameSkeleton("alice"));
+  });
+
+  it("keys a capital I as l and a small i as i, as each one shows", () => {
+    expect(usernameSkeleton("Ivan")).toBe(usernameSkeleton("lvan"));
+    expect(usernameSkeleton("ivan")).not.toBe(usernameSkeleton("lvan"));
+  });
+
   it("gives unrelated names their own skeletons", () => {
     expect(usernameSkeleton("bob")).toBe("bob");
     expect(usernameSkeleton("alicia")).not.toBe(usernameSkeleton("alice"));

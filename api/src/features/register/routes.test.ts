@@ -430,6 +430,20 @@ describe("username collisions — the ordinary case, not an edge case", () => {
     expect(mod.users.countUsers(db)).toBe(1);
   });
 
+  it("answers 409 username_taken for a capital I standing in for l, and a zero for o", async () => {
+    expect((await register(goodBody({ username: "alice" }))).statusCode).toBe(201);
+    expect((await register(goodBody({ username: "bob", email: "bob@example.com" }), "198.51.100.70")).statusCode).toBe(
+      201,
+    );
+
+    for (const [index, username] of ["AIice", "b0b", "\u0430lice"].entries()) {
+      const response = await register(goodBody({ username, email: "other@example.com" }), `198.51.100.${71 + index}`);
+      expect(response.statusCode, JSON.stringify(username)).toBe(409);
+      expect(response.json()).toEqual({ error: "username_taken" });
+    }
+    expect(mod.users.countUsers(db)).toBe(2);
+  });
+
   it("refuses a name that reads the same as the break-glass username, with the same answer", async () => {
     for (const [index, username] of ["tеst-superuser", "test-superuser͏", "ｔest-superuser"].entries()) {
       const response = await register(goodBody({ username }), `198.51.100.${50 + index}`);

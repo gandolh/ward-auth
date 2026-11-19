@@ -72,10 +72,9 @@ import type { SessionValidator } from "./session-validator.js";
  * for a user created from Ward (who is linked) and `409 no_local_password`
  * otherwise, unlink `409 no_local_password`, before any body is read.
  *
- * The flow cookie is the browser's to write, so the link callback does not
- * take its `mode` on trust either: it finishes a link only for a start that
- * `POST /ward/link` holds in memory after the password, for the same session,
- * once, within ten minutes. Anything else lands as `invalid_callback`.
+ * The link callback finishes a link only for a start that `POST /ward/link`
+ * holds in memory after the password: for the same session, once, within ten
+ * minutes. Any other link callback lands as `invalid_callback`.
  *
  * ## Where the callback sends the browser
  *
@@ -323,11 +322,10 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
   /**
    * The link starts that carried the account's password (`POST /ward/link`),
    * by their flow's `state`: the session that started each one, and when it
-   * lapses. The flow cookie is the browser's to write, so it cannot say on its
-   * own where a link was started; the callback finishes a link only for a
-   * start held here, and takes it. In memory, like the lockout: a link still
-   * waiting for its callback when the app restarts lands as
-   * `invalid_callback`, and the person starts it again.
+   * lapses. The callback finishes a link only for a start held here, and
+   * takes it. In memory, like the lockout: a link still waiting for its
+   * callback when the app restarts lands as `invalid_callback`, and the
+   * person starts it again.
    */
   const pendingLinks = new Map<string, { sessionIdHash: string; expiresAt: number }>();
 

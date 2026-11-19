@@ -807,27 +807,35 @@ describe("linking and unlinking ask for the account's password", () => {
     expect(login.statusCode).toBe(200);
   });
 
-  it("finishes a link only for a start that carried the password", async () => {
+  /** The flow cookie this browser holds, with these fields changed. */
+  function changedFlow(b: Browser, changes: Record<string, unknown>): string {
+    const flow = JSON.parse(
+      Buffer.from(b.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value, "base64url").toString("utf8"),
+    ) as Record<string, unknown>;
+    return Buffer.from(JSON.stringify({ ...flow, ...changes }), "utf8").toString("base64url");
+  }
+
+  /** Present the callback Ward sent the browser to, with exactly this flow and session. */
+  function present(callback: string, flow: string, sessionToken: string): Promise<LightMyRequestResponse> {
+    const url = new URL(callback);
+    return t.app.inject({
+      method: "GET",
+      url: `${url.pathname.slice(API_PREFIX.length)}${url.search}`,
+      headers: { cookie: `${COOKIE}_ward=${flow}; ${COOKIE}=${sessionToken}` },
+    });
+  }
+
+  it("finishes a link only for a start that POST /ward/link holds", async () => {
     const { b, id } = await signedIn("zora");
     await ward.createAccount("zora-at-ward", "myapp", ["viewer"]);
     const sessionToken = b.cookie(APP_ORIGIN, COOKIE)!.value;
 
-    // The flow cookie is the browser's to write: a sign-in's flow, which asked
-    // for no password, rewritten as a link of this session.
+    // A link flow that `POST /ward/link` never held: a sign-in's, marked as a
+    // link of this session.
     const started = await b.request("POST", api("/auth/ward/start"), { json: {} });
-    const flow = JSON.parse(
-      Buffer.from(b.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value, "base64url").toString("utf8"),
-    ) as Record<string, unknown>;
-    const rewritten = Buffer.from(
-      JSON.stringify({ ...flow, mode: "link", sessionIdHash: hashSessionToken(sessionToken) }),
-      "utf8",
-    ).toString("base64url");
-    const callback = new URL(await walkToCallback(b, started.json<{ url: string }>().url, "zora-at-ward"));
-    const finished = await t.app.inject({
-      method: "GET",
-      url: `${callback.pathname.slice(API_PREFIX.length)}${callback.search}`,
-      headers: { cookie: `${COOKIE}_ward=${rewritten}; ${COOKIE}=${sessionToken}` },
-    });
+    const flow = changedFlow(b, { mode: "link", sessionIdHash: hashSessionToken(sessionToken) });
+    const callback = await walkToCallback(b, started.json<{ url: string }>().url, "zora-at-ward");
+    const finished = await present(callback, flow, sessionToken);
     expect(finished.statusCode).toBe(303);
     expect(finished.headers.location).toBe(`${APP_ORIGIN}/myapp/settings?ward_error=invalid_callback`);
     expect(await t.identities.subjectOf(id)).toBeUndefined();
@@ -839,6 +847,40 @@ describe("linking and unlinking ask for the account's password", () => {
     });
     expect(landed.href).toBe(`${APP_ORIGIN}/myapp/settings?ward=linked`);
     expect(await t.identities.subjectOf(id)).toBeDefined();
+  });
+
+  it("finishes a held link start only for the session that started it", async () => {
+    const bram = await signedIn("bram");
+    const cleo = await signedIn("cleo");
+    await ward.createAccount("bram-at-ward", "myapp", ["viewer"]);
+    const cleoSession = cleo.b.cookie(APP_ORIGIN, COOKIE)!.value;
+
+    // Bram's held start, presented as Cleo's.
+    const started = await bram.b.request("POST", api("/auth/ward/link"), {
+      json: { currentPassword: LOCAL_PASSWORD },
+    });
+    expect(started.statusCode).toBe(200);
+    const flow = changedFlow(bram.b, { sessionIdHash: hashSessionToken(cleoSession) });
+    const callback = await walkToCallback(bram.b, started.json<{ url: string }>().url, "bram-at-ward");
+    const finished = await present(callback, flow, cleoSession);
+    expect(finished.headers.location).toBe(`${APP_ORIGIN}/myapp/settings?ward_error=invalid_callback`);
+    expect(await t.identities.subjectOf(bram.id)).toBeUndefined();
+    expect(await t.identities.subjectOf(cleo.id)).toBeUndefined();
+  });
+
+  it("lets a held link start lapse after ten minutes", async () => {
+    const { b, id } = await signedIn("yusuf");
+    await ward.createAccount("yusuf-at-ward", "myapp", ["viewer"]);
+    const sessionToken = b.cookie(APP_ORIGIN, COOKIE)!.value;
+
+    const started = await b.request("POST", api("/auth/ward/link"), { json: { currentPassword: LOCAL_PASSWORD } });
+    expect(started.statusCode).toBe(200);
+    const callback = await walkToCallback(b, started.json<{ url: string }>().url, "yusuf-at-ward");
+    clock += 10 * 60 * 1000 + 1;
+    // The flow's own start time moved with the clock: only the held start is old.
+    const finished = await present(callback, changedFlow(b, { startedAt: clock }), sessionToken);
+    expect(finished.headers.location).toBe(`${APP_ORIGIN}/myapp/settings?ward_error=invalid_callback`);
+    expect(await t.identities.subjectOf(id)).toBeUndefined();
   });
 });
 

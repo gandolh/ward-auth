@@ -8,6 +8,7 @@ import {
   normaliseUsername,
 } from "../core/identifiers.js";
 import { hashPassword } from "../core/password.js";
+import { usernameSkeleton } from "../core/username-skeleton.js";
 import { UsernameTakenError, WardSubjectTakenError, isWardAuthStore, type WardAuthStore } from "../store/types.js";
 import type { WardClient, WardIdentity } from "./client.js";
 
@@ -193,6 +194,7 @@ export function createWardIdentities(options: WardIdentitiesOptions): WardIdenti
         id: input.id ?? generateUserId(),
         username,
         usernameFolded: foldUsername(username),
+        usernameSkeleton: usernameSkeleton(username),
         passwordHash,
         role: input.role,
         createdAt: now(),

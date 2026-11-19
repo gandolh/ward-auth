@@ -75,6 +75,24 @@ describe("createWardIdentities", () => {
     expect(odder.user.username).toBe("ward-user-2");
   });
 
+  it("suffixes a new user's name that reads the same as another user's", async () => {
+    // A capital I for l, a zero for o, a Cyrillic а for a Latin a, and an M that lower-cases to rn.
+    const pairs = [
+      ["alice", "AIice"],
+      ["bob", "b0b"],
+      ["alice", "\u0430lice"],
+      ["rnodern", "MODERN"],
+    ];
+    for (const [local = "", preferred = ""] of pairs) {
+      const { accounts, identities } = setup();
+      await accounts.createUser({ username: local, password: "a long local password", role: "x" });
+
+      const { user, created } = await identities.userForSignIn(identity({ username: preferred }));
+      expect(created).toBe(true);
+      expect(user.username, preferred).toBe(`${preferred}-2`);
+    }
+  });
+
   it("suffixes a name at the length limit without splitting a character", async () => {
     const { accounts, identities } = setup();
     // 253 + 2 (one astral character, a surrogate pair) + 1 = 256 UTF-16 units.

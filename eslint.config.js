@@ -36,13 +36,15 @@ export default [
     // repo's own, the library's build and vendor scripts, and the local seed.
     scripts: ["scripts", "shared-library/scripts", "infrastructure/local"],
     // Allowed to print: the config loader reports a bad environment before any
-    // logger exists, the key loader and the username-skeleton migration warn at
-    // boot the same way, and the OIDC client-key generator is a CLI.
+    // logger exists, the key loader and the username-skeleton migrations (Ward's
+    // and the library's, which runs before an app has a logger) warn at boot the
+    // same way, and the OIDC client-key generator is a CLI.
     console: [
       "api/src/config.ts",
       "api/src/tokens/keys.ts",
       "api/src/db/migrations/20261119000000-username-skeleton.ts",
       "api/src/oidc/client-keygen.ts",
+      "shared-library/src/store/migrations.ts",
     ],
     // A test helper that asserts counts as an assertion.
     assertFunctionNames: ["expect", "expectTypeOf", "expectRefused"],

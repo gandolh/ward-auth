@@ -660,6 +660,48 @@ describe("rename", () => {
     expect((await rename("carol")).statusCode).toBe(429);
   });
 
+  it("answers a name that reads the same as another user's as taken, and takes an unrelated one", async () => {
+    const h = await build();
+    await seedUsers(h.accounts, [
+      { username: "rnodern", password: "rnodern's password", role: "member" },
+      { username: "carol", password: "carol's password", role: "member" },
+    ]);
+    const cookie = cookieFrom(await login(h, "carol", "carol's password"))!;
+    const rename = (username: string, address: string) =>
+      h.app.inject({
+        method: "POST",
+        url: "/auth/username",
+        headers: { cookie, "x-forwarded-for": address },
+        payload: { username },
+      });
+
+    // A capital I for l, a zero for o, a Cyrillic а for a Latin a, and an M that lower-cases to rn.
+    for (const [index, username] of ["AIice", "b0b", "аlice", "MODERN"].entries()) {
+      const response = await rename(username, `198.51.100.${10 + index}`);
+      expect(response.statusCode, JSON.stringify(username)).toBe(409);
+      expect(response.json()).toEqual({ error: "username_taken" });
+    }
+    expect(await h.accounts.findUserByUsername("carol")).toMatchObject({ username: "carol" });
+
+    const unrelated = await rename("dora", "198.51.100.20");
+    expect(unrelated.statusCode).toBe(200);
+    expect(unrelated.json()).toMatchObject({ user: { username: "dora" } });
+  });
+
+  it("lets a user take a name that reads the same as their own", async () => {
+    const h = await build();
+    const cookie = cookieFrom(await login(h, "alice", "correct horse"))!;
+
+    const response = await h.app.inject({
+      method: "POST",
+      url: "/auth/username",
+      headers: { cookie },
+      payload: { username: "аlice" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ user: { username: "аlice" } });
+  });
+
   it("counts renames still in flight: twenty taken names at once get five 409s and fifteen 429s", async () => {
     // A store whose rename takes a moment, as a store over a network or a
     // busy disk would: the twenty requests are then all running together.
@@ -767,5 +809,29 @@ describe("registration", () => {
     await register("frank");
     // Five attempts spent from this address: the sixth is refused.
     expect((await register("grace")).statusCode).toBe(429);
+  });
+
+  it("answers a name that reads the same as another user's as taken, and creates an unrelated one", async () => {
+    const h = await build({ registration: { role: "contributor" } });
+    await seedUsers(h.accounts, [{ username: "rnodern", password: "rnodern's password", role: "member" }]);
+    const register = (username: string, address: string) =>
+      h.app.inject({
+        method: "POST",
+        url: "/auth/register",
+        headers: { "x-forwarded-for": address },
+        payload: { username, password: "long enough" },
+      });
+
+    // A capital I for l, a zero for o, a Cyrillic а for a Latin a, and an M that lower-cases to rn.
+    for (const [index, username] of ["AIice", "b0b", "аlice", "MODERN"].entries()) {
+      const response = await register(username, `198.51.100.${10 + index}`);
+      expect(response.statusCode, JSON.stringify(username)).toBe(409);
+      expect(response.json()).toEqual({ error: "username_taken" });
+      expect(await h.accounts.findUserByUsername(username)).toBeUndefined();
+    }
+
+    const unrelated = await register("dora", "198.51.100.20");
+    expect(unrelated.statusCode).toBe(201);
+    expect(unrelated.json()).toMatchObject({ user: { username: "dora", role: "contributor" } });
   });
 });

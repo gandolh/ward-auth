@@ -104,6 +104,11 @@ after the app's own migrations. An app's table can reference
 `auth_users (id)`. The store also works inside an app's own transaction,
 because it uses savepoints.
 
+Each user carries a key for what the name looks like (`usernameSkeleton`,
+1.1.0). The migration that adds it fills it for every existing user; users
+that already share a key all stay, and that boot logs one warning per group,
+naming their ids.
+
 ## 3. Configure Ward from the environment
 
 ```js
@@ -194,7 +199,7 @@ origin: "local" | "ward", ... } }`, or `null` on an allowlisted route.
   decides whether a Ward account may get in, and gives a **new** user their
   first role.
 - **A new Ward user's username** is Ward's `preferred_username`, suffixed
-  `-2`, `-3`, … when taken. `ward.usernameFor({ username, subject })` shapes it
+  `-2`, `-3`, … when taken or when it reads the same as another user's. `ward.usernameFor({ username, subject })` shapes it
   first, for an app with its own rule for names (lower case, a shorter cap).
   With a hook that cuts to a length, pass that length as
   `ward.usernameMaxLength` (10 to 256) too, or a suffixed name comes out longer:
@@ -251,6 +256,13 @@ the hooks are configured with.
 `ward` in a session answer is `{ enabled, linked }`. `enabled` says whether the
 server has Ward configured, so the login page knows whether to show the
 button. `linked` says whether the signed-in user has a Ward account linked.
+
+A name is taken (`409 username_taken` on `/register` and `/username`) when
+another user holds it in any case, or holds a name that reads the same.
+Unicode's confusables table decides, as it does for Ward's own accounts:
+`AIice` (a capital I) is taken while `alice` exists, `b0b` while `bob` does,
+`MODERN` while `rnodern` does, and a Cyrillic `а` reads as a Latin `a`. A
+user's own name never counts against them.
 
 Every `POST` refuses a browser request whose `Origin` or `Sec-Fetch-Site` says
 it came from another origin (`403 cross_site`). The hooks send exactly what
@@ -324,6 +336,9 @@ const result = await seedUsers(accounts, [
 console.log(`created: ${result.created.join(", ") || "none"}`);
 ```
 
+A seed name that reads the same as another user's, without being the same
+name, is taken: `seedUsers` throws `UsernameTakenError`.
+
 Passwords come from the environment or a prompt, **never from a file in the
 repository**. A person who only ever signs in with Ward needs no seeding: their
 first Ward sign-in creates their user, if Ward holds a grant for them.
@@ -368,7 +383,8 @@ for (const { subject, username, role } of knownWardUsers(db)) {
 - A migrated user has **no local password**. They sign in with Ward. In
   settings they can set a local password, which [section 9](#9-build-the-login-and-settings-pages-on-the-hooks)
   covers, so they can still get in while Ward is down.
-- Two subjects whose usernames fold to the same name cannot both be created.
+- Two subjects whose usernames fold to the same name, or read the same, cannot
+  both be created.
   `createLinkedUser` throws `UsernameTakenError`, so pick a suffix yourself.
   It also throws `WardSubjectTakenError` and `UserIdTakenError`.
 - A new app table can reference `auth_users (id)`.
@@ -488,8 +504,8 @@ function Settings() {
   password, `setPassword(next, current)` is a password change.
 - **Rename**: `renameUser(next)` checks the name as registration does and
   keeps the id and every session. The session state carries the new name as
-  soon as it resolves. A name another user holds, in any case, is
-  `username_taken`, and five of those from one address in 15 minutes earn a
+  soon as it resolves. A name another user holds, in any case, or one that
+  reads the same, is `username_taken`, and five of those from one address in 15 minutes earn a
   `429`. An app that keys anything on the username rather than the id, or
   names its users itself, passes `allowRename: false`, and the route is gone.
 - **Unlink Ward**: refused with `no_local_password` until the user has one.

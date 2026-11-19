@@ -1,3 +1,4 @@
+import type { SqliteHandle } from "./handle.js";
 import { SQLITE_MIGRATIONS, type Migration } from "./migrations.js";
 import {
   AlreadyLinkedError,
@@ -43,21 +44,7 @@ import {
  * - **No reliance on `lastInsertRowid`.** Every key is chosen before the insert.
  */
 
-/** A value either driver binds. */
-export type SqlValue = string | number | bigint | null;
-
-/** The statement surface both drivers share. Results are read as `unknown` and mapped. */
-export interface SqliteStatement {
-  run(...params: SqlValue[]): { changes: number | bigint };
-  get(...params: SqlValue[]): unknown;
-  all(...params: SqlValue[]): unknown[];
-}
-
-/** The database surface both drivers share. */
-export interface SqliteHandle {
-  prepare(sql: string): SqliteStatement;
-  exec(sql: string): unknown;
-}
+export type { SqlValue, SqliteHandle, SqliteStatement } from "./handle.js";
 
 /**
  * A store whose methods answer synchronously — what the SQLite store is,
@@ -112,7 +99,8 @@ export function inSavepoint<T>(db: SqliteHandle, fn: () => T): T {
 
 /**
  * Apply every migration newer than what `auth_migrations` records, each in its
- * own savepoint, in order. Idempotent: a second call applies nothing.
+ * own savepoint, in order: its SQL, then its `run` step if it has one.
+ * Idempotent: a second call applies nothing.
  *
  * Returns the versions it applied, for a boot log line.
  */
@@ -141,6 +129,7 @@ export function migrateSqlite(db: SqliteHandle, migrations: readonly Migration[]
     if (migration.version <= current) continue;
     inSavepoint(db, () => {
       db.exec(migration.sql);
+      migration.run?.(db);
       record.run(migration.version, migration.name, Date.now());
     });
     applied.push(migration.version);
@@ -229,13 +218,17 @@ export function createSqliteStore(db: SqliteHandle, options: SqliteStoreOptions 
   const s = {
     userById: db.prepare("SELECT * FROM auth_users WHERE id = ?"),
     userByFolded: db.prepare("SELECT * FROM auth_users WHERE username_folded = ?"),
+    usersBySkeleton: db.prepare("SELECT * FROM auth_users WHERE username_skeleton = ? ORDER BY created_at, id"),
+    otherWithSkeleton: db.prepare("SELECT 1 FROM auth_users WHERE username_skeleton = ? AND id <> ? LIMIT 1"),
     insertUser: db.prepare(
-      `INSERT INTO auth_users (id, username, username_folded, password_hash, role, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO auth_users (id, username, username_folded, username_skeleton, password_hash, role, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     setPasswordHash: db.prepare("UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE id = ?"),
     setRole: db.prepare("UPDATE auth_users SET role = ?, updated_at = ? WHERE id = ?"),
-    setUsername: db.prepare("UPDATE auth_users SET username = ?, username_folded = ?, updated_at = ? WHERE id = ?"),
+    setUsername: db.prepare(
+      "UPDATE auth_users SET username = ?, username_folded = ?, username_skeleton = ?, updated_at = ? WHERE id = ?",
+    ),
     setDisabled: db.prepare("UPDATE auth_users SET disabled_at = ?, updated_at = ? WHERE id = ?"),
     insertSession: db.prepare(
       `INSERT INTO auth_sessions (id_hash, user_id, origin, ward_sid, created_at, renewed_at, expires_at)
@@ -269,12 +262,26 @@ export function createSqliteStore(db: SqliteHandle, options: SqliteStoreOptions 
       user.id,
       user.username,
       user.usernameFolded,
+      user.usernameSkeleton,
       user.passwordHash,
       user.role,
       user.createdAt,
       user.createdAt,
     );
+    refuseSkeletonHeldByAnother(user.usernameSkeleton, user.id);
     return toUser(s.userById.get(user.id) as UserRow);
+  }
+
+  /**
+   * The look-alike rule: throws `UsernameTakenError` when a user other than
+   * `userId` has this key. Called after the write, inside the caller's
+   * savepoint, so the write has taken SQLite's write lock and no other
+   * connection's write lands between the two; a throw rolls the write back.
+   * The column is not UNIQUE, because users that shared a key when migration
+   * 5 ran all stay, so this is a lookup rather than a constraint.
+   */
+  function refuseSkeletonHeldByAnother(usernameSkeleton: string, userId: string): void {
+    if (s.otherWithSkeleton.get(usernameSkeleton, userId) !== undefined) throw new UsernameTakenError();
   }
 
   function insertLink(link: WardLinkRecord): void {
@@ -298,6 +305,10 @@ export function createSqliteStore(db: SqliteHandle, options: SqliteStoreOptions 
       return row === undefined ? undefined : toUser(row);
     },
 
+    findUsersByUsernameSkeleton(usernameSkeleton: string): UserRecord[] {
+      return (s.usersBySkeleton.all(usernameSkeleton) as UserRow[]).map(toUser);
+    },
+
     setPasswordHash(userId: string, passwordHash: string | null, now: number): void {
       s.setPasswordHash.run(passwordHash, now, userId);
     },
@@ -306,12 +317,13 @@ export function createSqliteStore(db: SqliteHandle, options: SqliteStoreOptions 
       s.setRole.run(role, now, userId);
     },
 
-    setUsername(userId: string, username: string, usernameFolded: string, now: number): void {
+    setUsername(userId: string, username: string, usernameFolded: string, usernameSkeleton: string, now: number): void {
       inSavepoint(db, () => {
         // Checked rather than caught, for the reason `insertUser` gives.
         const holder = s.userByFolded.get(usernameFolded) as UserRow | undefined;
         if (holder !== undefined && holder.id !== userId) throw new UsernameTakenError();
-        s.setUsername.run(username, usernameFolded, now, userId);
+        s.setUsername.run(username, usernameFolded, usernameSkeleton, now, userId);
+        refuseSkeletonHeldByAnother(usernameSkeleton, userId);
       });
     },
 

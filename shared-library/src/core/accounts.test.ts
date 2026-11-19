@@ -96,6 +96,23 @@ describe("createUser", () => {
     ).rejects.toBeInstanceOf(UsernameTakenError);
   });
 
+  it("refuses a name that reads the same as another user's, and creates an unrelated one", async () => {
+    for (const username of ["alice", "bob", "rnodern"]) {
+      await accounts.createUser({ username, password: "correct horse", role: "r" });
+    }
+    // A capital I for l, a zero for o, a Cyrillic а for a Latin a, and an M that lower-cases to rn.
+    for (const username of ["AIice", "b0b", "\u0430lice", "MODERN"]) {
+      await expect(
+        accounts.createUser({ username, password: "correct horse", role: "r" }),
+        username,
+      ).rejects.toBeInstanceOf(UsernameTakenError);
+      expect(await accounts.findUserByUsername(username)).toBeUndefined();
+    }
+    expect(await accounts.createUser({ username: "dora", password: "correct horse", role: "r" })).toMatchObject({
+      username: "dora",
+    });
+  });
+
   it("refuses control characters, odd whitespace and an empty name", async () => {
     for (const username of ["", "   ", "al\u0000ice", "al ice", "al  ice", "a\tb"]) {
       await expect(accounts.createUser({ username, password: "correct horse", role: "r" })).rejects.toBeInstanceOf(
@@ -349,6 +366,16 @@ describe("renameUser", () => {
     await expect(accounts.renameUser(userId, "BOB")).rejects.toBeInstanceOf(UsernameTakenError);
     await expect(accounts.renameUser(userId, "   ")).rejects.toBeInstanceOf(UsernamePolicyError);
     expect(await accounts.findUserById(userId)).toMatchObject({ username: "user-1a2b3c4d" });
+  });
+
+  it("refuses a name that reads the same as another user's, and allows one that reads as the user's own", async () => {
+    await accounts.createUser({ username: "bob", password: "bob's password", role: "member" });
+
+    await expect(accounts.renameUser(userId, "b0b")).rejects.toBeInstanceOf(UsernameTakenError);
+    expect(await accounts.findUserById(userId)).toMatchObject({ username: "user-1a2b3c4d" });
+
+    // A capital I where the user's own name has a 1: both read as l.
+    expect(await accounts.renameUser(userId, "user-Ia2b3c4d")).toMatchObject({ username: "user-Ia2b3c4d" });
   });
 
   it("answers undefined for a user that does not exist", async () => {

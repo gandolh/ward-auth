@@ -1,7 +1,8 @@
 import Database from "better-sqlite3";
 import { DatabaseSync } from "node:sqlite";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { usernameSkeleton } from "../core/username-skeleton.js";
 import { SQLITE_MIGRATIONS, type Migration } from "./migrations.js";
 import { SchemaTooNewError, createSqliteStore, migrateSqlite, type SqliteHandle } from "./sqlite.js";
 import {
@@ -38,6 +39,7 @@ function user(overrides: Partial<{ id: string; username: string; folded: string 
     id: overrides.id ?? "u-alice",
     username,
     usernameFolded: overrides.folded ?? username.toLowerCase(),
+    usernameSkeleton: usernameSkeleton(username),
     passwordHash: "salt:hash",
     role: "member",
     createdAt: 1_000,
@@ -78,6 +80,7 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
       { version: 2, name: "ward_links" },
       { version: 3, name: "session_reauthenticated_at" },
       { version: 4, name: "user_disabled_at" },
+      { version: 5, name: "username_skeleton" },
     ]);
   });
 
@@ -94,6 +97,45 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     const store = createSqliteStore(db);
     expect(store.findUserById("u-alice")).toMatchObject({ username: "Alice", disabledAt: null });
     expect(store.findSession("kept")).toBeDefined();
+  });
+
+  it("fills every existing user's key on upgrade, keeps users that share one, and warns once per group", () => {
+    const db = open();
+    expect(migrateSqlite(db, SQLITE_MIGRATIONS.slice(0, 4))).toEqual([1, 2, 3, 4]);
+    const insert = db.prepare(
+      `INSERT INTO auth_users (id, username, username_folded, password_hash, role, created_at, updated_at)
+       VALUES (?, ?, ?, 'salt:hash', 'member', ?, ?)`,
+    );
+    // Three names that read as alice, under three folded names, and one unrelated name.
+    insert.run("u-1", "alice", "alice", 1, 1);
+    insert.run("u-2", "\u0430lice", "\u0430lice", 2, 2);
+    insert.run("u-3", "AIice", "aiice", 3, 3);
+    insert.run("u-4", "bob", "bob", 4, 4);
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const store = createSqliteStore(db);
+
+      const rows = db.prepare("SELECT id, username_skeleton, updated_at FROM auth_users ORDER BY id").all();
+      expect(rows.map((row) => ({ ...(row as object) }))).toEqual([
+        { id: "u-1", username_skeleton: "alice", updated_at: 1 },
+        { id: "u-2", username_skeleton: "alice", updated_at: 2 },
+        { id: "u-3", username_skeleton: "alice", updated_at: 3 },
+        { id: "u-4", username_skeleton: "bob", updated_at: 4 },
+      ]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]?.[0]).toMatch(/3 users have usernames that read the same \(ids u-1, u-2, u-3\)/);
+
+      // All three stay, and the group takes no new member.
+      expect(store.findUsersByUsernameSkeleton("alice").map((found) => found.id)).toEqual(["u-1", "u-2", "u-3"]);
+      expect(() => store.createUser(user({ id: "u-5", username: "alice\u034f" }))).toThrow(UsernameTakenError);
+
+      // The migration ran once: a second boot fills and warns nothing.
+      createSqliteStore(db);
+      expect(warn).toHaveBeenCalledTimes(1);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("upgrades a 0.2/0.3.0 database in place, keeping its sessions", () => {
@@ -128,6 +170,52 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     ];
     expect(migrateSqlite(db, appended)).toEqual([NEXT]);
     expect(db.prepare("SELECT COUNT(*) AS n FROM auth_extra").get()).toMatchObject({ n: 0 });
+  });
+
+  it("runs a migration's run step after its SQL, in the same transaction", () => {
+    const db = open();
+    createSqliteStore(db);
+
+    const appended: Migration[] = [
+      ...SQLITE_MIGRATIONS,
+      {
+        version: NEXT,
+        name: "filled",
+        sql: "CREATE TABLE auth_filled (id TEXT PRIMARY KEY)",
+        run: (handle) => {
+          handle.prepare("INSERT INTO auth_filled (id) VALUES (?)").run("from-run");
+        },
+      },
+    ];
+    expect(migrateSqlite(db, appended)).toEqual([NEXT]);
+    expect(
+      db
+        .prepare("SELECT id FROM auth_filled")
+        .all()
+        .map((row) => ({ ...(row as object) })),
+    ).toEqual([{ id: "from-run" }]);
+  });
+
+  it("rolls a migration back whole, its SQL included, when its run step throws", () => {
+    const db = open();
+    createSqliteStore(db);
+
+    const broken: Migration[] = [
+      ...SQLITE_MIGRATIONS,
+      {
+        version: NEXT,
+        name: "run-throws",
+        sql: "CREATE TABLE auth_half (id TEXT)",
+        run: () => {
+          throw new Error("the step failed");
+        },
+      },
+    ];
+    expect(() => migrateSqlite(db, broken)).toThrow(/the step failed/);
+    expect(db.prepare("SELECT MAX(version) AS v FROM auth_migrations").get()).toMatchObject({ v: NEXT - 1 });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name = 'auth_half'").get()).toMatchObject({
+      n: 0,
+    });
   });
 
   it("refuses to run an older copy over a newer schema", () => {
@@ -226,7 +314,7 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     const store = createSqliteStore(open());
     store.createUser(user());
 
-    store.setUsername("u-alice", "Alicia", "alicia", 2_000);
+    store.setUsername("u-alice", "Alicia", "alicia", usernameSkeleton("Alicia"), 2_000);
     expect(store.findUserByFoldedUsername("alice")).toBeUndefined();
     expect(store.findUserByFoldedUsername("alicia")).toMatchObject({
       id: "u-alice",
@@ -234,7 +322,7 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
       updatedAt: 2_000,
     });
 
-    store.setUsername("u-alice", "ALICIA", "alicia", 3_000);
+    store.setUsername("u-alice", "ALICIA", "alicia", usernameSkeleton("ALICIA"), 3_000);
     expect(store.findUserById("u-alice")).toMatchObject({ username: "ALICIA", updatedAt: 3_000 });
   });
 
@@ -259,8 +347,47 @@ describe.each(drivers)("createSqliteStore on %s", (_name, open) => {
     store.createUser(user());
     store.createUser(user({ id: "u-bob", username: "Bob" }));
 
-    expect(() => store.setUsername("u-bob", "ALICE", "alice", 2_000)).toThrow(UsernameTakenError);
+    expect(() => store.setUsername("u-bob", "ALICE", "alice", usernameSkeleton("ALICE"), 2_000)).toThrow(
+      UsernameTakenError,
+    );
     expect(store.findUserById("u-bob")).toMatchObject({ username: "Bob", updatedAt: 1_000 });
+  });
+
+  it("finds the users whose names have a key, oldest first", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user({ id: "u-alice", username: "alice" }));
+    store.createUser(user({ id: "u-bob", username: "bob" }));
+
+    expect(store.findUsersByUsernameSkeleton("alice").map((found) => found.id)).toEqual(["u-alice"]);
+    expect(store.findUsersByUsernameSkeleton("carol")).toEqual([]);
+  });
+
+  it("refuses a name whose key another user holds, at creation and at a rename, and changes nothing", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user({ id: "u-alice", username: "alice" }));
+    store.createUser(user({ id: "u-bob", username: "bob" }));
+
+    // A Cyrillic а: another folded name, the same key.
+    expect(() => store.createUser(user({ id: "u-other", username: "\u0430lice" }))).toThrow(UsernameTakenError);
+    expect(store.findUserById("u-other")).toBeUndefined();
+    expect(() => store.createUserWithWardLink(user({ id: "u-other", username: "AIice" }), "s-other")).toThrow(
+      UsernameTakenError,
+    );
+    expect(store.findWardLinkBySubject("s-other")).toBeUndefined();
+
+    expect(() => store.setUsername("u-bob", "AIice", "aiice", usernameSkeleton("AIice"), 2_000)).toThrow(
+      UsernameTakenError,
+    );
+    expect(store.findUserById("u-bob")).toMatchObject({ username: "bob", updatedAt: 1_000 });
+    expect(store.findUsersByUsernameSkeleton("alice").map((found) => found.id)).toEqual(["u-alice"]);
+  });
+
+  it("lets a user take a name whose key is their own", () => {
+    const store = createSqliteStore(open());
+    store.createUser(user({ id: "u-alice", username: "alice" }));
+
+    store.setUsername("u-alice", "\u0430lice", "\u0430lice", usernameSkeleton("\u0430lice"), 2_000);
+    expect(store.findUserById("u-alice")).toMatchObject({ username: "\u0430lice", updatedAt: 2_000 });
   });
 
   it("creates, renews, finds and deletes sessions", () => {

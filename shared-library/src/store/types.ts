@@ -72,12 +72,20 @@ export interface NewUserRecord {
   id: string;
   username: string;
   usernameFolded: string;
+  /**
+   * `usernameSkeleton(username)` (1.1.0): what the name looks like. Another
+   * user holding it makes the name taken.
+   */
+  usernameSkeleton: string;
   passwordHash: string | null;
   role: string;
   createdAt: number;
 }
 
-/** Thrown by `createUser` when the folded username is already held. */
+/**
+ * Thrown by `createUser` and `setUsername` when another user holds the folded
+ * username, or a name that reads the same (the same `usernameSkeleton`, 1.1.0).
+ */
 export class UsernameTakenError extends Error {
   readonly code = "username_taken" as const;
   constructor() {
@@ -96,19 +104,39 @@ export class UserIdTakenError extends Error {
 }
 
 export interface AuthStore {
-  /** Insert a user. Throws `UsernameTakenError` or `UserIdTakenError`. */
+  /**
+   * Insert a user. Throws `UserIdTakenError`, or `UsernameTakenError` when
+   * another user holds `usernameFolded` or `usernameSkeleton`. The check and
+   * the insert are one step: no other write lands between them.
+   */
   createUser(user: NewUserRecord): Awaitable<UserRecord>;
   findUserById(id: string): Awaitable<UserRecord | undefined>;
   /** Looks up by the **folded** name; the core folds before calling. */
   findUserByFoldedUsername(usernameFolded: string): Awaitable<UserRecord | undefined>;
+  /**
+   * Every user whose name has this key (`usernameSkeleton`, 1.1.0), oldest
+   * first: the lookup the look-alike rule is defined by. Usually none or one.
+   * More than one only where users already shared a key when the key arrived
+   * (migration 5 keeps them all).
+   */
+  findUsersByUsernameSkeleton(usernameSkeleton: string): Awaitable<UserRecord[]>;
   /** `null` removes the local password (the Ward sign-in never does; it is here for symmetry). */
   setPasswordHash(userId: string, passwordHash: string | null, now: number): Awaitable<void>;
   setRole(userId: string, role: string, now: number): Awaitable<void>;
   /**
    * Rename a user (0.4.0). Throws `UsernameTakenError` when another user holds
-   * the folded name; the user's own name in another case is not taken.
+   * the folded name or, since 1.1.0, the key. The user's own folded name and
+   * own key are not taken, so a new case of the name, or a name that reads the
+   * same as it, goes through. The check and the write are one step, as in
+   * `createUser`.
    */
-  setUsername(userId: string, username: string, usernameFolded: string, now: number): Awaitable<void>;
+  setUsername(
+    userId: string,
+    username: string,
+    usernameFolded: string,
+    usernameSkeleton: string,
+    now: number,
+  ): Awaitable<void>;
   /**
    * Switch a user off (`disabledAt`, epoch ms) or back on (`null`) (0.6.0).
    * Only the column; ending the user's sessions is the core's job.

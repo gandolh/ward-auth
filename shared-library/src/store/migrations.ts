@@ -1,3 +1,6 @@
+import { usernameSkeleton } from "../core/username-skeleton.js";
+import type { SqliteHandle } from "./handle.js";
+
 /**
  * The library's own schema, as an ordered list of migrations.
  *
@@ -11,13 +14,16 @@
  * Add an entry at the **end** with the next `version`. Never edit or reorder
  * one that has shipped: a vendored copy in some app has already applied it,
  * and the runner records versions, not contents. Version 2 (0.2.0) added the
- * Ward link table this way, and version 3 (0.3.1) a session column.
+ * Ward link table this way, version 3 (0.3.1) a session column, and version 5
+ * (1.1.0) a column its `run` step fills.
  *
  * ## The SQL is the intersection of two drivers
  *
  * Apps hand over either a better-sqlite3 handle or a `node:sqlite`
  * `DatabaseSync`. Both are SQLite underneath, so plain DDL is portable; what
- * differs is the driver surface, and that is handled in `sqlite.ts`.
+ * differs is the driver surface, and that is handled in `sqlite.ts`. A `run`
+ * step uses the same surface (`SqliteHandle`): `prepare` and `exec`,
+ * positional `?` parameters only.
  */
 
 export interface Migration {
@@ -27,6 +33,12 @@ export interface Migration {
   name: string;
   /** One or more statements, run with `exec` inside one transaction. */
   sql: string;
+  /**
+   * A step that SQL alone can't express, run after `sql` in the same
+   * transaction: version 5 computes each user's username key in JavaScript.
+   * A throw rolls the whole migration back, `sql` included.
+   */
+  run?: (db: SqliteHandle) => void;
 }
 
 export const SQLITE_MIGRATIONS: readonly Migration[] = [
@@ -112,4 +124,56 @@ export const SQLITE_MIGRATIONS: readonly Migration[] = [
       ALTER TABLE auth_users ADD COLUMN disabled_at INTEGER;
     `,
   },
+  {
+    version: 5,
+    name: "username_skeleton",
+    sql: `
+      -- usernameSkeleton(username) (1.1.0): what the name looks like, as a
+      -- key. A new name or a rename whose key another user already has is
+      -- taken. Indexed, not UNIQUE: users that already share a key when
+      -- this runs all stay. NULL only for a row written outside the
+      -- library; every library write sets it, and the run step below fills
+      -- every existing row.
+      ALTER TABLE auth_users ADD COLUMN username_skeleton TEXT;
+      CREATE INDEX auth_users_username_skeleton ON auth_users (username_skeleton);
+    `,
+    run: fillUsernameSkeletons,
+  },
 ];
+
+/**
+ * Migration 5's step: give every existing user its username key. It changes
+ * nothing else on the row, `updated_at` included: the user did not change.
+ *
+ * Users that share a key when this runs (an `alice` and a Cyrillic `аlice`)
+ * all stay as they are, and each such group gets one warning, naming the
+ * users' ids, on the boot that runs this. Whether they are
+ * one person is the app owner's call; from then on no new user or rename can
+ * take that key, so a group never grows. To list the groups later:
+ *
+ *     SELECT username_skeleton, group_concat(id, ' ')
+ *       FROM auth_users GROUP BY username_skeleton HAVING count(*) > 1;
+ */
+function fillUsernameSkeletons(db: SqliteHandle): void {
+  const rows = db.prepare("SELECT id, username FROM auth_users ORDER BY created_at, id").all() as Array<{
+    id: string;
+    username: string;
+  }>;
+  const fill = db.prepare("UPDATE auth_users SET username_skeleton = ? WHERE id = ?");
+
+  const holders = new Map<string, string[]>();
+  for (const row of rows) {
+    const key = usernameSkeleton(row.username);
+    fill.run(key, row.id);
+    holders.set(key, [...(holders.get(key) ?? []), row.id]);
+  }
+
+  for (const ids of holders.values()) {
+    if (ids.length < 2) continue;
+    console.warn(
+      `ward-auth: ${ids.length} users have usernames that read the same (ids ${ids.join(", ")}). ` +
+        `They stay as they are, and no new user or rename can take that name. ` +
+        `If they are not one person, rename one of them.`,
+    );
+  }
+}

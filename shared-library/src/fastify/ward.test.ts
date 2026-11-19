@@ -228,6 +228,21 @@ describe("a first Ward sign-in", () => {
     expect((await t.identities.findUserBySubject(subject))?.id).toBe(signedIn.id);
   });
 
+  it("gives a Ward user whose name reads the same as a local user's a suffixed name", async () => {
+    await seedUsers(t.accounts, [{ username: "noel", password: LOCAL_PASSWORD, role: "admin" }]);
+    const local = (await t.accounts.findUserByUsername("noel"))!;
+    // A zero for the o, in capitals: it reads as NOEL, which folds to noel.
+    const subject = await ward.createAccount("N0EL", "myapp", ["viewer"]);
+
+    const b = browser();
+    await wardRoundTrip(b, "N0EL");
+    const signedIn = (await me(b)).json<{ user: { id: string; username: string } }>().user;
+    expect(signedIn.id).not.toBe(local.id);
+    expect(signedIn.username).toBe("N0EL-2");
+    expect(await t.identities.subjectOf(local.id)).toBeUndefined();
+    expect((await t.identities.findUserBySubject(subject))?.id).toBe(signedIn.id);
+  });
+
   it("shapes a new user's name with usernameFor, suffixes included, within usernameMaxLength", async () => {
     const shaped = await buildTestApp(clientKey, {
       usernameFor: ({ username }) => username.toLowerCase().slice(0, 16),

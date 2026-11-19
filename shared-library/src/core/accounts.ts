@@ -7,6 +7,7 @@ import {
   normaliseUsername,
 } from "./identifiers.js";
 import { hashPassword, passwordPolicyError, spendDummyHash, verifyPassword } from "./password.js";
+import { usernameSkeleton } from "./username-skeleton.js";
 import type { AuthStore, SessionOrigin, SessionRecord, UserRecord } from "../store/types.js";
 
 /**
@@ -89,7 +90,10 @@ export interface Accounts {
   readonly store: AuthStore;
   /**
    * Create a user. Throws `UsernamePolicyError`, `PasswordPolicyError`,
-   * `UsernameTakenError`, `UserIdTakenError`, or `InvalidUserIdError`.
+   * `UserIdTakenError`, `InvalidUserIdError`, or `UsernameTakenError` when
+   * another user holds the name in any case, or a name that reads the same
+   * (`usernameSkeleton`, 1.1.0): `AIice` while `alice` exists, `b0b` while
+   * `bob` does.
    */
   createUser(input: NewUserInput): Promise<AuthUser>;
   findUserById(id: string): Promise<AuthUser | undefined>;
@@ -97,10 +101,11 @@ export interface Accounts {
   setRole(userId: string, role: string): Promise<void>;
   /**
    * Rename a user (0.4.0). The name is trimmed and checked as a new one is
-   * (`UsernamePolicyError`) and must be free once folded (`UsernameTakenError`;
-   * the user's own name in another case is free). The id stays, and so does
-   * every session: a rename is not a credential change. `undefined` when there
-   * is no such user.
+   * (`UsernamePolicyError`), and is taken (`UsernameTakenError`) when another
+   * user holds it in any case or holds a name that reads the same, as in
+   * `createUser`. The user's own name in another case, or one that reads the
+   * same as it, is free. The id stays, and so does every session: a rename is
+   * not a credential change. `undefined` when there is no such user.
    */
   renameUser(userId: string, username: string): Promise<AuthUser | undefined>;
   /**
@@ -228,6 +233,7 @@ export function createAccounts(options: AccountsOptions): Accounts {
       id: input.id ?? generateUserId(),
       username,
       usernameFolded: foldUsername(username),
+      usernameSkeleton: usernameSkeleton(username),
       passwordHash,
       role: input.role,
       createdAt: now(),
@@ -380,7 +386,7 @@ export function createAccounts(options: AccountsOptions): Accounts {
       const name = normaliseUsername(username);
       const user = await store.findUserById(userId);
       if (user === undefined) return undefined;
-      await store.setUsername(userId, name, foldUsername(name), now());
+      await store.setUsername(userId, name, foldUsername(name), usernameSkeleton(name), now());
       return toAuthUser({ ...user, username: name });
     },
     async disableUser(userId) {

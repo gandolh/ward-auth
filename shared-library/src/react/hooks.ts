@@ -219,19 +219,24 @@ export function useWardSignIn(options?: HookOptions): ActionState & {
 }
 
 /**
- * Settings: "Link Ward". `link()` sends the browser to Ward; the settings
- * page then loads with `linked` true, or with `error` set to
+ * Settings: "Link Ward". `link(currentPassword)`, with the account's local
+ * password (1.0.0), sends the browser to Ward. It resolves `false` without
+ * leaving the page, `error` set to `invalid_credentials`,
+ * `too_many_attempts` (with `retryAfterSeconds`), `already_linked` or
+ * `no_local_password`, when the server refuses the start. After Ward the
+ * settings page loads with `linked` true, or with `error` set to
  * `already_linked`, `ward_account_in_use`, `access_denied`,
  * `invalid_callback`, `sign_in_failed` or `unauthorized` (the session that
- * started the link had ended). Show it when `useSession().ward.enabled && !ward.linked`.
+ * started the link had ended). Show it, with a password field, when
+ * `useSession().ward.enabled && !ward.linked`.
  */
 export function useWardLink(options?: HookOptions): ActionState & {
-  link: () => Promise<boolean>;
+  link: (currentPassword: string) => Promise<boolean>;
   linked: boolean;
 } {
   const client = useClient(options);
   const landed = useWardResult(options);
-  const run = useCallback(() => client.startWardLink(), [client]);
+  const run = useCallback((currentPassword: string) => client.startWardLink(currentPassword), [client]);
   const { perform, error, reset, pending } = useAction(run);
   const { clear } = landed;
   const resetAll = useCallback(() => {
@@ -248,23 +253,28 @@ export function useWardLink(options?: HookOptions): ActionState & {
 }
 
 /**
- * Settings: "Unlink Ward". Refused with `no_local_password` while the user
+ * Settings: "Unlink Ward". `unlink(currentPassword)`, with the account's
+ * local password (1.0.0). Refused with `no_local_password` while the user
  * has none (offer `useSetLocalPassword` first), `not_linked` when there is
- * nothing to unlink. If the current session began with Ward it ends too, and
- * the session state becomes signed out.
+ * nothing to unlink, `invalid_credentials` for a wrong password and
+ * `too_many_attempts` (with `retryAfterSeconds`). If the current session
+ * began with Ward it ends too, and the session state becomes signed out.
  */
 export function useWardUnlink(options?: HookOptions): ActionState & {
-  unlink: () => Promise<boolean>;
+  unlink: (currentPassword: string) => Promise<boolean>;
   done: boolean;
 } {
   const client = useClient(options);
   const [done, setDone] = useState(false);
-  const run = useCallback(async () => {
-    setDone(false);
-    const result = await client.unlinkWard();
-    if (result.ok) setDone(true);
-    return result;
-  }, [client]);
+  const run = useCallback(
+    async (currentPassword: string) => {
+      setDone(false);
+      const result = await client.unlinkWard(currentPassword);
+      if (result.ok) setDone(true);
+      return result;
+    },
+    [client],
+  );
   const { perform, ...state } = useAction(run);
   return { ...state, unlink: perform, done };
 }

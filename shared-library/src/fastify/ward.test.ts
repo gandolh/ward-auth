@@ -447,7 +447,10 @@ describe("a refused sign-in keeps the path it was started with (0.7.0)", () => {
     await b.request("POST", api("/auth/login"), {
       json: { username: "lena-local", password: LOCAL_PASSWORD },
     });
-    const { landed } = await wardRoundTrip(b, "lena", "/auth/ward/link", { returnTo: RETURN_TO });
+    const { landed } = await wardRoundTrip(b, "lena", "/auth/ward/link", {
+      currentPassword: LOCAL_PASSWORD,
+      returnTo: RETURN_TO,
+    });
     expect(landed.href).toBe(`${APP_ORIGIN}/myapp/settings?ward_error=ward_account_in_use`);
   });
 });
@@ -563,7 +566,9 @@ describe("linking from settings", () => {
     await b.request("POST", api("/auth/login"), {
       json: { username: "judy", password: LOCAL_PASSWORD },
     });
-    const { landed } = await wardRoundTrip(b, "judy-at-ward", "/auth/ward/link");
+    const { landed } = await wardRoundTrip(b, "judy-at-ward", "/auth/ward/link", {
+      currentPassword: LOCAL_PASSWORD,
+    });
     expect(landed.pathname).toBe("/myapp/settings");
     expect(landed.searchParams.get("ward")).toBe("linked");
     expect(await t.identities.subjectOf(local.id)).toBe(subject);
@@ -588,7 +593,7 @@ describe("linking from settings", () => {
     await b.request("POST", api("/auth/login"), {
       json: { username: "kate-local", password: LOCAL_PASSWORD },
     });
-    const { landed } = await wardRoundTrip(b, "kate", "/auth/ward/link");
+    const { landed } = await wardRoundTrip(b, "kate", "/auth/ward/link", { currentPassword: LOCAL_PASSWORD });
     expect(landed.searchParams.get("ward_error")).toBe("ward_account_in_use");
   });
 
@@ -604,7 +609,9 @@ describe("linking from settings", () => {
     await attacker.request("POST", api("/auth/login"), {
       json: { username: "mallory", password: LOCAL_PASSWORD },
     });
-    const started = await attacker.request("POST", api("/auth/ward/link"), { json: {} });
+    const started = await attacker.request("POST", api("/auth/ward/link"), {
+      json: { currentPassword: LOCAL_PASSWORD },
+    });
     const flowCookie = attacker.cookie(APP_ORIGIN, `${COOKIE}_ward`)!;
     expect(flowCookie.path).toBe(`${API_PREFIX}/auth/ward/callback`);
 
@@ -625,7 +632,9 @@ describe("linking from settings", () => {
     await planted.request("POST", api("/auth/login"), {
       json: { username: "victim", password: LOCAL_PASSWORD },
     });
-    const restarted = await attacker.request("POST", api("/auth/ward/link"), { json: {} });
+    const restarted = await attacker.request("POST", api("/auth/ward/link"), {
+      json: { currentPassword: LOCAL_PASSWORD },
+    });
     const attackerFlow = attacker.cookie(APP_ORIGIN, `${COOKIE}_ward`)!;
     const victimSession = planted.cookie(APP_ORIGIN, COOKIE)!;
     const authorized = await planted.request("GET", restarted.json<{ url: string }>().url);
@@ -657,6 +666,179 @@ describe("linking from settings", () => {
     const victimUser = (await t.accounts.findUserByUsername("victim"))!;
     expect(await t.identities.subjectOf(mallory.id)).toBeUndefined();
     expect(await t.identities.subjectOf(victimUser.id)).toBeUndefined();
+  });
+});
+
+describe("linking and unlinking ask for the account's password", () => {
+  /** A local user with a password, signed in on a fresh browser. */
+  async function signedIn(username: string): Promise<{ b: Browser; id: string }> {
+    await seedUsers(t.accounts, [{ username, password: LOCAL_PASSWORD, role: "admin" }]);
+    const b = browser();
+    const login = await b.request("POST", api("/auth/login"), { json: { username, password: LOCAL_PASSWORD } });
+    expect(login.statusCode).toBe(200);
+    return { b, id: (await t.accounts.findUserByUsername(username))!.id };
+  }
+
+  it("links with the right password only, and the linked user then signs in with Ward", async () => {
+    const { b, id } = await signedIn("nadia");
+    const subject = await ward.createAccount("nadia-at-ward", "myapp", ["viewer"]);
+    const headers = { "x-forwarded-for": "198.51.100.211" };
+
+    const noBody = await b.request("POST", api("/auth/ward/link"), { headers });
+    expect(noBody.statusCode).toBe(400);
+    expect(noBody.json()).toEqual({ error: "invalid_request" });
+    for (const json of [{}, { currentPassword: "" }, { currentPassword: 7 }]) {
+      const refused = await b.request("POST", api("/auth/ward/link"), { json, headers });
+      expect(refused.statusCode).toBe(400);
+      expect(refused.json()).toEqual({ error: "invalid_request" });
+    }
+    const wrong = await b.request("POST", api("/auth/ward/link"), {
+      json: { currentPassword: "not the password at all" },
+      headers,
+    });
+    expect(wrong.statusCode).toBe(401);
+    expect(wrong.json()).toEqual({ error: "invalid_credentials" });
+    // No round trip started, and the session carries on.
+    expect(b.cookie(APP_ORIGIN, `${COOKIE}_ward`)).toBeUndefined();
+    expect(await session(b)).toMatchObject({ user: { id }, ward: { linked: false } });
+
+    const { landed } = await wardRoundTrip(b, "nadia-at-ward", "/auth/ward/link", {
+      currentPassword: LOCAL_PASSWORD,
+    });
+    expect(landed.href).toBe(`${APP_ORIGIN}/myapp/settings?ward=linked`);
+    expect(await t.identities.subjectOf(id)).toBe(subject);
+
+    const elsewhere = browser();
+    await wardRoundTrip(elsewhere, "nadia-at-ward");
+    expect((await me(elsewhere)).json()).toMatchObject({ user: { id, username: "nadia" }, origin: "ward" });
+  });
+
+  it("unlinks with the right password only, and keeps the link until then", async () => {
+    const { b, id } = await signedIn("otto");
+    await ward.createAccount("otto-at-ward", "myapp", ["viewer"]);
+    await wardRoundTrip(b, "otto-at-ward", "/auth/ward/link", { currentPassword: LOCAL_PASSWORD });
+    const headers = { "x-forwarded-for": "198.51.100.212" };
+
+    const noBody = await b.request("POST", api("/auth/ward/unlink"), { headers });
+    expect(noBody.statusCode).toBe(400);
+    expect(noBody.json()).toEqual({ error: "invalid_request" });
+    const wrong = await b.request("POST", api("/auth/ward/unlink"), {
+      json: { currentPassword: "not the password at all" },
+      headers,
+    });
+    expect(wrong.statusCode).toBe(401);
+    expect(wrong.json()).toEqual({ error: "invalid_credentials" });
+    expect(await session(b)).toMatchObject({ user: { id }, ward: { linked: true } });
+
+    const unlinked = await b.request("POST", api("/auth/ward/unlink"), {
+      json: { currentPassword: LOCAL_PASSWORD },
+      headers,
+    });
+    expect(unlinked.statusCode).toBe(200);
+    // A local session: it carries on.
+    expect(unlinked.json()).toEqual({ signedOut: false });
+    expect(await t.identities.subjectOf(id)).toBeUndefined();
+  });
+
+  it("answers the 409s first, whatever the body carries", async () => {
+    // Signed in with Ward only: linked, and no local password.
+    await ward.createAccount("sven", "myapp", ["viewer"]);
+    const wardOnly = browser();
+    await wardRoundTrip(wardOnly, "sven");
+    for (const json of [{}, { currentPassword: "any password at all" }]) {
+      const link = await wardOnly.request("POST", api("/auth/ward/link"), { json });
+      expect(link.statusCode).toBe(409);
+      expect(link.json()).toEqual({ error: "already_linked" });
+      const unlink = await wardOnly.request("POST", api("/auth/ward/unlink"), { json });
+      expect(unlink.statusCode).toBe(409);
+      expect(unlink.json()).toEqual({ error: "no_local_password" });
+    }
+    expect(await session(wardOnly)).toMatchObject({ user: { hasPassword: false }, ward: { linked: true } });
+
+    // A password and no link: nothing to unlink.
+    const { b } = await signedIn("tilda");
+    const unlink = await b.request("POST", api("/auth/ward/unlink"), { json: { currentPassword: LOCAL_PASSWORD } });
+    expect(unlink.statusCode).toBe(409);
+    expect(unlink.json()).toEqual({ error: "not_linked" });
+
+    // No password and no link, as an app can create one: no password to ask for.
+    const bare = await t.accounts.createUser({ username: "viggo", role: "admin" });
+    const { token } = await t.accounts.startSession(bare.id);
+    const link = await t.app.inject({
+      method: "POST",
+      url: "/auth/ward/link",
+      headers: { cookie: `${COOKIE}=${token}` },
+      payload: { currentPassword: "any password at all" },
+    });
+    expect(link.statusCode).toBe(409);
+    expect(link.json()).toEqual({ error: "no_local_password" });
+  });
+
+  it("spends the password-change budget: links at once get five verdicts, and a password change waits too", async () => {
+    const { b } = await signedIn("xena");
+    const headers = { "x-forwarded-for": "198.51.100.213" };
+
+    const answers = await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        b.request("POST", api("/auth/ward/link"), { json: { currentPassword: `wrong ${i}` }, headers }),
+      ),
+    );
+    const statuses = answers.map((answer) => answer.statusCode);
+    expect(statuses.filter((status) => status === 401)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(15);
+
+    const link = await b.request("POST", api("/auth/ward/link"), {
+      json: { currentPassword: LOCAL_PASSWORD },
+      headers,
+    });
+    expect(link.statusCode).toBe(429);
+    expect(link.json()).toMatchObject({ error: "too_many_attempts" });
+    const change = await b.request("POST", api("/auth/password"), {
+      json: { currentPassword: LOCAL_PASSWORD, newPassword: "another long password" },
+      headers,
+    });
+    expect(change.statusCode).toBe(429);
+
+    // Signing in keeps its own budget.
+    const login = await browser().request("POST", api("/auth/login"), {
+      json: { username: "xena", password: LOCAL_PASSWORD },
+      headers,
+    });
+    expect(login.statusCode).toBe(200);
+  });
+
+  it("finishes a link only for a start that carried the password", async () => {
+    const { b, id } = await signedIn("zora");
+    await ward.createAccount("zora-at-ward", "myapp", ["viewer"]);
+    const sessionToken = b.cookie(APP_ORIGIN, COOKIE)!.value;
+
+    // The flow cookie is the browser's to write: a sign-in's flow, which asked
+    // for no password, rewritten as a link of this session.
+    const started = await b.request("POST", api("/auth/ward/start"), { json: {} });
+    const flow = JSON.parse(
+      Buffer.from(b.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value, "base64url").toString("utf8"),
+    ) as Record<string, unknown>;
+    const rewritten = Buffer.from(
+      JSON.stringify({ ...flow, mode: "link", sessionIdHash: hashSessionToken(sessionToken) }),
+      "utf8",
+    ).toString("base64url");
+    const callback = new URL(await walkToCallback(b, started.json<{ url: string }>().url, "zora-at-ward"));
+    const finished = await t.app.inject({
+      method: "GET",
+      url: `${callback.pathname.slice(API_PREFIX.length)}${callback.search}`,
+      headers: { cookie: `${COOKIE}_ward=${rewritten}; ${COOKIE}=${sessionToken}` },
+    });
+    expect(finished.statusCode).toBe(303);
+    expect(finished.headers.location).toBe(`${APP_ORIGIN}/myapp/settings?ward_error=invalid_callback`);
+    expect(await t.identities.subjectOf(id)).toBeUndefined();
+    expect(await session(b)).toMatchObject({ user: { id }, ward: { linked: false } });
+
+    // Started with the password, the same link finishes.
+    const { landed } = await wardRoundTrip(b, "zora-at-ward", "/auth/ward/link", {
+      currentPassword: LOCAL_PASSWORD,
+    });
+    expect(landed.href).toBe(`${APP_ORIGIN}/myapp/settings?ward=linked`);
+    expect(await t.identities.subjectOf(id)).toBeDefined();
   });
 });
 
@@ -714,7 +896,7 @@ describe("a callback carrying a cookie more than once", () => {
     await elsewhere.request("POST", api("/auth/login"), { json: { username: "ulla", password: LOCAL_PASSWORD } });
     const there = elsewhere.cookie(APP_ORIGIN, COOKIE)!.value;
 
-    const started = await b.request("POST", api("/auth/ward/link"), { json: {} });
+    const started = await b.request("POST", api("/auth/ward/link"), { json: { currentPassword: LOCAL_PASSWORD } });
     const flow = b.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value;
     const callback = await walkToCallback(b, started.json<{ url: string }>().url, "ulla-at-ward");
 
@@ -724,7 +906,7 @@ describe("a callback carrying a cookie more than once", () => {
     expect(await t.identities.subjectOf(ulla.id)).toBeUndefined();
 
     // A fresh link, presented with the one session cookie that started it, finishes.
-    const restarted = await b.request("POST", api("/auth/ward/link"), { json: {} });
+    const restarted = await b.request("POST", api("/auth/ward/link"), { json: { currentPassword: LOCAL_PASSWORD } });
     const freshFlow = b.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value;
     const freshCallback = await walkToCallback(b, restarted.json<{ url: string }>().url, "ulla-at-ward");
     const finished = await presentCallback(freshCallback, `${COOKIE}_ward=${freshFlow}; ${COOKIE}=${here}`);
@@ -813,7 +995,7 @@ describe("settings: local password and unlink", () => {
     expect(missing.statusCode).toBe(400);
 
     // And unlinking is allowed; this session began with Ward, so it ends.
-    const unlinked = await b.request("POST", api("/auth/ward/unlink"), { json: {} });
+    const unlinked = await b.request("POST", api("/auth/ward/unlink"), { json: { currentPassword: LOCAL_PASSWORD } });
     expect(unlinked.statusCode).toBe(200);
     expect(unlinked.json()).toEqual({ signedOut: true });
     expect((await me(b)).statusCode).toBe(401);

@@ -33,8 +33,8 @@ integration (the `client/` package, `/introspect`, the app key and the dev
 - **"Sign in with Ward"** as a second way in: an OpenID Connect code flow with
   PKCE against Ward, finished by the app's server. A first Ward sign-in creates
   a local user linked to the Ward account. A person who already has a local
-  account links Ward from their own settings. Nothing is ever matched by
-  username.
+  account links Ward from their own settings, giving their password again.
+  Nothing is ever matched by username.
 - **Revoke-everywhere for Ward sessions.** A session that began with Ward is
   checked against Ward at most every 30 seconds. A sign-out at Ward, a console
   revoke or a removed grant ends it on the first request after that. If Ward
@@ -242,9 +242,9 @@ the hooks are configured with.
 | `POST /auth/register`            | public, opt-in | `{ username, password }` → `201 { user, session, ward }`            |
 | `POST /auth/ward/start`          | public         | `{ returnTo? }` → `{ url }` to send the browser to                  |
 | `GET /auth/ward/callback`        | public         | the redirect URI; a `303` to one of the app's pages                 |
-| `POST /auth/ward/link`           | session        | → `{ url }`                                                         |
+| `POST /auth/ward/link`           | session        | `{ currentPassword }` → `{ url }`                                   |
 | `POST /auth/ward/reauthenticate` | session        | → `{ url }` (Ward asks for the password again)                      |
-| `POST /auth/ward/unlink`         | session        | → `{ signedOut }`                                                   |
+| `POST /auth/ward/unlink`         | session        | `{ currentPassword }` → `{ signedOut }`                             |
 | `POST /auth/ward/set-password`   | session        | `{ newPassword, currentPassword? }` → `204`                         |
 | `POST /auth/ward/logout`         | session        | → `{ url }`: Ward's end-session URL, or `null`                      |
 
@@ -458,8 +458,8 @@ refusal also goes there.
 ```jsx
 function Settings() {
   const session = useSession(); // session.user.hasPassword, session.ward.linked
-  const link = useWardLink(); // link(); link.linked after the round trip; link.error
-  const unlink = useWardUnlink(); // unlink(); error no_local_password | not_linked
+  const link = useWardLink(); // link(currentPassword); link.linked after the round trip; link.error
+  const unlink = useWardUnlink(); // unlink(currentPassword); error invalid_credentials | no_local_password | not_linked
   const local = useSetLocalPassword(); // setPassword(next, current?); reauthenticate()
   const change = useChangePassword(); // for users who have a password
   const rename = useRenameUser(); // renameUser(next); rename.done; error username_taken
@@ -467,10 +467,15 @@ function Settings() {
 }
 ```
 
-- **Link Ward**: show it when `ward.enabled && !ward.linked`. `link()` goes to
-  Ward and comes back to `settingsPath?ward=linked`, or with
-  `already_linked`, `ward_account_in_use`, `access_denied`, `invalid_callback`
-  or `unauthorized`.
+- **Link Ward**: show it when `ward.enabled && !ward.linked`, with a field for
+  the account's password. `link(currentPassword)` asks for it again, as a
+  password change does, and under the same budget: a wrong one stays on the
+  page as `invalid_credentials`, and five from one address in 15 minutes earn
+  `too_many_attempts`. Then it goes to Ward and comes back to
+  `settingsPath?ward=linked`, or with `already_linked`, `ward_account_in_use`,
+  `access_denied`, `invalid_callback` or `unauthorized`. A link finishes only
+  in the app process that took the password: one waiting for Ward when the
+  app restarts comes back as `invalid_callback`.
 - **Set a local password**: for `!user.hasPassword`. `setPassword(next)` works
   only within ten minutes of `reauthenticate()`. A Ward sign-in does not count,
   however recent: with a live Ward session, "Sign in with Ward" asks for
@@ -488,8 +493,9 @@ function Settings() {
   `429`. An app that keys anything on the username rather than the id, or
   names its users itself, passes `allowRename: false`, and the route is gone.
 - **Unlink Ward**: refused with `no_local_password` until the user has one.
-  If the current session began with Ward, it ends too (the answer says
-  `signedOut`). Every other Ward-originated session of that user ends as well.
+  Then `unlink(currentPassword)` asks for the password as a link does. If the
+  current session began with Ward, it ends too (the answer says `signedOut`).
+  Every other Ward-originated session of that user ends as well.
 - **Sign out of Ward too**: `signOut()` ends the session here and sends the
   browser to Ward, which ends the Ward session this one began with and comes
   back to `WARD_OIDC_POST_LOGOUT_REDIRECT_URI`. For a local session it is a
@@ -501,30 +507,30 @@ Every error body is `{ "error": <code> }`. The hooks expose the code as
 `error.code`, and the app writes the message. Treat an unknown code like
 `unknown`.
 
-| Code                                                          | Where                                          | Meaning                                                            |
-| ------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
-| `invalid_credentials`                                         | login, password change                         | wrong username or password (one answer for both)                   |
-| `too_many_attempts`                                           | login, register, password routes, rename       | lockout; `retryAfterSeconds` says how long                         |
-| `invalid_request`                                             | any `POST`                                     | a malformed body                                                   |
-| `invalid_username`, `password_too_short`, `password_too_long` | register, rename, new passwords                | the policy                                                         |
-| `username_taken`                                              | register, rename                               |                                                                    |
-| `unauthorized`                                                | guarded routes                                 | no live session; may carry a `reason`                              |
-| `forbidden`                                                   | `requireRole`                                  |                                                                    |
-| `cross_site`                                                  | any `POST`                                     | a browser said the request came from another origin                |
-| `access_denied`                                               | Ward round trip                                | Ward or the app said no: no grant, disabled, or "Back to the app"  |
-| `ward_unavailable`                                            | Ward round trip, Ward starts, session `reason` | Ward could not be reached; sign in with the local password         |
-| `ward_misconfigured`                                          | same places                                    | Ward refused this app's client credential: an operator problem     |
-| `ward_session_ended`                                          | session `reason`                               | the Ward session this one began with was signed out or revoked     |
-| `invalid_callback`                                            | Ward round trip                                | the round trip expired, was replaced, or did not verify; try again |
-| `sign_in_failed`                                              | Ward round trip                                | the app failed finishing it (logged server-side); try again        |
-| `already_linked`                                              | link                                           | this user already has a Ward account linked                        |
-| `ward_account_in_use`                                         | link                                           | that Ward account is linked to another user here                   |
-| `ward_account_mismatch`                                       | reauthenticate                                 | a different Ward account came back                                 |
-| `not_linked`                                                  | unlink, reauthenticate                         | nothing is linked                                                  |
-| `no_local_password`                                           | unlink                                         | set a local password first                                         |
-| `reauthentication_required`                                   | set-password                                   | no `reauthenticate()` in the last ten minutes                      |
-| `session_check_failed`                                        | session `reason`                               | an app validator threw (fails closed)                              |
-| `network`, `unknown`                                          | client-side                                    | no answer, or an answer without a code                             |
+| Code                                                          | Where                                                  | Meaning                                                            |
+| ------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
+| `invalid_credentials`                                         | login, password change, link, unlink                   | wrong username or password (one answer for both)                   |
+| `too_many_attempts`                                           | login, register, password routes, link, unlink, rename | lockout; `retryAfterSeconds` says how long                         |
+| `invalid_request`                                             | any `POST`                                             | a malformed body                                                   |
+| `invalid_username`, `password_too_short`, `password_too_long` | register, rename, new passwords                        | the policy                                                         |
+| `username_taken`                                              | register, rename                                       |                                                                    |
+| `unauthorized`                                                | guarded routes                                         | no live session; may carry a `reason`                              |
+| `forbidden`                                                   | `requireRole`                                          |                                                                    |
+| `cross_site`                                                  | any `POST`                                             | a browser said the request came from another origin                |
+| `access_denied`                                               | Ward round trip                                        | Ward or the app said no: no grant, disabled, or "Back to the app"  |
+| `ward_unavailable`                                            | Ward round trip, Ward starts, session `reason`         | Ward could not be reached; sign in with the local password         |
+| `ward_misconfigured`                                          | same places                                            | Ward refused this app's client credential: an operator problem     |
+| `ward_session_ended`                                          | session `reason`                                       | the Ward session this one began with was signed out or revoked     |
+| `invalid_callback`                                            | Ward round trip                                        | the round trip expired, was replaced, or did not verify; try again |
+| `sign_in_failed`                                              | Ward round trip                                        | the app failed finishing it (logged server-side); try again        |
+| `already_linked`                                              | link                                                   | this user already has a Ward account linked                        |
+| `ward_account_in_use`                                         | link                                                   | that Ward account is linked to another user here                   |
+| `ward_account_mismatch`                                       | reauthenticate                                         | a different Ward account came back                                 |
+| `not_linked`                                                  | unlink, reauthenticate                                 | nothing is linked                                                  |
+| `no_local_password`                                           | link, unlink                                           | set a local password first                                         |
+| `reauthentication_required`                                   | set-password                                           | no `reauthenticate()` in the last ten minutes                      |
+| `session_check_failed`                                        | session `reason`                                       | an app validator threw (fails closed)                              |
+| `network`, `unknown`                                          | client-side                                            | no answer, or an answer without a code                             |
 
 Ward may also send other OAuth error codes back. They pass through as they
 are, if they look like codes.

@@ -126,6 +126,15 @@ export interface Accounts {
    */
   verifyCredentials(username: string, password: string): Promise<AuthUser | undefined>;
   /**
+   * The password check by user id, for a signed-in user asked for their
+   * password again before a change that is not a password change: linking or
+   * unlinking Ward (1.0.0). Changes nothing: no session ends, nothing is
+   * written. `false` for an unknown id, a user with no local password, a
+   * disabled user, or a wrong password, at one scrypt cost each, as
+   * `verifyCredentials` answers.
+   */
+  checkPassword(userId: string, password: string): Promise<boolean>;
+  /**
    * Change a password given the current one. Returns `false` for a wrong
    * current password (including a user with none). On success **ends every
    * other session the user holds** — the point of changing a password after a
@@ -245,6 +254,17 @@ export function createAccounts(options: AccountsOptions): Accounts {
     // unknown name does.
     if (user === undefined || !ok || user.disabledAt !== null) return undefined;
     return toAuthUser(user);
+  }
+
+  async function checkPassword(userId: string, password: string): Promise<boolean> {
+    const user = await store.findUserById(userId);
+    // The same one cost on every path as `verifyCredentials`, and the same
+    // repeated `user === undefined` before a true can come out.
+    const ok =
+      user === undefined || user.passwordHash === null
+        ? await spendDummyHash(password)
+        : await verifyPassword(password, user.passwordHash);
+    return user !== undefined && ok && user.disabledAt === null;
   }
 
   async function changePassword(
@@ -380,6 +400,7 @@ export function createAccounts(options: AccountsOptions): Accounts {
       return toAuthUser({ ...user, disabledAt: null });
     },
     verifyCredentials,
+    checkPassword,
     changePassword,
     setPassword,
     startSession,

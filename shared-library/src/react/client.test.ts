@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import { configureAuth, createAuthClient, readWardResult } from "./client.js";
 import {
@@ -278,7 +278,47 @@ describe("Sign in with Ward, in the browser", () => {
     );
   });
 
-  it("unlinks, and is signed out when the session began with Ward", async () => {
+  it("links with the account's password: posts it, then navigates to Ward", async () => {
+    const navigate = vi.fn();
+    const fetch = vi.fn(async () => json(200, { url: "https://example.com/ward-api/oidc/auth?x=2" }));
+    const client = createAuthClient({ basePath: "/a", fetch, navigate });
+
+    expect(await client.startWardLink("my local password")).toEqual({ ok: true });
+    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/a/ward/link");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ currentPassword: "my local password" });
+    expect(navigate).toHaveBeenCalledWith("https://example.com/ward-api/oidc/auth?x=2");
+  });
+
+  it("stays on the page, still signed in, when a link or unlink's password is wrong", async () => {
+    const navigate = vi.fn();
+    const responses = [
+      json(200, { user: alice, session, ward: wardOn }),
+      json(401, { error: "invalid_credentials" }),
+      json(401, { error: "invalid_credentials" }),
+      json(429, { error: "too_many_attempts", retryAfterSeconds: 600 }),
+    ];
+    const client = createAuthClient({ basePath: "/a", fetch: async () => responses.shift()!, navigate });
+    await client.refresh();
+
+    expect(await client.startWardLink("not it")).toEqual({
+      ok: false,
+      error: { code: "invalid_credentials", status: 401 },
+    });
+    expect(await client.unlinkWard("not it")).toEqual({
+      ok: false,
+      error: { code: "invalid_credentials", status: 401 },
+    });
+    expect(await client.startWardLink("not it either")).toEqual({
+      ok: false,
+      error: { code: "too_many_attempts", status: 429, retryAfterSeconds: 600 },
+    });
+    expect(navigate).not.toHaveBeenCalled();
+    expect(client.getState()).toMatchObject({ status: "signed_in", user: alice });
+  });
+
+  it("unlinks with the account's password, and is signed out when the session began with Ward", async () => {
     const responses = [
       json(200, {
         user: alice,
@@ -287,10 +327,14 @@ describe("Sign in with Ward, in the browser", () => {
       }),
       json(200, { signedOut: true }),
     ];
-    const client = createAuthClient({ basePath: "/a", fetch: async () => responses.shift()! });
+    const fetch = vi.fn(async () => responses.shift()!);
+    const client = createAuthClient({ basePath: "/a", fetch });
     await client.refresh();
-    expect(await client.unlinkWard()).toEqual({ ok: true });
+    expect(await client.unlinkWard("my local password")).toEqual({ ok: true });
     expect(client.getState()).toEqual({ status: "signed_out", ward: wardOn });
+    const [url, init] = fetch.mock.calls[1] as unknown as [string, RequestInit];
+    expect(url).toBe("/a/ward/unlink");
+    expect(JSON.parse(String(init.body))).toEqual({ currentPassword: "my local password" });
   });
 
   it("sets a local password and refreshes, or reports reauthentication_required", async () => {
@@ -363,5 +407,12 @@ describe("the hooks", () => {
 
     expect(renderToString(createElement(Probe))).toBe("");
     expect(seen).toEqual({ status: "loading", pending: false, error: null, wardError: null });
+  });
+
+  it("take the account's password to link and unlink", () => {
+    // Checked by the typecheck: an app's `onClick={link.link}` or a call
+    // with no password no longer compiles.
+    expectTypeOf<ReturnType<typeof useWardLink>["link"]>().parameters.toEqualTypeOf<[currentPassword: string]>();
+    expectTypeOf<ReturnType<typeof useWardUnlink>["unlink"]>().parameters.toEqualTypeOf<[currentPassword: string]>();
   });
 });

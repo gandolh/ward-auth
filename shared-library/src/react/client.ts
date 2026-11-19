@@ -60,9 +60,12 @@ export interface WardStatus {
  *   if it persists, it is an operator problem.
  * - `already_linked`, `ward_account_in_use` — linking: this user already has
  *   a Ward account, or that Ward account belongs to another user here.
+ *   Linking and unlinking also answer `invalid_credentials` (a wrong current
+ *   password) and `too_many_attempts`, as a password change does (1.0.0).
  * - `ward_account_mismatch` — reauthentication came back as another Ward
  *   account.
- * - `not_linked`, `no_local_password` — unlinking.
+ * - `not_linked`, `no_local_password` — unlinking; `no_local_password` also
+ *   linking, for a user with no local password to give.
  * - `reauthentication_required` — setting a first local password needs a
  *   reauthentication (`reauthenticate()`) from the last ten minutes. A plain
  *   Ward sign-in does not count, however recent.
@@ -176,12 +179,22 @@ export interface AuthClient {
    * to land on afterwards.
    */
   startWardSignIn(options?: { returnTo?: string }): Promise<ActionResult>;
-  /** "Link Ward", from settings while signed in. Navigates to Ward. */
-  startWardLink(): Promise<ActionResult>;
+  /**
+   * "Link Ward", from settings while signed in, with the account's current
+   * local password (1.0.0). Navigates to Ward. Stays on the page with
+   * `invalid_credentials`, `invalid_request` (an empty password),
+   * `too_many_attempts`, `already_linked` or `no_local_password`.
+   */
+  startWardLink(currentPassword: string): Promise<ActionResult>;
   /** Reauthenticate with Ward (Ward asks for the password again). Navigates to Ward. */
   startWardReauthentication(): Promise<ActionResult>;
-  /** Unlink Ward. The state becomes signed out if this session began with Ward. */
-  unlinkWard(): Promise<ActionResult>;
+  /**
+   * Unlink Ward, with the account's current local password (1.0.0). The
+   * state becomes signed out if this session began with Ward. Errors:
+   * `invalid_credentials`, `invalid_request` (an empty password),
+   * `too_many_attempts`, `no_local_password`, `not_linked`.
+   */
+  unlinkWard(currentPassword: string): Promise<ActionResult>;
   /**
    * Set a local password: give the current one if there is one; a user with
    * none needs `startWardReauthentication()` in the last ten minutes
@@ -447,10 +460,10 @@ export function createAuthClient(options: AuthClientOptions): AuthClient {
     },
     startWardSignIn: (startOptions = {}) =>
       goToWard("/ward/start", startOptions.returnTo === undefined ? {} : { returnTo: startOptions.returnTo }),
-    startWardLink: () => goToWard("/ward/link"),
+    startWardLink: (currentPassword) => goToWard("/ward/link", { currentPassword }),
     startWardReauthentication: () => goToWard("/ward/reauthenticate"),
-    async unlinkWard() {
-      const result = await act("/ward/unlink");
+    async unlinkWard(currentPassword) {
+      const result = await act("/ward/unlink", { currentPassword });
       if (!result.ok) return result;
       const { signedOut: ended } = (await result.response.json()) as { signedOut: boolean };
       if (ended) setState(signedOut());

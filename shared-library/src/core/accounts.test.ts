@@ -149,6 +149,44 @@ describe("verifyCredentials", () => {
   });
 });
 
+describe("checkPassword", () => {
+  let userId: string;
+
+  beforeEach(async () => {
+    userId = (await accounts.createUser({ username: "alice", password: "correct horse", role: "member" })).id;
+  });
+
+  it("answers true for the right password and changes nothing", async () => {
+    const one = await accounts.startSession(userId);
+    const two = await accounts.startSession(userId);
+    const before = store.findUserById(userId);
+
+    expect(await accounts.checkPassword(userId, "correct horse")).toBe(true);
+    expect(await accounts.resolveSession(one.token)).toBeDefined();
+    expect(await accounts.resolveSession(two.token)).toBeDefined();
+    expect(store.findUserById(userId)).toEqual(before);
+  });
+
+  it("answers false for a wrong password, from the real hash", async () => {
+    expect(await accounts.checkPassword(userId, "wrong horse")).toBe(false);
+    expect(verifyPassword).toHaveBeenCalledTimes(1);
+    expect(spendDummyHash).not.toHaveBeenCalled();
+  });
+
+  it("spends the dummy hash for an unknown id and for a user with no local password", async () => {
+    const wardOnly = await accounts.createUser({ username: "wardonly", role: "member" });
+    expect(await accounts.checkPassword("no-such-user", "correct horse")).toBe(false);
+    expect(await accounts.checkPassword(wardOnly.id, "anything")).toBe(false);
+    expect(spendDummyHash).toHaveBeenCalledTimes(2);
+  });
+
+  it("answers false for a disabled user's right password, at one real hash", async () => {
+    await accounts.disableUser(userId);
+    expect(await accounts.checkPassword(userId, "correct horse")).toBe(false);
+    expect(verifyPassword).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("sessions", () => {
   let userId: string;
 

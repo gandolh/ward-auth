@@ -40,6 +40,15 @@ export function passwordChangeBody(body: unknown): { currentPassword: string; ne
   return { currentPassword, newPassword };
 }
 
+/** A Ward link's or unlink's body: the account's current password, and nothing else read. */
+export function currentPasswordBody(body: unknown): { currentPassword: string } | undefined {
+  if (typeof body !== "object" || body === null) return undefined;
+  const { currentPassword } = body as Record<string, unknown>;
+  if (typeof currentPassword !== "string") return undefined;
+  if (currentPassword.length === 0 || currentPassword.length > MAX_PASSWORD_LENGTH) return undefined;
+  return { currentPassword };
+}
+
 /** A rename's body. The name's rules are the policy's, answered with its code. */
 export function usernameBody(body: unknown): { username: string } | undefined {
   if (typeof body !== "object" || body === null) return undefined;

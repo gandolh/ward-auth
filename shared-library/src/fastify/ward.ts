@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { UserDisabledError, type Accounts, type AuthUser } from "../core/accounts.js";
 import { clearedCookie, readCookie, serializeCookie } from "../core/cookie.js";
 import { MAX_USERNAME_LENGTH, foldUsername } from "../core/identifiers.js";
-import type { Lockout } from "../core/lockout.js";
+import type { Lockout, LockoutAttempt } from "../core/lockout.js";
 import { MAX_PASSWORD_LENGTH, PasswordPolicyError } from "../core/password.js";
 import { isLocalPath } from "../core/paths.js";
 import { AlreadyLinkedError, WardSubjectTakenError, isWardAuthStore } from "../store/types.js";
@@ -18,7 +18,7 @@ import {
   type UsernameFor,
   type WardIdentities,
 } from "../ward/identities.js";
-import { crossSite, sameOrigin, tooManyAttempts } from "./http.js";
+import { crossSite, currentPasswordBody, sameOrigin, tooManyAttempts } from "./http.js";
 import type { SessionValidator } from "./session-validator.js";
 
 /**
@@ -31,9 +31,9 @@ import type { SessionValidator } from "./session-validator.js";
  * |---|---|---|
  * | `POST /ward/start` | public | sign-in: answers `{ url }` to send the browser to |
  * | `GET /ward/callback` | public | the redirect URI; ends in a `303` to an app page |
- * | `POST /ward/link` | session | link Ward from settings: `{ url }` |
+ * | `POST /ward/link` | session | link Ward from settings: `{ currentPassword }` → `{ url }`; `409 already_linked` / `no_local_password` |
  * | `POST /ward/reauthenticate` | session | Ward asks for the password again (`prompt=login`): `{ url }` |
- * | `POST /ward/unlink` | session | `{ signedOut }`; `409 no_local_password` / `not_linked` |
+ * | `POST /ward/unlink` | session | `{ currentPassword }` → `{ signedOut }`; `409 not_linked` / `no_local_password` |
  * | `POST /ward/set-password` | session | `204`; `403 reauthentication_required` |
  * | `POST /ward/logout` | session | ends the session here: `{ url }` of Ward's end-session, or `null` |
  *
@@ -60,6 +60,22 @@ import type { SessionValidator } from "./session-validator.js";
  * Without that, an attacker could start a link on their own account and get
  * the victim's browser to finish it, linking the victim's Ward account to the
  * attacker's local user.
+ *
+ * ## Linking and unlinking ask for the password (1.0.0)
+ *
+ * A link is a lasting way into the account, and an unlink takes one away, so
+ * both ask for the account's current local password, as a password change
+ * does: `{ currentPassword }`, `400 invalid_request` without it,
+ * `401 invalid_credentials` when it is wrong, under the same password-change
+ * budget as `POST <prefix>/password` and `POST /ward/set-password`. A user
+ * with no local password has none to give: link answers `409 already_linked`
+ * for a user created from Ward (who is linked) and `409 no_local_password`
+ * otherwise, unlink `409 no_local_password`, before any body is read.
+ *
+ * The flow cookie is the browser's to write, so the link callback does not
+ * take its `mode` on trust either: it finishes a link only for a start that
+ * `POST /ward/link` holds in memory after the password, for the same session,
+ * once, within ten minutes. Anything else lands as `invalid_callback`.
  *
  * ## Where the callback sends the browser
  *
@@ -172,6 +188,13 @@ export function isFreshReauthentication(identity: Pick<WardIdentity, "authTime" 
 
 /** The flow cookie's life: one Ward interaction's span. */
 const FLOW_MAX_AGE_SECONDS = 10 * 60;
+
+/**
+ * The most link starts held for their callback at once. Each one needed the
+ * account's password, so an app holds a handful; the cap keeps the map
+ * bounded whatever happens. The oldest goes first.
+ */
+const MAX_PENDING_LINKS = 1000;
 
 type FlowMode = "sign_in" | "link" | "reauthenticate";
 
@@ -297,6 +320,37 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
   const flowCookieName = `${context.cookieName}_ward`;
   const flowCookiePath = new URL(client.redirectUri).pathname;
 
+  /**
+   * The link starts that carried the account's password (`POST /ward/link`),
+   * by their flow's `state`: the session that started each one, and when it
+   * lapses. The flow cookie is the browser's to write, so it cannot say on its
+   * own where a link was started; the callback finishes a link only for a
+   * start held here, and takes it. In memory, like the lockout: a link still
+   * waiting for its callback when the app restarts lands as
+   * `invalid_callback`, and the person starts it again.
+   */
+  const pendingLinks = new Map<string, { sessionIdHash: string; expiresAt: number }>();
+
+  function holdLink(state: string, sessionIdHash: string): void {
+    const at = now();
+    for (const [held, pending] of pendingLinks) {
+      if (pending.expiresAt <= at) pendingLinks.delete(held);
+    }
+    if (pendingLinks.size >= MAX_PENDING_LINKS) {
+      const oldest = pendingLinks.keys().next();
+      if (oldest.done !== true) pendingLinks.delete(oldest.value);
+    }
+    pendingLinks.set(state, { sessionIdHash, expiresAt: at + FLOW_MAX_AGE_SECONDS * 1000 });
+  }
+
+  /** Whether the flow's start is held, for its session, and not lapsed. Takes it either way. */
+  function takeLink(flow: Flow): boolean {
+    const pending = pendingLinks.get(flow.state);
+    if (pending === undefined) return false;
+    pendingLinks.delete(flow.state);
+    return pending.expiresAt > now() && pending.sessionIdHash === flow.sessionIdHash;
+  }
+
   function flowCookie(flow: Flow): string {
     return serializeCookie({
       name: flowCookieName,
@@ -343,6 +397,8 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
       return wardDown(reply, error);
     }
     const flow: Flow = { ...started.flow, mode, startedAt: now(), ...extra };
+    // Only `POST /ward/link` starts a link, and only after the password.
+    if (mode === "link" && extra.sessionIdHash !== undefined) holdLink(flow.state, extra.sessionIdHash);
     reply.header("set-cookie", flowCookie(flow));
     reply.header("cache-control", "no-store");
     return reply.code(200).send({ url: started.url });
@@ -425,14 +481,58 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     return start(reply, "sign_in", returnTo === undefined ? {} : { returnTo });
   });
 
+  /**
+   * Hear the account's current password again, from the body's
+   * `currentPassword`, as `POST <prefix>/password` does. `undefined` when it is
+   * right; otherwise the refusal for the route to send: `400 invalid_request`
+   * without one, `401 invalid_credentials` for a wrong one, which fails the
+   * attempt. It answers data, not a sent reply: a reply is a thenable, so an
+   * async function that returns one resolves to `undefined`.
+   */
+  async function passwordRefusal(
+    request: FastifyRequest,
+    user: AuthUser,
+    attempt: LockoutAttempt,
+  ): Promise<{ status: 400 | 401; error: "invalid_request" | "invalid_credentials" } | undefined> {
+    const body = currentPasswordBody(request.body);
+    if (body === undefined) return { status: 400, error: "invalid_request" };
+    const account = foldUsername(user.username);
+    if (!(await accounts.checkPassword(user.id, body.currentPassword))) {
+      attempt.fail(account);
+      return { status: 401, error: "invalid_credentials" };
+    }
+    attempt.succeed(account);
+    return undefined;
+  }
+
+  /**
+   * Link Ward: `{ currentPassword }`, the account's local password. Checked
+   * under the password-change budget, with a slot held until the attempt
+   * ends, as `POST <prefix>/password` holds one. A `409` judges no credential,
+   * so it, like a missing password, ends through `release`.
+   */
   routes.post("/ward/link", async (request, reply) => {
     if (!sameOrigin(request, publicOrigin)) return crossSite(reply);
     const auth = request.auth;
     if (auth === null) return reply.code(401).send({ error: "unauthorized" });
-    if ((await identities.subjectOf(auth.user.id)) !== undefined) {
-      return reply.code(409).send({ error: "already_linked" });
+
+    const gate = context.lockout.reserveAttempt({ surface: "change_password", address: context.lockoutKey(request) });
+    if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds);
+    const { attempt } = gate;
+
+    try {
+      if ((await identities.subjectOf(auth.user.id)) !== undefined) {
+        return reply.code(409).send({ error: "already_linked" });
+      }
+      // No password to ask for. A user created from Ward is linked, and
+      // answered above; this is one the app created without a password.
+      if (!auth.user.hasPassword) return reply.code(409).send({ error: "no_local_password" });
+      const refusal = await passwordRefusal(request, auth.user, attempt);
+      if (refusal !== undefined) return reply.code(refusal.status).send({ error: refusal.error });
+      return await start(reply, "link", { sessionIdHash: auth.session.idHash });
+    } finally {
+      attempt.release();
     }
-    return start(reply, "link", { sessionIdHash: auth.session.idHash });
   });
 
   routes.post("/ward/reauthenticate", async (request, reply) => {
@@ -514,6 +614,10 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     }
 
     if (flow.mode === "link") {
+      if (!takeLink(flow)) {
+        request.log.warn("Ward link refused: no link start that carried the password is waiting for this callback");
+        return land(reply, ward.settingsPath, { ward_error: "invalid_callback" });
+      }
       try {
         await identities.link(current.user.id, identity.subject);
       } catch (error) {
@@ -546,26 +650,47 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
   }
 
   /**
-   * Unlink Ward. Refused while the user has no local password, which would
-   * lock them out. Ends every Ward-originated session the user holds — this
-   * one too, if it began with Ward — and says so: `{ signedOut: true }` means
-   * the person must now sign in with their password.
+   * Unlink Ward: `{ currentPassword }`, checked as a link checks it. Refused
+   * while the user has no local password, which would lock them out, and
+   * then whatever the body says. Ends every Ward-originated session the user
+   * holds — this one too, if it began with Ward — and says so:
+   * `{ signedOut: true }` means the person must now sign in with their
+   * password.
    */
   routes.post("/ward/unlink", async (request, reply) => {
     if (!sameOrigin(request, publicOrigin)) return crossSite(reply);
     const auth = request.auth;
     if (auth === null) return reply.code(401).send({ error: "unauthorized" });
+
+    const gate = context.lockout.reserveAttempt({ surface: "change_password", address: context.lockoutKey(request) });
+    if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds);
+    const { attempt } = gate;
+
     try {
-      await identities.unlink(auth.user.id);
-    } catch (error) {
-      if (error instanceof NoLocalPasswordError || error instanceof NotLinkedError) {
-        return reply.code(409).send({ error: error.code });
+      // The two `409`s first, in the order `identities.unlink` answers them,
+      // so nothing is asked of a user who could not unlink anyway.
+      if ((await identities.subjectOf(auth.user.id)) === undefined) {
+        return reply.code(409).send({ error: "not_linked" });
       }
-      throw error;
+      if (!auth.user.hasPassword) return reply.code(409).send({ error: "no_local_password" });
+      const refusal = await passwordRefusal(request, auth.user, attempt);
+      if (refusal !== undefined) return reply.code(refusal.status).send({ error: refusal.error });
+
+      try {
+        await identities.unlink(auth.user.id);
+      } catch (error) {
+        // Unlinked, or the password gone, since the checks above.
+        if (error instanceof NoLocalPasswordError || error instanceof NotLinkedError) {
+          return reply.code(409).send({ error: error.code });
+        }
+        throw error;
+      }
+      const signedOut = auth.session.origin === "ward";
+      if (signedOut) reply.header("set-cookie", context.clearedSessionCookie());
+      return reply.code(200).send({ signedOut });
+    } finally {
+      attempt.release();
     }
-    const signedOut = auth.session.origin === "ward";
-    if (signedOut) reply.header("set-cookie", context.clearedSessionCookie());
-    return reply.code(200).send({ signedOut });
   });
 
   /**

@@ -1,11 +1,13 @@
 ---
 title: The server-rendered OIDC pages follow the theme
 created: 2026-11-11
-status: open
+status: promoted
 tags: [ui, oidc, theme]
 ---
 
 # The server-rendered OIDC pages follow the theme
+
+Promoted 2026-11-19 to [brief 09](../briefs/todo/09-the-server-rendered-pages-follow-the-theme.md).
 
 Brief 05 gave the sign-in pages a Light / Dark / System switch (`ui/src/theme.ts`, the boot script in `ui/index.html`), kept on the device. The pages the API renders itself during an OIDC flow, from `api/src/oidc/layout.ts`, carry their own inline styles and were out of brief 05's scope, so they stay light. Someone who chose Dark now sees a light page between two dark ones while an app signs them in.
 

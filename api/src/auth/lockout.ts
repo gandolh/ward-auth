@@ -56,10 +56,10 @@
  * couple two unrelated surfaces. The caller derives the key; `lockoutKeyFor`
  * below is offered as the one-liner for doing that correctly, and it takes its
  * logger as a callback and its trusted proxies as an argument rather than
- * importing either. The one import is `node:net`'s `isIP`, which has no side
- * effects — that is what lets `config.ts` import `parseTrustedProxies` from
- * here and still keep its rule that nothing runs before the environment is
- * validated.
+ * importing either. The two imports, `node:net`'s `isIP` and `node:crypto`'s
+ * `createHash`, have no side effects — that is what lets `config.ts` import
+ * `parseTrustedProxies` from here and still keep its rule that nothing runs
+ * before the environment is validated.
  *
  * ## In-memory, and it resets on restart
  *
@@ -70,6 +70,7 @@
  * endpoint is a much more attractive amplification target than a bounded map.
  */
 
+import { createHash } from "node:crypto";
 import { isIP } from "node:net";
 
 /**
@@ -102,7 +103,14 @@ export const LOCKOUT_WINDOW_SECONDS = 15 * 60;
  * than the one they already have (attempting logins directly), so the trade is
  * strictly in our favour.
  *
- * 10 000 entries is roughly a megabyte and far past what this estate sees.
+ * Every key is ASCII and bounded, so the cap bounds bytes too: a counter's key
+ * is at most 41 characters for any address `lockoutKeyFor` derives
+ * (`bucketKey`), an account's exactly 24 (`accountKey`), however long the
+ * submitted name. With the five named accounts the gate lets one counter hold
+ * at a time, 10 000 entries carry at most 10 000 × (41 + 5 × 24) ≈ 1.6 MB of
+ * key text; even at `LOCKOUT_MAX_ACCOUNTS_PER_ADDRESS` it is
+ * 10 000 × (41 + 32 × 24) ≈ 8.1 MB, before the maps' own overhead. Either is
+ * far past what this estate sees.
  */
 export const LOCKOUT_MAX_ENTRIES = 10_000;
 
@@ -293,9 +301,21 @@ function addressGroup(address: string): string {
  * can never collide with the two reserved buckets: `"*"` for an attempt with no
  * account to name, and `"+"` for the overflow past
  * `LOCKOUT_MAX_ACCOUNTS_PER_ADDRESS`.
+ *
+ * The name is stored as a digest, never as text: the first 128 bits of its
+ * SHA-256, 22 base64url characters, so every named key is 24 characters.
+ * A submitted username is capped before folding, and NFKC can lengthen it
+ * eighteenfold (U+FDFA folds to 18 characters), so stored as text one failed
+ * login could pin kilobytes per name. Cut to a fixed length instead, two long
+ * names sharing their first characters would become one account, and a success
+ * as one would forgive the failures aimed at the other; at 128 bits two names
+ * never meet by accident. `recordFailure` and `clearFailures` both come here,
+ * so the digest a failure is filed under is the one a success subtracts.
  */
 function accountKey(target: LockoutTarget): string {
-  return target.account === undefined ? "*" : `a:${target.account}`;
+  if (target.account === undefined) return "*";
+  const digest = createHash("sha256").update(target.account).digest().subarray(0, 16);
+  return `a:${digest.toString("base64url")}`;
 }
 
 const OVERFLOW_ACCOUNT_KEY = "+";
@@ -536,6 +556,19 @@ export function resetLockoutForTests(): void {
  */
 export function lockoutEntryCountForTests(): number {
   return entries.size;
+}
+
+/**
+ * The characters held in keys: every counter's key plus every account key in
+ * its breakdown. Exported for the byte-bound test; not a metric.
+ */
+export function lockoutStoredKeyLengthForTests(): number {
+  let total = 0;
+  for (const [key, entry] of entries) {
+    total += key.length;
+    for (const account of entry.byAccount.keys()) total += account.length;
+  }
+  return total;
 }
 
 /**

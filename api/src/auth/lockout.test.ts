@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { foldUsername } from "../db/users.js";
 import {
   LOCKOUT_AMBIGUOUS_ADDRESS_WARN_INTERVAL_SECONDS,
   LOCKOUT_MAX_ACCOUNTS_PER_ADDRESS,
@@ -10,6 +11,7 @@ import {
   clearFailures,
   lockoutEntryCountForTests,
   lockoutKeyFor,
+  lockoutStoredKeyLengthForTests,
   parseTrustedProxies,
   recordFailure,
   reserveAttempt,
@@ -428,6 +430,56 @@ describe("the cap", () => {
 
     expect(lockoutEntryCountForTests()).toBeLessThanOrEqual(LOCKOUT_MAX_ENTRIES);
     expect(checkLockout(login(attacker)).allowed).toBe(false);
+  });
+});
+
+describe("the byte bound", () => {
+  /** The longest a `/login` username may be, before folding. */
+  const SUBMITTED_MAX = 256;
+  /** A named account's stored key: `a:` and 22 base64url characters. */
+  const ACCOUNT_KEY_LENGTH = 24;
+
+  /**
+   * A name at the submitted cap made of U+FDFA, which NFKC folds to eighteen
+   * characters, ending in `last` so names can differ only at the very end.
+   */
+  function longName(last: string): string {
+    return foldUsername(`${"ﷺ".repeat(SUBMITTED_MAX - 1)}${last}`);
+  }
+
+  it("stores a fixed-length key per account, however long the folded name", () => {
+    expect(longName("a").length).toBeGreaterThan(SUBMITTED_MAX * 17);
+
+    // A hundred addresses, each failing for five long names: as many named
+    // accounts as the gate lets one counter hold.
+    const addresses = Array.from({ length: 100 }, (_, i) => `198.51.${Math.floor(i / 256)}.${i % 256}`);
+    for (const address of addresses) {
+      for (const last of ["a", "b", "c", "d", "e"]) recordFailure(login(address, longName(last)));
+    }
+
+    const counterKeys = addresses.reduce((sum, address) => sum + "login\u0000".length + address.length, 0);
+    const accountKeys = addresses.length * LOCKOUT_MAX_FAILURES * ACCOUNT_KEY_LENGTH;
+    expect(lockoutStoredKeyLengthForTests()).toBe(counterKeys + accountKeys);
+    // The bound the cap comment works from: 41 characters a counter at most.
+    expect(lockoutStoredKeyLengthForTests()).toBeLessThanOrEqual(
+      addresses.length * (41 + LOCKOUT_MAX_FAILURES * ACCOUNT_KEY_LENGTH),
+    );
+  });
+
+  it("keeps two long names that differ only at the end as two accounts", () => {
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 1; i += 1) {
+      recordFailure(login("203.0.113.9", longName("a")));
+    }
+
+    // A success as the other name forgives nothing aimed at this one...
+    clearFailures(login("203.0.113.9", longName("b")));
+    recordFailure(login("203.0.113.9", longName("a")));
+    expect(checkLockout(login("203.0.113.9")).allowed).toBe(false);
+
+    // ...and a success as this one forgives all of it.
+    clearFailures(login("203.0.113.9", longName("a")));
+    expect(checkLockout(login("203.0.113.9")).allowed).toBe(true);
+    expect(lockoutEntryCountForTests()).toBe(0);
   });
 });
 

@@ -7,6 +7,65 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 1.1.0 — 2026-11-19
+
+A username that reads the same as another user's is taken.
+
+- Each user carries a key for what the name looks like,
+  `usernameSkeleton(username)`, which the server bundle exports. It is
+  Ward's key for its own accounts: Unicode's skeleton (UTS #39) of the name
+  as typed, the fold, then the skeleton again, through Unicode's
+  confusables table, version 17.0.0. `AIice` (a capital I) and `alice` share
+  a key, as do `b0b` and `bob`, `MODERN` and `rnodern`, and a Cyrillic
+  `аlice` and `alice`.
+- A new name or a rename whose key another user holds is taken, with the
+  answer a name taken in another case gets:
+  - `POST <routePrefix>/register` and `POST <routePrefix>/username` answer
+    `409 { error: "username_taken" }`. Each such rename counts against the
+    rename budget, as a taken name does.
+  - A first Ward sign-in whose name reads the same as a user's takes the
+    next suffix (`-2`, `-3`, …): `N0EL` becomes `N0EL-2` beside a `noel`.
+  - `Accounts.createUser`, `renameUser`, `seedUsers` and
+    `WardIdentities.createLinkedUser` throw `UsernameTakenError`.
+    `seedUsers` skips a user whose name exists in any case; a seed name
+    that only reads the same as another user's throws.
+  - A user's own key is never taken, so a rename onto a name that reads the
+    same as one's own goes through.
+- **Migration 5**, `username_skeleton`: an indexed, nullable
+  `auth_users.username_skeleton`, filled for every existing user by the boot
+  that applies it. Users that already share a key all stay as they are, and
+  that boot logs one `console.warn` per group, naming their ids. Such a
+  group takes no new member. To list the groups later:
+  `SELECT username_skeleton, group_concat(id, ' ') FROM auth_users GROUP BY username_skeleton HAVING count(*) > 1`.
+- `Migration` gains an optional `run(db)` step, run after its `sql` in the
+  same transaction; a throw rolls both back.
+- `AuthStore` gains `findUsersByUsernameSkeleton(key)`: every user holding
+  the key, oldest first. `NewUserRecord` gains `usernameSkeleton`, and
+  `setUsername` takes it as its fourth argument, before `now`. `createUser`,
+  `createUserWithWardLink` and `setUsername` throw `UsernameTakenError` when
+  another user holds the key, checked in the same transaction as the write.
+  `UserRecord` is unchanged.
+- The server bundle carries the table, about 90 kB of its 334 kB. The React
+  bundle differs only in the version in its banner.
+
+Upgrade notes from 1.0.0:
+
+- Re-vendor (`npm run vendor -- <app>/vendor/ward`), the server copy and
+  the web copy. Migration 5 runs on the next boot by itself. Nothing to
+  change in app code.
+- If that boot logs users whose names read the same, decide whether they
+  are one person. If not, rename one of them (`Accounts.renameUser`).
+- A seed list naming someone whose name reads the same as an existing
+  user's throws at `seedUsers`; give that person another name.
+- A test of the app's own that inserts `auth_users` rows by hand keeps
+  working. Such a row has no key, so the look-alike rule does not see it;
+  the folded name stays unique.
+- A custom store (not `createSqliteStore`) implements
+  `findUsersByUsernameSkeleton`, stores `usernameSkeleton`, takes it in
+  `setUsername`, and refuses a key another user holds. A direct call to
+  `store.setUsername` passes the key:
+  `setUsername(id, name, foldUsername(name), usernameSkeleton(name), now)`.
+
 ## 1.0.0 — 2026-11-19
 
 Linking and unlinking Ward ask for the account's password, the plugin acts

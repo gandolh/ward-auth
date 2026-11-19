@@ -201,6 +201,63 @@ describe("the cookie", () => {
   });
 });
 
+describe("a cookie sent more than once", () => {
+  /** Both values on one header, as a browser sends two copies of one name. */
+  function both(first: string, second: string): string {
+    return `${first}; ${second}`;
+  }
+
+  it("signs the request out, whichever copy names a live session, and clears nothing", async () => {
+    const h = await build();
+    const alice = cookieFrom(await login(h, "alice", "correct horse"))!;
+    const bob = cookieFrom(await login(h, "bob", "bob's password"))!;
+
+    for (const cookie of [both(alice, bob), both(bob, alice), both(alice, `${COOKIE}=nonsense`)]) {
+      const guarded = await h.app.inject({ method: "GET", url: "/me", headers: { cookie } });
+      expect(guarded.statusCode).toBe(401);
+      expect(guarded.json()).toEqual({ error: "unauthorized" });
+      expect(guarded.headers["set-cookie"]).toBeUndefined();
+
+      const session = await h.app.inject({ method: "GET", url: "/auth/session", headers: { cookie } });
+      expect(session.json()).toMatchObject({ user: null, session: null });
+      expect(session.headers["set-cookie"]).toBeUndefined();
+    }
+
+    // Both sessions are still live, each on its own.
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: alice } })).statusCode).toBe(200);
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: bob } })).statusCode).toBe(200);
+    // A cleared copy beside the value is not a second copy.
+    expect(
+      (await h.app.inject({ method: "GET", url: "/me", headers: { cookie: both(`${COOKIE}=`, alice) } })).statusCode,
+    ).toBe(200);
+  });
+
+  it("ends the session of every copy on logout, then clears the cookie", async () => {
+    const h = await build();
+    const alice = cookieFrom(await login(h, "alice", "correct horse"))!;
+    const bob = cookieFrom(await login(h, "bob", "bob's password"))!;
+
+    const out = await h.app.inject({ method: "POST", url: "/auth/logout", headers: { cookie: both(bob, alice) } });
+    expect(out.statusCode).toBe(204);
+    expect(setCookieHeader(out)).toContain(`${COOKIE}=; Path=${COOKIE_PATH}`);
+    expect(setCookieHeader(out)).toContain("Max-Age=0");
+
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: alice } })).statusCode).toBe(401);
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: bob } })).statusCode).toBe(401);
+  });
+
+  it("finds no earlier session to replace at a sign-in", async () => {
+    const h = await build();
+    const first = cookieFrom(await login(h, "alice", "correct horse"))!;
+    const second = cookieFrom(await login(h, "alice", "correct horse"))!;
+
+    const again = await login(h, "alice", "correct horse", { cookie: both(first, second) });
+    expect(again.statusCode).toBe(200);
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: first } })).statusCode).toBe(200);
+    expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie: second } })).statusCode).toBe(200);
+  });
+});
+
 describe("the guard", () => {
   it("lets allowlisted routes, the plugin's own public routes and preflights through", async () => {
     const h = await build();

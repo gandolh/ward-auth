@@ -52,7 +52,9 @@ import type { SessionValidator } from "./session-validator.js";
  * path so no other request carries it, ten minutes, and cleared by the
  * callback whatever the outcome. One flow at a time per browser: starting a
  * second overwrites the first, whose callback then fails as
- * `invalid_callback`.
+ * `invalid_callback`. A callback carrying the flow cookie more than once
+ * reads no flow and fails the same way: the browser's order cannot say which
+ * copy is the library's (`core/cookie.ts`).
  *
  * A link callback must arrive with **the same session** that started it.
  * Without that, an attacker could start a link on their own account and get
@@ -395,7 +397,10 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     return session.idHash;
   }
 
-  /** The live session the request's cookie names, without running the checks. */
+  /**
+   * The live session the request's cookie names, without running the checks.
+   * None when the request carries the cookie more than once (`core/cookie.ts`).
+   */
   async function currentSession(
     request: FastifyRequest,
   ): Promise<{ token: string; user: AuthUser; session: SessionRecord } | undefined> {
@@ -493,7 +498,8 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
         if (error instanceof UserDisabledError) return landFailure(reply, flow, "access_denied");
         throw error;
       }
-      // Signing in on top of an old session replaces it, as a password sign-in does.
+      // Signing in on top of an old session replaces it, as a password sign-in
+      // does; with the cookie there more than once, there is none to replace.
       const previous = readCookie(request.headers.cookie, context.cookieName);
       if (previous !== undefined) await accounts.endSession(previous);
       await accounts.deleteExpiredSessions();

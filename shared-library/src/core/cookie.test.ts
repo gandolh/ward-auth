@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clearedCookie, readCookie, secureCookiesFor, serializeCookie } from "./cookie.js";
+import { clearedCookie, readCookie, readCookies, secureCookiesFor, serializeCookie } from "./cookie.js";
 
 describe("serializeCookie", () => {
   it("always emits HttpOnly and SameSite=Lax, with the path given", () => {
@@ -41,11 +41,34 @@ describe("clearedCookie", () => {
 });
 
 describe("readCookie", () => {
-  it("reads the first occurrence and treats empty as absent", () => {
-    expect(readCookie("a=1; atrium_session=tok; atrium_session=shadow", "atrium_session")).toBe("tok");
+  it("reads the one value a header carries, and treats empty as absent", () => {
+    expect(readCookie("a=1; atrium_session=tok", "atrium_session")).toBe("tok");
+    expect(readCookie(["a=1", "atrium_session=tok"], "atrium_session")).toBe("tok");
     expect(readCookie("atrium_session=", "atrium_session")).toBeUndefined();
     expect(readCookie(undefined, "atrium_session")).toBeUndefined();
     expect(readCookie("other_session=tok", "atrium_session")).toBeUndefined();
+  });
+
+  it("reads no value when the header carries the name more than once, in any order", () => {
+    expect(readCookie("a=1; atrium_session=tok; atrium_session=other", "atrium_session")).toBeUndefined();
+    expect(readCookie("atrium_session=other; atrium_session=tok", "atrium_session")).toBeUndefined();
+    expect(readCookie(["atrium_session=tok", "atrium_session=tok"], "atrium_session")).toBeUndefined();
+  });
+
+  it("does not count a cleared copy beside the value", () => {
+    expect(readCookie("atrium_session=; atrium_session=tok", "atrium_session")).toBe("tok");
+  });
+});
+
+describe("readCookies", () => {
+  it("reads every non-empty value for the name, in header order", () => {
+    expect(readCookies("atrium_session=b; x=1; atrium_session=; atrium_session=a", "atrium_session")).toEqual([
+      "b",
+      "a",
+    ]);
+    expect(readCookies(["atrium_session=b", "atrium_session=a"], "atrium_session")).toEqual(["b", "a"]);
+    expect(readCookies(undefined, "atrium_session")).toEqual([]);
+    expect(readCookies("other_session=tok", "atrium_session")).toEqual([]);
   });
 });
 

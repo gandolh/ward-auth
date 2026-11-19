@@ -12,6 +12,7 @@ import {
   isValidCookieName,
   isValidCookiePath,
   readCookie,
+  readCookies,
   secureCookiesFor,
   serializeCookie,
 } from "../core/cookie.js";
@@ -290,6 +291,10 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
    * Resolve the request's cookie to a live session, run the session checks,
    * and re-send the cookie when the sliding expiry moved. Clears a cookie that
    * names nothing, so a browser stops presenting a dead token.
+   *
+   * A request carrying the cookie more than once is signed out, whichever
+   * value would resolve, and nothing is cleared (`readCookie`,
+   * `core/cookie.ts`).
    */
   async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<Authentication> {
     const token = readCookie(request.headers.cookie, cookieName);
@@ -390,7 +395,8 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
         lockout.clearFailures(target);
 
         // Signing in on top of an old session replaces it rather than leaving
-        // a second live row behind.
+        // a second live row behind. A request carrying the cookie more than
+        // once has no earlier session to replace (`core/cookie.ts`).
         const previous = readCookie(request.headers.cookie, cookieName);
         if (previous !== undefined) await accounts.endSession(previous);
         await accounts.deleteExpiredSessions();
@@ -405,13 +411,18 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
        * one was presented**: a cross-site page that could make the browser
        * clear it would sign the person out in a loop (Ward's finding), and the
        * same-origin check closes the rest.
+       *
+       * Ends the session of **every** value the request carries. With more than
+       * one, the browser's order cannot say which is the library's
+       * (`core/cookie.ts`), and signing out has to end the person's own session
+       * whichever it is.
        */
       routes.post("/logout", async (request, reply) => {
         if (!sameOrigin(request, publicOrigin)) return crossSite(reply);
 
-        const token = readCookie(request.headers.cookie, cookieName);
-        if (token !== undefined) {
-          await accounts.endSession(token);
+        const tokens = new Set(readCookies(request.headers.cookie, cookieName));
+        if (tokens.size > 0) {
+          for (const token of tokens) await accounts.endSession(token);
           clearCookie(reply);
         }
         return reply.code(204).send();

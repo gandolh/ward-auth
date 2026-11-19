@@ -24,6 +24,27 @@
  *   must live under that path. It is the *browser's* path: when the reverse
  *   proxy strips a prefix before Fastify sees the request, the cookie must
  *   still carry the public one, or the browser never sends it.
+ *
+ * ## One value per name, or the library acts on none
+ *
+ * The library sets each of its cookies once, at one path, so it expects one
+ * value per name. When a request carries the session cookie, or the Ward flow
+ * cookie, more than once, the browser's order says nothing about which value
+ * is the library's (RFC 6265 only recommends an order), so the request is
+ * acted on as if it carried none, as Ward does with its own cookies:
+ *
+ * - the guard and `GET <prefix>/session` treat it as signed out, and clear
+ *   nothing: the library cannot tell which copy is its own;
+ * - a sign-in (`POST <prefix>/login`, a Ward sign-in) finds no earlier session
+ *   to replace, and a link or reauthentication callback finds no session to
+ *   finish for;
+ * - the Ward callback finds no flow, and lands as `invalid_callback`;
+ * - `POST <prefix>/logout` ends the session of **every** value it carries,
+ *   then clears the cookie, so signing out ends the person's own session
+ *   whichever copy is theirs.
+ *
+ * `readCookie` is the one reader of that rule; `readCookies` returns every
+ * value, for logout.
  */
 
 /** What `serializeCookie` emits. Not general-purpose; this library's set only. */
@@ -97,16 +118,24 @@ export function clearedCookie(name: string, path: string, secure: boolean): stri
 }
 
 /**
- * Read one cookie out of a `Cookie` request header.
+ * Every non-empty value a `Cookie` request header carries for `name`, in
+ * header order.
  *
- * Returns the **first** occurrence. A duplicate name is a client bug or a
- * shadowing attempt (a cookie of the same name set at a broader path to sit in
- * front of the real one); the browser sends the more specific path first, and
- * taking the first match is the safer of the two readings.
+ * A browser sends every stored cookie whose path and domain match, so the same
+ * name can appear more than once: a cookie of the same name set at a broader
+ * path, or for a parent domain, travels beside the library's own. Nothing
+ * picks one of them by position. A reader that acts on one value goes through
+ * `readCookie`, which takes none when there are several, and
+ * `POST <prefix>/logout` uses this list to end every session it names (see the
+ * header).
+ *
+ * A cleared cookie can still be presented by a client that ignored the
+ * expiry; an empty value is treated as absent rather than as a token.
  */
-export function readCookie(header: string | string[] | undefined, name: string): string | undefined {
-  if (header === undefined) return undefined;
+export function readCookies(header: string | string[] | undefined, name: string): string[] {
+  if (header === undefined) return [];
 
+  const values: string[] = [];
   const flat = Array.isArray(header) ? header.join("; ") : header;
   for (const pair of flat.split(";")) {
     const eq = pair.indexOf("=");
@@ -114,11 +143,24 @@ export function readCookie(header: string | string[] | undefined, name: string):
     if (pair.slice(0, eq).trim() !== name) continue;
 
     const value = pair.slice(eq + 1).trim();
-    // A cleared cookie can still be presented by a client that ignored the
-    // expiry. An empty value is absent, not a token.
-    return value.length > 0 ? value : undefined;
+    if (value.length > 0) values.push(value);
   }
-  return undefined;
+  return values;
+}
+
+/**
+ * The value a `Cookie` request header carries for `name` when it carries
+ * exactly one, otherwise `undefined`.
+ *
+ * The library sets each of its cookies once, at one path, so it expects one
+ * value; with more than one, the header's order says nothing about which is
+ * the library's. Taking none is the rule every reader of the session and flow
+ * cookies follows (see the header). A caller that has to tell "none" from
+ * "several" apart reads `readCookies`.
+ */
+export function readCookie(header: string | string[] | undefined, name: string): string | undefined {
+  const values = readCookies(header, name);
+  return values.length === 1 ? values[0] : undefined;
 }
 
 /**

@@ -660,6 +660,79 @@ describe("linking from settings", () => {
   });
 });
 
+describe("a callback carrying a cookie more than once", () => {
+  /** Present the callback Ward sent the browser to, with these cookies and no others. */
+  function presentCallback(callback: string, cookie: string): Promise<LightMyRequestResponse> {
+    const url = new URL(callback);
+    return t.app.inject({
+      method: "GET",
+      url: `${url.pathname.slice(API_PREFIX.length)}${url.search}`,
+      headers: { cookie },
+    });
+  }
+
+  /** The session cookie a response set, or undefined. */
+  function sessionSet(response: LightMyRequestResponse): string | undefined {
+    const header = response.headers["set-cookie"];
+    const all = Array.isArray(header) ? header : header === undefined ? [] : [header];
+    return all.find((value) => value.startsWith(`${COOKIE}=`) && !value.startsWith(`${COOKIE}=;`));
+  }
+
+  it("reads no flow from two flow cookies, and signs no one in", async () => {
+    await ward.createAccount("piet", "myapp", ["viewer"]);
+    const b = browser();
+    const started = await b.request("POST", api("/auth/ward/start"), { json: {} });
+    const flow = b.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value;
+    const other = browser();
+    await other.request("POST", api("/auth/ward/start"), { json: {} });
+    const otherFlow = other.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value;
+    const callback = await walkToCallback(b, started.json<{ url: string }>().url, "piet");
+
+    for (const cookie of [
+      `${COOKIE}_ward=${flow}; ${COOKIE}_ward=${otherFlow}`,
+      `${COOKIE}_ward=${otherFlow}; ${COOKIE}_ward=${flow}`,
+    ]) {
+      const refused = await presentCallback(callback, cookie);
+      expect(refused.headers.location).toBe(`${APP_ORIGIN}/myapp/login?ward_error=invalid_callback`);
+      expect(sessionSet(refused)).toBeUndefined();
+    }
+    expect(await t.accounts.findUserByUsername("piet")).toBeUndefined();
+
+    // The same callback with the one flow cookie signs in: the code was never spent.
+    const finished = await presentCallback(callback, `${COOKIE}_ward=${flow}`);
+    expect(finished.headers.location).toBe(`${APP_ORIGIN}/myapp/`);
+    expect(sessionSet(finished)).toBeDefined();
+  });
+
+  it("finishes no link when the session cookie comes twice, even when both are the person's", async () => {
+    await seedUsers(t.accounts, [{ username: "ulla", password: LOCAL_PASSWORD, role: "admin" }]);
+    await ward.createAccount("ulla-at-ward", "myapp", ["viewer"]);
+    const b = browser();
+    await b.request("POST", api("/auth/login"), { json: { username: "ulla", password: LOCAL_PASSWORD } });
+    const here = b.cookie(APP_ORIGIN, COOKIE)!.value;
+    const elsewhere = browser();
+    await elsewhere.request("POST", api("/auth/login"), { json: { username: "ulla", password: LOCAL_PASSWORD } });
+    const there = elsewhere.cookie(APP_ORIGIN, COOKIE)!.value;
+
+    const started = await b.request("POST", api("/auth/ward/link"), { json: {} });
+    const flow = b.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value;
+    const callback = await walkToCallback(b, started.json<{ url: string }>().url, "ulla-at-ward");
+
+    const refused = await presentCallback(callback, `${COOKIE}_ward=${flow}; ${COOKIE}=${here}; ${COOKIE}=${there}`);
+    expect(refused.headers.location).toBe(`${APP_ORIGIN}/myapp/settings?ward_error=unauthorized`);
+    const ulla = (await t.accounts.findUserByUsername("ulla"))!;
+    expect(await t.identities.subjectOf(ulla.id)).toBeUndefined();
+
+    // A fresh link, presented with the one session cookie that started it, finishes.
+    const restarted = await b.request("POST", api("/auth/ward/link"), { json: {} });
+    const freshFlow = b.cookie(APP_ORIGIN, `${COOKIE}_ward`)!.value;
+    const freshCallback = await walkToCallback(b, restarted.json<{ url: string }>().url, "ulla-at-ward");
+    const finished = await presentCallback(freshCallback, `${COOKIE}_ward=${freshFlow}; ${COOKIE}=${here}`);
+    expect(finished.headers.location).toBe(`${APP_ORIGIN}/myapp/settings?ward=linked`);
+    expect(await t.identities.subjectOf(ulla.id)).toBeDefined();
+  });
+});
+
 describe("settings: local password and unlink", () => {
   it("refuses to unlink a user with no local password", async () => {
     await ward.createAccount("liam", "myapp", ["viewer"]);

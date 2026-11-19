@@ -418,6 +418,55 @@ describe("login", () => {
     ).toBe(200);
   });
 
+  it("counts attempts still in flight: twenty at once from one address get five 401s and fifteen 429s", async () => {
+    const h = await build();
+    const from = { "x-forwarded-for": "198.51.100.200" };
+
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, (_, i) => login(h, "alice", `wrong horse ${i}`, from)),
+    );
+    const statuses = responses.map((response) => response.statusCode);
+    expect(statuses.filter((status) => status === 401)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(15);
+
+    // The five that were judged are now five recorded failures: the next
+    // attempt from that address, the right password included, is refused.
+    expect((await login(h, "alice", "correct horse", from)).statusCode).toBe(429);
+  });
+
+  it("frees the slot of an attempt that succeeded or never parsed", async () => {
+    const h = await build();
+    const from = { "x-forwarded-for": "198.51.100.201" };
+
+    // A right password and a malformed body, each sent several times at once,
+    // leave the whole budget behind them.
+    const settled = await Promise.all([
+      ...Array.from({ length: 3 }, () => login(h, "alice", "correct horse", from)),
+      ...Array.from({ length: 2 }, () =>
+        h.app.inject({ method: "POST", url: "/auth/login", headers: from, payload: { username: "" } }),
+      ),
+    ]);
+    expect(settled.map((response) => response.statusCode).sort()).toEqual([200, 200, 200, 400, 400]);
+
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES; i += 1) {
+      expect((await login(h, "alice", "wrong horse", from)).statusCode).toBe(401);
+    }
+    expect((await login(h, "alice", "wrong horse", from)).statusCode).toBe(429);
+  });
+
+  it("counts every address in one IPv6 /64 against one budget", async () => {
+    const h = await build();
+    const from = (address: string) => ({ "x-forwarded-for": address });
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES; i += 1) {
+      expect((await login(h, "alice", "wrong horse", from("2001:db8:1:2::a"))).statusCode).toBe(401);
+    }
+
+    // Another address in the same /64 is the same client...
+    expect((await login(h, "alice", "correct horse", from("2001:db8:1:2::b"))).statusCode).toBe(429);
+    // ...the neighbouring /64 is not.
+    expect((await login(h, "alice", "correct horse", from("2001:db8:1:3::b"))).statusCode).toBe(200);
+  });
+
   it("replaces the session the browser already held", async () => {
     const h = await build();
     const first = cookieFrom(await login(h, "alice", "correct horse"))!;
@@ -499,6 +548,29 @@ describe("trusted proxies (0.3.0)", () => {
     vi.stubEnv("AUTH_TRUSTED_PROXIES", "0.0.0.0/0");
     await expect(build()).rejects.toThrow(/trusts every address/);
   });
+
+  it("keys a request on the proxy when the last forwarded element is not an address", async () => {
+    const h = await build({ trustedProxies: ["172.16.0.0/12"] });
+    const badLogin = (forwarded: string, username: string) =>
+      h.app.inject({
+        method: "POST",
+        url: "/auth/login",
+        remoteAddress: PROXY,
+        headers: { "x-forwarded-for": forwarded },
+        payload: { username, password: "wrong" },
+      });
+
+    for (let attempt = 1; attempt <= LOCKOUT_MAX_FAILURES; attempt += 1) {
+      expect((await badLogin(`not-an-ip-${attempt}`, `user-${attempt}`)).statusCode).toBe(401);
+    }
+
+    // A sixth name changes nothing: it is the proxy's own address that is spent.
+    expect((await badLogin("not-an-ip-6", "user-6")).statusCode).toBe(429);
+    expect((await badLogin("198.51.100.70, not-an-ip", "user-7")).statusCode).toBe(429);
+
+    // A real forwarded address behind the same proxy keeps its own budget.
+    expect((await badLogin("198.51.100.70", "user-8")).statusCode).toBe(401);
+  });
 });
 
 describe("password change", () => {
@@ -518,6 +590,25 @@ describe("password change", () => {
 
     // A wrong current password did not sign this session out.
     expect((await h.app.inject({ method: "GET", url: "/me", headers: { cookie } })).statusCode).toBe(200);
+  });
+
+  it("counts attempts still in flight: twenty at once get five 401s and fifteen 429s", async () => {
+    const h = await build();
+    const cookie = cookieFrom(await login(h, "alice", "correct horse"))!;
+
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        h.app.inject({
+          method: "POST",
+          url: "/auth/password",
+          headers: { cookie, "x-forwarded-for": "198.51.100.202" },
+          payload: { currentPassword: `wrong horse ${i}`, newPassword: "battery staple" },
+        }),
+      ),
+    );
+    const statuses = responses.map((response) => response.statusCode);
+    expect(statuses.filter((status) => status === 401)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(15);
   });
 });
 
@@ -567,6 +658,36 @@ describe("rename", () => {
     for (let i = 1; i < LOCKOUT_MAX_FAILURES; i++) await rename("bob");
     // Five taken names from this address: the sixth attempt is refused, whatever it asks.
     expect((await rename("carol")).statusCode).toBe(429);
+  });
+
+  it("counts renames still in flight: twenty taken names at once get five 409s and fifteen 429s", async () => {
+    // A store whose rename takes a moment, as a store over a network or a
+    // busy disk would: the twenty requests are then all running together.
+    const db = new Database(":memory:");
+    const store = createSqliteStore(db);
+    const slow = {
+      ...store,
+      async setUsername(...args: Parameters<typeof store.setUsername>) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        store.setUsername(...args);
+      },
+    };
+    const h = await build({ accounts: createAccounts({ store: slow, now: () => clock }) }, db);
+    const cookie = cookieFrom(await login(h, "alice", "correct horse"))!;
+
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        h.app.inject({
+          method: "POST",
+          url: "/auth/username",
+          headers: { cookie, "x-forwarded-for": "198.51.100.203" },
+          payload: { username: "bob" },
+        }),
+      ),
+    );
+    const statuses = responses.map((response) => response.statusCode);
+    expect(statuses.filter((status) => status === 409)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(15);
   });
 
   it("is guarded, refuses a cross-site request, and is off when the app says so", async () => {

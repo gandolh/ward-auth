@@ -734,6 +734,27 @@ describe("a callback carrying a cookie more than once", () => {
 });
 
 describe("settings: local password and unlink", () => {
+  it("counts password changes still in flight: twenty at once get five 401s and fifteen 429s", async () => {
+    await seedUsers(t.accounts, [{ username: "wynn", password: LOCAL_PASSWORD, role: "admin" }]);
+    const b = browser();
+    await b.request("POST", api("/auth/login"), { json: { username: "wynn", password: LOCAL_PASSWORD } });
+    const cookie = `${COOKIE}=${b.cookie(APP_ORIGIN, COOKIE)!.value}`;
+
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        t.app.inject({
+          method: "POST",
+          url: "/auth/ward/set-password",
+          headers: { cookie, "x-forwarded-for": "198.51.100.204" },
+          payload: { currentPassword: `wrong ${i}`, newPassword: "another long password" },
+        }),
+      ),
+    );
+    const statuses = responses.map((response) => response.statusCode);
+    expect(statuses.filter((status) => status === 401)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(15);
+  });
+
   it("refuses to unlink a user with no local password", async () => {
     await ward.createAccount("liam", "myapp", ["viewer"]);
     const b = browser();

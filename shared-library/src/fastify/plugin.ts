@@ -22,7 +22,6 @@ import {
   lockoutKeyFor,
   parseTrustedProxies,
   type Lockout,
-  type LockoutTarget,
   type TrustedProxies,
 } from "../core/lockout.js";
 import { PasswordPolicyError } from "../core/password.js";
@@ -367,43 +366,49 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
       routes.post("/login", async (request, reply) => {
         if (!sameOrigin(request, publicOrigin)) return crossSite(reply);
 
+        // Takes one of the address's five slots until this attempt ends, so
+        // requests sent together cannot all reach the hash before the first
+        // failure is recorded (`Lockout.reserveAttempt`).
         const address = lockoutKey(request);
-        const gate = lockout.check({ surface: "login", address });
-        if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds ?? 1);
+        const gate = lockout.reserveAttempt({ surface: "login", address });
+        if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds);
+        const { attempt } = gate;
 
-        const body = credentialsBody(request.body);
-        if (body === undefined) {
-          // Not a lockout failure: a malformed body is a client bug, not a
-          // guess. And terse: echoing the fields back would echo the password.
-          return reply.code(400).send({ error: "invalid_request" });
+        // Every way out below ends the attempt; this frees the slot of the ones
+        // that end without a verdict (a malformed body, a thrown error).
+        try {
+          const body = credentialsBody(request.body);
+          if (body === undefined) {
+            // Not a lockout failure: a malformed body is a client bug, not a
+            // guess. And terse: echoing the fields back would echo the password.
+            return reply.code(400).send({ error: "invalid_request" });
+          }
+
+          // Folded from the *submitted* name, so a guess at an account that
+          // does not exist still gets its own bucket, which a success as some
+          // other account must not forgive.
+          const account = foldUsername(body.username);
+          const user = await accounts.verifyCredentials(body.username, body.password);
+          if (user === undefined) {
+            attempt.fail(account);
+            // One answer for "no such user" and "wrong password".
+            return reply.code(401).send({ error: "invalid_credentials" });
+          }
+          attempt.succeed(account);
+
+          // Signing in on top of an old session replaces it rather than leaving
+          // a second live row behind. A request carrying the cookie more than
+          // once has no earlier session to replace (`core/cookie.ts`).
+          const previous = readCookie(request.headers.cookie, cookieName);
+          if (previous !== undefined) await accounts.endSession(previous);
+          await accounts.deleteExpiredSessions();
+
+          const { token, session } = await accounts.startSession(user.id);
+          reply.header("set-cookie", sessionCookie(token, session.expiresAt));
+          return reply.code(200).send(await sessionBody(user, session));
+        } finally {
+          attempt.release();
         }
-
-        // Folded from the *submitted* name, so a guess at an account that does
-        // not exist still gets its own bucket, which an attacker's success on
-        // their own account must not forgive.
-        const target: LockoutTarget = {
-          surface: "login",
-          address,
-          account: foldUsername(body.username),
-        };
-        const user = await accounts.verifyCredentials(body.username, body.password);
-        if (user === undefined) {
-          lockout.recordFailure(target);
-          // One answer for "no such user" and "wrong password".
-          return reply.code(401).send({ error: "invalid_credentials" });
-        }
-        lockout.clearFailures(target);
-
-        // Signing in on top of an old session replaces it rather than leaving
-        // a second live row behind. A request carrying the cookie more than
-        // once has no earlier session to replace (`core/cookie.ts`).
-        const previous = readCookie(request.headers.cookie, cookieName);
-        if (previous !== undefined) await accounts.endSession(previous);
-        await accounts.deleteExpiredSessions();
-
-        const { token, session } = await accounts.startSession(user.id);
-        reply.header("set-cookie", sessionCookie(token, session.expiresAt));
-        return reply.code(200).send(await sessionBody(user, session));
       });
 
       /**
@@ -451,37 +456,39 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
         if (auth === null) return reply.code(401).send({ error: "unauthorized" });
 
         const address = lockoutKey(request);
-        const gate = lockout.check({ surface: "change_password", address });
-        if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds ?? 1);
+        const gate = lockout.reserveAttempt({ surface: "change_password", address });
+        if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds);
+        const { attempt } = gate;
 
-        const body = passwordChangeBody(request.body);
-        if (body === undefined) return reply.code(400).send({ error: "invalid_request" });
-
-        const target: LockoutTarget = {
-          surface: "change_password",
-          address,
-          account: foldUsername(auth.user.username),
-        };
-
-        let changed: boolean;
+        // A malformed body, a policy refusal (checked before the current
+        // password is) and a thrown error end here without a verdict.
         try {
-          changed = await accounts.changePassword(
-            auth.user.id,
-            body.currentPassword,
-            body.newPassword,
-            auth.session.idHash,
-          );
-        } catch (error) {
-          if (error instanceof PasswordPolicyError) return reply.code(400).send({ error: error.code });
-          throw error;
-        }
+          const body = passwordChangeBody(request.body);
+          if (body === undefined) return reply.code(400).send({ error: "invalid_request" });
 
-        if (!changed) {
-          lockout.recordFailure(target);
-          return reply.code(401).send({ error: "invalid_credentials" });
+          const account = foldUsername(auth.user.username);
+          let changed: boolean;
+          try {
+            changed = await accounts.changePassword(
+              auth.user.id,
+              body.currentPassword,
+              body.newPassword,
+              auth.session.idHash,
+            );
+          } catch (error) {
+            if (error instanceof PasswordPolicyError) return reply.code(400).send({ error: error.code });
+            throw error;
+          }
+
+          if (!changed) {
+            attempt.fail(account);
+            return reply.code(401).send({ error: "invalid_credentials" });
+          }
+          attempt.succeed(account);
+          return reply.code(204).send();
+        } finally {
+          attempt.release();
         }
-        lockout.clearFailures(target);
-        return reply.code(204).send();
       });
 
       if (options.allowRename !== false) {
@@ -496,29 +503,37 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
           const auth = request.auth;
           if (auth === null) return reply.code(401).send({ error: "unauthorized" });
 
+          // The rename waits on the store, so the gate holds a slot until it
+          // ends. Only a taken name fails it; a success forgives nothing, so
+          // it ends through `release` alone, never `succeed`.
           const address = lockoutKey(request);
-          const gate = lockout.check({ surface: "rename", address });
-          if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds ?? 1);
+          const gate = lockout.reserveAttempt({ surface: "rename", address });
+          if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds);
+          const { attempt } = gate;
 
-          const body = usernameBody(request.body);
-          if (body === undefined) return reply.code(400).send({ error: "invalid_request" });
-
-          let user: AuthUser | undefined;
           try {
-            user = await accounts.renameUser(auth.user.id, body.username);
-          } catch (error) {
-            if (error instanceof UsernamePolicyError) {
-              return reply.code(400).send({ error: error.code });
+            const body = usernameBody(request.body);
+            if (body === undefined) return reply.code(400).send({ error: "invalid_request" });
+
+            let user: AuthUser | undefined;
+            try {
+              user = await accounts.renameUser(auth.user.id, body.username);
+            } catch (error) {
+              if (error instanceof UsernamePolicyError) {
+                return reply.code(400).send({ error: error.code });
+              }
+              if (error instanceof UsernameTakenError) {
+                attempt.fail();
+                return reply.code(409).send({ error: "username_taken" });
+              }
+              throw error;
             }
-            if (error instanceof UsernameTakenError) {
-              lockout.recordFailure({ surface: "rename", address });
-              return reply.code(409).send({ error: "username_taken" });
-            }
-            throw error;
+            // The guard found the user a moment ago; gone now means signed out.
+            if (user === undefined) return reply.code(401).send({ error: "unauthorized" });
+            return reply.code(200).send(await sessionBody(user, auth.session));
+          } finally {
+            attempt.release();
           }
-          // The guard found the user a moment ago; gone now means signed out.
-          if (user === undefined) return reply.code(401).send({ error: "unauthorized" });
-          return reply.code(200).send(await sessionBody(user, auth.session));
         });
       }
 
@@ -537,6 +552,8 @@ const wardAuthPlugin: FastifyPluginAsync<WardAuthOptions> = async (app, options)
           if (!sameOrigin(request, publicOrigin)) return crossSite(reply);
 
           const address = lockoutKey(request);
+          // `check`, not `reserveAttempt`: the attempt is recorded below
+          // before the first `await`, so no other request runs in between.
           const gate = lockout.check({ surface: "register", address });
           if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds ?? 1);
 

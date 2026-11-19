@@ -205,9 +205,13 @@ origin: "local" | "ward", ... } }`, or `null` on an allowlisted route.
 - `validateSession` (one function or an array) adds the app's own session
   checks. They run after the library's Ward check.
 - Lockout keys on the client address. It reads the **last** `X-Forwarded-For`
-  entry, and only when the socket peer is loopback or a trusted proxy.
-  Otherwise it keys on the peer and ignores the header. No Fastify `trustProxy`
-  setting is needed, and none should be set.
+  entry, and only when the socket peer is loopback or a trusted proxy and that
+  entry is an IP address. Otherwise it keys on the peer and ignores the header.
+  No Fastify `trustProxy` setting is needed, and none should be set. An IPv6
+  client is counted by its /64, and an IPv4-mapped address, in either
+  spelling, as the IPv4 address it carries. Attempts still running count
+  against the five, so requests sent together get five verdicts and then
+  `429`.
 - **In a container, set the trusted proxies.** Host Caddy reaches a container
   through Docker's proxy, so the peer is a Docker bridge address, never
   loopback. Without a trusted range every request keys on that one address,

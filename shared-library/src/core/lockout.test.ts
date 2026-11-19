@@ -8,11 +8,14 @@ import {
   LOCKOUT_WINDOW_SECONDS,
   createLockout,
   lockoutKeyFor,
+  lockoutStoredKeyLengthForTests,
   parseTrustedProxies,
   resetLockoutWarningForTests,
   type Lockout,
+  type LockoutAttempt,
   type LockoutTarget,
 } from "./lockout.js";
+import { foldUsername } from "./identifiers.js";
 
 /**
  * The lockout counter, ported from Ward with its tests. The rules are Ward's;
@@ -90,6 +93,94 @@ describe("checkLockout / recordFailure", () => {
     }
 
     expect(lockout.check(login("203.0.113.9", "someone-else")).allowed).toBe(false);
+  });
+});
+
+describe("reserveAttempt", () => {
+  /** Reserve, and fail the test if the gate refused. */
+  function reserve(target: LockoutTarget): LockoutAttempt {
+    const gate = lockout.reserveAttempt(target);
+    if (!gate.allowed) throw new Error(`refused ${target.address}`);
+    return gate.attempt;
+  }
+
+  it("counts attempts in flight against the same five as recorded failures", () => {
+    const held = Array.from({ length: LOCKOUT_MAX_FAILURES }, () => reserve(login("203.0.113.9")));
+
+    // Five still running: the sixth is refused before any of them has failed.
+    expect(lockout.reserveAttempt(login("203.0.113.9"))).toEqual({ allowed: false, retryAfterSeconds: 1 });
+    expect(lockout.check(login("203.0.113.9")).allowed).toBe(false);
+    // Another address, and another surface from this one, are untouched.
+    expect(lockout.check(login("198.51.100.4")).allowed).toBe(true);
+    expect(lockout.check(register_("203.0.113.9")).allowed).toBe(true);
+
+    for (const attempt of held) attempt.fail("alice");
+
+    // Five failures now: the refusal carries the whole window.
+    const refused = lockout.reserveAttempt(login("203.0.113.9"));
+    expect(refused.allowed).toBe(false);
+    expect(refused.allowed === false && refused.retryAfterSeconds).toBeGreaterThan(LOCKOUT_WINDOW_SECONDS - 5);
+  });
+
+  it("frees the slot of an attempt released without a verdict, and counts nothing", () => {
+    for (let i = 0; i < 20; i += 1) reserve(login("203.0.113.9")).release();
+
+    expect(lockout.size()).toBe(0);
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES; i += 1) reserve(login("203.0.113.9")).fail("alice");
+    expect(lockout.check(login("203.0.113.9")).allowed).toBe(false);
+  });
+
+  it("forgives only the proved account's failures on success, and frees the slot", () => {
+    reserve(login("203.0.113.9")).fail("alice");
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 2; i += 1) reserve(login("203.0.113.9")).fail("bob");
+    reserve(login("203.0.113.9")).succeed("alice");
+
+    // Alice's one is forgiven and the slot is free; bob's three still count,
+    // so two more failures trip the 429.
+    reserve(login("203.0.113.9")).fail("bob");
+    expect(lockout.check(login("203.0.113.9")).allowed).toBe(true);
+    reserve(login("203.0.113.9")).fail("bob");
+    expect(lockout.check(login("203.0.113.9")).allowed).toBe(false);
+  });
+
+  it("ends an attempt once: a second end, or a release after a verdict, does nothing", () => {
+    const failed = reserve(login("203.0.113.9"));
+    failed.fail("alice");
+    failed.fail("alice");
+    failed.release();
+
+    const succeeded = reserve(login("203.0.113.9"));
+    succeeded.succeed("carol");
+    succeeded.release();
+
+    // One failure recorded, no slot still taken: four more attempts get in.
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 1; i += 1) reserve(login("203.0.113.9")).fail("alice");
+    expect(lockout.check(login("203.0.113.9")).allowed).toBe(false);
+  });
+
+  it("takes no place under the entry cap and does not slide the window while in flight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-04T12:00:00Z"));
+
+    lockout.recordFailure(login("203.0.113.9", "alice"));
+    const recordedAt = Date.now();
+    expect(lockout.size()).toBe(1);
+
+    vi.setSystemTime(recordedAt + (LOCKOUT_WINDOW_SECONDS - 10) * 1000);
+    const pending = reserve(login("203.0.113.9"));
+    reserve(login("198.51.100.4")).release();
+    expect(lockout.size()).toBe(1);
+
+    // The window still ends where the one recorded failure put it.
+    vi.setSystemTime(recordedAt + LOCKOUT_WINDOW_SECONDS * 1000 + 1);
+    pending.release();
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 1; i += 1) lockout.recordFailure(login("203.0.113.9", "alice"));
+    expect(lockout.check(login("203.0.113.9")).allowed).toBe(true);
+  });
+
+  it("keeps each lockout's slots its own", () => {
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES; i += 1) reserve(login("203.0.113.9"));
+    expect(createLockout().check(login("203.0.113.9")).allowed).toBe(true);
   });
 });
 
@@ -341,6 +432,63 @@ describe("the cap", () => {
   });
 });
 
+describe("the byte bound", () => {
+  /** The longest a `/login` username may be, before folding. */
+  const SUBMITTED_MAX = 256;
+  /** A named account's stored key: `a:` and 22 base64url characters. */
+  const ACCOUNT_KEY_LENGTH = 24;
+  /** The longest counter key for any address `lockoutKeyFor` derives. */
+  const COUNTER_KEY_MAX = 40;
+
+  /**
+   * A name at the submitted cap made of U+FDFA, which NFKC folds to eighteen
+   * characters, ending in `last` so names can differ only at the very end.
+   */
+  function longName(last: string): string {
+    return foldUsername(`${"ﷺ".repeat(SUBMITTED_MAX - 1)}${last}`);
+  }
+
+  it("stores a fixed-length key per account, however long the folded name", () => {
+    expect(longName("a").length).toBeGreaterThan(SUBMITTED_MAX * 17);
+
+    // A hundred addresses, each failing for five long names: as many named
+    // accounts as the gate lets one counter hold.
+    const addresses = Array.from({ length: 100 }, (_, i) => `198.51.${Math.floor(i / 256)}.${i % 256}`);
+    for (const address of addresses) {
+      for (const last of ["a", "b", "c", "d", "e"]) lockout.recordFailure(login(address, longName(last)));
+    }
+
+    const counterKeys = addresses.reduce((sum, address) => sum + "login\u0000".length + address.length, 0);
+    const accountKeys = addresses.length * LOCKOUT_MAX_FAILURES * ACCOUNT_KEY_LENGTH;
+    expect(lockoutStoredKeyLengthForTests(lockout)).toBe(counterKeys + accountKeys);
+    expect(lockoutStoredKeyLengthForTests(lockout)).toBeLessThanOrEqual(
+      addresses.length * (COUNTER_KEY_MAX + LOCKOUT_MAX_FAILURES * ACCOUNT_KEY_LENGTH),
+    );
+  });
+
+  it("keeps the longest counter key within the bound the cap comment works from", () => {
+    const widest = lockoutKeyFor("127.0.0.1", "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
+    lockout.recordFailure({ surface: "change_password", address: widest });
+    expect(lockoutStoredKeyLengthForTests(lockout)).toBe(COUNTER_KEY_MAX + 1);
+  });
+
+  it("keeps two long names that differ only at the end as two accounts", () => {
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 1; i += 1) {
+      lockout.recordFailure(login("203.0.113.9", longName("a")));
+    }
+
+    // A success as the other name forgives nothing aimed at this one...
+    lockout.clearFailures(login("203.0.113.9", longName("b")));
+    lockout.recordFailure(login("203.0.113.9", longName("a")));
+    expect(lockout.check(login("203.0.113.9")).allowed).toBe(false);
+
+    // ...and a success as this one forgives all of it.
+    lockout.clearFailures(login("203.0.113.9", longName("a")));
+    expect(lockout.check(login("203.0.113.9")).allowed).toBe(true);
+    expect(lockout.size()).toBe(0);
+  });
+});
+
 describe("lockoutKeyFor", () => {
   it("uses the last X-Forwarded-For element when the peer is loopback", () => {
     // Caddy appends the peer it observed, so the last element is the one a
@@ -367,6 +515,20 @@ describe("lockoutKeyFor", () => {
     // Otherwise picking a stack doubles the allowance.
     expect(lockoutKeyFor("127.0.0.1", "::ffff:203.0.113.9")).toBe("203.0.113.9");
     expect(lockoutKeyFor("::ffff:203.0.113.9", undefined)).toBe("203.0.113.9");
+  });
+
+  it("unwraps the hex spelling of an IPv4-mapped address too", () => {
+    expect(lockoutKeyFor("127.0.0.1", "::ffff:cb00:7109")).toBe("203.0.113.9");
+    expect(lockoutKeyFor("127.0.0.1", "[::FFFF:CB00:7109]:4711")).toBe("203.0.113.9");
+    expect(lockoutKeyFor("::ffff:cb00:7109", undefined)).toBe("203.0.113.9");
+    expect(lockoutKeyFor("127.0.0.1", "::ffff:203.0.113.9%eth0")).toBe("203.0.113.9");
+  });
+
+  it("returns an IPv6 client's full address, not its /64", () => {
+    // The grouping belongs to the counter alone; what an app logs keeps the
+    // address the proxy saw.
+    expect(lockoutKeyFor("127.0.0.1", "2001:db8:1:2::a")).toBe("2001:db8:1:2::a");
+    expect(lockoutKeyFor("2001:db8:1:2::a", undefined)).toBe("2001:db8:1:2::a");
   });
 
   it("normalises brackets, ports and IPv6 zone ids", () => {
@@ -452,6 +614,58 @@ describe("the shared-bucket fallback is loud", () => {
   });
 });
 
+describe("an IPv6 client's budget is its /64", () => {
+  it("counts two addresses in one /64 against one budget, in any spelling", () => {
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES; i += 1) {
+      lockout.recordFailure(login("2001:db8:1:2::a", "alice"));
+    }
+
+    expect(lockout.check(login("2001:db8:1:2::a")).allowed).toBe(false);
+    expect(lockout.check(login("2001:db8:1:2::b")).allowed).toBe(false);
+    expect(lockout.check(login("2001:0DB8:0001:0002:ffff:ffff:ffff:ffff")).allowed).toBe(false);
+    expect(lockout.size()).toBe(1);
+
+    // The neighbouring /64 is another client.
+    expect(lockout.check(login("2001:db8:1:3::a")).allowed).toBe(true);
+  });
+
+  it("counts attempts in flight from one /64 together", () => {
+    for (let i = 1; i <= LOCKOUT_MAX_FAILURES; i += 1) {
+      expect(lockout.reserveAttempt(login(`2001:db8:1:2::${i}`)).allowed).toBe(true);
+    }
+    expect(lockout.reserveAttempt(login("2001:db8:1:2::6")).allowed).toBe(false);
+    expect(lockout.reserveAttempt(login("2001:db8:1:3::6")).allowed).toBe(true);
+  });
+
+  it("forgives the proved account's failures from anywhere in the /64", () => {
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES - 1; i += 1) {
+      lockout.recordFailure(login("2001:db8:1:2::a", "alice"));
+    }
+    lockout.clearFailures(login("2001:db8:1:2::b", "alice"));
+    expect(lockout.size()).toBe(0);
+  });
+
+  it("keys a mapped address as the IPv4 address it carries, never as a /64", () => {
+    const hex = lockoutKeyFor("127.0.0.1", "::ffff:cb00:7109");
+    for (let i = 0; i < LOCKOUT_MAX_FAILURES; i += 1) {
+      lockout.recordFailure(login(hex, "alice"));
+    }
+
+    // The dotted spelling, mapped or not, is the same client...
+    expect(lockout.check(login("203.0.113.9")).allowed).toBe(false);
+    expect(lockout.check(login("::ffff:203.0.113.9")).allowed).toBe(false);
+    // ...and its IPv4 neighbour, in either spelling, is not.
+    expect(lockout.check(login("203.0.113.10")).allowed).toBe(true);
+    expect(lockout.check(login("::ffff:cb00:710a")).allowed).toBe(true);
+  });
+
+  it("checks a trusted peer on its full address, not its /64", () => {
+    const proxy = { trustedProxies: parseTrustedProxies("2001:db8:1:2::1") };
+    expect(lockoutKeyFor("2001:db8:1:2::1", "198.51.100.7", proxy)).toBe("198.51.100.7");
+    expect(lockoutKeyFor("2001:db8:1:2::2", "198.51.100.7", proxy)).toBe("2001:db8:1:2::2");
+  });
+});
+
 describe("trusted proxies", () => {
   /**
    * Ward's lockout outage of 2026-10-13, which 0.2.0 inherited: in a container the socket peer is
@@ -514,6 +728,38 @@ describe("trusted proxies", () => {
     const seventh = lockoutKeyFor("172.19.0.3", "198.51.100.7", { trustedProxies: bridge });
     expect(lockout.check(login(seventh)).allowed).toBe(true);
     expect(lockout.size()).toBe(6);
+  });
+
+  it("keys a trusted peer on itself when the last forwarded element is not an address", () => {
+    const warn = vi.fn();
+    const key = (header: string | string[]) => lockoutKeyFor("172.19.0.3", header, { trustedProxies: bridge, warn });
+
+    expect(key("not-an-ip")).toBe("172.19.0.3");
+    expect(key("unknown")).toBe("172.19.0.3");
+    expect(key("198.51.100.7:4711")).toBe("172.19.0.3");
+    expect(key("2001:db8::1:2::3")).toBe("172.19.0.3");
+    // The last element decides; an earlier address is never used instead.
+    expect(key("198.51.100.7, not-an-ip")).toBe("172.19.0.3");
+    expect(key(["198.51.100.7", "not-an-ip"])).toBe("172.19.0.3");
+    expect(lockoutKeyFor("127.0.0.1", "198.51.100.7, not-an-ip")).toBe("127.0.0.1");
+
+    // Said once, as the no-header case says it.
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect((warn.mock.calls[0] as [Record<string, unknown>, string])[0]).toEqual({
+      peer: "172.19.0.3",
+      bucket: "172.19.0.3",
+    });
+
+    // Addresses in every spelling the proxy may use still count.
+    expect(key("[2001:db8::1]:4711")).toBe("2001:db8::1");
+    expect(key("::ffff:198.51.100.7")).toBe("198.51.100.7");
+  });
+
+  it("still warns about any header from an untrusted peer, address or not", () => {
+    const warn = vi.fn();
+    expect(lockoutKeyFor("203.0.113.9", "not-an-ip", { warn })).toBe("203.0.113.9");
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect((warn.mock.calls[0] as [Record<string, unknown>, string])[1]).toContain("AUTH_TRUSTED_PROXIES");
   });
 
   it("still fails closed, and loudly, when a trusted peer forwards nothing", () => {

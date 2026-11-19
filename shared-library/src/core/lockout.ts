@@ -27,6 +27,14 @@
  * login as yourself and the address never reaches the limit. Ward measured
  * that at ~35 guesses a second before fixing it.
  *
+ * ## Attempts still in flight count
+ *
+ * The budget is recorded failures **plus attempts still running**. A route
+ * whose verdict waits on a password hash or a store call takes one of the
+ * address's five slots at the gate (`reserveAttempt`) and holds it until the
+ * attempt ends, so twenty requests sent at once from one address get five
+ * verdicts and fifteen `429`s, not twenty verdicts.
+ *
  * ## Per-surface budgets
  *
  * Login, registration, password change and rename hold **independent**
@@ -46,8 +54,12 @@
  * and a restart is not something an attacker can cause. Do not grow this into
  * a table without thinking — a write per failed login on an app's only
  * anonymous endpoint is a better amplification target than a bounded map.
+ *
+ * Its two imports, `node:net`'s `isIP` and `node:crypto`'s `createHash`, have
+ * no side effects.
  */
 
+import { createHash } from "node:crypto";
 import { isIP } from "node:net";
 
 /**
@@ -67,8 +79,16 @@ export const LOCKOUT_WINDOW_SECONDS = 15 * 60;
 /**
  * Hard ceiling on tracked `(surface, address)` pairs. **An uncapped map is the
  * memory-exhaustion DoS this module defends against.** With the cap, flooding
- * addresses only evicts other addresses' counters, which is weaker than the
- * attack the flooder already has. 10 000 entries is roughly a megabyte.
+ * addresses only evicts other addresses' counters, which gains the flooder
+ * nothing over the attempts they already have.
+ *
+ * Every key is ASCII and bounded, so the cap bounds bytes too: a counter's key
+ * is at most 40 characters for any address `lockoutKeyFor` derives
+ * (`bucketKey`), an account's exactly 24 (`accountKey`), however long the
+ * submitted name. With the five named accounts the gate lets one counter hold
+ * at a time, 10 000 entries carry at most 10 000 × (40 + 5 × 24) = 1.6 MB of
+ * key text; even at `LOCKOUT_MAX_ACCOUNTS_PER_ADDRESS` it is
+ * 10 000 × (40 + 32 × 24) ≈ 8.1 MB, before the maps' own overhead.
  */
 export const LOCKOUT_MAX_ENTRIES = 10_000;
 
@@ -95,7 +115,11 @@ export type LockoutSurface = "login" | "register" | "change_password" | "rename"
 /** Who is attempting what, from where. */
 export interface LockoutTarget {
   surface: LockoutSurface;
-  /** From `lockoutKeyFor(...)`. The counter the `429` decision is keyed on. */
+  /**
+   * From `lockoutKeyFor(...)`, the full address. The counter the `429`
+   * decision reads is keyed on it grouped: an IPv4 address whole, an IPv6
+   * address by its /64 (`addressGroup`).
+   */
   address: string;
   /**
    * The account the attempt was aimed at, **folded** (`foldUsername`), so
@@ -113,10 +137,75 @@ export interface LockoutDecision {
   retryAfterSeconds?: number;
 }
 
+/**
+ * An attempt `reserveAttempt` let through, holding one in-flight slot until it
+ * ends. Exactly one of the three ends it; the other two, and a second call of
+ * the same one, do nothing after that.
+ */
+export interface LockoutAttempt {
+  /**
+   * The credential was wrong: the slot becomes one counted failure, attributed
+   * to `account` (folded) exactly as `recordFailure` attributes it.
+   */
+  fail(account?: string): void;
+  /**
+   * The credential was right: forgive `account`'s failures as `clearFailures`
+   * does, and free the slot. Only for a surface that forgives on success
+   * (login, password change): with no `account` it would forgive every failure
+   * recorded without one.
+   */
+  succeed(account?: string): void;
+  /**
+   * The attempt ended without a verdict that counts (a malformed body, a
+   * policy refusal, a thrown error, a success on a surface that forgives
+   * nothing): free the slot, count nothing. Every caller calls it in a
+   * `finally`, so a slot is never left behind; after `fail` or `succeed` it
+   * does nothing.
+   */
+  release(): void;
+}
+
+/** What `reserveAttempt` answers: a slot, or the refusal `check` would give. */
+export type LockoutGate = { allowed: true; attempt: LockoutAttempt } | { allowed: false; retryAfterSeconds: number };
+
 /** A lockout counter. One per app process is the expected shape. */
 export interface Lockout {
-  /** Whether `target`'s address may attempt now. Records nothing. */
+  /**
+   * Whether `target`'s address may attempt now. Records nothing. The budget
+   * is recorded failures plus attempts still in flight (`reserveAttempt`).
+   *
+   * A route whose verdict comes after an `await` must gate with
+   * `reserveAttempt`, not with this: between this check and a later
+   * `recordFailure` the event loop runs other requests' checks, and none of
+   * them would see this attempt. `POST <prefix>/register` uses this directly
+   * because it records before its first `await`.
+   */
   check(target: LockoutTarget): LockoutDecision;
+  /**
+   * `check` and the count, as one synchronous step: if the attempt is
+   * allowed, it takes one of the address's slots before this returns, and
+   * holds it until the attempt ends through `fail`, `succeed` or `release`.
+   *
+   * This is what keeps the budget at five when requests arrive together. A
+   * check that reserved nothing lets every request that reaches it before the
+   * fifth failure is **recorded** through, and recording waits on a password
+   * hash. With a slot taken at the gate, the sixth concurrent request is
+   * refused at once and the five already admitted finish.
+   *
+   * @example
+   * const gate = lockout.reserveAttempt({ surface: "login", address });
+   * if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds);
+   * try {
+   *   if (!(await verify())) {
+   *     gate.attempt.fail(account);
+   *     return reply.code(401).send(...);
+   *   }
+   *   gate.attempt.succeed(account);
+   * } finally {
+   *   gate.attempt.release();
+   * }
+   */
+  reserveAttempt(target: LockoutTarget): LockoutGate;
   /**
    * Count one failed attempt. Call it for **any** credential rejection, and not
    * for a malformed body: that is a client bug, not a guess. Pass `account`
@@ -144,6 +233,12 @@ interface Entry {
   byAccount: Map<string, number>;
 }
 
+/**
+ * Each lockout's failure map, read by `lockoutStoredKeyLengthForTests` alone.
+ * Weak, so a dropped lockout is collected as before.
+ */
+const storedEntries = new WeakMap<Lockout, Map<string, Entry>>();
+
 /** Reserved breakdown key past `LOCKOUT_MAX_ACCOUNTS_PER_ADDRESS`. */
 const OVERFLOW_ACCOUNT_KEY = "+";
 
@@ -152,16 +247,56 @@ const OVERFLOW_ACCOUNT_KEY = "+";
  * can be crafted to land in another surface's bucket.
  */
 function bucketKey(target: LockoutTarget): string {
-  return `${target.surface}\u0000${target.address}`;
+  return `${target.surface}\u0000${addressGroup(target.address)}`;
+}
+
+/**
+ * The part of an address its budget belongs to: an IPv4 address whole, an
+ * IPv6 address by its /64.
+ *
+ * One IPv6 host is routinely handed a whole /64 and picks its own address
+ * inside it (privacy addresses rotate on their own), so keyed on all 128 bits
+ * one machine could give every request a fresh address and never meet the
+ * fifth failure. A /64 is the smallest subnet address autoconfiguration
+ * works in, so a home or a server that has IPv6 at all holds at least one.
+ * Every address in it shares one budget, in whatever spelling it arrives
+ * (`2001:db8:1:2::a` and `2001:0db8:1:2:0:0:0:a` are one key).
+ *
+ * Only the counter is grouped. `lockoutKeyFor` still returns the full address,
+ * which is what the trusted-peer check compares and what an app logs. An
+ * IPv4-mapped address is the IPv4 address it carries, never the mapped
+ * prefix's /64: grouped by that, every IPv4 client would share one budget. A
+ * string that is not an address is its own key, unchanged.
+ */
+function addressGroup(address: string): string {
+  const bytes = addressBytes(address);
+  if (bytes === undefined) return address;
+
+  const ipv4 = bytes.length === 4 ? bytes : mappedIpv4(bytes);
+  if (ipv4 !== undefined) return ipv4.join(".");
+
+  return `${formatBytes(bytes.slice(0, 8))}::/64`;
 }
 
 /**
  * The breakdown key. Named accounts are prefixed so a username — arbitrary
  * user input — can never collide with the reserved `"*"` (no account named)
  * and `"+"` (overflow) buckets.
+ *
+ * The name is stored as a digest, never as text: the first 128 bits of its
+ * SHA-256, 22 base64url characters, so every named key is 24 characters.
+ * A submitted username is capped before folding, and NFKC can lengthen it
+ * eighteenfold (U+FDFA folds to 18 characters), so stored as text one failed
+ * login could pin kilobytes per name. Cut to a fixed length instead, two long
+ * names sharing their first characters would become one account, and a success
+ * as one would forgive the failures aimed at the other; at 128 bits two names
+ * never meet by accident. `recordFailure` and `clearFailures` both come here,
+ * so the digest a failure is filed under is the one a success subtracts.
  */
 function accountKey(target: LockoutTarget): string {
-  return target.account === undefined ? "*" : `a:${target.account}`;
+  if (target.account === undefined) return "*";
+  const digest = createHash("sha256").update(target.account).digest().subarray(0, 16);
+  return `a:${digest.toString("base64url")}`;
 }
 
 export function createLockout(options: LockoutOptions = {}): Lockout {
@@ -174,24 +309,81 @@ export function createLockout(options: LockoutOptions = {}): Lockout {
    */
   const entries = new Map<string, Entry>();
 
+  /**
+   * Attempts let through by `reserveAttempt` that have not ended yet, by the
+   * same key as `entries`.
+   *
+   * Kept apart from `entries` on purpose: a slot is not a failure, so it never
+   * slides a window, never takes a place under `LOCKOUT_MAX_ENTRIES`, and
+   * evicting or expiring a failure entry cannot lose one. A key is here only
+   * while a request holding it is running, so the map is never larger than the
+   * number of requests in flight.
+   */
+  const inFlight = new Map<string, number>();
+
   function check(target: LockoutTarget): LockoutDecision {
     const at = now();
     const key = bucketKey(target);
-    const entry = entries.get(key);
+    let entry = entries.get(key);
 
-    if (entry === undefined) return { allowed: true };
-
-    if (entry.expiresAt <= at) {
+    if (entry !== undefined && entry.expiresAt <= at) {
       entries.delete(key);
-      return { allowed: true };
+      entry = undefined;
     }
 
-    if (entry.failures < LOCKOUT_MAX_FAILURES) return { allowed: true };
+    const failures = entry?.failures ?? 0;
+    if (failures + (inFlight.get(key) ?? 0) < LOCKOUT_MAX_FAILURES) return { allowed: true };
+
+    // Refused only because of attempts still running: they end in tens of
+    // milliseconds, and if they fail the next request meets the full window
+    // anyway, so a second is the honest wait.
+    if (entry === undefined || failures < LOCKOUT_MAX_FAILURES) return { allowed: false, retryAfterSeconds: 1 };
 
     // `Math.max(1, ...)` because `Retry-After: 0` reads as "retry immediately",
     // and a sub-second remainder floors to zero.
     const retryAfterSeconds = Math.max(1, Math.ceil((entry.expiresAt - at) / 1000));
     return { allowed: false, retryAfterSeconds };
+  }
+
+  function reserveAttempt(target: LockoutTarget): LockoutGate {
+    const decision = check(target);
+    if (!decision.allowed) return { allowed: false, retryAfterSeconds: decision.retryAfterSeconds ?? 1 };
+
+    const key = bucketKey(target);
+    inFlight.set(key, (inFlight.get(key) ?? 0) + 1);
+
+    const { surface, address } = target;
+    const withAccount = (account: string | undefined): LockoutTarget =>
+      account === undefined ? { surface, address } : { surface, address, account };
+
+    let open = true;
+    // Gives the slot back, once. The bookkeeping lives here so `fail` and
+    // `succeed` cannot double-count it either.
+    const end = (): boolean => {
+      if (!open) return false;
+      open = false;
+      const remaining = (inFlight.get(key) ?? 0) - 1;
+      if (remaining > 0) inFlight.set(key, remaining);
+      else inFlight.delete(key);
+      return true;
+    };
+
+    return {
+      allowed: true,
+      attempt: {
+        fail: (account) => {
+          // Slot out, failure in, in one synchronous step: the budget the next
+          // check reads never dips in between.
+          if (end()) recordFailure(withAccount(account));
+        },
+        succeed: (account) => {
+          if (end()) clearFailures(withAccount(account));
+        },
+        release: () => {
+          end();
+        },
+      },
+    };
   }
 
   function recordFailure(target: LockoutTarget): void {
@@ -258,7 +450,23 @@ export function createLockout(options: LockoutOptions = {}): Lockout {
     }
   }
 
-  return { check, recordFailure, clearFailures, size: () => entries.size };
+  const lockout: Lockout = { check, reserveAttempt, recordFailure, clearFailures, size: () => entries.size };
+  storedEntries.set(lockout, entries);
+  return lockout;
+}
+
+/**
+ * The characters a lockout holds in keys: every counter's key plus every
+ * account key in its breakdown. **Tests only** (the byte bound), and
+ * deliberately not exported from the bundle's entry point; not a metric.
+ */
+export function lockoutStoredKeyLengthForTests(lockout: Lockout): number {
+  let total = 0;
+  for (const [key, entry] of storedEntries.get(lockout) ?? []) {
+    total += key.length;
+    for (const account of entry.byAccount.keys()) total += account.length;
+  }
+  return total;
 }
 
 function attribute(entry: Entry, account: string): void {
@@ -390,21 +598,28 @@ export function lockoutKeyFor(
   options: LockoutKeyOptions = {},
 ): string {
   const peer = normaliseAddress(socketAddress);
-  const forwarded = lastForwardedAddress(forwardedFor);
+  const forwarded = lastForwardedElement(forwardedFor);
 
   if (peer !== undefined && !isTrustedPeer(peer, options.trustedProxies ?? [])) {
     if (forwarded !== undefined) warnIgnoredForwarded(options.warn, peer);
     return peer;
   }
 
-  if (forwarded !== undefined) {
+  // Only an address is a client. The proxy appends the address it saw, so a
+  // last element that is anything else (a name, `unknown`, a port glued on)
+  // did not come from it, and keying on it would let whoever wrote it name the
+  // counter and the address an app logs. Such a request is keyed as if nothing
+  // was forwarded. Never an earlier element instead: those are the client's
+  // own.
+  if (forwarded !== undefined && isIP(forwarded) !== 0) {
     return forwarded;
   }
 
-  // No usable address at all — a trusted caller with no forwarding header, a
-  // Unix socket, or a peer the runtime did not report. One shared bucket is the
-  // safe fallback: it throttles rather than letting the attempt through
-  // uncounted. Say so, once per interval.
+  // No usable address at all — a trusted caller with no forwarding header or
+  // one whose last element is not an address, a Unix socket, or a peer the
+  // runtime did not report. One shared bucket is the safe fallback: it
+  // throttles rather than letting the attempt through uncounted. Say so, once
+  // per interval.
   const bucket = peer ?? "unknown";
   warnAmbiguousAddress(options.warn, peer, bucket);
   return bucket;
@@ -484,8 +699,8 @@ function isTrustedPeer(peer: string, trusted: TrustedProxies): boolean {
   // A peer that is not an address at all (a runtime oddity) is trusted by
   // nobody; it becomes its own bucket, which is the behaviour from before trusted proxies.
   if (parsed === undefined) return false;
-  // `normaliseAddress` already unwraps the dotted mapped form Node reports;
-  // this catches the hex spelling (`::ffff:ac13:3`) of the same address.
+  // `normaliseAddress` already unwraps both mapped spellings; this keeps the
+  // check right for a peer that did not come through it.
   const bytes = mappedIpv4(parsed) ?? parsed;
   return LOOPBACK.some((range) => inRange(bytes, range)) || trusted.some((range) => inRange(bytes, range));
 }
@@ -561,7 +776,7 @@ function warnAmbiguousAddress(warn: LockoutKeyOptions["warn"], peer: string | un
   warn(
     { peer: peer ?? null, bucket },
     "no client address available for the login lockout: the peer is loopback or a trusted " +
-      "proxy (or unreported) and no X-Forwarded-For arrived, so every caller now shares one " +
+      "proxy (or unreported) and no X-Forwarded-For address arrived, so every caller now shares one " +
       "failure counter and five failures anywhere will answer 429 to everybody. Check that " +
       "the reverse proxy sets X-Forwarded-For and that nothing proxies in front of it.",
   );
@@ -586,7 +801,12 @@ function warnIgnoredForwarded(warn: LockoutKeyOptions["warn"], peer: string): vo
   );
 }
 
-function lastForwardedAddress(forwardedFor: string | string[] | undefined): string | undefined {
+/**
+ * The last non-blank `X-Forwarded-For` element, normalised. Not yet known to
+ * be an address: `lockoutKeyFor` checks that, so an untrusted peer that sent
+ * any header at all is still warned about.
+ */
+function lastForwardedElement(forwardedFor: string | string[] | undefined): string | undefined {
   if (forwardedFor === undefined) return undefined;
 
   // Node collapses repeated headers into an array for most headers; joining and
@@ -601,11 +821,15 @@ function lastForwardedAddress(forwardedFor: string | string[] | undefined): stri
 }
 
 /**
- * Trim, strip an IPv6 zone or an IPv4-mapped prefix, lowercase.
+ * Trim, lowercase, strip brackets and an IPv6 zone, and unwrap an IPv4-mapped
+ * address in either spelling.
  *
- * `::ffff:127.0.0.1` and `127.0.0.1` are the same address and must not be two
- * counters — otherwise an attacker gets 2× the attempts by picking a stack. The
- * same normalisation is why an IPv4-mapped peer matches an IPv4 trusted range.
+ * `::ffff:127.0.0.1`, `::ffff:7f00:1` and `127.0.0.1` are the same address and
+ * must not be three counters, or one client gets three budgets by choosing how
+ * to write its address. The same normalisation is why an IPv4-mapped peer
+ * matches an IPv4 trusted range. Anything else keeps its full text: an IPv6
+ * address is grouped into its /64 only where the counter is keyed
+ * (`addressGroup`), never here.
  */
 function normaliseAddress(address: string | undefined | null): string | undefined {
   if (address === undefined || address === null) return undefined;
@@ -617,13 +841,16 @@ function normaliseAddress(address: string | undefined | null): string | undefine
   const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(value);
   if (bracketed?.[1] !== undefined) value = bracketed[1];
 
-  // Only the dotted spelling is unwrapped here; slicing the prefix off the hex
-  // one (`::ffff:ac13:3`) would leave something that is not an address at all.
-  if (/^::ffff:\d+\.\d+\.\d+\.\d+$/.test(value)) value = value.slice("::ffff:".length);
-
   // An IPv6 scope id (`fe80::1%eth0`) is not part of the address identity.
+  // Stripped before the mapped check, so a mapped address with a zone unwraps.
   const percent = value.indexOf("%");
   if (percent !== -1) value = value.slice(0, percent);
+
+  // Read as bytes, so the dotted (`::ffff:203.0.113.9`) and the hex
+  // (`::ffff:cb00:7109`) spellings unwrap alike.
+  const bytes = addressBytes(value);
+  const mapped = bytes === undefined ? undefined : mappedIpv4(bytes);
+  if (mapped !== undefined) value = mapped.join(".");
 
   return value.length > 0 ? value : undefined;
 }

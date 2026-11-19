@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { UserDisabledError, type Accounts, type AuthUser } from "../core/accounts.js";
 import { clearedCookie, readCookie, serializeCookie } from "../core/cookie.js";
 import { MAX_USERNAME_LENGTH, foldUsername } from "../core/identifiers.js";
-import type { Lockout, LockoutTarget } from "../core/lockout.js";
+import type { Lockout } from "../core/lockout.js";
 import { MAX_PASSWORD_LENGTH, PasswordPolicyError } from "../core/password.js";
 import { isLocalPath } from "../core/paths.js";
 import { AlreadyLinkedError, WardSubjectTakenError, isWardAuthStore } from "../store/types.js";
@@ -581,23 +581,24 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     const auth = request.auth;
     if (auth === null) return reply.code(401).send({ error: "unauthorized" });
 
+    // The password-change budget, with a slot held until the attempt ends, as
+    // `POST <prefix>/password` holds one. Only a wrong current password fails
+    // it; a first password set after a reauthentication judges no credential,
+    // so that branch, like a malformed body, ends through `release`.
     const address = context.lockoutKey(request);
-    const gate = context.lockout.check({ surface: "change_password", address });
-    if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds ?? 1);
-
-    const body = setPasswordBody(request.body);
-    if (body === undefined) return reply.code(400).send({ error: "invalid_request" });
+    const gate = context.lockout.reserveAttempt({ surface: "change_password", address });
+    if (!gate.allowed) return tooManyAttempts(reply, gate.retryAfterSeconds);
+    const { attempt } = gate;
 
     try {
+      const body = setPasswordBody(request.body);
+      if (body === undefined) return reply.code(400).send({ error: "invalid_request" });
+
       if (auth.user.hasPassword) {
         if (body.currentPassword === undefined) {
           return reply.code(400).send({ error: "invalid_request" });
         }
-        const target: LockoutTarget = {
-          surface: "change_password",
-          address,
-          account: foldUsername(auth.user.username),
-        };
+        const account = foldUsername(auth.user.username);
         const changed = await accounts.changePassword(
           auth.user.id,
           body.currentPassword,
@@ -605,10 +606,10 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
           auth.session.idHash,
         );
         if (!changed) {
-          context.lockout.recordFailure(target);
+          attempt.fail(account);
           return reply.code(401).send({ error: "invalid_credentials" });
         }
-        context.lockout.clearFailures(target);
+        attempt.succeed(account);
         return reply.code(204).send();
       }
 
@@ -621,6 +622,8 @@ export function registerWardRoutes(routes: FastifyInstance, context: WardRoutesC
     } catch (error) {
       if (error instanceof PasswordPolicyError) return reply.code(400).send({ error: error.code });
       throw error;
+    } finally {
+      attempt.release();
     }
   });
 

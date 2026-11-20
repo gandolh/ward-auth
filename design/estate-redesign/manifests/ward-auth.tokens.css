@@ -1,0 +1,157 @@
+/*
+ * Ward, direction B "The pass and its doors": the token set in the app's own names.
+ *
+ * Ward's mechanism is two files, and this file keeps it:
+ *   PART 1 replaces the raw --ward-* blocks in ui/src/styles/index.css, inside `@layer base`: the public pages under
+ *   :root and :root[data-theme="dark"], and the console under [data-ward-surface="console"]. The console is a surface,
+ *   not a theme: it stays this dark whatever data-theme says, so its block never moves under a theme selector.
+ *   PART 2 edits ui/src/styles/theme.css: the `@theme inline` mapping gains two names, and the `@theme` fonts, type
+ *   scale, radii and sizes take the values below.
+ * The names of the board's roles are the app's names, so nothing is renamed; see ward-auth.tokens-map.md.
+ */
+
+/* ---- PART 1: ui/src/styles/index.css, inside @layer base --------------------------------------------------------- */
+
+:root {
+  --ward-bg: #e9e8e1;
+  --ward-surface: #ffffff;
+  --ward-surface-sunken: #f1f0eb;
+  --ward-border: #cac8bd;
+  --ward-border-strong: #83817a;
+
+  --ward-text: #191b19;
+  --ward-text-muted: #4a4f49;
+  --ward-text-faint: #5d6259;
+
+  --ward-accent: #2f4a3a;
+  --ward-accent-hover: #223829;
+  --ward-accent-text: #f5f6f2;
+  --ward-accent-soft: #dfe8e1; /* NEW: the checked Theme choice */
+
+  --ward-danger: #8a2e21;
+  --ward-danger-surface: #f9eae7;
+  --ward-notice: #5e4c0e;
+  --ward-notice-surface: #faf2d8;
+
+  /* One elevation for every card, the pass included: a 1 px border plus this. */
+  --ward-shadow: 0 1px 2px rgb(25 27 25 / 7%), 0 2px 8px rgb(25 27 25 / 6%);
+  /* The console's dialog only; the public pages no longer use it. */
+  --ward-shadow-lg: 0 2px 4px rgb(25 27 25 / 6%), 0 14px 34px rgb(25 27 25 / 12%);
+  /* CHANGED: a colour, not a box-shadow value. Drawn as a solid 2 px outline with a 2 px offset (see the base rule). */
+  --ward-focus: #2f4a3a;
+
+  --ward-max-width: 26rem;
+}
+
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ward-bg: #121412;
+  --ward-surface: #202520;
+  --ward-surface-sunken: #181b18;
+  --ward-border: #363c36;
+  --ward-border-strong: #727a71;
+
+  --ward-text: #e9ebe7;
+  --ward-text-muted: #b5b9b2;
+  --ward-text-faint: #979c93;
+
+  --ward-accent: #a3c2ab;
+  --ward-accent-hover: #b9d4c0;
+  --ward-accent-text: #122019;
+  --ward-accent-soft: #26332a;
+
+  --ward-danger: #ec917f;
+  --ward-danger-surface: #3a2320;
+  --ward-notice: #dcbf6b;
+  --ward-notice-surface: #2f2914;
+
+  /* In dark a card is told from the ground by its lighter surface and its border, not by a shadow. */
+  --ward-shadow: none;
+  --ward-shadow-lg: none;
+  --ward-focus: #a3c2ab;
+}
+
+[data-ward-surface="console"] {
+  --ward-bg: #181a1c;
+  --ward-surface: #242729;
+  --ward-surface-sunken: #111314;
+  --ward-border: #3b3f42;
+  --ward-border-strong: #6c7175;
+
+  --ward-text: #e8e6e1;
+  --ward-text-muted: #aaa8a2;
+  --ward-text-faint: #98968f;
+
+  --ward-accent: #c09152;
+  --ward-accent-hover: #d0a262;
+  --ward-accent-text: #181a1c;
+  --ward-accent-soft: #33291c; /* always drawn with a 1 px accent edge */
+
+  --ward-danger: #e47a66;
+  --ward-danger-surface: #34211d;
+  --ward-notice: #d8b25e;
+  --ward-notice-surface: #302915;
+
+  --ward-shadow: none;
+  --ward-shadow-lg: 0 8px 28px rgb(0 0 0 / 50%);
+  --ward-focus: #c09152;
+  --ward-max-width: 72rem;
+}
+
+/* The literal behind a short console page must follow --ward-bg above (it was #17181a). */
+body:has([data-ward-surface="console"]) {
+  background-color: #181a1c;
+}
+
+/* CHANGED rule: the focus ring is a solid outline, 2 px with a 2 px offset, instead of a 30 % box-shadow. */
+:focus-visible {
+  outline: 2px solid var(--ward-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* ---- PART 2: ui/src/styles/theme.css ----------------------------------------------------------------------------- */
+
+@theme inline {
+  /* NEW names (every other --color-ward-* and --shadow-ward* line stays; --shadow-ward-focus is removed) */
+  --color-ward-accent-soft: var(--ward-accent-soft);
+  --color-ward-focus: var(--ward-focus);
+}
+
+@theme {
+  /* Albert Sans and Fragment Mono from one self-hosted subset each (owner question 1); the old system stacks stay as the fallback. */
+  --font-ward: "Albert Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-ward-mono: "Fragment Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  /* Type scale: six sans sizes, each with its own line height (the 1.5 body default no longer applies to all). */
+  --text-xs: 0.75rem; /* 12/16: hints, the footer */
+  --text-xs--line-height: 1.3333;
+  --text-sm: 0.875rem; /* 14/20: labels, rows, buttons, desktop prose */
+  --text-sm--line-height: 1.4286;
+  --text-base: 1rem; /* 16/24: prose on a phone, inputs */
+  --text-base--line-height: 1.5;
+  --text-lg: 1.125rem; /* CHANGED from 1.25rem: 18/24 at 600, card titles */
+  --text-lg--line-height: 1.3333;
+  --text-xl: 1.75rem; /* 28/32 at 700: the username in the pass, the console's h1 */
+  --text-xl--line-height: 1.1429;
+  --text-ward-signpost: clamp(1.625rem, 1.4rem + 0.9vw, 2rem); /* CHANGED: 26 on a phone, 32 from 1280 */
+  --text-ward-signpost--line-height: 1.25;
+  --text-ward-mono: 0.8125rem; /* NEW: 13/20 Fragment Mono for ids and timestamps (12 on a phone) */
+  --text-ward-mono--line-height: 1.5385;
+
+  /* Radii: control, segment track, card. */
+  --radius-ward: 8px; /* CHANGED from 6px: buttons, fields */
+  --radius-lg: 10px; /* the Theme segment track (the confirm dialog keeps it) */
+  --radius-ward-card: 14px; /* NEW: every card, the pass and the sign-in card */
+
+  /* Sizes. --container-ward (26rem) still sets the sign-in card; --container-ward-wide goes (see the map). */
+  --container-ward-account: 65rem; /* NEW: the account page, 1040 px: a 320 px pass, a 24 px gap and a 640 px column */
+  --container-ward-pass: 20rem; /* NEW: the pass column */
+  --height-ward-band: 3.5rem; /* NEW: the wordmark band, 56 px (48 on a phone) */
+  --breakpoint-ward-list: 68.75rem; /* NEW: below 1100 px the console's table rows become list rows */
+}

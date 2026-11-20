@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>Ward direction (twin)</title>
+<meta name="description" content="A plain-HTML twin of the board's direction sheet.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700&amp;family=Fragment+Mono:wght@400&amp;display=swap">
+<style>
+/* Hallmark · shape: app screen · genre: account and identity utility · theme: brand · redesign: full
+ * paper: #e9e8e1 limestone grey · accent: #2f4a3a lichen green · display: Albert Sans · body: Albert Sans, Fragment Mono for ids
+ * nav: kept (one wordmark band, no tabs: Ward has one place; the console keeps its rail) · signature: the pass, one held card of who you are beside the page, and the jamb that carries the head and the sign-in card · states: loading, unreachable, signed out, no access, field error, result, lockout, console load error, empty list
+ * axes: lichen neutrals/grotesk plus mono ids/one green accent; console graphite plus brass · posture: restrained · modes: light+dark, console fixed dark · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: V, the green and the grotesk carry the look, so the page keeps today's near-monochrome door and one accent per screen */
+/* Hallmark · answered F4 · one filled accent button per screen: Change password on the account, Sign in on the sign-in card, New account in the console; Sign out and Theme are outlined, danger only for Sign out my other devices */
+[data-theme="light"]{--ward-bg:#e9e8e1;--ward-surface:#ffffff;--ward-surface-sunken:#f1f0eb;--ward-border:#cac8bd;--ward-border-strong:#83817a;--ward-text:#191b19;--ward-text-muted:#4a4f49;--ward-text-faint:#5d6259;--ward-accent:#2f4a3a;--ward-accent-hover:#223829;--ward-accent-text:#f5f6f2;--ward-accent-soft:#dfe8e1;--ward-danger:#8a2e21;--ward-danger-surface:#f9eae7;--ward-notice:#5e4c0e;--ward-notice-surface:#faf2d8;--ward-focus:#2f4a3a;--ward-shadow:0 1px 2px rgba(25,27,25,.07), 0 2px 8px rgba(25,27,25,.06);--ward-shadow-lg:0 2px 4px rgba(25,27,25,.06), 0 14px 34px rgba(25,27,25,.12);--font-ward:"Albert Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;--font-ward-mono:"Fragment Mono",ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace}
+[data-theme="dark"]{--ward-bg:#121412;--ward-surface:#202520;--ward-surface-sunken:#181b18;--ward-border:#363c36;--ward-border-strong:#727a71;--ward-text:#e9ebe7;--ward-text-muted:#b5b9b2;--ward-text-faint:#979c93;--ward-accent:#a3c2ab;--ward-accent-hover:#b9d4c0;--ward-accent-text:#122019;--ward-accent-soft:#26332a;--ward-danger:#ec917f;--ward-danger-surface:#3a2320;--ward-notice:#dcbf6b;--ward-notice-surface:#2f2914;--ward-focus:#a3c2ab;--ward-shadow:none;--ward-shadow-lg:none;--font-ward:"Albert Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;--font-ward-mono:"Fragment Mono",ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace}
+[data-theme="console"]{--ward-bg:#181a1c;--ward-surface:#242729;--ward-surface-sunken:#111314;--ward-border:#3b3f42;--ward-border-strong:#6c7175;--ward-text:#e8e6e1;--ward-text-muted:#aaa8a2;--ward-text-faint:#98968f;--ward-accent:#c09152;--ward-accent-hover:#d0a262;--ward-accent-text:#181a1c;--ward-accent-soft:#33291c;--ward-danger:#e47a66;--ward-danger-surface:#34211d;--ward-notice:#d8b25e;--ward-notice-surface:#302915;--ward-focus:#c09152;--ward-shadow:none;--ward-shadow-lg:0 8px 28px rgba(0,0,0,.5);--font-ward:"Albert Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;--font-ward-mono:"Fragment Mono",ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace}
+
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:clip}
+body{background:var(--ward-bg);color:var(--ward-text);font:400 14px/20px var(--font-ward);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--ward-focus);outline-offset:2px}
+.ward{background:var(--ward-bg);color:var(--ward-text);font:400 14px/20px var(--font-ward)}
+:where(.ward) :where(p,h1,h2,h3){margin:0}
+.shell{min-height:800px;display:grid;grid-template-rows:auto 1fr auto}
+.band{background:var(--ward-surface);color:var(--ward-text);border-bottom:1px solid var(--ward-border);height:56px;display:flex;align-items:center;padding:0 24px}
+.mark{font-size:14px;line-height:20px;font-weight:600;color:var(--ward-text-muted)}
+.stage{padding:32px 24px 40px;display:flex;flex-direction:column}
+.stage.mid{justify-content:center}
+.page{margin-left:clamp(0rem,7vw,9rem);max-width:1040px;position:relative}
+.head{position:relative;padding-left:24px;max-width:40rem;margin:0 0 24px}
+.head::before,.jamb::before{content:"";position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--ward-border-strong)}
+.head::after,.jamb::after{content:"";position:absolute;left:-1px;top:0;width:3px;height:44px;background:var(--ward-accent)}
+.ward h1{font-size:clamp(1.625rem,1.4rem + .9vw,2rem);line-height:1.25;font-weight:700;letter-spacing:-.01em}
+.lede{margin-top:12px;color:var(--ward-text-muted);max-width:30rem}
+.grid{display:grid;grid-template-columns:320px minmax(0,640px);gap:24px;align-items:start}
+.card.pass{position:sticky;top:24px}
+.card{position:relative;background:var(--ward-surface);color:var(--ward-text);border:1px solid var(--ward-border);border-radius:14px;box-shadow:var(--ward-shadow);padding:24px}
+.cards{min-width:0;display:flex;flex-direction:column;gap:16px}
+.ward :is(h1,h2){text-wrap:balance}
+.ward h2{font-size:18px;line-height:24px;font-weight:600;margin-bottom:8px}
+.label{display:block;color:var(--ward-text-muted)}
+.pass .label{font-size:12px;line-height:16px;color:var(--ward-text-faint);margin-bottom:4px}
+.who{font-size:28px;line-height:32px;font-weight:700;margin:0 0 16px;overflow-wrap:anywhere;letter-spacing:-.01em}
+.mono{font-family:var(--font-ward-mono);font-size:13px;line-height:20px;margin:0 0 16px;white-space:nowrap}
+.val{margin:0}
+.rule{border:0;border-top:1px solid var(--ward-border);margin:20px 0 16px}
+.note{color:var(--ward-text-muted)}
+.hint{font-size:12px;line-height:16px;color:var(--ward-text-faint)}
+.btn{font:600 14px/20px var(--font-ward);min-height:44px;padding:12px 20px;border-radius:8px;border:1px solid var(--ward-border-strong);background:transparent;color:var(--ward-text);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;white-space:nowrap}
+.btn:not([disabled]):hover,.btn.hov{background:var(--ward-surface-sunken)}
+.btn.primary{background:var(--ward-accent);border-color:var(--ward-accent);color:var(--ward-accent-text)}
+.btn.primary:not([disabled]):hover,.btn.primary.hov{background:var(--ward-accent-hover);border-color:var(--ward-accent-hover)}
+.btn.danger{border-color:var(--ward-danger);color:var(--ward-danger)}
+.btn.danger:not([disabled]):hover,.btn.danger.hov{background:var(--ward-danger);color:var(--ward-accent-text)}
+.btn[disabled]{border-color:var(--ward-border);background:var(--ward-surface-sunken);color:var(--ward-text-faint);cursor:not-allowed}
+.btn:not([disabled]):active{background:var(--ward-border)}
+.btn.primary:not([disabled]):active{background:var(--ward-accent-hover);border-color:var(--ward-accent-hover)}
+.btn.danger:not([disabled]):active{background:var(--ward-danger);color:var(--ward-accent-text)}
+:is(.cs,.cs-scope) a.cs-rl:active{background:var(--ward-surface)}
+.btn.ring{outline:2px solid var(--ward-focus);outline-offset:2px}
+.btn.block{width:100%;margin-top:12px}
+.rows{list-style:none;margin:16px 0 0;padding:0;border-top:1px solid var(--ward-border)}
+.rows li{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;border-bottom:1px solid var(--ward-border)}
+.rows li:last-child{border-bottom:0;padding-bottom:0}
+.slug{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.role{color:var(--ward-text-muted);text-align:right}
+.field{margin:0 0 16px}
+.field label{display:block;font-weight:600;margin-bottom:8px}
+.field input{display:block;width:100%;height:44px;padding:0 12px;font:400 16px/24px var(--font-ward);color:var(--ward-text);background:var(--ward-surface-sunken);border:1px solid var(--ward-border-strong);border-radius:8px}
+.field input.ring{outline:2px solid var(--ward-focus);outline-offset:2px}
+.field input.bad{border-color:var(--ward-danger)}
+.field .hint{margin-top:8px}
+.field .err{margin-top:8px;font-size:14px;line-height:20px;color:var(--ward-danger)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:0 16px}
+.after{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.seg{display:flex;gap:4px;margin:16px 0 0;padding:4px;border:1px solid var(--ward-border-strong);border-radius:10px;background:var(--ward-surface-sunken);min-width:0;position:relative}
+.seg legend{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.seg label{flex:1;position:relative;min-width:0}
+.seg input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+[data-theme="light"]{--o1-bg:var(--ward-accent-soft);--o1-fg:var(--ward-accent);--o1-bd:var(--ward-accent);--o1-w:600;--o2-bg:transparent;--o2-fg:var(--ward-text-muted);--o2-bd:transparent;--o2-w:500}
+[data-theme="dark"]{--o2-bg:var(--ward-accent-soft);--o2-fg:var(--ward-accent);--o2-bd:var(--ward-accent);--o2-w:600;--o1-bg:transparent;--o1-fg:var(--ward-text-muted);--o1-bd:transparent;--o1-w:500}
+.seg span{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:7px;border:1px solid transparent;font-weight:500;color:var(--ward-text-muted)}
+.seg .o1 span{background:var(--o1-bg);color:var(--o1-fg);border-color:var(--o1-bd);font-weight:var(--o1-w)}
+.seg .o2 span{background:var(--o2-bg);color:var(--o2-fg);border-color:var(--o2-bd);font-weight:var(--o2-w)}
+
+.seg input:focus-visible+span{outline:2px solid var(--ward-focus);outline-offset:2px}
+.foot{padding:16px 24px 24px;font-size:12px;line-height:16px;color:var(--ward-text-faint)}
+.foot p{margin-left:clamp(0rem,7vw,9rem)}
+.foot .fl{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px}
+.foot a{color:var(--ward-accent);text-decoration:underline;text-underline-offset:2px;display:inline-flex;align-items:center;min-height:44px}
+.notice{border:1px solid var(--ward-border);border-radius:8px;padding:12px 16px;font-size:14px;line-height:20px;margin-bottom:16px}
+.notice.error{border-color:color-mix(in srgb,var(--ward-danger) 35%,transparent);background:var(--ward-danger-surface);color:var(--ward-danger)}
+.notice.wait{border-color:color-mix(in srgb,var(--ward-notice) 35%,transparent);background:var(--ward-notice-surface);color:var(--ward-notice)}
+.notice.info{background:var(--ward-surface-sunken);color:var(--ward-text-muted)}
+.signcard{max-width:26rem;padding:24px}
+.jamb{position:relative;padding-left:24px;max-width:calc(26rem + 24px)}
+.jh{position:relative}
+.jamb .lede{margin-bottom:24px}
+.jamb .btn.block{margin-top:4px}
+.co{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--ward-text);color:var(--ward-bg);font:600 12px/24px var(--font-ward);text-align:center}
+@media (max-width:1199px){.co{display:none}}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}.card.pass{position:relative;top:auto}}
+@media (max-width:600px){
+ .shell{min-height:844px}
+ .band{padding:0 20px}.stage{padding:24px 20px 24px}.stage.mid{justify-content:flex-start}.foot{padding:12px 20px 24px}
+ .page,.foot p{margin-left:0}
+ .stage{padding-top:16px}.head{padding-left:16px;margin-bottom:16px}.grid{gap:16px}
+ .jamb{padding-left:0}.jamb::before,.jamb::after{display:none}
+ .jh{padding-left:16px;margin-bottom:16px}.jh::before{content:"";position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--ward-border-strong)}.jh::after{content:"";position:absolute;left:-1px;top:0;width:3px;height:44px;background:var(--ward-accent)}
+ .jh .lede{margin-bottom:0}
+ .jamb{max-width:none}.signcard{max-width:none}
+ .lede{font-size:16px;line-height:24px;margin-top:8px}
+ .card{padding:16px}
+ .pass h2{margin-bottom:4px}.pass .who{margin-bottom:12px}.pass .mono{margin-bottom:12px;font-size:12px;letter-spacing:-.02em}
+ .pass .rule{margin:12px 0}
+ .rows{margin-top:12px}
+ .pass .who{margin-bottom:12px}
+ .so{display:flex;align-items:center;gap:12px}.so .btn.block{width:auto;flex:none;margin-top:0}
+ .band{height:48px}
+ .pass .val,p.note{font-size:16px;line-height:24px}
+ .btn{min-height:48px}.btn.block{margin-top:12px}
+ .field input{height:48px}
+ .seg span{min-height:48px}
+ .rows li{min-height:48px}
+ .cards{gap:16px}
+ .signcard{padding:20px 16px}
+}
+/* console */
+[data-ward-surface="console"]{background:var(--ward-bg);color:var(--ward-text);font:400 14px/20px var(--font-ward)}
+.cs{min-height:max(800px,100dvh);display:flex;flex-direction:column;background:var(--ward-bg)}
+:is(.cs,.cs-scope) a{color:var(--ward-accent);text-decoration:underline;text-underline-offset:2px}
+.cs-top{display:flex;align-items:center;gap:24px;padding:12px 24px;min-height:64px;flex-wrap:wrap}
+.cs-word{font-size:18px;line-height:24px;font-weight:700}
+.cs-standing{color:var(--ward-notice);flex:1;min-width:0}
+.cs-right{display:flex;align-items:center;gap:16px;margin-left:auto}
+.cs-sess{font-family:var(--font-ward-mono);font-size:13px;color:var(--ward-text-muted);white-space:nowrap}
+.hazard{height:6px;flex:none;background:var(--ward-surface-sunken) repeating-linear-gradient(135deg,var(--ward-notice) 0,var(--ward-notice) 6px,transparent 6px,transparent 14px);position:relative}
+.cs-body{display:flex;align-items:stretch;flex:1}
+.cs-rail{width:192px;flex:none;background:var(--ward-surface-sunken);border-right:1px solid var(--ward-border);padding:24px 12px;display:flex;flex-direction:column;gap:4px}
+:is(.cs,.cs-scope) a.cs-rl{display:flex;align-items:center;min-height:44px;padding:0 12px;border-radius:8px;color:var(--ward-text-muted);text-decoration:none}
+:is(.cs,.cs-scope) a.cs-rl[aria-current="page"]{background:var(--ward-surface);color:var(--ward-text);box-shadow:inset 3px 0 0 var(--ward-accent)}
+.cs-main{flex:1;min-width:0;padding:32px 32px 40px}
+.cs-inner{max-width:68rem;position:relative}
+.cs-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
+.cs h1{font-size:28px;line-height:32px;font-weight:700;letter-spacing:-.01em}
+.cs-lede{color:var(--ward-text-muted);max-width:36rem;margin-bottom:24px}
+.cs-card{position:relative;background:var(--ward-surface);color:var(--ward-text);border:1px solid var(--ward-border);border-radius:14px;overflow:hidden}
+.cs-cap{padding:16px 24px;color:var(--ward-text-muted);border-bottom:1px solid var(--ward-border)}
+.cs-th,.cs-tr{display:grid;grid-template-columns:minmax(96px,1fr) minmax(0,2.4fr) minmax(88px,1fr) minmax(0,1.4fr) 152px;gap:16px;align-items:center;padding:0 24px}
+.cs-th{min-height:40px;color:var(--ward-text-faint);font-size:14px;border-bottom:1px solid var(--ward-border);background:var(--ward-surface-sunken)}
+.cs-tr{min-height:64px;border-bottom:1px solid var(--ward-border)}
+.cs-tr:last-child{border-bottom:0}
+:is(.cs,.cs-scope) ul{list-style:none;margin:0;padding:0}
+:where(.cs,.cs-scope) :is(p,h1){margin:0}
+.cs-name a{display:inline-flex;align-items:center;min-height:32px}
+.cs-name{font-weight:700}
+.cs-id{font-family:var(--font-ward-mono);font-size:13px;color:var(--ward-text-muted);white-space:nowrap}
+.cs-when{font-family:var(--font-ward-mono);font-size:12px;line-height:16px;color:var(--ward-text-faint);white-space:nowrap}
+.cs-act{justify-self:end}
+.cs-state{color:var(--ward-text)}
+.cs-state.off{color:var(--ward-danger)}
+:is(.cs,.cs-scope) a.btn{text-decoration:none}
+:is(.cs,.cs-scope) .btn{min-height:44px;padding:0 16px}
+:is(.cs,.cs-scope) .btn.primary{color:var(--ward-accent-text)}
+:is(.cs,.cs-scope) a.btn.primary{color:var(--ward-accent-text)}
+.cs-alert{border:1px solid var(--ward-border);border-radius:8px;padding:12px 16px}
+.cs-alert b{display:block}
+.cs-alert.error{border-color:color-mix(in srgb,var(--ward-danger) 40%,transparent);background:var(--ward-danger-surface);color:var(--ward-danger)}
+.cs-empty{border:1px dashed var(--ward-border-strong);border-radius:14px;padding:24px;color:var(--ward-text-muted);display:flex;flex-direction:column;gap:12px}
+.cs-empty b{color:var(--ward-text);font-size:18px;line-height:24px}
+.cs .co{background:var(--ward-text);color:var(--ward-bg)}
+@media (max-width:760px){
+ .cs{min-height:max(844px,100dvh)}
+ .cs-top{padding:12px 16px 12px;gap:8px 16px;align-items:center}
+ .cs-word{font-size:18px;line-height:24px}
+ .cs-right{margin-left:auto}
+ .cs-top .cs-sess{display:none}
+ .cs-standing{flex:0 0 100%;order:3}
+ .cs-sess-m{display:block}
+ .cs-body{flex-direction:column}
+ .cs-rail{width:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--ward-border);padding:8px 12px;gap:4px;overflow:hidden}
+ .cs-main{padding:20px 16px 24px}
+ .cs h1{font-size:26px;line-height:32px}
+ .cs-head{margin-bottom:8px}
+ .cs-lede{margin-bottom:16px}
+ :is(.cs,.cs-scope) .btn{min-height:48px}
+}
+@media (max-width:1100px) and (min-width:1001px){
+ .cs-th,.cs-tr{grid-template-columns:64px 232px 80px minmax(0,1fr) 144px;gap:0 16px;padding:0 16px}
+ .cs-id{font-size:12px;letter-spacing:-.02em}
+}
+@media (max-width:1000px){
+ .cs-th{display:none}
+ .cs-tr{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"name when state" "id id act";gap:0 16px;padding:8px 16px 12px;align-items:center}
+ .cs-tr .cs-name{grid-area:name}
+ .cs-tr .cs-state{grid-area:state;text-align:right}
+ .cs-tr .cs-id{grid-area:id;font-size:12px;letter-spacing:-.02em;padding-bottom:8px}
+ .cs-tr .cs-when{grid-area:when}
+ .cs-tr .cs-act{grid-area:act}
+ .cs-cap{padding:12px 16px}
+}
+@media (max-width:600px){
+ .cs-tr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name state" "id id" "when act";gap:0 12px;padding:4px 16px 12px}
+ .cs-tr .cs-name{display:flex;align-items:center;min-height:44px}
+ .cs-tr .cs-name a{min-height:44px}
+}
+@media (min-width:761px){.cs-sess-m{display:none}}
+.cs-sess-m{font-family:var(--font-ward-mono);font-size:13px;color:var(--ward-text-muted);flex:0 0 100%;order:2}
+
+.dr{width:1440px;padding:48px 56px 64px;display:flex;flex-direction:column;gap:40px;background:var(--ward-bg);color:var(--ward-text);font:400 14px/20px var(--font-ward)}
+.dr h2.sec{font-size:28px;line-height:32px;font-weight:700;margin:0 0 4px}
+.dr .lead{font-size:18px;line-height:24px;max-width:72ch;color:var(--ward-text-muted)}
+.dr .cap{font-size:12px;line-height:16px;color:var(--ward-text-muted)}
+.dr .two{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.dr .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.dr .pnl{background:var(--ward-bg);color:var(--ward-text);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px;border:1px solid var(--ward-border)}
+.dr .pnl.cs{min-height:0;display:flex}
+.dr .pt{font-size:18px;line-height:24px;font-weight:600}
+.dr .sws{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dr .sw{display:flex;flex-direction:column;gap:4px;min-width:0}
+.dr .sw i{display:block;height:44px;border-radius:8px;border:1px solid var(--ward-border-strong)}
+.dr .sw b{font-size:12px;line-height:16px;font-weight:600;overflow-wrap:anywhere}
+.dr .sw span{font-family:var(--font-ward-mono);font-size:12px;line-height:16px;color:var(--ward-text-muted)}
+.dr .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dr .col{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.dr .scale{display:grid;grid-template-columns:132px 1fr;gap:8px 16px;align-items:baseline}
+.dr .scale code{font-family:var(--font-ward-mono);font-size:12px;line-height:16px;color:var(--ward-text-muted)}
+.dr .bar{display:block;height:16px;background:var(--ward-accent);border-radius:4px}
+.dr .box{height:88px;border-radius:14px;background:var(--ward-surface);border:1px solid var(--ward-border);display:flex;align-items:center;justify-content:center;text-align:center;padding:0 12px;font-size:12px;line-height:16px;color:var(--ward-text-muted)}
+.dr .box.lg{box-shadow:var(--ward-shadow-lg);border-color:var(--ward-border-strong)}
+.dr .box.sh{box-shadow:var(--ward-shadow)}
+.dr table{border-collapse:collapse;width:100%;font-size:12px;line-height:16px}
+.dr th,.dr td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--ward-border)}
+.dr td.n{font-family:var(--font-ward-mono);text-align:right}
+.dr th{font-weight:600;color:var(--ward-text-muted)}
+.dr .st{display:flex;flex-direction:column;gap:12px;align-items:flex-start;padding:16px;border-radius:14px;background:var(--ward-surface);border:1px solid var(--ward-border);box-shadow:var(--ward-shadow)}
+.dr .st h3{font-size:18px;line-height:24px;font-weight:600;margin:0}
+.dr .st p{margin:0}
+.dr .st .tag{font-size:12px;line-height:16px;color:var(--ward-text-faint)}
+.dr .st .notice{margin:0;width:100%}
+.dr .st .field{width:100%;margin:0}
+.dr .stc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.dr .grp{font-size:18px;line-height:24px;font-weight:600;margin:0 0 12px}
+.dr .pnl .notice{margin:0;width:100%}
+.dr .pnl .field{width:100%;margin:0}
+.dr .pnl .rows{width:100%;margin:0}
+.dr .pnl .seg{width:100%;margin:0}
+.dr .cs-alert{width:100%}
+.dr .railp{width:192px;background:var(--ward-surface-sunken);padding:12px;border-radius:8px;display:flex;flex-direction:column;gap:4px}
+.dr .hz{height:6px;width:100%;background:var(--ward-surface-sunken) repeating-linear-gradient(135deg,var(--ward-notice) 0,var(--ward-notice) 6px,transparent 6px,transparent 14px);border-radius:2px}
+</style>
+</head>
+<body>
+<div data-theme="light" class="dr" style="width: 1440px">
+
+<div><p class="cap">Ward · direction</p><h1 style="font-size:32px;line-height:40px;font-weight:700;margin:0 0 8px;letter-spacing:-.01em">The pass and its doors</h1>
+<p class="lead">The account page as the pass you hold: who you are in one held card beside the page, what it opens and what you can do with it in the column next to it. Sign-in hangs one card off the same jamb; the console stays its own dark building.</p></div>
+<div><h2 class="sec">Palette</h2><div class="three"><div data-theme="light" class="pnl"><div class="pt">Public, light</div><div class="sws"><div class="sw"><i style="background:var(--ward-bg)" title="bg"></i><b>--ward-bg</b><span>#e9e8e1</span></div><div class="sw"><i style="background:var(--ward-surface)" title="surface"></i><b>--ward-surface</b><span>#ffffff</span></div><div class="sw"><i style="background:var(--ward-surface-sunken)" title="surface-sunken"></i><b>--ward-surface-sunken</b><span>#f1f0eb</span></div><div class="sw"><i style="background:var(--ward-border)" title="border"></i><b>--ward-border</b><span>#cac8bd</span></div><div class="sw"><i style="background:var(--ward-border-strong)" title="border-strong"></i><b>--ward-border-strong</b><span>#83817a</span></div><div class="sw"><i style="background:var(--ward-text)" title="text"></i><b>--ward-text</b><span>#191b19</span></div><div class="sw"><i style="background:var(--ward-text-muted)" title="text-muted"></i><b>--ward-text-muted</b><span>#4a4f49</span></div><div class="sw"><i style="background:var(--ward-text-faint)" title="text-faint"></i><b>--ward-text-faint</b><span>#5d6259</span></div><div class="sw"><i style="background:var(--ward-accent)" title="accent"></i><b>--ward-accent</b><span>#2f4a3a</span></div><div class="sw"><i style="background:var(--ward-accent-hover)" title="accent-hover"></i><b>--ward-accent-hover</b><span>#223829</span></div><div class="sw"><i style="background:var(--ward-accent-text)" title="accent-text"></i><b>--ward-accent-text</b><span>#f5f6f2</span></div><div class="sw"><i style="background:var(--ward-accent-soft)" title="accent-soft"></i><b>--ward-accent-soft</b><span>#dfe8e1</span></div><div class="sw"><i style="background:var(--ward-danger)" title="danger"></i><b>--ward-danger</b><span>#8a2e21</span></div><div class="sw"><i style="background:var(--ward-danger-surface)" title="danger-surface"></i><b>--ward-danger-surface</b><span>#f9eae7</span></div><div class="sw"><i style="background:var(--ward-notice)" title="notice"></i><b>--ward-notice</b><span>#5e4c0e</span></div><div class="sw"><i style="background:var(--ward-notice-surface)" title="notice-surface"></i><b>--ward-notice-surface</b><span>#faf2d8</span></div><div class="sw"><i style="background:var(--ward-focus)" title="focus"></i><b>--ward-focus</b><span>#2f4a3a</span></div></div></div><div data-theme="dark" class="pnl"><div class="pt">Public, dark</div><div class="sws"><div class="sw"><i style="background:var(--ward-bg)" title="bg"></i><b>--ward-bg</b><span>#121412</span></div><div class="sw"><i style="background:var(--ward-surface)" title="surface"></i><b>--ward-surface</b><span>#202520</span></div><div class="sw"><i style="background:var(--ward-surface-sunken)" title="surface-sunken"></i><b>--ward-surface-sunken</b><span>#181b18</span></div><div class="sw"><i style="background:var(--ward-border)" title="border"></i><b>--ward-border</b><span>#363c36</span></div><div class="sw"><i style="background:var(--ward-border-strong)" title="border-strong"></i><b>--ward-border-strong</b><span>#727a71</span></div><div class="sw"><i style="background:var(--ward-text)" title="text"></i><b>--ward-text</b><span>#e9ebe7</span></div><div class="sw"><i style="background:var(--ward-text-muted)" title="text-muted"></i><b>--ward-text-muted</b><span>#b5b9b2</span></div><div class="sw"><i style="background:var(--ward-text-faint)" title="text-faint"></i><b>--ward-text-faint</b><span>#979c93</span></div><div class="sw"><i style="background:var(--ward-accent)" title="accent"></i><b>--ward-accent</b><span>#a3c2ab</span></div><div class="sw"><i style="background:var(--ward-accent-hover)" title="accent-hover"></i><b>--ward-accent-hover</b><span>#b9d4c0</span></div><div class="sw"><i style="background:var(--ward-accent-text)" title="accent-text"></i><b>--ward-accent-text</b><span>#122019</span></div><div class="sw"><i style="background:var(--ward-accent-soft)" title="accent-soft"></i><b>--ward-accent-soft</b><span>#26332a</span></div><div class="sw"><i style="background:var(--ward-danger)" title="danger"></i><b>--ward-danger</b><span>#ec917f</span></div><div class="sw"><i style="background:var(--ward-danger-surface)" title="danger-surface"></i><b>--ward-danger-surface</b><span>#3a2320</span></div><div class="sw"><i style="background:var(--ward-notice)" title="notice"></i><b>--ward-notice</b><span>#dcbf6b</span></div><div class="sw"><i style="background:var(--ward-notice-surface)" title="notice-surface"></i><b>--ward-notice-surface</b><span>#2f2914</span></div><div class="sw"><i style="background:var(--ward-focus)" title="focus"></i><b>--ward-focus</b><span>#a3c2ab</span></div></div></div><div class="pnl cs-scope" data-ward-surface="console" data-theme="console"><div class="pt">Console, both themes</div><div class="sws"><div class="sw"><i style="background:var(--ward-bg)" title="bg"></i><b>--ward-bg</b><span>#181a1c</span></div><div class="sw"><i style="background:var(--ward-surface)" title="surface"></i><b>--ward-surface</b><span>#242729</span></div><div class="sw"><i style="background:var(--ward-surface-sunken)" title="surface-sunken"></i><b>--ward-surface-sunken</b><span>#111314</span></div><div class="sw"><i style="background:var(--ward-border)" title="border"></i><b>--ward-border</b><span>#3b3f42</span></div><div class="sw"><i style="background:var(--ward-border-strong)" title="border-strong"></i><b>--ward-border-strong</b><span>#6c7175</span></div><div class="sw"><i style="background:var(--ward-text)" title="text"></i><b>--ward-text</b><span>#e8e6e1</span></div><div class="sw"><i style="background:var(--ward-text-muted)" title="text-muted"></i><b>--ward-text-muted</b><span>#aaa8a2</span></div><div class="sw"><i style="background:var(--ward-text-faint)" title="text-faint"></i><b>--ward-text-faint</b><span>#98968f</span></div><div class="sw"><i style="background:var(--ward-accent)" title="accent"></i><b>--ward-accent</b><span>#c09152</span></div><div class="sw"><i style="background:var(--ward-accent-hover)" title="accent-hover"></i><b>--ward-accent-hover</b><span>#d0a262</span></div><div class="sw"><i style="background:var(--ward-accent-text)" title="accent-text"></i><b>--ward-accent-text</b><span>#181a1c</span></div><div class="sw"><i style="background:var(--ward-accent-soft)" title="accent-soft"></i><b>--ward-accent-soft</b><span>#33291c</span></div><div class="sw"><i style="background:var(--ward-danger)" title="danger"></i><b>--ward-danger</b><span>#e47a66</span></div><div class="sw"><i style="background:var(--ward-danger-surface)" title="danger-surface"></i><b>--ward-danger-surface</b><span>#34211d</span></div><div class="sw"><i style="background:var(--ward-notice)" title="notice"></i><b>--ward-notice</b><span>#d8b25e</span></div><div class="sw"><i style="background:var(--ward-notice-surface)" title="notice-surface"></i><b>--ward-notice-surface</b><span>#302915</span></div><div class="sw"><i style="background:var(--ward-focus)" title="focus"></i><b>--ward-focus</b><span>#c09152</span></div></div></div></div></div>
+<div><h2 class="sec">Type, spacing, elevation</h2><div class="two"><div class="pnl"><div class="pt">Albert Sans, with Fragment Mono for ids</div>
+<div class="scale">
+<code>32/40 · 700 (26/32 phone)</code><span style="font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.01em">Your account</span>
+<code>28/32 · 700</code><span style="font-size:28px;line-height:32px;font-weight:700;letter-spacing:-.01em">alex</span>
+<code>18/24 · 600</code><span style="font-size:18px;line-height:24px;font-weight:600">What you can reach</span>
+<code>16/24 · 400</code><span style="font-size:16px;line-height:24px">Read-only. Changing any of this is done by whoever runs the estate.</span>
+<code>14/20 · 400, 600</code><span>Current password <b>Change password</b> (labels, rows, buttons, desktop prose)</span>
+<code>12/16 · 400</code><span class="hint">At least 8 characters.</span>
+<code>Mono 13/20 · 400</code><span style="font-family:var(--font-ward-mono);font-size:13px;line-height:20px">473142503450100f9056018471d6d7b7</span>
+</div>
+<p class="cap">Six sizes in Albert Sans (the h1 drops from 32 to 26 on a phone) and one mono size, 13 (12 on a phone), for ids and timestamps. Body is 16 on a phone and 14 on desktop. Fonts load from Google Fonts here; the app self-hosts one subset (owner question 1).</p></div><div class="pnl"><div class="pt">Spacing, radii, elevation</div>
+<div class="scale"><code>4 px</code><span class="bar" style="width:16px"></span><code>8 px</code><span class="bar" style="width:32px"></span><code>12 px</code><span class="bar" style="width:48px"></span><code>16 px</code><span class="bar" style="width:64px"></span><code>20 px</code><span class="bar" style="width:80px"></span><code>24 px</code><span class="bar" style="width:96px"></span><code>32 px</code><span class="bar" style="width:128px"></span><code>40 px</code><span class="bar" style="width:160px"></span><code>56 px</code><span class="bar" style="width:224px"></span></div>
+<div class="row" style="gap:16px;align-items:stretch"><div class="box" style="width:96px;border-radius:8px">8 control</div><div class="box" style="width:96px;border-radius:10px">10 segment</div><div class="box" style="width:96px;border-radius:14px">14 card</div></div>
+<div class="row" style="gap:16px;align-items:stretch"><div class="box" style="width:132px;background:var(--ward-bg)">0 ground</div><div class="box sh" style="width:132px">1 card</div><div class="box lg" style="width:132px">2 dialog, console only</div></div>
+<p class="cap">One elevation for every card, the pass included: a 1 px border plus the soft shadow in light, and a surface one step lighter than the ground in dark. The heavier shadow is kept for the console's dialog only.</p></div></div></div>
+<div><h2 class="sec">Components</h2><div class="three"><div data-theme="light" class="pnl"><div class="pt">Public, light</div><div class="row"><button class="btn primary" type="button">Change password</button><button class="btn primary hov" type="button">Hover</button><button class="btn primary ring" type="button">Focus</button><button class="btn primary" type="button" disabled="disabled">Disabled</button></div>
+<div class="row"><button class="btn" type="button">Sign out</button><button class="btn hov" type="button">Hover</button><button class="btn ring" type="button">Focus</button><button class="btn danger" type="button">Sign out my other devices</button><button class="btn danger hov" type="button">Hover</button></div><div class="row" style="align-items:flex-start;gap:16px">
+<div class="field" style="width:200px"><label for="f1">Username</label><input id="f1" class="ring" type="text" value="alex"><p class="hint">Focus: a solid 2 px outline</p></div>
+<div class="field" style="width:200px"><label for="f2">New password again</label><input id="f2" class="bad" type="password" value="abcdefgh"><p class="err">The two new passwords don't match.</p></div>
+</div><ul class="rows"><li><span class="slug">satchel</span><span class="role">user</span></li><li><span class="slug">shelfmark</span><span class="role">user</span></li></ul><fieldset class="seg"><legend>Theme</legend><label class="o1"><input type="radio" name="th1" value="light"><span>Light</span></label><label class="o2"><input type="radio" name="th1" value="dark"><span>Dark</span></label><label class="o3"><input type="radio" name="th1" value="system"><span>System</span></label></fieldset><div class="notice error" role="alert">That username and password don't match. Check both and try again.</div>
+<div class="notice wait" role="status">Too many sign-in attempts from your network. Try again in <strong>4 min 30 s</strong>.</div>
+<div class="notice info" role="status">No other sessions were signed in.</div></div><div data-theme="dark" class="pnl"><div class="pt">Public, dark</div><div class="row"><button class="btn primary" type="button">Change password</button><button class="btn primary hov" type="button">Hover</button><button class="btn primary ring" type="button">Focus</button><button class="btn primary" type="button" disabled="disabled">Disabled</button></div>
+<div class="row"><button class="btn" type="button">Sign out</button><button class="btn hov" type="button">Hover</button><button class="btn ring" type="button">Focus</button><button class="btn danger" type="button">Sign out my other devices</button><button class="btn danger hov" type="button">Hover</button></div><div class="row" style="align-items:flex-start;gap:16px">
+<div class="field" style="width:200px"><label for="f1">Username</label><input id="f1" class="ring" type="text" value="alex"><p class="hint">Focus: a solid 2 px outline</p></div>
+<div class="field" style="width:200px"><label for="f2">New password again</label><input id="f2" class="bad" type="password" value="abcdefgh"><p class="err">The two new passwords don't match.</p></div>
+</div><ul class="rows"><li><span class="slug">satchel</span><span class="role">user</span></li><li><span class="slug">shelfmark</span><span class="role">user</span></li></ul><fieldset class="seg"><legend>Theme</legend><label class="o1"><input type="radio" name="th2" value="light"><span>Light</span></label><label class="o2"><input type="radio" name="th2" value="dark"><span>Dark</span></label><label class="o3"><input type="radio" name="th2" value="system"><span>System</span></label></fieldset><div class="notice error" role="alert">That username and password don't match. Check both and try again.</div>
+<div class="notice wait" role="status">Too many sign-in attempts from your network. Try again in <strong>4 min 30 s</strong>.</div>
+<div class="notice info" role="status">No other sessions were signed in.</div></div><div class="pnl cs-scope" data-ward-surface="console" data-theme="console"><div class="pt">Console, both themes</div>
+<div class="row"><a class="btn primary" href="#n">New account</a><a class="btn primary hov" href="#n">Hover</a><a class="btn primary ring" href="#n">Focus</a><button class="btn" type="button">Sign out</button><a class="btn" href="#a">Access and state</a></div>
+<div class="row"><span class="cs-state">Active</span><span class="cs-state off">Disabled since 2026-11-12 17:04</span><span class="cs-when">2026-11-12 17:04</span><span class="cs-id">aca269198028153b0fe3adfd1712d6cc</span></div>
+<div class="railp"><a class="cs-rl" href="#a" aria-current="page">Accounts</a><a class="cs-rl" href="#b">Apps</a><a class="cs-rl" href="#c">Audit log</a></div>
+<div class="hz" role="presentation"></div>
+<div class="cs-alert error" role="alert"><b>The account list did not load</b>The request never reached Ward. Check that the service is running.</div>
+<div class="field"><label for="cf">Username</label><input id="cf" class="ring" type="text" value="alex"></div>
+</div></div></div>
+<div><h2 class="sec">States</h2><div style="display:flex;flex-direction:column;gap:32px"><div><h2 class="grp">Account</h2><div class="stc">
+<div class="st"><span class="tag">loading</span><h3>Your account</h3><p class="note">Loading.</p></div>
+<div class="st"><span class="tag">unreachable</span><h3>Ward isn't answering</h3><p class="note">Your session is probably fine. Ward just didn't respond. Try again.</p><button class="btn" type="button">Try again</button></div>
+<div class="st"><span class="tag">signed out</span><h3>You're signed out</h3><p class="note">Sessions end after a while, and this one has. Sign in to see your account.</p><a class="btn primary" href="#signin">Sign in</a></div>
+<div class="st"><span class="tag">no access</span><h3>What you can reach</h3><p class="note">No app access yet. Access is granted per app by whoever runs the estate. Ask them, and it will appear here.</p></div>
+<div class="st"><span class="tag">field error</span><div class="field"><label for="s1">New password again</label><input id="s1" class="bad" type="password" value="abcdefgh"><p class="err">The two new passwords don't match.</p></div></div>
+<div class="st"><span class="tag">result</span><div class="notice info" role="status">No other sessions were signed in.</div></div>
+</div></div>
+<div><h2 class="grp">Sign-in</h2><div class="stc">
+<div class="st"><span class="tag">wrong credentials</span><div class="notice error" role="alert">That username and password don't match. Check both and try again.</div></div>
+<div class="st"><span class="tag">lockout, button off</span><div class="notice wait" role="status">Too many sign-in attempts from your network. Try again in <strong>4 min 30 s</strong>.</div><button class="btn primary" type="button" disabled="disabled">Sign in</button></div>
+<div class="st"><span class="tag">field error</span><div class="field"><label for="s2">Username</label><input id="s2" class="bad" type="text"><p class="err">Enter your username.</p></div></div>
+<div class="st"><span class="tag">unreachable</span><div class="notice error" role="alert">Ward isn't answering. Check your connection and try again.</div></div>
+<div class="st"><span class="tag">signing in</span><button class="btn primary" type="button" disabled="disabled">Signing in&#8230;</button></div>
+<div class="st"><span class="tag">account turned off</span><div class="notice error" role="alert">This account is turned off. Ask whoever runs the estate to turn it back on.</div></div>
+</div></div>
+<div><h2 class="grp">Console</h2><div class="stc cs-scope" data-ward-surface="console" data-theme="console" style="background:var(--ward-bg);padding:16px;border-radius:14px">
+<div class="st"><span class="tag">loading</span><p class="note">Loading the account list&#8230;</p></div>
+<div class="st"><span class="tag">load error</span><div class="cs-alert error" role="alert"><b>The account list did not load</b>The request never reached Ward. Check that the service is running.</div></div>
+<div class="st"><span class="tag">empty</span><div class="cs-empty" style="border:0;padding:0"><b>No accounts yet</b><p>Ward holds no accounts. The break-glass credential you are signed in with is not one. It has no row in this table by design.</p><p>Create the owner account here: an ordinary account with explicit admin grants across the apps, which is what should be used day to day.</p></div></div>
+</div></div></div></div>
+<div><h2 class="sec">Contrast</h2><div class="two"><div class="pnl"><div class="pt">Public pages, light and dark</div><table><thead><tr><th>Pair</th><th>Need</th><th>Light</th><th>Dark</th></tr></thead><tbody><tr><td>text on bg</td><td class="n">4.5</td><td class="n">14.10</td><td class="n">15.43</td></tr><tr><td>text on surface</td><td class="n">4.5</td><td class="n">17.32</td><td class="n">12.99</td></tr><tr><td>text on sunken</td><td class="n">4.5</td><td class="n">15.18</td><td class="n">14.48</td></tr><tr><td>muted on bg</td><td class="n">4.5</td><td class="n">6.82</td><td class="n">9.30</td></tr><tr><td>muted on surface (prose, labels, wordmark)</td><td class="n">4.5</td><td class="n">8.38</td><td class="n">7.83</td></tr><tr><td>muted on sunken (unchecked segment)</td><td class="n">4.5</td><td class="n">7.34</td><td class="n">8.73</td></tr><tr><td>faint on surface (hints)</td><td class="n">4.5</td><td class="n">6.26</td><td class="n">5.56</td></tr><tr><td>faint on bg (footer)</td><td class="n">4.5</td><td class="n">5.09</td><td class="n">6.60</td></tr><tr><td>faint on sunken</td><td class="n">4.5</td><td class="n">5.48</td><td class="n">6.20</td></tr><tr><td>accent on surface (links)</td><td class="n">4.5</td><td class="n">9.72</td><td class="n">8.06</td></tr><tr><td>accent on bg (links in the footer)</td><td class="n">4.5</td><td class="n">7.91</td><td class="n">9.57</td></tr><tr><td>accent-text on accent (primary button)</td><td class="n">4.5</td><td class="n">8.95</td><td class="n">8.72</td></tr><tr><td>accent-text on accent-hover</td><td class="n">4.5</td><td class="n">11.61</td><td class="n">10.62</td></tr><tr><td>accent on accent-soft (checked segment)</td><td class="n">4.5</td><td class="n">7.76</td><td class="n">6.83</td></tr><tr><td>danger on surface (danger button)</td><td class="n">4.5</td><td class="n">8.42</td><td class="n">6.62</td></tr><tr><td>danger on danger-surface (error notice)</td><td class="n">4.5</td><td class="n">7.20</td><td class="n">6.19</td></tr><tr><td>accent-text on danger (danger hover)</td><td class="n">4.5</td><td class="n">7.76</td><td class="n">7.16</td></tr><tr><td>notice on notice-surface (lockout)</td><td class="n">4.5</td><td class="n">7.46</td><td class="n">8.08</td></tr><tr><td>border-strong on surface (button edge)</td><td class="n">3</td><td class="n">3.90</td><td class="n">3.52</td></tr><tr><td>border-strong on sunken (field edge)</td><td class="n">3</td><td class="n">3.42</td><td class="n">3.92</td></tr><tr><td>border-strong on bg (jamb rule)</td><td class="n">3</td><td class="n">3.17</td><td class="n">4.18</td></tr><tr><td>accent on bg (jamb cap)</td><td class="n">3</td><td class="n">7.91</td><td class="n">9.57</td></tr><tr><td>focus on surface (ring)</td><td class="n">3</td><td class="n">9.72</td><td class="n">8.06</td></tr><tr><td>focus on bg (ring)</td><td class="n">3</td><td class="n">7.91</td><td class="n">9.57</td></tr><tr><td>focus on sunken (ring)</td><td class="n">3</td><td class="n">8.51</td><td class="n">8.99</td></tr><tr><td>surface on bg (card on ground; needs 1.09 light / 1.15 dark, or an edge)</td><td class="n">1.09 / 1.15</td><td class="n">1.23</td><td class="n">1.19</td></tr><tr><td>border on bg (card edge on ground; needs 1.3)</td><td class="n">1.3</td><td class="n">1.37</td><td class="n">1.64</td></tr><tr><td>border on surface (rule inside a card)</td><td class="n">1.2</td><td class="n">1.68</td><td class="n">1.38</td></tr></tbody></table></div><div class="pnl"><div class="pt">Console, identical in both themes</div><table><thead><tr><th>Pair</th><th>Need</th><th>Both</th></tr></thead><tbody><tr><td>text on bg</td><td class="n">4.5</td><td class="n">13.99</td></tr><tr><td>text on surface</td><td class="n">4.5</td><td class="n">12.05</td></tr><tr><td>text on sunken (rail)</td><td class="n">4.5</td><td class="n">14.94</td></tr><tr><td>muted on surface</td><td class="n">4.5</td><td class="n">6.32</td></tr><tr><td>muted on bg</td><td class="n">4.5</td><td class="n">7.34</td></tr><tr><td>muted on sunken (rail links)</td><td class="n">4.5</td><td class="n">7.84</td></tr><tr><td>faint on surface (timestamps)</td><td class="n">4.5</td><td class="n">5.08</td></tr><tr><td>faint on bg</td><td class="n">4.5</td><td class="n">5.90</td></tr><tr><td>accent on surface (links)</td><td class="n">4.5</td><td class="n">5.31</td></tr><tr><td>accent on bg</td><td class="n">4.5</td><td class="n">6.16</td></tr><tr><td>accent on sunken (rail mark)</td><td class="n">3</td><td class="n">6.58</td></tr><tr><td>accent-text on accent (New account)</td><td class="n">4.5</td><td class="n">6.16</td></tr><tr><td>accent-text on accent-hover</td><td class="n">4.5</td><td class="n">7.50</td></tr><tr><td>accent on accent-soft</td><td class="n">4.5</td><td class="n">5.03</td></tr><tr><td>danger on surface</td><td class="n">4.5</td><td class="n">5.21</td></tr><tr><td>danger on danger-surface</td><td class="n">4.5</td><td class="n">5.27</td></tr><tr><td>accent-text on danger (danger hover)</td><td class="n">4.5</td><td class="n">6.05</td></tr><tr><td>notice on bg (break-glass line)</td><td class="n">4.5</td><td class="n">8.68</td></tr><tr><td>notice on notice-surface</td><td class="n">4.5</td><td class="n">7.19</td></tr><tr><td>notice on sunken (hazard band stripes)</td><td class="n">3</td><td class="n">9.27</td></tr><tr><td>border-strong on surface (button edge)</td><td class="n">3</td><td class="n">3.05</td></tr><tr><td>border-strong on sunken (field edge)</td><td class="n">3</td><td class="n">3.78</td></tr><tr><td>focus on surface (ring)</td><td class="n">3</td><td class="n">5.31</td></tr><tr><td>focus on bg (ring)</td><td class="n">3</td><td class="n">6.16</td></tr><tr><td>surface on bg (card on ground; needs 1.15)</td><td class="n">1.15</td><td class="n">1.16</td></tr><tr><td>surface on sunken (rail beside the ground)</td><td class="n">1.05</td><td class="n">1.07</td></tr><tr><td>border on bg (card edge)</td><td class="n">1.3</td><td class="n">1.64</td></tr></tbody></table></div></div></div>
+
+</div>
+</body>
+</html>

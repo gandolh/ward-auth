@@ -788,3 +788,7 @@ share one shell (`api/src/lib/page-shell.ts`) with the sign-in pages' light and
 dark colours and their boot script, so a saved Dark choice meets no light page
 mid-sign-in. Light on a first visit. No route, cookie, token or body change
 beyond the pages' HTML. `npm run check` 1421 tests; shots at 1280 and 390.
+
+## [2026-11-20] maintenance | The redesign's board page copied into the repo
+
+The estate redesign board is a private canvas, so `design/estate-redesign/` now holds a copy of this app's page on it and the build behind it: the directions, the judges' and the controller's rulings, the critique, the token hand-off, the board's notes, the owner's decisions, the proposed screens (as HTML with renders, or as the board's own artboard sources), and today's shots from before the redesign. It is the design record of brief 07, which built it; its README says what each file is. Prettier and the Docker build skip the folder.

@@ -154,8 +154,10 @@ _2026-10-13_ — Settled while adding "Sign in with Ward" to
   an expired hint (oidc-provider ignores `exp` on it), so it outlives the
   token's hour.
 - **Errors from the round trip are codes in the redirect** (`?ward_error=`).
-  The provider's own codes, `access_denied` first, pass through. The client
-  reads the code once and removes it from the address bar.
+  The provider's own codes, `access_denied` first, pass through, except a
+  cancel at Ward: since ward-auth 1.2.0 (2026-11-24) an `access_denied` whose
+  description is the cancel's (`api/src/oidc/denials.ts`) arrives as
+  `cancelled`. The client reads the code once and removes it from the address bar.
 - **The library's tests run a real Ward in-process** behind a fetch that
   strips the prefix. They import `api/` by computed path, as dev-only code
   that no bundle reaches.

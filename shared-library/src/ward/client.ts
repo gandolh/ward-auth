@@ -2,6 +2,9 @@ import { isIP } from "node:net";
 
 import * as oidc from "openid-client";
 
+// Ward's own words for a cancel, from the server's source: the build copies the constant into the bundle, and nothing
+// else from `api/` reaches it.
+import { DENIAL_DESCRIPTIONS } from "../../../api/src/oidc/denials.js";
 import { WardConfigurationError, WardSignInError, WardUnavailableError } from "./errors.js";
 import { CLIENT_ASSERTION_TYPE, importClientKey, signClientAssertion, type ClientKey } from "./key.js";
 
@@ -466,9 +469,13 @@ export async function createWardClient(options: WardClientOptions): Promise<Ward
 /**
  * Map whatever the round trip threw to the code the browser is told.
  *
- * - The provider's own `error` (`access_denied` for no grant, a disabled
- *   account or "Back to the app"; anything else it may send) passes through,
- *   if it looks like an OAuth error code.
+ * - "Back to the app" at Ward: `cancelled`. Ward answers it with
+ *   `access_denied`, as it does a refusal, and tells the two apart in the
+ *   description, which is compared with Ward's own constant
+ *   (`api/src/oidc/denials.ts`) rather than matched as text.
+ * - The provider's own `error` otherwise (`access_denied` for no grant or a
+ *   disabled account; anything else it may send) passes through, if it looks
+ *   like an OAuth error code.
  * - Ward unreachable, or answering outside the protocol: `ward_unavailable`.
  * - Ward refusing the client credential: `ward_misconfigured`.
  * - Everything about the response itself — a `state`, `nonce` or `iss` that
@@ -484,6 +491,9 @@ export function signInErrorFor(error: unknown): WardSignInError {
     return new WardSignInError("ward_unavailable", error.message, { cause: error });
   }
   if (error instanceof oidc.AuthorizationResponseError) {
+    if (error.error === "access_denied" && error.error_description === DENIAL_DESCRIPTIONS.cancelled) {
+      return new WardSignInError("cancelled", "the sign-in was cancelled at Ward", { cause: error });
+    }
     const code = /^[a-z_]{1,64}$/.test(error.error) ? error.error : "ward_error";
     return new WardSignInError(code, `Ward answered ${code}`, { cause: error });
   }

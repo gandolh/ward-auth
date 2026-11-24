@@ -7,8 +7,10 @@ import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 
 /**
  * A real Ward, in-process, for the library's tests. **Test-only**: nothing in
- * either bundle imports this file, and the library's runtime never depends on
- * `api/`.
+ * either bundle imports this file, and the library's runtime takes nothing
+ * from `api/` but one constant, Ward's description of a cancel, which
+ * `ward/client.ts` imports from `api/src/oidc/denials.ts` and the build copies
+ * into the bundle.
  *
  * Ward is built with its own `buildApp()` over a fresh on-disk database, with
  * `WARD_OIDC_ISSUER` set, exactly as `api/src/oidc/oidc.test.ts` does. Nothing

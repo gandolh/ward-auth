@@ -1,9 +1,11 @@
 import { type createPublicKey, generateKeyPairSync, verify } from "node:crypto";
 
+import * as oidc from "openid-client";
 import { describe, expect, it, vi } from "vitest";
 
-import { createWardClient, wardClientOptionsFromEnv } from "./client.js";
-import { WardConfigurationError, WardUnavailableError } from "./errors.js";
+import { DENIAL_DESCRIPTIONS } from "../../../api/src/oidc/denials.js";
+import { createWardClient, signInErrorFor, wardClientOptionsFromEnv } from "./client.js";
+import { WardConfigurationError, WardSignInError, WardUnavailableError } from "./errors.js";
 import { InvalidClientKeyError, importClientKey, signClientAssertion } from "./key.js";
 
 /**
@@ -271,6 +273,43 @@ describe("sendNotification", () => {
     answer = json(401, { error: "invalid_client" });
     await expect(ward.sendNotification({ subject: "s", mailSubject: "Hi", text: "Hello" })).rejects.toBeInstanceOf(
       WardConfigurationError,
+    );
+  });
+});
+
+describe("signInErrorFor, on Ward's error at the redirect URI", () => {
+  const answered = (parameters: Record<string, string>) =>
+    signInErrorFor(
+      new oidc.AuthorizationResponseError("authorization response from the server is an error", {
+        cause: new URLSearchParams(parameters),
+      }),
+    );
+
+  it("calls Back to the app a cancel: access_denied with Ward's cancel description", () => {
+    const error = answered({ error: "access_denied", error_description: "the person cancelled the sign-in" });
+    expect(error).toBeInstanceOf(WardSignInError);
+    expect(error.code).toBe("cancelled");
+    expect(answered({ error: "access_denied", error_description: DENIAL_DESCRIPTIONS.cancelled }).code).toBe(
+      "cancelled",
+    );
+  });
+
+  it("keeps a refusal access_denied: no grant, a disabled account, or no description", () => {
+    expect(answered({ error: "access_denied", error_description: DENIAL_DESCRIPTIONS.no_grant }).code).toBe(
+      "access_denied",
+    );
+    expect(answered({ error: "access_denied", error_description: DENIAL_DESCRIPTIONS.account_disabled }).code).toBe(
+      "access_denied",
+    );
+    expect(answered({ error: "access_denied" }).code).toBe("access_denied");
+    expect(answered({ error: "access_denied", error_description: "The person cancelled the sign-in." }).code).toBe(
+      "access_denied",
+    );
+  });
+
+  it("reads the cancel's words only beside access_denied", () => {
+    expect(answered({ error: "login_required", error_description: DENIAL_DESCRIPTIONS.cancelled }).code).toBe(
+      "login_required",
     );
   });
 });

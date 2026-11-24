@@ -42,9 +42,12 @@ export interface WardStatus {
  *
  * The Ward codes, and where they appear:
  *
- * - `access_denied` — Ward said no: no grant for this app, a disabled
- *   account, or the person pressed "Back to the app". (Ward may send other
- *   OAuth error codes; they pass through as they are.)
+ * - `access_denied` — Ward said no: no grant for this app, or a disabled
+ *   account. (Ward may send other OAuth error codes; they pass through as
+ *   they are.)
+ * - `cancelled` — the person pressed "Back to the app" at Ward (1.2.0; before
+ *   it, a cancel arrived as `access_denied`). Nothing went wrong, so a quiet
+ *   word or none at all fits.
  * - `ward_unavailable` — Ward could not be reached. Also a session `reason`:
  *   a Ward-originated session is refused while Ward cannot vouch for it.
  *   Suggested words: "Ward is unreachable, sign in with your password".
@@ -84,6 +87,7 @@ export type AuthErrorCode =
   | "network"
   | "unknown"
   | "access_denied"
+  | "cancelled"
   | "ward_unavailable"
   | "ward_misconfigured"
   | "ward_session_ended"

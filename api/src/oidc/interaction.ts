@@ -10,6 +10,7 @@ import { getApp } from "../db/apps.js";
 import { wardRole, wardSessionFor, type WardBrowserSession } from "./account.js";
 import { epochNow } from "./adapter.js";
 import { recordAuthorization } from "./authorizations.js";
+import { DENIAL_DESCRIPTIONS, type Denial } from "./denials.js";
 import { INTERACTION_INTERNAL_PREFIX, chooserUrlFor, loginUrlFor, type OidcLayout } from "./layout.js";
 import { GRANT_TTL_SECONDS, ID_TOKEN_CLAIMS, plainPage } from "./provider.js";
 
@@ -54,14 +55,6 @@ interface InteractionRoutesOptions {
   resolve: () => Promise<{ db: Database.Database; provider: Provider }>;
   layout: OidcLayout;
 }
-
-type Denial = "account_disabled" | "no_grant" | "cancelled";
-
-const DENIAL_DESCRIPTIONS: Record<Denial, string> = {
-  account_disabled: "the account is disabled",
-  no_grant: "the account holds no grant for this app",
-  cancelled: "the person cancelled the sign-in",
-};
 
 export async function interactionRoutes(
   app: FastifyInstance,
@@ -225,7 +218,8 @@ export async function interactionRoutes(
   /**
    * `GET /refresh/oidc/:uid/abort` — "Back to <app>" on the login page. The app
    * gets `access_denied`, the same answer as a refusal, so it has one error
-   * path rather than a person stranded at Ward. It is also the way out for a
+   * path rather than a person stranded at Ward; the description says it was a
+   * cancel, which the shared library turns into its own `cancelled` code. It is also the way out for a
    * disabled account, whose sign-in at Ward can only end in "account turned off".
    *
    * The row it writes names the Ward session's account when the browser has

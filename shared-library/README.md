@@ -444,7 +444,7 @@ function LoginPage() {
   // Errors: invalid_credentials, too_many_attempts (error.retryAfterSeconds), network.
   // Button, only when session.ward?.enabled: onClick={() => ward.signIn({ returnTo: "/myapp/items/7" })}
   // ward.error: from the button (ward_unavailable) or from the redirect back
-  // (access_denied, invalid_callback, ward_unavailable, ward_misconfigured).
+  // (access_denied, cancelled, invalid_callback, ward_unavailable, ward_misconfigured).
   // ward.reset() dismisses it.
   // ward.returnTo: the returnTo a refused attempt was started with, or null (0.7.0).
   // Try again with ward.signIn({ returnTo: ward.returnTo ?? undefined }).
@@ -456,9 +456,10 @@ Ward's own origin. On success the browser lands on `returnTo` (a path on the
 app's origin) or on `afterSignInPath`, already signed in. On failure it lands
 on `loginPath?ward_error=<code>`. The client reads that code once at startup,
 removes it from the address bar, and `useWardSignIn().error` starts as it.
-`access_denied` means no grant, a disabled Ward account, or the person
-pressed "Back to the app" at Ward. A good message is "Ward did not let you
-in here; ask the operator for access".
+`access_denied` means no grant or a disabled Ward account. A good message is
+"Ward did not let you in here; ask the operator for access". `cancelled`
+(1.2.0) means the person pressed "Back to the app" at Ward: nothing went
+wrong, so a quiet word fits, or none.
 
 A failed attempt keeps its `returnTo` (0.7.0). The failure lands on
 `loginPath?ward_error=<code>&ward_return_to=<returnTo>`, and
@@ -491,9 +492,9 @@ function Settings() {
   the page as `invalid_credentials`, and five from one address in 15 minutes
   earn `too_many_attempts`. Then it goes to Ward and comes back to
   `settingsPath?ward=linked`, or with `already_linked`, `ward_account_in_use`,
-  `access_denied`, `invalid_callback` or `unauthorized`. A link finishes only
-  in the app process that took the password: one waiting for Ward when the
-  app restarts comes back as `invalid_callback`.
+  `access_denied`, `cancelled`, `invalid_callback` or `unauthorized`. A link
+  finishes only in the app process that took the password: one waiting for
+  Ward when the app restarts comes back as `invalid_callback`.
 - **Set a local password**: for `!user.hasPassword`. `setPassword(next)` works
   only within ten minutes of `reauthenticate()`. A Ward sign-in does not count,
   however recent: with a live Ward session, "Sign in with Ward" asks for
@@ -535,7 +536,8 @@ Every error body is `{ "error": <code> }`. The hooks expose the code as
 | `unauthorized`                                                | guarded routes                                         | no live session; may carry a `reason`                              |
 | `forbidden`                                                   | `requireRole`                                          |                                                                    |
 | `cross_site`                                                  | any `POST`                                             | a browser said the request came from another origin                |
-| `access_denied`                                               | Ward round trip                                        | Ward or the app said no: no grant, disabled, or "Back to the app"  |
+| `access_denied`                                               | Ward round trip                                        | Ward or the app said no: no grant, or disabled                     |
+| `cancelled`                                                   | Ward round trip                                        | the person pressed "Back to the app" at Ward (1.2.0)               |
 | `ward_unavailable`                                            | Ward round trip, Ward starts, session `reason`         | Ward could not be reached; sign in with the local password         |
 | `ward_misconfigured`                                          | same places                                            | Ward refused this app's client credential: an operator problem     |
 | `ward_session_ended`                                          | session `reason`                                       | the Ward session this one began with was signed out or revoked     |

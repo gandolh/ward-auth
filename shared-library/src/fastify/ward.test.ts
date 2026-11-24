@@ -313,13 +313,15 @@ describe("Ward's refusals", () => {
     expect(b.cookie(APP_ORIGIN, COOKIE)).toBeUndefined();
   });
 
-  it("sends a person who pressed 'Back to the app' back the same way", async () => {
+  it("sends a person who pressed 'Back to the app' back to the login page with cancelled", async () => {
     const b = browser();
     const started = await b.request("POST", api("/auth/ward/start"), { json: {} });
     const authorize = await b.request("GET", started.json<{ url: string }>().url);
     const interaction = new URL(String(authorize.headers.location), WARD_ORIGIN).href;
     const { landed } = await b.follow(`${interaction}/abort`);
-    expect(landed.searchParams.get("ward_error")).toBe("access_denied");
+    expect(landed.pathname).toBe("/myapp/login");
+    expect(landed.searchParams.get("ward_error")).toBe("cancelled");
+    expect(b.cookie(APP_ORIGIN, COOKIE)).toBeUndefined();
   });
 
   it("lands a failure after the code exchange on the login page as sign_in_failed, not a 500", async () => {
@@ -405,7 +407,7 @@ describe("a refused sign-in keeps the path it was started with (0.7.0)", () => {
     const interaction = new URL(String(authorize.headers.location), WARD_ORIGIN).href;
     const { landed } = await b.follow(`${interaction}/abort`);
     expect(landed.pathname).toBe("/myapp/login");
-    expect(landed.searchParams.get("ward_error")).toBe("access_denied");
+    expect(landed.searchParams.get("ward_error")).toBe("cancelled");
     expect(landed.searchParams.get("ward_return_to")).toBe(RETURN_TO);
   });
 
@@ -610,6 +612,19 @@ describe("linking from settings", () => {
     });
     const { landed } = await wardRoundTrip(b, "kate", "/auth/ward/link", { currentPassword: LOCAL_PASSWORD });
     expect(landed.searchParams.get("ward_error")).toBe("ward_account_in_use");
+  });
+
+  it("lands a link cancelled at Ward on settings as cancelled, linking nothing", async () => {
+    await seedUsers(t.accounts, [{ username: "cleo", password: LOCAL_PASSWORD, role: "a" }]);
+    const local = (await t.accounts.findUserByUsername("cleo"))!;
+    const b = browser();
+    await b.request("POST", api("/auth/login"), { json: { username: "cleo", password: LOCAL_PASSWORD } });
+    const started = await b.request("POST", api("/auth/ward/link"), { json: { currentPassword: LOCAL_PASSWORD } });
+    const authorize = await b.request("GET", started.json<{ url: string }>().url);
+    const interaction = new URL(String(authorize.headers.location), WARD_ORIGIN).href;
+    const { landed } = await b.follow(`${interaction}/abort`);
+    expect(landed.href).toBe(`${APP_ORIGIN}/myapp/settings?ward_error=cancelled`);
+    expect(await t.identities.subjectOf(local.id)).toBeUndefined();
   });
 
   it("finishes a link only for the session that started it", async () => {

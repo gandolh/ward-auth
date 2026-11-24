@@ -7,6 +7,8 @@ import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { SignJWT, createLocalJWKSet, decodeJwt, importJWK, jwtVerify, type JWK } from "jose";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { DENIAL_DESCRIPTIONS } from "./denials.js";
+
 /**
  * Ward as an OpenID Connect provider, end to end, through the real `buildApp()`.
  *
@@ -739,6 +741,7 @@ describe("access_denied", () => {
     expect(`${landed.origin}${landed.pathname}`).toBe(REDIRECT_URI);
     expect(landed.searchParams.get("error")).toBe("access_denied");
     expect(landed.searchParams.get("state")).toBe(started.state);
+    expect(landed.searchParams.get("error_description")).toBe(DENIAL_DESCRIPTIONS.no_grant);
     expect(landed.searchParams.get("code")).toBeNull();
   });
 
@@ -752,6 +755,7 @@ describe("access_denied", () => {
     const { landed, offered } = await runFlow(browser, startSignIn(), undefined, "continue");
     expect(offered).toBe("carol");
     expect(landed.searchParams.get("error")).toBe("access_denied");
+    expect(landed.searchParams.get("error_description")).toBe(DENIAL_DESCRIPTIONS.account_disabled);
   });
 
   it("for an account with no grant, after Continue on the chooser", async () => {
@@ -776,6 +780,15 @@ describe("access_denied", () => {
 
     const { landed } = await runFlow(browser, { ...started, url: `${interaction}/abort` });
     expect(landed.searchParams.get("error")).toBe("access_denied");
+    // The shared library compares this with the same constant to answer its app `cancelled`, so the words are
+    // spelled out here: a change to them is a change to every vendored copy (denials.ts).
+    expect(landed.searchParams.get("error_description")).toBe("the person cancelled the sign-in");
+    expect(landed.searchParams.get("error_description")).toBe(DENIAL_DESCRIPTIONS.cancelled);
+  });
+
+  it("gives a cancel a description no refusal shares", () => {
+    const { cancelled, ...refusals } = DENIAL_DESCRIPTIONS;
+    expect(Object.values(refusals)).not.toContain(cancelled);
   });
 
   describe("a cancel's row", () => {

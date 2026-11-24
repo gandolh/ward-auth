@@ -7,6 +7,39 @@ upgrade note** saying exactly what the app must change.
 Schema changes are migrations the library applies itself on
 `createSqliteStore`; a note says when one is added, and never to edit one.
 
+## 1.2.0 — 2026-11-24
+
+A sign-in cancelled at Ward comes back as `cancelled`, not as a refusal.
+
+- "Back to the app" on Ward's login page used to land as
+  `ward_error=access_denied`, the code a refusal (no grant, a disabled
+  account) gets, so an app showed its refusal words to someone who only
+  changed their mind. Ward already told the two apart on the wire: it
+  answers both with `error=access_denied`, and a cancel with the
+  description "the person cancelled the sign-in".
+- The library now maps that answer to its own code, `cancelled`:
+  `loginPath?ward_error=cancelled` after a sign-in, with `ward_return_to`
+  as before, and `settingsPath?ward_error=cancelled` after a link or a
+  reauthentication. Every other `access_denied` stays `access_denied`.
+- The description is compared with Ward's own constant,
+  `DENIAL_DESCRIPTIONS.cancelled` in `api/src/oidc/denials.ts`, which the
+  build copies into the server bundle; it is not matched as free text.
+  Ward's routes and their answers are unchanged, so this needs no Ward
+  deploy, and it works against any Ward that answers a cancel that way.
+- `AuthErrorCode` in the React bundle gains `"cancelled"`. The React
+  bundle's code is otherwise unchanged; its comments say what the code
+  means.
+
+Upgrade notes from 1.1.0:
+
+- Re-vendor (`npm run vendor -- <app>/vendor/ward`), the server copy and
+  the web copy. No migration.
+- An app with words for `access_denied` now gets `cancelled` for a
+  cancel, on the login page and on settings. Until it adds words for
+  `cancelled` it shows whatever it shows for a code it doesn't know. A
+  quiet line fits, or none at all: nothing went wrong.
+- An app that keeps 1.1.0 still sees a cancel as `access_denied`.
+
 ## 1.1.0 — 2026-11-19
 
 A username that reads the same as another user's is taken.

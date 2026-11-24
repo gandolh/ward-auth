@@ -149,6 +149,14 @@ const APPS = [
     dev: "http://localhost:5180/lantern/",
     api: "/lantern-api",
   },
+  {
+    slug: "gatehouse",
+    name: "Gatehouse",
+    repo: "gatehouse",
+    envFiles: [".env"],
+    dev: "http://localhost:5182/",
+    api: "/gatehouse-api",
+  },
 ];
 
 async function main() {

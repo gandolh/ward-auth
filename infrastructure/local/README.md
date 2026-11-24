@@ -67,6 +67,7 @@ The apps' dev servers no longer forward `/ward` here.
 | wicket | http://localhost:5179/wicket/ | `wicket/.env` |
 | ro-housing | http://127.0.0.1:5173/ro-housing/ | `ro-housing/.env` |
 | lantern | http://localhost:5180/lantern/ | `lantern/.env` |
+| gatehouse | http://localhost:5182/ | `gatehouse/.env` |
 
 Each app's own `.env.example` has the other dev values that layout needs (the
 base path and API URL).
